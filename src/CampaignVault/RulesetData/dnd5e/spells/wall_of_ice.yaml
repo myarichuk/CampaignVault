@@ -10,3 +10,13 @@ somatic: true
 material: true
 materialText: A small piece of quartz.
 materialConsumed: false
+damageType: cold
+damageAtSlotLevel:
+  6: 10d6
+  7: 12d6
+  8: 14d6
+  9: 16d6
+saveType: dex
+saveSuccess: half
+areaOfEffectType: sphere
+areaOfEffectSize: 10

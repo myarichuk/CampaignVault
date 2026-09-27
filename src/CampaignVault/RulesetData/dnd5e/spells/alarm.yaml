@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: A tiny bell and a piece of fine silver wire.
 materialConsumed: false
+areaOfEffectType: cube
+areaOfEffectSize: 20

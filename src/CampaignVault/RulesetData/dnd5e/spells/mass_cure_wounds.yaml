@@ -9,3 +9,11 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+healAtSlotLevel:
+  5: 3d8 + MOD
+  6: 4d8 + MOD
+  7: 5d8 + MOD
+  8: 6d8 + MOD
+  9: 7d8 + MOD
+areaOfEffectType: sphere
+areaOfEffectSize: 30

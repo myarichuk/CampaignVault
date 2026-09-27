@@ -3,7 +3,7 @@
 # official Archives of Nethys database (elasticsearch.aonprd.com).
 name: specialized_companion_ranger
 system: pf2e
-prerequisite: Incredible Companion (
+prerequisite: Incredible Companion (Ranger)
 mechanicalSummary: Your animal companion continues to grow in power and ability, and it is now cunning enough to become specialized.
 extraPools: []
 classes: [ranger]

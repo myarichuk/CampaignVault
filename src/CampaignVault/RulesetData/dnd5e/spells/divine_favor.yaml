@@ -9,3 +9,6 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+damageType: radiant
+damageAtSlotLevel:
+  1: 1d4

@@ -10,3 +10,14 @@ somatic: true
 material: true
 materialText: A small crystal or glass cone.
 materialConsumed: false
+damageType: cold
+damageAtSlotLevel:
+  5: 8d8
+  6: 9d8
+  7: 10d8
+  8: 11d8
+  9: 12d8
+saveType: con
+saveSuccess: half
+areaOfEffectType: cone
+areaOfEffectSize: 60

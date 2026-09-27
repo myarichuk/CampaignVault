@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: A caterpillar cocoon.
 materialConsumed: false
+saveType: wis
+saveSuccess: none

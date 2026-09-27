@@ -1,0 +1,16 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: buckler
+system: pf2e
+category: Armor
+tags: [shield]
+description: Shield. +1 AC when raised. Hardness 3, HP 6.
+properties:
+  acBonus: 1
+  hardness: 3
+  hp: 6
+  bulk: 0.1
+  costGp: 1
+equipZones: [OffHand]
+equipLayer: Held

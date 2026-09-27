@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: A thin sheet of lead, a piece of opaque glass, a wad of cotton or cloth, and powdered chrysolite.
 materialConsumed: false
+areaOfEffectType: cube
+areaOfEffectSize: 100

@@ -3,6 +3,7 @@
 # official Archives of Nethys database (elasticsearch.aonprd.com).
 name: master_spotter_ranger
 system: pf2e
+prerequisite: Ranger Dedication; expert in Perception
 mechanicalSummary: Your proficiency rank in Perception increases to master.
 extraPools: []
 level: 12

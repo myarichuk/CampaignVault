@@ -9,3 +9,10 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+damageType: fire
+damageAtSlotLevel:
+  7: 7d10
+saveType: dex
+saveSuccess: half
+areaOfEffectType: cube
+areaOfEffectSize: 100

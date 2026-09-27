@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: Burning incense for air, soft clay for earth, sulfur and phosphorus for fire, or water and sand for water.
 materialConsumed: false
+areaOfEffectType: cube
+areaOfEffectSize: 10

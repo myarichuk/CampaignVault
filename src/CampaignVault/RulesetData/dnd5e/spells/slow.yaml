@@ -10,3 +10,7 @@ somatic: true
 material: true
 materialText: A drop of molasses.
 materialConsumed: false
+saveType: wis
+saveSuccess: none
+areaOfEffectType: cube
+areaOfEffectSize: 40

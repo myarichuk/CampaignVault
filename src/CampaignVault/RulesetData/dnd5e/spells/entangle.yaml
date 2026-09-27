@@ -9,3 +9,7 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+saveType: str
+saveSuccess: none
+areaOfEffectType: cube
+areaOfEffectSize: 20

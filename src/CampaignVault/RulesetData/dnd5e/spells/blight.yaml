@@ -9,3 +9,13 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+damageType: necrotic
+damageAtSlotLevel:
+  4: 8d8
+  5: 9d8
+  6: 10d8
+  7: 11d8
+  8: 12d8
+  9: 13d8
+saveType: con
+saveSuccess: half

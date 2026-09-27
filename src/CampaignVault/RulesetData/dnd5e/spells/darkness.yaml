@@ -10,3 +10,5 @@ somatic: false
 material: true
 materialText: Bat fur and a drop of pitch or piece of coal.
 materialConsumed: false
+areaOfEffectType: sphere
+areaOfEffectSize: 15

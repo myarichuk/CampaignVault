@@ -9,3 +9,10 @@ verbal: true
 somatic: false
 material: false
 materialConsumed: false
+damageType: radiant
+damageAtSlotLevel:
+  4: 20
+saveType: dex
+saveSuccess: half
+areaOfEffectType: cylinder
+areaOfEffectSize: 10

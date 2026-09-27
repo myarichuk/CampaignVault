@@ -10,3 +10,10 @@ somatic: true
 material: true
 materialText: A magnifying glass.
 materialConsumed: false
+damageType: radiant
+damageAtSlotLevel:
+  6: 6d8
+saveType: con
+saveSuccess: half
+areaOfEffectType: line
+areaOfEffectSize: 60

@@ -1,0 +1,14 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: greatsword
+system: dnd5e
+category: Weapon
+tags: [heavy, martial, melee, two-handed]
+description: Martial melee weapon. Deals 2d6 slashing damage.
+properties:
+  damage: 2d6
+  damageType: slashing
+  weight: 6
+  costGp: 50
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: true

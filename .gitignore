@@ -5,6 +5,10 @@ out/
 scripts/measure/out*/
 log/
 nupkgs/
+
+# Python (content generator scripts)
+__pycache__/
+*.pyc
 # LiteDB
 *.db
 *.db-log

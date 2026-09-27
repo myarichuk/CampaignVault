@@ -10,3 +10,10 @@ somatic: true
 material: true
 materialText: Fire and a piece of sunstone.
 materialConsumed: false
+damageType: radiant
+damageAtSlotLevel:
+  8: 12d6
+saveType: con
+saveSuccess: half
+areaOfEffectType: cylinder
+areaOfEffectSize: 60

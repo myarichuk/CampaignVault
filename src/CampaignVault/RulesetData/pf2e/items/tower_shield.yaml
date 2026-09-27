@@ -1,0 +1,17 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: tower_shield
+system: pf2e
+category: Armor
+tags: [shield]
+description: Shield. +2 AC when raised. Hardness 5, HP 20.
+properties:
+  acBonus: 2
+  hardness: 5
+  hp: 20
+  speedModifier: -5.0
+  bulk: 4
+  costGp: 10
+equipZones: [OffHand]
+equipLayer: Held

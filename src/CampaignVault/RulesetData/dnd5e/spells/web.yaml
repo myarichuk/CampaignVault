@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: A bit of spiderweb.
 materialConsumed: false
+areaOfEffectType: cube
+areaOfEffectSize: 20

@@ -10,3 +10,10 @@ somatic: true
 material: true
 materialText: A tiny fan and a feather of exotic origin.
 materialConsumed: false
+damageType: bludgeoning
+damageAtSlotLevel:
+  3: 3d8
+saveType: str
+saveSuccess: half
+areaOfEffectType: line
+areaOfEffectSize: 50

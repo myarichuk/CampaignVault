@@ -9,3 +9,8 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+healAtSlotLevel:
+  6: 70
+  7: 80
+  8: 90
+  9: 100

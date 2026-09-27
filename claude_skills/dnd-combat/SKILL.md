@@ -42,7 +42,7 @@ Only bundle multiple actors into one `take_turn` when they're genuinely simultan
 }
 ```
 
-**Cantrip damage scales with caster level, not spell level — nothing validates `damageDice` against it** (no SpellDefinition carries damage data; the engine only soft-warns for the SRD attack-roll cantrips below). Get the tier from the caster's actual character level, not a guess: **1d[die]** at levels 1-4, **2d[die]** at 5-10, **3d[die]** at 11-16, **4d[die]** at 17-20 — same tier count for every scaling cantrip, only the die size differs: Fire Bolt/Ray of Frost/Chill Touch d10/d8/d8, Poison Spray d12. No ability modifier is ever added to cantrip damage (only to the attack roll).
+**Cantrip damage scales with caster level, not spell level.** Every SRD 5.1 spell now carries structured damage/save data (`SpellDefinition.DamageAtCharacterLevel`/`DamageAtSlotLevel`/`SaveType`), and `Dnd5eRulesetResolver` soft-warns whenever a cast's `damageDice`/`save` disagrees with the definition — for any spell with data, not just a hardcoded few. It's still a warning, not a hard fail: damage applies as sent, and homebrew/reflavored spells with no definition cast normally. Get the tier from the caster's actual character level: **1d[die]** at levels 1-4, **2d[die]** at 5-10, **3d[die]** at 11-16, **4d[die]** at 17-20. No ability modifier is ever added to cantrip damage (only to the attack roll).
 
 **Fireball** (save, all targets):
 ```json

@@ -9,3 +9,7 @@ verbal: true
 somatic: false
 material: false
 materialConsumed: false
+saveType: dex
+saveSuccess: none
+areaOfEffectType: cube
+areaOfEffectSize: 20

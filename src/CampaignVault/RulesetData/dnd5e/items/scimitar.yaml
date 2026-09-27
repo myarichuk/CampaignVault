@@ -1,0 +1,14 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: scimitar
+system: dnd5e
+category: Weapon
+tags: [finesse, light, martial, melee]
+description: Martial melee weapon. Deals 1d6 slashing damage.
+properties:
+  damage: 1d6
+  damageType: slashing
+  weight: 3
+  costGp: 25
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

@@ -10,3 +10,6 @@ somatic: true
 material: true
 materialText: A tiny silver whistle, a piece of bone, and a thread
 materialConsumed: false
+damageType: piercing
+damageAtSlotLevel:
+  4: 4d8

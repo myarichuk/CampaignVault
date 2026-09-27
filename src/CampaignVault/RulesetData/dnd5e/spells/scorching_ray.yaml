@@ -9,3 +9,6 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+damageType: fire
+damageAtSlotLevel:
+  2: 2d6

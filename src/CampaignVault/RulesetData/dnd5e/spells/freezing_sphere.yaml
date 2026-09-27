@@ -10,3 +10,10 @@ somatic: true
 material: true
 materialText: A small crystal sphere.
 materialConsumed: false
+damageType: cold
+damageAtSlotLevel:
+  6: 10d6
+saveType: con
+saveSuccess: half
+areaOfEffectType: sphere
+areaOfEffectSize: 60

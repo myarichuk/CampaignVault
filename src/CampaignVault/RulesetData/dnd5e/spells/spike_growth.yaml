@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: Seven sharp thorns or seven small twigs, each sharpened to a point.
 materialConsumed: false
+areaOfEffectType: cylinder
+areaOfEffectSize: 20

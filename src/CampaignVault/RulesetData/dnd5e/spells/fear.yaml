@@ -10,3 +10,7 @@ somatic: true
 material: true
 materialText: A white feather or the heart of a hen.
 materialConsumed: false
+saveType: wis
+saveSuccess: none
+areaOfEffectType: cone
+areaOfEffectSize: 30

@@ -4,6 +4,8 @@
 Mirrors generate_spells.py's pf2e sourcing: pulls directly from the official
 Archives of Nethys Elasticsearch endpoint, filtered to Remastered core rulebooks
 and common rarity, matching LICENSING.md's stated scope.
+
+Requires network access to elasticsearch.aonprd.com.
 """
 
 from __future__ import annotations
@@ -22,6 +24,11 @@ HEADER = (
     "# official Archives of Nethys database (elasticsearch.aonprd.com).\n"
 )
 
+# Player Core / Player Core 2 are the two books Paizo rewrote during the 2023
+# Remaster specifically to strip Golarion-specific Product Identity out of core
+# mechanics so they could be released under ORC. Don't widen this to other AoN
+# sourcebooks (Lost Omens, adventure paths, legacy pre-Remaster books) without
+# re-checking LICENSING.md's scope rationale.
 AON_SEARCH_URL = "https://elasticsearch.aonprd.com/aon/_search"
 AON_REMASTER_SOURCES = ["Player Core", "Player Core 2"]
 
@@ -34,11 +41,6 @@ KNOWN_CLASSES = {
     "oracle", "witch", "magus", "commander", "thaumaturge", "necromancer", "animist",
     "psychic", "exemplar", "gunslinger", "summoner",
 }
-
-PREREQ_RE = re.compile(
-    r"Prerequisites?\s+(.*?)\s*(?:Trigger|Frequency|Cost|Requirements?|Range|Area|Effect|Special|---|$)",
-    re.IGNORECASE,
-)
 
 
 def kebab_to_snake(name: str) -> str:
@@ -71,7 +73,7 @@ def fetch_aon_feats() -> list[dict]:
                 ]
             }
         },
-        "_source": ["name", "level", "trait", "summary", "text"],
+        "_source": ["name", "level", "trait", "summary", "prerequisite"],
     }
     result = fetch_json(AON_SEARCH_URL, json.dumps(query).encode("utf-8"))
     return [hit["_source"] for hit in result["hits"]["hits"]]
@@ -83,11 +85,8 @@ def feat_classes(feat: dict) -> list[str]:
 
 
 def feat_prerequisite(feat: dict) -> str | None:
-    text = feat.get("text") or ""
-    match = PREREQ_RE.search(text)
-    if not match:
-        return None
-    prereq = match.group(1).strip().rstrip(".")
+    prereq = (feat.get("prerequisite") or "").strip().rstrip(".")
+    prereq = re.sub(r"[_*](.+?)[_*]", r"\1", prereq)
     return prereq or None
 
 

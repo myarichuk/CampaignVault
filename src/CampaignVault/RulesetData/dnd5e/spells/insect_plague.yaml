@@ -10,3 +10,14 @@ somatic: true
 material: true
 materialText: A few grains of sugar, some kernels of grain, and a smear of fat.
 materialConsumed: false
+damageType: piercing
+damageAtSlotLevel:
+  5: 4d10
+  6: 5d10
+  7: 6d10
+  8: 7d10
+  9: 8d10
+saveType: con
+saveSuccess: half
+areaOfEffectType: sphere
+areaOfEffectSize: 20

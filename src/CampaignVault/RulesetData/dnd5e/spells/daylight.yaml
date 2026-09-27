@@ -9,3 +9,5 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+areaOfEffectType: sphere
+areaOfEffectSize: 60

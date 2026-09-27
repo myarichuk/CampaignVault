@@ -1,0 +1,17 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: cruuk
+system: pf2e
+category: Weapon
+tags: [martial, melee, shove, thrown, tripkee]
+description: Martial melee weapon. Deals 1d6 bludgeoning damage.
+properties:
+  damage: 1d6
+  damageType: bludgeoning
+  bulk: 0.1
+  costGp: 0.4
+  range: Close
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

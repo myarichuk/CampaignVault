@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: A drop of water if creating water, or a few grains of sand if destroying it.
 materialConsumed: false
+areaOfEffectType: cube
+areaOfEffectSize: 30

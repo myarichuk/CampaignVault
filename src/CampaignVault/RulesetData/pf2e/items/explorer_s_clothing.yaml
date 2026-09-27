@@ -1,0 +1,15 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: explorer_s_clothing
+system: pf2e
+category: Armor
+tags: [unarmored]
+description: Unarmored armor. AC bonus +0. Dex cap +5.
+properties:
+  acBonus: 0
+  dexCap: 5
+  bulk: 0.1
+  costGp: 0.1
+equipZones: [Torso]
+equipLayer: Armor

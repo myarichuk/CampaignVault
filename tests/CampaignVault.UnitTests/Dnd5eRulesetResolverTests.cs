@@ -1,11 +1,15 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
+using CampaignVault.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
@@ -33,6 +37,13 @@ public class FakeRollService : IRollService
 
 public class Dnd5eRulesetResolverTests
 {
+    /// <summary>Real embedded dnd5e SpellDefinition data (fire_bolt, fireball, ...) extracted to a fresh temp dir, matching the pattern RulesetActionHandlerSpellComponentTests uses.</summary>
+    private static SpellDefinitionProvider CreateSpellProvider()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "cv_dnd5e_resolver_test_" + Guid.NewGuid());
+        return new SpellDefinitionProvider(dir, typeof(SpellDefinitionProvider).Assembly);
+    }
+
     private ChangeContext CreateContext(params Character[] characters) =>
         CreateContext(items: null, characters);
 
@@ -243,16 +254,17 @@ public class Dnd5eRulesetResolverTests
     [Fact]
     public async Task ResolveAttack_Spell_WrongCantripTier_WarnsButStillApplies()
     {
-        // Regression: nothing validates parameters.damageDice against the caster's level (fire_bolt.yaml
-        // carries no damage data at all), so an LLM caller can send the level-11-16 tier ("3d10") for a
-        // level-1 caster and the engine applies it silently, with a narrative that reads as entirely
-        // correct. Damage still applies as sent (soft warning only, matching SpellSlotValidator's
-        // CantripWarning pattern) - this test locks in that the warning fires and damage is unaffected.
+        // Regression: nothing used to validate parameters.damageDice against the caster's level, so
+        // an LLM caller could send the level-11-16 tier ("3d10") for a level-1 caster and the engine
+        // applied it silently, with a narrative that reads as entirely correct. Damage still applies
+        // as sent (soft warning only, matching SpellSlotValidator's CantripWarning pattern) - this
+        // test locks in that the warning fires and damage is unaffected. Backed by the real
+        // fire_bolt.yaml SpellDefinition, not a hardcoded table.
         var rollService = new FakeRollService();
         rollService.NextRolls.Enqueue(new RollOutcome { Result = 27, HasCritical = false, HasComplication = false, Summary = "Rolled 27" });
         rollService.NextRolls.Enqueue(new RollOutcome { Result = 20, Summary = "Rolled 20" });
 
-        var resolver = new Dnd5eRulesetResolver(rollService);
+        var resolver = new Dnd5eRulesetResolver(rollService, spellDefinitionProvider: CreateSpellProvider());
         var actor = new Character { Id = "char1", SystemStats = new Dnd5eExtension { Level = 1 } };
         var target = new Character { Id = "char2", SystemStats = new Dnd5eExtension { ArmorClass = 12 } };
 
@@ -273,7 +285,7 @@ public class Dnd5eRulesetResolverTests
         Assert.Equal(-20, hpChange.Delta);
         Assert.Contains("Hit for 20 damage", output.Result.Narrative);
         Assert.Contains("[WARNING]", output.Result.Narrative);
-        Assert.Contains("should scale to 1d10", output.Result.Narrative);
+        Assert.Contains("should deal 1d10", output.Result.Narrative);
     }
 
     [Fact]
@@ -283,7 +295,7 @@ public class Dnd5eRulesetResolverTests
         rollService.NextRolls.Enqueue(new RollOutcome { Result = 15, HasCritical = false, HasComplication = false, Summary = "Rolled 15" });
         rollService.NextRolls.Enqueue(new RollOutcome { Result = 7, Summary = "Rolled 7" });
 
-        var resolver = new Dnd5eRulesetResolver(rollService);
+        var resolver = new Dnd5eRulesetResolver(rollService, spellDefinitionProvider: CreateSpellProvider());
         var actor = new Character { Id = "char1", SystemStats = new Dnd5eExtension { Level = 1 } };
         var target = new Character { Id = "char2", SystemStats = new Dnd5eExtension { ArmorClass = 12 } };
 
@@ -300,6 +312,119 @@ public class Dnd5eRulesetResolverTests
         var output = await resolver.ResolveAsync(context, action);
 
         Assert.DoesNotContain("[WARNING]", output.Result.Narrative);
+    }
+
+    [Fact]
+    public async Task ResolveAttack_Spell_NoSpellProvider_NoWarning()
+    {
+        // A resolver built without a SpellDefinitionProvider (e.g. minimal test setups elsewhere)
+        // must not throw or misbehave - damage validation just silently doesn't run.
+        var rollService = new FakeRollService();
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 27, HasCritical = false, HasComplication = false, Summary = "Rolled 27" });
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 20, Summary = "Rolled 20" });
+
+        var resolver = new Dnd5eRulesetResolver(rollService);
+        var actor = new Character { Id = "char1", SystemStats = new Dnd5eExtension { Level = 1 } };
+        var target = new Character { Id = "char2", SystemStats = new Dnd5eExtension { ArmorClass = 12 } };
+
+        var context = CreateContext(actor, target);
+        var action = new RulesetAction
+        {
+            CharacterId = "char1",
+            TargetIds = ["char2"],
+            ActionType = RulesetActionType.Spell,
+            ActionName = "Fire Bolt",
+            Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["bonus"] = "9", ["damageDice"] = "3d10" }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.DoesNotContain("[WARNING]", output.Result.Narrative);
+    }
+
+    [Fact]
+    public async Task ResolveSpellSave_Fireball_WrongSlotTier_WarnsButStillApplies()
+    {
+        // Fireball is a leveled, save-based, slot-scaling spell - the case the cantrip-only table
+        // never covered. The resolver can't know which slot level the caller spent (that's a
+        // separate ResourceChange), so it checks "matches some known tier" rather than pinning an
+        // exact one; "12d6" isn't in Fireball's {8d6..14d6} table at all, so it should still warn.
+        var rollService = new FakeRollService();
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 15, Summary = "Rolled 15" }); // save roll
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 30, Summary = "Rolled 30" }); // damage roll
+
+        var resolver = new Dnd5eRulesetResolver(rollService, spellDefinitionProvider: CreateSpellProvider());
+        var actor = new Character { Id = "char1", SystemStats = new Dnd5eExtension { Level = 5 } };
+        var target = new Character { Id = "char2", SystemStats = new Dnd5eExtension() };
+
+        var context = CreateContext(actor, target);
+        var action = new RulesetAction
+        {
+            CharacterId = "char1",
+            TargetIds = ["char2"],
+            ActionType = RulesetActionType.Spell,
+            ActionName = "Fireball",
+            Parameters = new Dictionary<string, string> { ["dc"] = "15", ["save"] = "Dexterity", ["damageDice"] = "20d6" }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.Contains("[WARNING]", output.Result.Narrative);
+        Assert.Contains("doesn't match any known spell-slot tier", output.Result.Narrative);
+    }
+
+    [Fact]
+    public async Task ResolveSpellSave_Fireball_KnownSlotTier_NoWarning()
+    {
+        var rollService = new FakeRollService();
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 15, Summary = "Rolled 15" }); // save roll
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 30, Summary = "Rolled 30" }); // damage roll
+
+        var resolver = new Dnd5eRulesetResolver(rollService, spellDefinitionProvider: CreateSpellProvider());
+        var actor = new Character { Id = "char1", SystemStats = new Dnd5eExtension { Level = 5 } };
+        var target = new Character { Id = "char2", SystemStats = new Dnd5eExtension() };
+
+        var context = CreateContext(actor, target);
+        var action = new RulesetAction
+        {
+            CharacterId = "char1",
+            TargetIds = ["char2"],
+            ActionType = RulesetActionType.Spell,
+            ActionName = "Fireball",
+            Parameters = new Dictionary<string, string> { ["dc"] = "15", ["save"] = "Dexterity", ["damageDice"] = "9d6" }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.DoesNotContain("[WARNING]", output.Result.Narrative);
+    }
+
+    [Fact]
+    public async Task ResolveSpellSave_Fireball_WrongSaveAbility_Warns()
+    {
+        // Fireball's SpellDefinition carries saveType "dex" (SRD 5.1). Sending "save": "Wisdom"
+        // should warn but still resolve the save as sent (soft warning, not a hard block).
+        var rollService = new FakeRollService();
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 15, Summary = "Rolled 15" });
+
+        var resolver = new Dnd5eRulesetResolver(rollService, spellDefinitionProvider: CreateSpellProvider());
+        var actor = new Character { Id = "char1", SystemStats = new Dnd5eExtension { Level = 5 } };
+        var target = new Character { Id = "char2", SystemStats = new Dnd5eExtension() };
+
+        var context = CreateContext(actor, target);
+        var action = new RulesetAction
+        {
+            CharacterId = "char1",
+            TargetIds = ["char2"],
+            ActionType = RulesetActionType.Spell,
+            ActionName = "Fireball",
+            Parameters = new Dictionary<string, string> { ["dc"] = "15", ["save"] = "Wisdom" }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.Contains("[WARNING]", output.Result.Narrative);
+        Assert.Contains("should use a Dexterity save, not Wisdom", output.Result.Narrative);
     }
 
     [Fact]

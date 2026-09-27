@@ -10,3 +10,8 @@ somatic: true
 material: true
 materialText: A handful of sand, a dab of ink, and a writing quill plucked from a sleeping bird.
 materialConsumed: false
+damageType: psychic
+damageAtSlotLevel:
+  5: 3d6
+saveType: wis
+saveSuccess: none

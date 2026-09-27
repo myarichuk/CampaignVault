@@ -3,7 +3,7 @@
 # official Archives of Nethys database (elasticsearch.aonprd.com).
 name: impeccable_crafting
 system: pf2e
-prerequisite: Master in Crafting;
+prerequisite: Master in Crafting; Specialty Crafting
 mechanicalSummary: Craft items more efficiently
 extraPools: []
 level: 7

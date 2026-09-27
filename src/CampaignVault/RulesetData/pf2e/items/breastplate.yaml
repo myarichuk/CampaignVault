@@ -1,0 +1,18 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: breastplate
+system: pf2e
+category: Armor
+tags: [medium]
+description: Medium armor. AC bonus +4. Dex cap +1. Check penalty -2. Speed penalty -5 ft.
+properties:
+  acBonus: 4
+  dexCap: 1
+  checkPenalty: -2
+  speedModifier: -5.0
+  strength: 3
+  bulk: 2
+  costGp: 8
+equipZones: [Torso]
+equipLayer: Armor

@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: A yew leaf.
 materialConsumed: false
+areaOfEffectType: sphere
+areaOfEffectSize: 30

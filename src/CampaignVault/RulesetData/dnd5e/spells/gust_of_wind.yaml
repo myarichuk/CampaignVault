@@ -10,3 +10,7 @@ somatic: true
 material: true
 materialText: A legume seed.
 materialConsumed: false
+saveType: str
+saveSuccess: none
+areaOfEffectType: line
+areaOfEffectSize: 60

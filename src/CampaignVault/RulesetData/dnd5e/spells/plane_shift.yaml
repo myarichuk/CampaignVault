@@ -11,3 +11,5 @@ material: true
 materialText: A forked, metal rod worth at least 250 gp, attuned to a particular plane of existence.
 materialCost: 250.0
 materialConsumed: false
+saveType: cha
+saveSuccess: none

@@ -10,3 +10,7 @@ somatic: true
 material: true
 materialText: A rotten egg or several skunk cabbage leaves.
 materialConsumed: false
+saveType: con
+saveSuccess: none
+areaOfEffectType: sphere
+areaOfEffectSize: 20

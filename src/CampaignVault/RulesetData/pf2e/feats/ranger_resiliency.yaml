@@ -3,6 +3,7 @@
 # official Archives of Nethys database (elasticsearch.aonprd.com).
 name: ranger_resiliency
 system: pf2e
+prerequisite: Ranger Dedication; class granting no more Hit Points per level than 8 + your Constitution modifier
 mechanicalSummary: You gain 3 additional Hit Points for each ranger archetype class feat you have.
 extraPools: []
 level: 4

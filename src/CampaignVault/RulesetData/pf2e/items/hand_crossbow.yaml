@@ -1,0 +1,18 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: hand_crossbow
+system: pf2e
+category: Weapon
+tags: [ranged, simple]
+description: Simple ranged weapon. Deals 1d6 piercing damage. Range 60 ft.
+properties:
+  damage: 1d6
+  damageType: piercing
+  bulk: 0.1
+  costGp: 3
+  reload: 1
+  range: Near
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

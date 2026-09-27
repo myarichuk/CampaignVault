@@ -10,3 +10,10 @@ somatic: true
 material: true
 materialText: A lodestone and a pinch of dust.
 materialConsumed: false
+damageType: force
+damageAtSlotLevel:
+  6: 10d6 + 40
+saveType: dex
+saveSuccess: none
+areaOfEffectType: cube
+areaOfEffectSize: 10

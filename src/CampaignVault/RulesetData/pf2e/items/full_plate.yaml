@@ -1,0 +1,19 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: full_plate
+system: pf2e
+category: Armor
+tags: [heavy]
+description: Heavy armor. AC bonus +6. Dex cap +0. Check penalty -3. Speed penalty -10 ft.
+properties:
+  acBonus: 6
+  dexCap: 0
+  checkPenalty: -3
+  speedModifier: -10.0
+  strength: 4
+  bulk: 4
+  costGp: 30
+  level: 2
+equipZones: [Torso]
+equipLayer: Armor

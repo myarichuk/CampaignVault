@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: A tiny piece of matter of the same type of the item you plan to create.
 materialConsumed: false
+areaOfEffectType: cube
+areaOfEffectSize: 5

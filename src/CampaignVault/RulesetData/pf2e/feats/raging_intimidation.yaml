@@ -3,7 +3,6 @@
 # official Archives of Nethys database (elasticsearch.aonprd.com).
 name: raging_intimidation
 system: pf2e
-prerequisite: for the skill feats Intimidating Glare and Scare to Death, you gain these feats
 mechanicalSummary: Your fury fills your foes with fear.
 extraPools: []
 classes: [barbarian]

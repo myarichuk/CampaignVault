@@ -3,7 +3,7 @@
 # official Archives of Nethys database (elasticsearch.aonprd.com).
 name: incredible_companion_ranger
 system: pf2e
-prerequisite: Mature Animal Companion (
+prerequisite: Mature Animal Companion (Ranger)
 mechanicalSummary: Your animal companion continues to grow and develop.
 extraPools: []
 classes: [ranger]

@@ -9,3 +9,9 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+damageType: force
+damageAtCharacterLevel:
+  1: 1d10
+  5: 1d10
+  11: 1d10
+  17: 1d10
