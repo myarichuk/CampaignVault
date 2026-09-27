@@ -1,0 +1,17 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: leather_armor
+system: pf2e
+category: Armor
+tags: [light]
+description: Light armor. AC bonus +1. Dex cap +4. Check penalty -1.
+properties:
+  acBonus: 1
+  dexCap: 4
+  checkPenalty: -1
+  strength: 0
+  bulk: 1
+  costGp: 2
+equipZones: [Torso]
+equipLayer: Armor

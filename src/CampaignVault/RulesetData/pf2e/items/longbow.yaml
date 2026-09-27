@@ -1,0 +1,18 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: longbow
+system: pf2e
+category: Weapon
+tags: [deadly, martial, ranged, volley]
+description: Martial ranged weapon. Deals 1d8 piercing damage. Range 100 ft.
+properties:
+  damage: 1d8
+  damageType: piercing
+  bulk: 2
+  costGp: 6
+  reload: 0
+  range: Far
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

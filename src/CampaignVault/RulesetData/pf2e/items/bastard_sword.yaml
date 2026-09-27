@@ -1,0 +1,17 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: bastard_sword
+system: pf2e
+category: Weapon
+tags: [martial, melee, two-hand]
+description: Martial melee weapon. Deals 1d8 slashing damage (1d12 two-handed).
+properties:
+  damage: 1d8
+  damageVersatile: 1d12
+  damageType: slashing
+  bulk: 1
+  costGp: 4
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

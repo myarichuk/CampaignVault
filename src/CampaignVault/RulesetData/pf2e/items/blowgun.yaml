@@ -1,0 +1,18 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: blowgun
+system: pf2e
+category: Weapon
+tags: [agile, nonlethal, ranged, simple]
+description: Simple ranged weapon. Deals 1 piercing damage. Range 20 ft.
+properties:
+  damage: 1
+  damageType: piercing
+  bulk: 0.1
+  costGp: 0.1
+  reload: 1
+  range: Close
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

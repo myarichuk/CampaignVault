@@ -1,0 +1,16 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: flail
+system: pf2e
+category: Weapon
+tags: [disarm, martial, melee, sweep, trip]
+description: Martial melee weapon. Deals 1d6 bludgeoning damage.
+properties:
+  damage: 1d6
+  damageType: bludgeoning
+  bulk: 1
+  costGp: 0.8
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

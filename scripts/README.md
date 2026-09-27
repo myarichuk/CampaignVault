@@ -81,7 +81,41 @@ other item gets, and adds equip metadata (`equipZones`/`equipLayer`/
 `twoHanded`) the hand-authored version never had (without it, that item
 can't actually be equipped via `item_equip`).
 
-No pf2e items exist yet — pf2e's weapon/armor schema is structurally
-different (proficiency-based, dex-cap-by-armor-category, no
-versatile-damage concept) and needs its own generator, not an extension of
-this one. See `CONTENT_GAPS_PLAN.md` Step 5.
+## `generate_pf2e_items.py`
+
+```
+python3 scripts/generate_pf2e_items.py
+```
+
+Regenerates pf2e weapon/armor/shield items into `RulesetData/pf2e/items/` from
+three separate AoN document categories: `category: "weapon"`, `category:
+"armor"`, **and** `category: "shield"` — pf2e shields are their own AoN
+category, not an `armor_category` subtype like dnd5e's `armor_category:
+"Shield"` (see `CONTENT_GAPS_PLAN.md` Step 5 findings for how that was found).
+Scoped to `rarity: "common"`, same as `generate_pf2e_feats.py` — this drops
+ancestry-specific Uncommon weapons (Dwarven Waraxe, Gnome Hooked Hammer, ...)
+without needing separate ancestry-aware filtering.
+
+This directory didn't exist before this script and has no hand-authored
+content, so — unlike `generate_items.py`'s dnd5e `items/` directory — it's
+fully wiped and rebuilt every run, same as `generate_spells.py`/
+`generate_pf2e_feats.py`. Currently produces 53 weapons + 12 armor + 4
+shields (69 total).
+
+pf2e's own AC math turns out simpler than dnd5e's: an item's `ac` field is
+already the flat AC-bonus contribution (no "10 + dex" total-AC shape to
+subtract 10 from, unlike dnd5e body armor in `generate_items.py`), and a
+`dex_cap` field maps straight onto `Properties["dexCap"]` (the numeric
+"PF2e style" convention `ArmorParameterResolver.cs` already special-cases,
+ahead of the dnd5e-only `armorType` fallback). pf2e also turns out to *have*
+a versatile-damage mechanic after all (the `Two-Hand` trait, e.g. Bastard
+Sword `1d8`/`1d12`) — captured the same way as dnd5e's Versatile
+(`damageVersatile`), correcting this repo's earlier assumption that pf2e had
+no such concept.
+
+Known gap: Shield Bash/Boss/Spikes (pf2e's shield-as-weapon options) are
+generated as ordinary `MainHand` weapons since this engine has no "attached
+to another equipped item" concept — harmless for attack resolution, but
+`item_equip`-ing one while a real weapon is already in `MainHand` will
+report a conflict that doesn't match pf2e's actual "costs no hand" rule.
+See `CONTENT_GAPS_PLAN.md` Step 5 findings.

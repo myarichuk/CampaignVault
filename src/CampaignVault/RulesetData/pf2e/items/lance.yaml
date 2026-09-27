@@ -1,0 +1,17 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: lance
+system: pf2e
+category: Weapon
+tags: [deadly, jousting, martial, melee, reach]
+description: Martial melee weapon. Deals 1d8 piercing damage.
+properties:
+  damage: 1d8
+  damageType: piercing
+  bulk: 2
+  costGp: 1
+  range: Near
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: true
