@@ -81,7 +81,7 @@ Each turn sends what this beat needs, once per session:
 - A location's description goes out on your first arrival this session; a revisit says ""(described earlier this session)"".
 - `npcs[]` echoes an involved NPC only when this beat changed their mood, activity, looks or gear, or they are about to act.
 
-Everything else is pull: `get_entity`, `fullDetailCharacterId`, `recall_history`. After your context is compacted or summarized, send `forceFullReseed: true`: it clears the once-per-session ledger so cards and descriptions come again.
+Everything else is pull: `get_entity`, `fullDetailCharacterId`, `recall_history`. `fullDetailCharacterId` omits SystemStats/Needs/gear by default (a first-contact NPC doesn't need combat stats until a roll or fight is actually in play) — add `includeCombatDetail: true` on the same call once one is. After your context is compacted or summarized, send `forceFullReseed: true`: it clears the once-per-session ledger so cards and descriptions come again.
 
 ## Drift Protection
 
@@ -149,7 +149,7 @@ For more details, call `lookup kind=commit_schema` (optional category filter: Co
 
 **Call `recall_history` to verify ground truth:** If you're unsure whether an NPC was present for an event, search for the event, not for the NPC's memory of it.
 
-**Check remaining pools before spending:** Before a spell or resource-heavy action, fetch the character's full detail (get_entity, or bundled via take_turn's fullDetailCharacterId) to see available slots/pools. Spending below 0 HARD-FAILS.
+**Check remaining pools before spending:** Before a spell or resource-heavy action, fetch the character's full detail (get_entity, or bundled via take_turn's fullDetailCharacterId + includeCombatDetail:true) to see available slots/pools — SystemStats/Needs are omitted from fullDetailCharacterId by default. Spending below 0 HARD-FAILS.
 
 **Use `recordingMode: Deliberate` + `importance: Core` for player-initiated acts:** When the party *deliberately* does something they mark as important (marking the map, making a vow, burning a bridge), set these flags so the event survives all retrieval budgets.
 

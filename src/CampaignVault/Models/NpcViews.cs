@@ -39,10 +39,14 @@ public record CharacterDetailView(
     string? DepartedFromLocationId,
     PsychologyProfile Psychology,
     SocialProfile Social,
-    NeedsProfile Needs,
-    SystemExtension SystemStats)
+    NeedsProfile? Needs,
+    SystemExtension? SystemStats)
 {
-    public static CharacterDetailView From(Character c) => new(
+    /// <param name="includeCombatDetail">Whether to include Needs/SystemStats — the mechanical slice a
+    /// DM only needs once a roll or combat is actually in play. Default true for every caller except
+    /// take_turn's fullDetailCharacterId, which passes the request's own includeCombatDetail flag so a
+    /// first-contact NPC doesn't drag full ability scores/saves/needs onto the wire for a doorway glance.</param>
+    public static CharacterDetailView From(Character c, bool includeCombatDetail = true) => new(
         c.Id,
         c.Name,
         c.ClassLevel,
@@ -62,8 +66,8 @@ public record CharacterDetailView(
         c.DepartedFromLocationId,
         c.Psychology,
         c.Social,
-        c.Needs,
-        c.SystemStats);
+        includeCombatDetail ? c.Needs : null,
+        includeCombatDetail ? c.SystemStats : null);
 }
 
 public class NpcContextView

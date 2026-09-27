@@ -67,9 +67,14 @@ public class TakeTurnRequest
     public string? PartyLocationId { get; set; }
 
     [Description(
-        "NPC ID to fetch in full detail (NpcContextView with all relationships, history, needs) instead of summary. Use sparingly; only one full detail per call.")]
+        "NPC ID to fetch in full detail (NpcContextView: GM notes, class/level, Psychology/Social, recent interactions, behavioral summary) instead of summary. Use sparingly; only one full detail per call. Omits the mechanical slice (SystemStats, Needs, Equipped/Carried) by default — set includeCombatDetail to layer that on when a roll or combat is actually imminent for this NPC, rather than fetching it up front for every first-contact NPC.")]
     [JsonPropertyName("fullDetailCharacterId")]
     public string? FullDetailCharacterId { get; set; }
+
+    [Description(
+        "Only meaningful together with fullDetailCharacterId. Adds SystemStats/Needs/Equipped/Carried to that NPC's full detail — the mechanical slice needed for a roll or combat, not for voicing/roleplay. Default false.")]
+    [JsonPropertyName("includeCombatDetail")]
+    public bool IncludeCombatDetail { get; set; } = false;
 
     [Description(
         "NPC ID to fetch ONLY Psychology.Memories for — cheaper than fullDetailCharacterId when you just need to check/refresh what an NPC remembers (e.g. before NPC-driven dialogue in delta mode) and don't need behavioral summary, items, or recent-interactions. Skip this if you're already calling fullDetailCharacterId for the same NPC this turn — that already includes memories. Use sparingly; only one per call.")]

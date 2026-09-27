@@ -2602,12 +2602,19 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                 return;
             }
 
-            var heldItems = await ctx.Session.Query<Item>()
-                .Where(i => i.HolderId == npc.Id && !i.IsArchived)
-                .Customize(x => x.WaitForNonStaleResults())
-                .ToListAsync();
-            var equipped = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList();
-            var carried = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList();
+            var includeCombatDetail = ctx.Request?.IncludeCombatDetail ?? false;
+
+            List<ItemSummaryView>? equipped = null;
+            List<ItemSummaryView>? carried = null;
+            if (includeCombatDetail)
+            {
+                var heldItems = await ctx.Session.Query<Item>()
+                    .Where(i => i.HolderId == npc.Id && !i.IsArchived)
+                    .Customize(x => x.WaitForNonStaleResults())
+                    .ToListAsync();
+                equipped = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList();
+                carried = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList();
+            }
 
             var config = await _repository.GetCampaignConfigAsync(new CampaignSession(ctx.Session, ctx.Campaign));
             var npcEvents = await _repository.SelectRecentEventsAsync(ctx.Session, ctx.Campaign,
@@ -2622,11 +2629,11 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
 
             ctx.Result.FullNpcContext = new NpcContextView
             {
-                Character = CharacterDetailView.From(npc),
+                Character = CharacterDetailView.From(npc, includeCombatDetail),
                 RecentInteractions =
                     [.. npcEvents.Take(EventSummaryView.NpcContextCap).Select(EventSummaryView.ForNpcContext)],
                 BehavioralSummary = behavioralSummary,
-                KnownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>(),
+                KnownNeeds = includeCombatDetail ? (npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>()) : new Dictionary<string, float>(),
                 Equipped = equipped,
                 Carried = carried
             };
