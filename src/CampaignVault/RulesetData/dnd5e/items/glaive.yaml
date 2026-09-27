@@ -1,0 +1,15 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: glaive
+system: dnd5e
+category: Weapon
+tags: [heavy, martial, melee, reach, two-handed]
+description: Martial melee weapon. Deals 1d10 slashing damage.
+properties:
+  damage: 1d10
+  damageType: slashing
+  weight: 6
+  costGp: 20
+  range: Near
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: true

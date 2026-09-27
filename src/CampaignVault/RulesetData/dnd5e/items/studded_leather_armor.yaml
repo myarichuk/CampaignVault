@@ -1,0 +1,13 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: studded_leather_armor
+system: dnd5e
+category: Armor
+tags: [light]
+description: Light armor. Base AC 12 + full Dexterity bonus.
+properties:
+  acBonus: 2
+  armorType: Light
+  weight: 13
+  costGp: 45
+equipZones: [Torso]
+equipLayer: Armor

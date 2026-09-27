@@ -1,0 +1,15 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: quarterstaff
+system: dnd5e
+category: Weapon
+tags: [melee, monk, simple, versatile]
+description: Simple melee weapon. Deals 1d6 bludgeoning damage (1d8 two-handed).
+properties:
+  damage: 1d6
+  damageVersatile: 1d8
+  damageType: bludgeoning
+  weight: 4
+  costGp: 0.2
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

@@ -1,0 +1,15 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: longbow
+system: dnd5e
+category: Weapon
+tags: [ammunition, heavy, martial, ranged, two-handed]
+description: Martial ranged weapon. Deals 1d8 piercing damage. Range 150/600 ft.
+properties:
+  damage: 1d8
+  damageType: piercing
+  weight: 2
+  costGp: 50
+  range: Far
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: true

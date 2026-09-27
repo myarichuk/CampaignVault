@@ -1,0 +1,15 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: blowgun
+system: dnd5e
+category: Weapon
+tags: [ammunition, loading, martial, ranged]
+description: Martial ranged weapon. Deals 1 piercing damage. Range 25/100 ft.
+properties:
+  damage: 1
+  damageType: piercing
+  weight: 1
+  costGp: 10
+  range: Close
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

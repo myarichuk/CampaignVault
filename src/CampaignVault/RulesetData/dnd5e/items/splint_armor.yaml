@@ -1,0 +1,15 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: splint_armor
+system: dnd5e
+category: Armor
+tags: [heavy]
+description: Heavy armor. Base AC 17 + no Dexterity bonus. Requires 15 Strength. Imposes disadvantage on Stealth checks.
+properties:
+  acBonus: 7
+  armorType: Heavy
+  weight: 60
+  costGp: 200
+  strMinimum: 15
+  stealthDisadvantage: true
+equipZones: [Torso]
+equipLayer: Armor

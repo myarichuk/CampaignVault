@@ -1,0 +1,12 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: shield
+system: dnd5e
+category: Armor
+tags: [shield]
+description: Shield. +2 AC when wielded in the off hand.
+properties:
+  acBonus: 2
+  weight: 6
+  costGp: 10
+equipZones: [OffHand]
+equipLayer: Held

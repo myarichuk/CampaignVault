@@ -1,0 +1,13 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: leather_armor
+system: dnd5e
+category: Armor
+tags: [light]
+description: Light armor. Base AC 11 + full Dexterity bonus.
+properties:
+  acBonus: 1
+  armorType: Light
+  weight: 10
+  costGp: 10
+equipZones: [Torso]
+equipLayer: Armor

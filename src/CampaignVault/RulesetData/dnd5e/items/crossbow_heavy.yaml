@@ -1,0 +1,15 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: crossbow_heavy
+system: dnd5e
+category: Weapon
+tags: [ammunition, heavy, loading, martial, ranged, two-handed]
+description: Martial ranged weapon. Deals 1d10 piercing damage. Range 100/400 ft.
+properties:
+  damage: 1d10
+  damageType: piercing
+  weight: 18
+  costGp: 50
+  range: Far
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: true
