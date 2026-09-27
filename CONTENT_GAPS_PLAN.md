@@ -170,6 +170,17 @@ hand, not before.
     are this codebase's own equip-slot model (`EquipSlotRules.cs`). Every
     generated item needs these added by a lookup table keyed on
     `equipment_category`/`armor_category`, not pulled from source.
+  - `Tags`: not cosmetic metadata — `Item.Tags = item.Tags ?? definition?.Tags
+    ?? []` (`CampaignRepository.cs:1838`) means whatever's on the generated
+    `ItemDefinition` flows onto every live `Item`, and
+    `WeaponParameterResolver.NameMatches` (`WeaponParameterResolver.cs:163`)
+    matches a caller's `actionName` against `weapon.Tags` as an alias list
+    (so "attack with my sword" resolves via a tag, not just exact `Name`).
+    Existing hand-authored items use a small controlled vocabulary
+    (`martial`/`simple`, `melee`/`ranged`, `versatile`) — don't just dump
+    the API's `weapon_range`/`equipment_category`/`properties` strings in
+    as tags; map them onto that same vocabulary, or `NameMatches` silently
+    stops resolving for generated weapons.
 - Regenerate, then hand-verify a handful (longsword should regenerate
   byte-similar to today's hand-written file; that's the sanity check).
 
@@ -180,6 +191,14 @@ translation table for damage dice, weapon groups/traits, and
 armor AC/dex-cap/check-penalty/speed-penalty fields — pf2e's model
 (proficiency-based, dex-cap-by-armor-category, no versatile-damage concept)
 doesn't map onto the dnd5e translation in Step 4.
+
+`Tags` needs its own mapping too, same reasoning as Step 4's `Tags` bullet —
+AoN's pf2e weapon `trait` vocabulary (Agile, Finesse, Forceful, Sweep,
+Deadly, Fatal, weapon groups) is not the dnd5e martial/simple +
+melee/ranged + versatile vocabulary Step 4 establishes. Don't reuse Step
+4's lookup table verbatim; decide a pf2e-appropriate tag set (and keep it
+consistent with whatever name-alias matching `WeaponParameterResolver`
+ends up doing for pf2e weapons) before generating.
 
 ## Step 6 — Docs
 
