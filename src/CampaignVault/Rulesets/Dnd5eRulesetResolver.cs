@@ -226,7 +226,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             return ResolverResult.Fail("InvalidParameter", "Error: Skill check requires a 'dc' parameter.");
         }
 
-        var skillName = action.Parameters.GetValueOrDefault("skill", "Strength");
+        var skillName = action.Parameters.GetValueOrDefault("skill", action.ActionName);
         var bonus = GetSkillOrAbilityBonus(actorStats, skillName);
         bonus = ApplyAllModifiers(actorStats, bonus, "SkillCheck", skillName);
 

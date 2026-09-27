@@ -24,7 +24,7 @@ This document catalogs observed and candidate bundling patterns for Phase C comp
 ```json
 [
   { "$type": "ruleset_action", "characterId": "chars/valen", "actionType": "SkillCheck", 
-    "actionName": "Persuasion", "parameters": { "skill": "Persuasion", "dc": "14" } },
+    "actionName": "Persuasion", "parameters": { "dc": "14" } },
   { "$type": "engagement_relation", "characterId": "chars/valen", "targetId": "chars/barkeep",
     "engagement": { "verb": "persuaded", "distanceBand": "close" } },
   { "$type": "event", "category": "Social", "involved": ["chars/valen", "chars/barkeep"],
@@ -54,7 +54,7 @@ This document catalogs observed and candidate bundling patterns for Phase C comp
 ```json
 [
   { "$type": "ruleset_action", "characterId": "chars/valen", "actionType": "SkillCheck",
-    "actionName": "Deception", "parameters": { "skill": "Deception", "dc": "16" } },
+    "actionName": "Deception", "parameters": { "dc": "16" } },
   { "$type": "engagement_relation", "characterId": "chars/valen", "targetId": "chars/guard",
     "engagement": { "verb": "accused", "distanceBand": "close" } }
 ]
@@ -77,7 +77,7 @@ This document catalogs observed and candidate bundling patterns for Phase C comp
 ```json
 [
   { "$type": "ruleset_action", "characterId": "chars/valen", "actionType": "SkillCheck",
-    "actionName": "Persuasion", "parameters": { "skill": "Persuasion", "dc": "12" } },
+    "actionName": "Persuasion", "parameters": { "dc": "12" } },
   { "$type": "engagement_relation", "characterId": "chars/valen", "targetId": "chars/merchant",
     "engagement": { "verb": "charmed", "distanceBand": "close" } },
   { "$type": "item_update", "itemId": "items/healing-potion-1", 
@@ -138,7 +138,7 @@ This document catalogs observed and candidate bundling patterns for Phase C comp
 // Commit 2: Taunt/intimidation (separate beat)
 [
   { "$type": "ruleset_action", "characterId": "chars/valen", "actionType": "SkillCheck",
-    "actionName": "Intimidation", "parameters": { "skill": "Intimidation", "dc": "13" } },
+    "actionName": "Intimidation", "parameters": { "dc": "13" } },
   { "$type": "engagement_relation", "characterId": "chars/valen", "targetId": "chars/orc-1",
     "engagement": { "verb": "intimidated", "distanceBand": "close" } }
 ]

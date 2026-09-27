@@ -206,6 +206,41 @@ public class Dnd5eRulesetResolverTests
     }
 
     [Fact]
+    public async Task ResolveSkillCheck_NoSkillParameter_DerivesSkillFromActionName()
+    {
+        // Regression: ResolveSkillCheckAsync used to default an omitted "skill" parameter to the
+        // literal string "Strength", so any check committed the documented way (actionName carries
+        // the skill; no redundant parameters.skill) silently rolled against the wrong ability.
+        var rollService = new FakeRollService();
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 12, Summary = "Rolled 12" });
+
+        var resolver = new Dnd5eRulesetResolver(rollService);
+        var actor = new Character
+        {
+            Id = "char1",
+            SystemStats = new Dnd5eExtension
+            {
+                Strength = 20, // ability-mod fallback for "Strength" would be +5
+                SkillModifiers = new Dictionary<string, int> { { "Investigation", 3 } }
+            }
+        };
+
+        var context = CreateContext(actor);
+        var action = new RulesetAction
+        {
+            CharacterId = "char1",
+            ActionType = RulesetActionType.SkillCheck,
+            ActionName = "Investigation",
+            Parameters = new Dictionary<string, string> { ["dc"] = "15" }
+        };
+
+        var output = await resolver.ResolveAsync(context, action);
+
+        Assert.Equal(3, rollService.RecordedRequests[0].Bonus);
+        Assert.Contains("Investigation", output.Result.Narrative);
+    }
+
+    [Fact]
     public async Task ResolveAttack_InvalidBonus_ReturnsError()
     {
         var rollService = new FakeRollService();

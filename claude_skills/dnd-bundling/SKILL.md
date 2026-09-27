@@ -35,7 +35,7 @@ Auto-apply/auto-log (which pairs are redundant vs. required) → `dnd-world-chan
 ```json
 [
   { "$type": "ruleset_action", "characterId": "chars/valen", "actionType": "SkillCheck",
-    "actionName": "Persuasion", "parameters": { "skill": "Persuasion", "dc": "14" } },
+    "actionName": "Persuasion", "parameters": { "dc": "14" } },
   { "$type": "engagement_relation", "characterId": "chars/valen", "targetId": "chars/barkeep",
     "verb": "persuaded", "category": "Social" },
   { "$type": "event", "category": "Social", "involved": ["chars/valen", "chars/barkeep"],

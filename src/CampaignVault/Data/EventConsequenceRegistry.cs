@@ -70,7 +70,7 @@ public static class EventConsequenceRegistry
 
         json = BuildLocationUpdateJson(
             locationId,
-            "Area recently explored — disturbed terrain, fresh tracks, overturned stones",
+            "Area recently searched — ground and fixtures disturbed by the search itself, whatever it turned up",
             ["recently-explored"]);
         return true;
     }

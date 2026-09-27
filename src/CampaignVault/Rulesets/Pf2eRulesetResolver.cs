@@ -282,7 +282,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             return ResolverResult.Fail("InvalidParameter", dcError!);
         }
 
-        var skillName = action.Parameters.GetValueOrDefault("skill", "Strength");
+        var skillName = action.Parameters.GetValueOrDefault("skill", action.ActionName);
         var bonus = GetSkillOrAbilityBonus(actorStats, skillName);
         bonus = ApplyAllModifiers(actorStats, bonus, "SkillCheck", skillName);
 
