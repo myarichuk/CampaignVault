@@ -8,6 +8,8 @@ nupkgs/
 # LiteDB
 *.db
 *.db-log
+# Zero-effort local play (server pid/log + local RavenDB data)
+.local-data/
 opencode.json
 
 # User-specific files
