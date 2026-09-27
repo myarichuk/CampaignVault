@@ -179,7 +179,7 @@ need to stay out of scope, or need regex extraction from `text`/`description`
 (fragile, lower confidence) — decide once Step 2's actual response is in
 hand, not before.
 
-## Step 3 — Extend `SpellDefinition` + `generate_spells.py` (dnd5e only — pf2e out of scope, see Step 2 findings)
+## Step 3 — Extend `SpellDefinition` + `generate_spells.py` (dnd5e only — pf2e out of scope, see Step 2 findings) — ✅ DONE (2026-09-27)
 
 - Add fields to `SpellDefinition.cs`: `DamageDice` (string, plain for
   non-scaling spells), `DamageAtSlotLevel`/`DamageAtCharacterLevel`
@@ -279,7 +279,8 @@ ends up doing for pf2e weapons) before generating.
 2. ~~Step 2 (AoN schema check)~~ — done 2026-09-27. Items unblocked; pf2e
    spell damage validation is now explicitly out of scope (prose-only,
    would need the same regex fragility this session removed from feats).
-3. Step 3 (dnd5e spells) — model + script + validator + tests. Not started.
+3. ~~Step 3 (dnd5e spells)~~ — done 2026-09-27. Model + script + validator +
+   tests, commit f9247db.
 4. Step 4 (dnd5e items) — new script + regenerate + hand-verify. Not started.
 5. Step 5 (pf2e items) — new script + regenerate + hand-verify. Not started.
 6. Step 6 (docs cleanup) — last, once the data's actually in. Not started.
