@@ -89,9 +89,7 @@ public class InteractionModesTests
             campaignName: "test",
             config: config);
 
-        var result = await handler.ApplyAsync(
-            new ModeTransitionChange { ModeId = "crafting", Action = "enter", LocationId = "locations/forge", ParticipantIds = ["chars/pc1"] },
-            context);
+        var result = await handler.ApplyAsync(new ModeTransitionChange { ModeId = "crafting", Action = "enter", LocationId = "locations/forge", ParticipantIds = ["chars/pc1"] }, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("not enabled", result.Message);
@@ -109,9 +107,7 @@ public class InteractionModesTests
             campaignName: "test",
             config: config);
 
-        var result = await handler.ApplyAsync(
-            new ModeTransitionChange { ModeId = "astral_combat", Action = "enter", LocationId = "locations/astral", ParticipantIds = ["chars/pc1"] },
-            context);
+        var result = await handler.ApplyAsync(new ModeTransitionChange { ModeId = "astral_combat", Action = "enter", LocationId = "locations/astral", ParticipantIds = ["chars/pc1"] }, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("not compatible", result.Message);
@@ -127,9 +123,7 @@ public class InteractionModesTests
 
         var context = ChangeContextTestHelper.Create(session: session, campaignName: "test", config: config);
 
-        var result = await handler.ApplyAsync(
-            new ModeTransitionChange { ModeId = "crafting", Action = "enter", LocationId = "locations/forge", ParticipantIds = ["chars/pc1"] },
-            context);
+        var result = await handler.ApplyAsync(new ModeTransitionChange { ModeId = "crafting", Action = "enter", LocationId = "locations/forge", ParticipantIds = ["chars/pc1"] }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.NotNull(context.ActiveMode);
@@ -150,9 +144,7 @@ public class InteractionModesTests
             campaignName: "test",
             config: new CampaignConfig { Id = "campaigns/test/config", EnabledModeIds = ["crafting"] });
 
-        var result = await handler.ApplyAsync(
-            new ModeTransitionChange { ModeId = "crafting", Action = "enter", LocationId = "locations/forge", ParticipantIds = ["chars/pc1"] },
-            context);
+        var result = await handler.ApplyAsync(new ModeTransitionChange { ModeId = "crafting", Action = "enter", LocationId = "locations/forge", ParticipantIds = ["chars/pc1"] }, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("Unknown interaction mode", result.Message);
@@ -168,9 +160,7 @@ public class InteractionModesTests
             campaignName: "test",
             config: new CampaignConfig { Id = "campaigns/test/config", EnabledModeIds = ["crafting"] });
 
-        var result = await handler.ApplyAsync(
-            new ModeTransitionChange { ModeId = "crafting", Action = "exit" },
-            context);
+        var result = await handler.ApplyAsync(new ModeTransitionChange { ModeId = "crafting", Action = "exit" }, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("No active encounter", result.Message);
@@ -191,7 +181,7 @@ public class InteractionModesTests
             activeMode: existing,
             config: new CampaignConfig { Id = "campaigns/test/config", EnabledModeIds = ["crafting"] });
 
-        var result = await handler.ApplyAsync(new ModeTransitionChange { ModeId = "crafting", Action = "exit" }, context);
+        var result = await handler.ApplyAsync(new ModeTransitionChange { ModeId = "crafting", Action = "exit" }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.False(existing.IsActive);
@@ -275,7 +265,7 @@ public class InteractionModesTests
             session: session, campaignName: "test", config: config, activeMode: crafting,
             activeModes: [ActiveEncounter("astral", "chars/aang")]);
 
-        var result = await handler.ApplyAsync(new ModeTransitionChange { ModeId = "crafting", Action = "exit" }, context);
+        var result = await handler.ApplyAsync(new ModeTransitionChange { ModeId = "crafting", Action = "exit" }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(["astral"], context.ActiveModes.Keys);
@@ -291,8 +281,7 @@ public class InteractionModesTests
         var config = new CampaignConfig { Id = "campaigns/test/config" };
         var context = ChangeContextTestHelper.Create(campaignName: "test", config: config);
 
-        var result = await handler.ApplyAsync(
-            new CampaignUpdateChange { EnabledModeIds = ["crafting", "astral_combat"] }, context);
+        var result = await handler.ApplyAsync(new CampaignUpdateChange { EnabledModeIds = ["crafting", "astral_combat"] }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(["crafting", "astral_combat"], config.EnabledModeIds);
@@ -307,7 +296,7 @@ public class InteractionModesTests
             .Returns((CampaignConfig)null!);
         var context = ChangeContextTestHelper.Create(session: session, campaignName: "test", config: null);
 
-        var result = await handler.ApplyAsync(new CampaignUpdateChange { EnabledModeIds = ["crafting"] }, context);
+        var result = await handler.ApplyAsync(new CampaignUpdateChange { EnabledModeIds = ["crafting"] }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         await session.Received(1).StoreAsync(

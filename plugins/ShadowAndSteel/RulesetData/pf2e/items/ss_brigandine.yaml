@@ -1,0 +1,15 @@
+# Shadow & Steel: cloth jacket lined with riveted steel plates (original homebrew stats; no ORC text copied).
+name: ss_brigandine
+system: pf2e
+category: Armor
+tags: [medium]
+description: Cloth jacket lined with small riveted steel plates. AC bonus +3. Dex cap +2. Check penalty -1.
+properties:
+  acBonus: 3
+  dexCap: 2
+  checkPenalty: -1
+  speedModifier: 0
+  bulk: 2
+  costGp: 12
+equipZones: [Torso]
+equipLayer: Armor

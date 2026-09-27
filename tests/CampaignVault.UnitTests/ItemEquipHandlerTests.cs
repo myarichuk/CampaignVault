@@ -60,10 +60,10 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         var character = MakeCharacter("chars/equip_success");
         var item = MakeArmor("items/equip_success_armor", character.Id);
 
-        await session.StoreAsync(character);
-        await session.StoreAsync(item);
+        await session.StoreAsync(character, TestContext.Current.CancellationToken);
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var context = BuildContext(session,
             new Dictionary<string, Character> { [character.Id] = character },
@@ -72,7 +72,7 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         var handler = new ItemEquipHandler();
         var change = new ItemEquip { CharacterId = character.Id, ItemId = item.Id };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.True(item.IsEquipped);
@@ -92,7 +92,7 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         var handler = new ItemEquipHandler();
         var change = new ItemEquip { CharacterId = character.Id, ItemId = item.Id };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("not carried by", result.Message);
@@ -114,7 +114,7 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         var handler = new ItemEquipHandler();
         var change = new ItemEquip { CharacterId = character.Id, ItemId = item.Id };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("not carried by", result.Message);
@@ -137,7 +137,7 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         var handler = new ItemUnequipHandler();
         var change = new ItemUnequip { CharacterId = character.Id, ItemId = item.Id };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("not carried by", result.Message);
@@ -153,11 +153,11 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         chainmail1.IsEquipped = true;
         var chainmail2 = MakeArmor("items/equip_conflict_chainmail2", character.Id);
 
-        await session.StoreAsync(character);
-        await session.StoreAsync(chainmail1);
-        await session.StoreAsync(chainmail2);
+        await session.StoreAsync(character, TestContext.Current.CancellationToken);
+        await session.StoreAsync(chainmail1, TestContext.Current.CancellationToken);
+        await session.StoreAsync(chainmail2, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var context = BuildContext(session,
             new Dictionary<string, Character> { [character.Id] = character },
@@ -166,7 +166,7 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         var handler = new ItemEquipHandler();
         var change = new ItemEquip { CharacterId = character.Id, ItemId = chainmail2.Id };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("ENGINE WARNING", result.Message);
@@ -185,11 +185,11 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         chainmail1.IsEquipped = true;
         var chainmail2 = MakeArmor("items/equip_replace_chainmail2", character.Id);
 
-        await session.StoreAsync(character);
-        await session.StoreAsync(chainmail1);
-        await session.StoreAsync(chainmail2);
+        await session.StoreAsync(character, TestContext.Current.CancellationToken);
+        await session.StoreAsync(chainmail1, TestContext.Current.CancellationToken);
+        await session.StoreAsync(chainmail2, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var context = BuildContext(session,
             new Dictionary<string, Character> { [character.Id] = character },
@@ -198,7 +198,7 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         var handler = new ItemEquipHandler();
         var change = new ItemEquip { CharacterId = character.Id, ItemId = chainmail2.Id, ReplaceConflicts = true };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.True(chainmail2.IsEquipped);
@@ -214,10 +214,10 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         var groundItem = MakeArmor("items/equip_ground_item_untouched", character.Id, EquipZones.Feet);
         groundItem.HolderId = null!; // Ground/unheld item tracked in the same batch context.
 
-        await session.StoreAsync(character);
-        await session.StoreAsync(item);
+        await session.StoreAsync(character, TestContext.Current.CancellationToken);
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var context = BuildContext(session,
             new Dictionary<string, Character> { [character.Id] = character },
@@ -226,7 +226,7 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         var handler = new ItemEquipHandler();
         var change = new ItemEquip { CharacterId = character.Id, ItemId = item.Id };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.True(item.IsEquipped);
@@ -242,11 +242,11 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         var robe = MakeArmor("items/equip_layering_robe", character.Id, EquipZones.Torso, EquipLayers.Outer);
         robe.Properties["stacksWithArmor"] = "true";
 
-        await session.StoreAsync(character);
-        await session.StoreAsync(chainmail);
-        await session.StoreAsync(robe);
+        await session.StoreAsync(character, TestContext.Current.CancellationToken);
+        await session.StoreAsync(chainmail, TestContext.Current.CancellationToken);
+        await session.StoreAsync(robe, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var context = BuildContext(session,
             new Dictionary<string, Character> { [character.Id] = character },
@@ -255,7 +255,7 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         var handler = new ItemEquipHandler();
         var change = new ItemEquip { CharacterId = character.Id, ItemId = robe.Id };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.True(robe.IsEquipped);
@@ -277,7 +277,7 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         var handler = new ItemUnequipHandler();
         var change = new ItemUnequip { CharacterId = character.Id, ItemId = item.Id };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.False(item.IsEquipped);
@@ -294,11 +294,11 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         var pauldron = MakeArmor("items/equip_stackgroup_pauldron", character.Id);
         pauldron.StackGroup = "pauldron-left";
 
-        await session.StoreAsync(character);
-        await session.StoreAsync(breastplate);
-        await session.StoreAsync(pauldron);
+        await session.StoreAsync(character, TestContext.Current.CancellationToken);
+        await session.StoreAsync(breastplate, TestContext.Current.CancellationToken);
+        await session.StoreAsync(pauldron, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var context = BuildContext(session,
             new Dictionary<string, Character> { [character.Id] = character },
@@ -307,7 +307,7 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         var handler = new ItemEquipHandler();
         var change = new ItemEquip { CharacterId = character.Id, ItemId = pauldron.Id };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.True(pauldron.IsEquipped);
@@ -325,11 +325,11 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         var pauldron2 = MakeArmor("items/equip_stackgroup_conflict_2", character.Id);
         pauldron2.StackGroup = "pauldron-left";
 
-        await session.StoreAsync(character);
-        await session.StoreAsync(pauldron1);
-        await session.StoreAsync(pauldron2);
+        await session.StoreAsync(character, TestContext.Current.CancellationToken);
+        await session.StoreAsync(pauldron1, TestContext.Current.CancellationToken);
+        await session.StoreAsync(pauldron2, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var context = BuildContext(session,
             new Dictionary<string, Character> { [character.Id] = character },
@@ -338,7 +338,7 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         var handler = new ItemEquipHandler();
         var change = new ItemEquip { CharacterId = character.Id, ItemId = pauldron2.Id };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("StackGroup 'pauldron-left'", result.Message);
@@ -354,11 +354,11 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         chainmail1.IsEquipped = true;
         var chainmail2 = MakeArmor("items/equip_reorder_chainmail2", character.Id);
 
-        await session.StoreAsync(character);
-        await session.StoreAsync(chainmail1);
-        await session.StoreAsync(chainmail2);
+        await session.StoreAsync(character, TestContext.Current.CancellationToken);
+        await session.StoreAsync(chainmail1, TestContext.Current.CancellationToken);
+        await session.StoreAsync(chainmail2, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var context = BuildContext(session,
             new Dictionary<string, Character> { [character.Id] = character },
@@ -370,7 +370,7 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         context.BatchIndex = 0;
 
         var handler = new ItemEquipHandler();
-        var result = await handler.ApplyAsync(equipChange, context);
+        var result = await handler.ApplyAsync(equipChange, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("this batch also unequips it later", result.Message);
@@ -385,10 +385,10 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         var pauldron = MakeArmor("items/equip_missing_prereq_pauldron", character.Id);
         pauldron.RequiresEquippedTags = ["chest-armor"];
 
-        await session.StoreAsync(character);
-        await session.StoreAsync(pauldron);
+        await session.StoreAsync(character, TestContext.Current.CancellationToken);
+        await session.StoreAsync(pauldron, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var context = BuildContext(session,
             new Dictionary<string, Character> { [character.Id] = character },
@@ -397,7 +397,7 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         var handler = new ItemEquipHandler();
         var change = new ItemEquip { CharacterId = character.Id, ItemId = pauldron.Id };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("ENGINE WARNING", result.Message);
@@ -416,11 +416,11 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         var loincloth = MakeArmor("items/equip_incompatible_tag_loincloth", character.Id, EquipZones.Legs, EquipLayers.Outer);
         loincloth.IncompatibleWithEquippedTags = ["legwear-outer"];
 
-        await session.StoreAsync(character);
-        await session.StoreAsync(trousers);
-        await session.StoreAsync(loincloth);
+        await session.StoreAsync(character, TestContext.Current.CancellationToken);
+        await session.StoreAsync(trousers, TestContext.Current.CancellationToken);
+        await session.StoreAsync(loincloth, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var context = BuildContext(session,
             new Dictionary<string, Character> { [character.Id] = character },
@@ -430,7 +430,7 @@ public class ItemEquipHandlerTests : IClassFixture<RavenDBFixture>
         // replaceConflicts:true must NOT bypass a tag-based incompatibility.
         var change = new ItemEquip { CharacterId = character.Id, ItemId = loincloth.Id, ReplaceConflicts = true };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("legwear-outer", result.Message);

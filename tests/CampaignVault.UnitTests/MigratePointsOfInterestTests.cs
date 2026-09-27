@@ -39,7 +39,7 @@ public class MigratePointsOfInterestTests : IClassFixture<RavenDBFixture>
                     ["Notice Board"] = "Curling bounty posters."
                 },
                 PoisUsedByActivity = ["Hearth"]
-            }, withDescription);
+            }, withDescription, TestContext.Current.CancellationToken);
             await session.StoreAsync(new Location
             {
                 Id = bare,
@@ -47,34 +47,34 @@ public class MigratePointsOfInterestTests : IClassFixture<RavenDBFixture>
                 Description = "",
                 CampaignName = campaign,
                 PointsOfInterest = ["Wine racks", "Trapdoor"]
-            }, bare);
-            await session.SaveChangesAsync();
+            }, bare, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var migration = new MigratePointsOfInterestToFixtures(_store);
-        var (locations, items) = await migration.ExecuteAsync();
+        var (locations, items) = await migration.ExecuteAsync(TestContext.Current.CancellationToken);
         Assert.True(locations >= 2);
         Assert.True(items >= 1);
 
         using (var session = _store.OpenAsyncSession())
         {
-            var tavern = await session.LoadAsync<Location>(withDescription);
+            var tavern = await session.LoadAsync<Location>(withDescription, TestContext.Current.CancellationToken);
             Assert.Empty(tavern!.PointsOfInterest);
             Assert.Empty(tavern.PointOfInterestDetails);
             Assert.Empty(tavern.PoisUsedByActivity);
             Assert.Equal("A smoky tavern.", tavern.Description);
 
-            var fixture = await session.LoadAsync<Item>($"campaigns/{campaign}/items/tavern-notice-board");
+            var fixture = await session.LoadAsync<Item>($"campaigns/{campaign}/items/tavern-notice-board", TestContext.Current.CancellationToken);
             Assert.NotNull(fixture);
             Assert.Equal(withDescription, fixture!.HolderId);
             Assert.Equal("Curling bounty posters.", fixture.Description);
             Assert.Contains("fixture", fixture.Tags);
 
-            var cellar = await session.LoadAsync<Location>(bare);
+            var cellar = await session.LoadAsync<Location>(bare, TestContext.Current.CancellationToken);
             Assert.Equal("Notable features: Wine racks, Trapdoor.", cellar!.Description);
         }
 
-        var (again, createdAgain) = await migration.ExecuteAsync();
+        var (again, createdAgain) = await migration.ExecuteAsync(TestContext.Current.CancellationToken);
         Assert.Equal(0, again);
         Assert.Equal(0, createdAgain);
     }

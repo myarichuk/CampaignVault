@@ -26,7 +26,7 @@ public class ResourceRecoveryRuleTests
             5,
             "test-camp");
 
-        var result = await _sut.ApplyAsync(context, CancellationToken.None);
+        var result = await _sut.ApplyAsync(context, TestContext.Current.CancellationToken);
 
         var resourceDeltas = result.Deltas.OfType<ResourceChange>().ToList();
         Assert.NotEmpty(resourceDeltas);
@@ -50,7 +50,7 @@ public class ResourceRecoveryRuleTests
             5,
             "test-camp");
 
-        var result = await _sut.ApplyAsync(context, CancellationToken.None);
+        var result = await _sut.ApplyAsync(context, TestContext.Current.CancellationToken);
 
         Assert.Empty(result.Deltas);
     }
@@ -68,7 +68,7 @@ public class ResourceRecoveryRuleTests
             3,
             "test-camp");
 
-        var result = await _sut.ApplyAsync(context, CancellationToken.None);
+        var result = await _sut.ApplyAsync(context, TestContext.Current.CancellationToken);
 
         Assert.NotEmpty(result.Deltas.OfType<ResourceChange>());
         var ack = Assert.Single(result.Deltas.OfType<RestRecoveryAck>());
@@ -105,7 +105,7 @@ public class ResourceRecoveryRuleTests
             1,
             "test-camp");
 
-        var result = await _sut.ApplyAsync(context, CancellationToken.None);
+        var result = await _sut.ApplyAsync(context, TestContext.Current.CancellationToken);
 
         var resourceDeltas = result.Deltas.OfType<ResourceChange>().ToList();
         Assert.Single(resourceDeltas);
@@ -143,7 +143,7 @@ public class ResourceRecoveryRuleTests
             1,
             "test-camp");
 
-        var result = await _sut.ApplyAsync(context, CancellationToken.None);
+        var result = await _sut.ApplyAsync(context, TestContext.Current.CancellationToken);
 
         var resourceDeltas = result.Deltas.OfType<ResourceChange>().ToList();
         Assert.Single(resourceDeltas);
@@ -164,7 +164,7 @@ public class ResourceRecoveryRuleTests
             5,
             "test-camp");
 
-        var result = await _sut.ApplyAsync(context, CancellationToken.None);
+        var result = await _sut.ApplyAsync(context, TestContext.Current.CancellationToken);
 
         var resourceChange = Assert.Single(result.Deltas.OfType<ResourceChange>());
         Assert.Equal(5, resourceChange.RecoveredOnDay);
@@ -194,7 +194,7 @@ public class ResourceRecoveryRuleTests
             1,
             "test-camp");
 
-        var firstResult = await _sut.ApplyAsync(context, CancellationToken.None);
+        var firstResult = await _sut.ApplyAsync(context, TestContext.Current.CancellationToken);
         var change = Assert.Single(firstResult.Deltas.OfType<ResourceChange>());
         Assert.Equal("daily_pool", change.PoolName);
         Assert.Equal(4, change.Delta);
@@ -204,7 +204,7 @@ public class ResourceRecoveryRuleTests
         character.SystemStats.ResourcePools["daily_pool"] =
             character.SystemStats.ResourcePools["daily_pool"] with { Current = 5, LastRecoveredDay = 10 };
 
-        var secondResult = await _sut.ApplyAsync(context, CancellationToken.None);
+        var secondResult = await _sut.ApplyAsync(context, TestContext.Current.CancellationToken);
         Assert.Empty(secondResult.Deltas.OfType<ResourceChange>());
     }
 
@@ -232,7 +232,7 @@ public class ResourceRecoveryRuleTests
             1,
             "test-camp");
 
-        var result = await _sut.ApplyAsync(context, CancellationToken.None);
+        var result = await _sut.ApplyAsync(context, TestContext.Current.CancellationToken);
 
         var change = Assert.Single(result.Deltas.OfType<ResourceChange>());
         Assert.Equal(3, change.Delta);

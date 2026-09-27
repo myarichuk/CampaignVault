@@ -27,8 +27,8 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
             Name = "Temperate Room",
             ClimateZone = ClimateZone.Temperate,
         };
-        await session.StoreAsync(location);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(location, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var character = new Character
         {
@@ -43,7 +43,7 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
         var time = new CampaignTime { Hour = 12 };
         var ctx = new SimulationContext(time, [], [character], session, 1);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         var delta = Assert.Single(result.Deltas.OfType<AttributeChange>());
         Assert.Equal(character.Id, delta.CharacterId);
@@ -63,8 +63,8 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
             Name = "Arctic Wastes",
             ClimateZone = ClimateZone.Arctic,
         };
-        await session.StoreAsync(location);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(location, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var character = new Character
         {
@@ -79,7 +79,7 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
         var time = new CampaignTime { Hour = 0 };
         var ctx = new SimulationContext(time, [], [character], session, 1);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         var delta = Assert.Single(result.Deltas.OfType<AttributeChange>());
         // Arctic baseline -20 + amplitude 6 * night multiplier -1.0 = -26; plus warmth 0 = -26 (well below -20 extreme threshold).
@@ -99,8 +99,8 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
             Name = "Arctic Camp",
             ClimateZone = ClimateZone.Arctic,
         };
-        await session.StoreAsync(location);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(location, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var character = new Character
         {
@@ -115,7 +115,7 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
         var time = new CampaignTime { Hour = 0 };
         var ctx = new SimulationContext(time, [], [character], session, 1);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         var delta = Assert.Single(result.Deltas.OfType<AttributeChange>());
         // Arctic baseline -20 + amplitude 6 * night multiplier -1.0 = -26; plus warmth 25 = -1 (comfortable, not extreme).
@@ -133,8 +133,8 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
             Name = "Desert Dunes",
             ClimateZone = ClimateZone.Desert,
         };
-        await session.StoreAsync(location);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(location, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var character = new Character
         {
@@ -149,7 +149,7 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
         var time = new CampaignTime { Hour = 12 };
         var ctx = new SimulationContext(time, [], [character], session, 1);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         var delta = Assert.Single(result.Deltas.OfType<AttributeChange>());
         // Desert baseline 25 + amplitude 16 * noon multiplier 1.0 = 41; plus warmth 25 = 66 (heat extreme, >= 50).
@@ -167,8 +167,8 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
             Name = "Arctic Wastes (Naked)",
             ClimateZone = ClimateZone.Arctic,
         };
-        await session.StoreAsync(location);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(location, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var character = new Character
         {
@@ -183,7 +183,7 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
         var time = new CampaignTime { Hour = 0 };
         var ctx = new SimulationContext(time, [], [character], session, 1);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         var delta = Assert.Single(result.Deltas.OfType<AttributeChange>());
         // Arctic baseline -20 + amplitude 6 * night multiplier -1.0 = -26; plus warmth 0 = -26 (cold extreme, <= -20).
@@ -201,7 +201,7 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
         var time = new CampaignTime { Hour = 12 };
         var ctx = new SimulationContext(time, [], [character], session, 1);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         Assert.Empty(result.Deltas);
     }
@@ -238,7 +238,7 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
         var rule = new ClimateExposureRule();
         var ctx = new SimulationContext(new CampaignTime { Hour = 0 }, [], [pc, guide], session, 1);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         var written = result.Deltas.OfType<AttributeChange>().ToDictionary(d => d.CharacterId, d => d.Value);
         Assert.Equal(-26f, written[pc.Id]);
@@ -268,7 +268,7 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
         var rule = new ClimateExposureRule();
         var ctx = new SimulationContext(new CampaignTime { Hour = 0 }, [], [pc, hermit], session, 1);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         var written = result.Deltas.OfType<AttributeChange>().Select(d => d.CharacterId).ToList();
         Assert.Contains(pc.Id, written);
@@ -303,7 +303,7 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
         var rule = new ClimateExposureRule();
         var ctx = new SimulationContext(new CampaignTime { Hour = 0 }, [], [pc, formerCompanion], session, 1);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         var reset = Assert.Single(result.Deltas.OfType<AttributeChange>(), d => d.CharacterId == formerCompanion.Id);
         Assert.Equal(20f, reset.Value);
@@ -311,7 +311,7 @@ public class ClimateExposureRuleTests : IClassFixture<RavenDBFixture>
 
         // Converges: once the reading is neutral, later ticks leave them alone entirely.
         formerCompanion.SystemStats!.Temperature = 20f;
-        var second = await rule.ApplyAsync(ctx);
+        var second = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
         Assert.DoesNotContain(second.Deltas.OfType<AttributeChange>(), d => d.CharacterId == formerCompanion.Id);
     }
 }

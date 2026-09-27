@@ -37,9 +37,9 @@ public class AmbientItemExpiryPressureContributorTests : IClassFixture<RavenDBFi
                 PressureSurfaced = true,
             },
         };
-        await session.StoreAsync(item);
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var contributor = new AmbientItemExpiryPressureContributor();
         var ctx = new PressureContext(
@@ -48,7 +48,7 @@ public class AmbientItemExpiryPressureContributorTests : IClassFixture<RavenDBFi
             new CampaignConfig { Id = "config/ambient-pressure-test" },
             session);
 
-        var pressures = (await contributor.EvaluateAsync(ctx)).ToList();
+        var pressures = (await contributor.EvaluateAsync(ctx, TestContext.Current.CancellationToken)).ToList();
 
         var pressure = Assert.Single(pressures, p => p.EntityId == item.Id);
         Assert.Contains("left on the tavern table after breakfast", pressure.Text);
@@ -68,9 +68,9 @@ public class AmbientItemExpiryPressureContributorTests : IClassFixture<RavenDBFi
             CampaignName = "ambient-pressure-test",
             Persistence = new AmbientPersistence { Note = "fresh off the oven", ExpiresAtDay = 100, PressureSurfaced = false },
         };
-        await session.StoreAsync(item);
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var contributor = new AmbientItemExpiryPressureContributor();
         var ctx = new PressureContext(
@@ -79,7 +79,7 @@ public class AmbientItemExpiryPressureContributorTests : IClassFixture<RavenDBFi
             new CampaignConfig { Id = "config/ambient-pressure-test" },
             session);
 
-        var pressures = (await contributor.EvaluateAsync(ctx)).ToList();
+        var pressures = (await contributor.EvaluateAsync(ctx, TestContext.Current.CancellationToken)).ToList();
 
         Assert.DoesNotContain(pressures, p => p.EntityId == item.Id);
     }
@@ -96,9 +96,9 @@ public class AmbientItemExpiryPressureContributorTests : IClassFixture<RavenDBFi
             HolderId = "chars/hero",
             CampaignName = "ambient-pressure-test",
         };
-        await session.StoreAsync(item);
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var contributor = new AmbientItemExpiryPressureContributor();
         var ctx = new PressureContext(
@@ -107,7 +107,7 @@ public class AmbientItemExpiryPressureContributorTests : IClassFixture<RavenDBFi
             new CampaignConfig { Id = "config/ambient-pressure-test" },
             session);
 
-        var pressures = (await contributor.EvaluateAsync(ctx)).ToList();
+        var pressures = (await contributor.EvaluateAsync(ctx, TestContext.Current.CancellationToken)).ToList();
 
         Assert.DoesNotContain(pressures, p => p.EntityId == item.Id);
     }

@@ -68,7 +68,7 @@ public class SpatialPositionTests
             Zone = "bar"
         };
 
-        Assert.True((await handler.ApplyAsync(set, context)).Success);
+        Assert.True((await handler.ApplyAsync(set, context, TestContext.Current.CancellationToken)).Success);
         Assert.Single(character.SystemStats.SpatialPositions);
         Assert.Equal("bar", character.SystemStats.SpatialPositions[0].Zone);
 
@@ -79,7 +79,7 @@ public class SpatialPositionTests
             DistanceBand = null
         };
 
-        Assert.True((await handler.ApplyAsync(remove, context)).Success);
+        Assert.True((await handler.ApplyAsync(remove, context, TestContext.Current.CancellationToken)).Success);
         Assert.Empty(character.SystemStats.SpatialPositions);
     }
 

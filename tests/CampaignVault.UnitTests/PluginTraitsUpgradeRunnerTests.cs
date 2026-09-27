@@ -95,12 +95,11 @@ public class PluginTraitsUpgradeRunnerTests
                 character.SystemStats.Traits["retired_mode.stage"] = "gathering";
                 character.SystemStats.Traits["crafting.toolQuality"] = "fine";
                 character.SystemStats.Traits["reputation"] = "trusted";
-                await session.StoreAsync(character, characterId);
-                await session.SaveChangesAsync();
+                await session.StoreAsync(character, characterId, TestContext.Current.CancellationToken);
+                await session.SaveChangesAsync(TestContext.Current.CancellationToken);
             }
 
-            var orphaned = await PluginTraitsUpgradeRunner.WarnOnOrphanedTraitPrefixesAsync(
-                _store, claimedPrefixes: ["crafting"], logger: null);
+            var orphaned = await PluginTraitsUpgradeRunner.WarnOnOrphanedTraitPrefixesAsync(_store, claimedPrefixes: ["crafting"], logger: null, ct: TestContext.Current.CancellationToken);
 
             Assert.Contains("retired_mode", orphaned);
             Assert.DoesNotContain("crafting", orphaned);

@@ -111,7 +111,7 @@ public class ResponseBudgetTests : IClassFixture<RavenDBFixture>
                 i++;
             }
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var start = await tools.TakeTurn(new TakeTurnRequest { IncludeParty = true }, slug);

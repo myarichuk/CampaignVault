@@ -216,7 +216,7 @@ public class TokenBudgetMeasurementTests : IClassFixture<RavenDBFixture>
             { Id = enemyAId, Name = "Cultist", CurrentLocationId = locId, MaxHp = 14, CurrentHp = 14 });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = enemyBId, Name = "Cultist Adept", CurrentLocationId = locId, MaxHp = 16, CurrentHp = 16 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         Task<ToolResult<TurnResult>> Turn(WorldChange[]? changes, string? narrative) => tools.TakeTurn(new TakeTurnRequest
@@ -284,7 +284,7 @@ public class TokenBudgetMeasurementTests : IClassFixture<RavenDBFixture>
                 Id = companionId, Name = "Bram", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 18, CurrentHp = 18,
                 CurrentAppearance = "Scarred forearms, travel-worn cloak"
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         Task<ToolResult<TurnResult>> Turn(WorldChange[]? changes, string? narrative) => tools.TakeTurn(new TakeTurnRequest
@@ -352,7 +352,7 @@ public class TokenBudgetMeasurementTests : IClassFixture<RavenDBFixture>
             { Id = pcId, Name = "Aria", IsPc = true, CurrentLocationId = locAId, MaxHp = 24, CurrentHp = 24 });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = companionId, Name = "Bram", IsPartyCompanion = true, CurrentLocationId = locAId, MaxHp = 18, CurrentHp = 18 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var t1 = await tools.TakeTurn(new TakeTurnRequest { PartyLocationId = locAId, ExtraLocationIds = [locAId] }, slug);
@@ -433,7 +433,7 @@ public class TokenBudgetMeasurementTests : IClassFixture<RavenDBFixture>
                 CurrentLocationId = locId,
                 Notes = BigText("notes")
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var scene = await tools.GetScene(locId, partyPresent: true, campaignName: slug);

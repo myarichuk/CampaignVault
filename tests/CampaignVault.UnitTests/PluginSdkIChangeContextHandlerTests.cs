@@ -46,9 +46,7 @@ public class PluginSdkIChangeContextHandlerTests
             });
 
         IChangeContext asInterface = context;
-        var result = await handler.ApplyAsync(
-            new HpChange { CharacterId = "chars/hero", Delta = -3 },
-            asInterface);
+        var result = await handler.ApplyAsync(new HpChange { CharacterId = "chars/hero", Delta = -3 }, asInterface, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(7, context.Characters["chars/hero"].CurrentHp);

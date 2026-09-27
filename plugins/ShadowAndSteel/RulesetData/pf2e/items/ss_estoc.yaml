@@ -1,0 +1,18 @@
+# Shadow & Steel: thrust-only anti-armor sword (original homebrew stats; absent from the
+# repo's 53 common Player Core/2 weapons, no ORC text copied).
+# NOTE: specialMechanic is prose-only — the engine has no armor-interaction rule.
+name: ss_estoc
+system: pf2e
+category: Weapon
+tags: [martial, melee, finesse, versatile]
+description: Long stiff thrust-only sword built to punch through mail and find plate joints. Deals 1d8 piercing damage.
+properties:
+  damage: 1d8
+  damageVersatile: 1d10
+  damageType: piercing
+  bulk: 1
+  costGp: 4
+  specialMechanic: "Against heavily armored targets, deals +1 damage per die (narrative/GM-arbitrated; not computed by the engine)."
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

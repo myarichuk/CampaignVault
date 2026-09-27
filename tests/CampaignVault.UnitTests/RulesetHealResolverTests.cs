@@ -38,7 +38,7 @@ public class RulesetHealResolverTests
             ActionType = RulesetActionType.UseItem,
             ActionName = "Potion of Healing",
             Parameters = new Dictionary<string, string> { ["healDice"] = "2d4+2" }
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success, output.Result.Narrative);
         var hp = Assert.Single(output.Mutations.OfType<HpChange>());
@@ -55,7 +55,7 @@ public class RulesetHealResolverTests
             ActionType = RulesetActionType.UseItem,
             ActionName = "Torch",
             Parameters = new Dictionary<string, string>()
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success, output.Result.Narrative);
         Assert.Empty(output.Mutations.OfType<HpChange>());
@@ -71,7 +71,7 @@ public class RulesetHealResolverTests
             ActionType = RulesetActionType.Recovery,
             ActionName = "Second Wind",
             Parameters = new Dictionary<string, string>()
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.False(output.Result.Success);
         Assert.Equal("InvalidParameter", output.Result.ErrorCode);

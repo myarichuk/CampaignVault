@@ -70,14 +70,14 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
             {
                 ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 85f }
             }
-        });
-        await session.SaveChangesAsync();
-        await session.Advanced.AsyncDocumentQuery<Character>().WaitForNonStaleResults(TimeSpan.FromSeconds(5)).ToListAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await session.Advanced.AsyncDocumentQuery<Character>().WaitForNonStaleResults(TimeSpan.FromSeconds(5)).ToListAsync(TestContext.Current.CancellationToken);
 
         await repo.AdvanceWorldAsync(session, 1, 6, campaign);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var reloaded = await session.LoadAsync<Character>(charId);
+        var reloaded = await session.LoadAsync<Character>(charId, TestContext.Current.CancellationToken);
         Assert.True(reloaded!.Needs.ActivityConflictActive);
         Assert.Equal("tiredness", reloaded.Needs.ActivityConflictNeed);
     }
@@ -100,7 +100,7 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
             CurrentActivity = "tending bar",
             Schedule = new Schedule { DefaultLocationId = "locs/tavern", Routines = [] },
             Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 85f } }
-        });
+        }, TestContext.Current.CancellationToken);
         await session.StoreAsync(new Character
         {
             Id = calmId,
@@ -109,21 +109,21 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
             CurrentActivity = "resting",
             Schedule = new Schedule { DefaultLocationId = "locs/tavern", Routines = [] },
             Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 85f } }
-        });
-        await session.SaveChangesAsync();
-        await session.Advanced.AsyncDocumentQuery<Character>().WaitForNonStaleResults(TimeSpan.FromSeconds(5)).ToListAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await session.Advanced.AsyncDocumentQuery<Character>().WaitForNonStaleResults(TimeSpan.FromSeconds(5)).ToListAsync(TestContext.Current.CancellationToken);
 
         await repo.AdvanceWorldAsync(session, 1, 6, campaign);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var conflictNpc = await session.LoadAsync<Character>(conflictId);
+        var conflictNpc = await session.LoadAsync<Character>(conflictId, TestContext.Current.CancellationToken);
         var enrichment = await repo.EnrichNpcInitiativeAsync(
             session, conflictNpc!, campaign, "get_npc_context", includeTensionBreakdown: true);
 
         Assert.Contains(enrichment.ActiveInitiatives, i => i.Driver == InitiativeDriver.Need);
         Assert.True(enrichment.TensionComponents!.NeedStress >= 85);
 
-        var calmNpc = await session.LoadAsync<Character>(calmId);
+        var calmNpc = await session.LoadAsync<Character>(calmId, TestContext.Current.CancellationToken);
         Assert.False(calmNpc!.Needs.ActivityConflictActive);
         var calmEnrichment = await repo.EnrichNpcInitiativeAsync(
             session, calmNpc, campaign, "get_npc_context", includeTensionBreakdown: true);
@@ -164,7 +164,7 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
             DaysPassed: 5,
             Config: new CampaignConfig { MemoryImportantDecayDays = 40 });
 
-        var result = await rule.ApplyAsync(context);
+        var result = await rule.ApplyAsync(context, TestContext.Current.CancellationToken);
 
         // Rule computes changes without mutating the tracked Character/MemoryNode — the live values
         // are untouched until MemoryDecayHandler applies the emitted delta.
@@ -211,15 +211,15 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
                     }
                 }
             }
-        });
-        await session.SaveChangesAsync();
-        await session.Advanced.AsyncDocumentQuery<Character>().WaitForNonStaleResults(TimeSpan.FromSeconds(5)).ToListAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await session.Advanced.AsyncDocumentQuery<Character>().WaitForNonStaleResults(TimeSpan.FromSeconds(5)).ToListAsync(TestContext.Current.CancellationToken);
 
         await repo.AdvanceWorldAsync(session, 5, 6, campaign);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         using var verifySession = _fixture.Store.OpenAsyncSession();
-        var reloaded = await verifySession.LoadAsync<Character>(charId);
+        var reloaded = await verifySession.LoadAsync<Character>(charId, TestContext.Current.CancellationToken);
         var memory = reloaded!.Psychology.Memories["Old"];
 
         // Confirms MemorySalienceDecayRule's emitted MemoryDecay delta was actually dispatched to
@@ -260,7 +260,7 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
             DaysPassed: 1,
             Config: new CampaignConfig { MemoryImportantDecayDays = 0 });
 
-        var result = await rule.ApplyAsync(context);
+        var result = await rule.ApplyAsync(context, TestContext.Current.CancellationToken);
 
         var decay = result.Deltas.OfType<MemoryDecay>().SingleOrDefault(d => d.CharacterId == npc.Id);
         if (decay != null && decay.EntryChanges.TryGetValue("Fresh", out var entry))
@@ -281,7 +281,7 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
 
         var locId = "locs/market";
         var npcId = "chars/trauma";
-        await session.StoreAsync(new Location { Id = locId, Name = "Market", CampaignName = campaign, VisualTags = ["market"] });
+        await session.StoreAsync(new Location { Id = locId, Name = "Market", CampaignName = campaign, VisualTags = ["market"] }, TestContext.Current.CancellationToken);
         await session.StoreAsync(new Character
         {
             Id = npcId,
@@ -304,8 +304,8 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
                     }
                 }
             }
-        });
-        await session.SaveChangesAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(
             timeout: TimeSpan.FromSeconds(10),
             throwOnTimeout: true,
@@ -336,7 +336,7 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
         var locId = "locs/inn";
         var npcId = "chars/barliman";
         var pcId = "chars/pc1";
-        await session.StoreAsync(new Location { Id = locId, Name = "Inn", CampaignName = campaign });
+        await session.StoreAsync(new Location { Id = locId, Name = "Inn", CampaignName = campaign }, TestContext.Current.CancellationToken);
         await session.StoreAsync(new Character
         {
             Id = npcId,
@@ -348,24 +348,24 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
             {
                 Relationships = new Dictionary<string, int> { [pcId] = 85 }
             }
-        });
+        }, TestContext.Current.CancellationToken);
         await session.StoreAsync(new Character
         {
             Id = pcId,
             Name = "Aldric",
             CampaignName = campaign,
             CurrentLocationId = locId
-        });
-        await session.SaveChangesAsync();
-        await session.Advanced.AsyncDocumentQuery<Character>().WaitForNonStaleResults(TimeSpan.FromSeconds(5)).ToListAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await session.Advanced.AsyncDocumentQuery<Character>().WaitForNonStaleResults(TimeSpan.FromSeconds(5)).ToListAsync(TestContext.Current.CancellationToken);
 
-        var npc = await session.LoadAsync<Character>(npcId);
-        var pc = await session.LoadAsync<Character>(pcId);
+        var npc = await session.LoadAsync<Character>(npcId, TestContext.Current.CancellationToken);
+        var pc = await session.LoadAsync<Character>(pcId, TestContext.Current.CancellationToken);
         var present = new List<Character> { npc!, pc! };
 
         var first = await repo.EnrichNpcInitiativeAsync(
             session, npc!, campaign, "get_npc_context", includeTensionBreakdown: true, presentEntities: present);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         Assert.Contains(first.ActiveInitiatives, i => i.Key.StartsWith("affection:", StringComparison.Ordinal));
 
@@ -374,9 +374,9 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
         Assert.Empty(second.ActiveInitiatives);
 
         await repo.AdvanceWorldAsync(session, rearmInterval, 9, campaign);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        npc = await session.LoadAsync<Character>(npcId);
+        npc = await session.LoadAsync<Character>(npcId, TestContext.Current.CancellationToken);
         var third = await repo.EnrichNpcInitiativeAsync(
             session, npc!, campaign, "get_npc_context", includeTensionBreakdown: true, presentEntities: present);
 
@@ -406,23 +406,23 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
             {
                 Relationships = new Dictionary<string, int> { [pcId] = 85 }
             }
-        });
-        await session.StoreAsync(new Character { Id = pcId, Name = "Aldric", CampaignName = campaign });
-        await session.SaveChangesAsync();
-        await session.Advanced.AsyncDocumentQuery<Character>().WaitForNonStaleResults(TimeSpan.FromSeconds(5)).ToListAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.StoreAsync(new Character { Id = pcId, Name = "Aldric", CampaignName = campaign }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await session.Advanced.AsyncDocumentQuery<Character>().WaitForNonStaleResults(TimeSpan.FromSeconds(5)).ToListAsync(TestContext.Current.CancellationToken);
 
-        var npc = await session.LoadAsync<Character>(npcId);
-        var pc = await session.LoadAsync<Character>(pcId);
+        var npc = await session.LoadAsync<Character>(npcId, TestContext.Current.CancellationToken);
+        var pc = await session.LoadAsync<Character>(pcId, TestContext.Current.CancellationToken);
         var present = new List<Character> { npc!, pc! };
 
         await repo.EnrichNpcInitiativeAsync(
             session, npc!, campaign, "get_npc_context", includeTensionBreakdown: true, presentEntities: present);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await repo.AdvanceWorldAsync(session, 2, 9, campaign);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        npc = await session.LoadAsync<Character>(npcId);
+        npc = await session.LoadAsync<Character>(npcId, TestContext.Current.CancellationToken);
         var afterShortAdvance = await repo.EnrichNpcInitiativeAsync(
             session, npc!, campaign, "get_npc_context", includeTensionBreakdown: true, presentEntities: present);
 
@@ -482,7 +482,7 @@ public class Phase10SimAndMirrorTests : IClassFixture<RavenDBFixture>
         // Initially 50 memories
         Assert.Equal(50, npc.Psychology.Memories.Count);
 
-        var result = await rule.ApplyAsync(context);
+        var result = await rule.ApplyAsync(context, TestContext.Current.CancellationToken);
 
         // Rule computes eviction decisions without mutating the tracked dictionary directly.
         Assert.Equal(50, npc.Psychology.Memories.Count);

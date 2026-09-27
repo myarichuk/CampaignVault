@@ -128,7 +128,7 @@ public class RulesetActionHandlerSpellComponentTests : IClassFixture<RavenDBFixt
         var context = CreateContext(session, new Dictionary<string, Character> { [actor.Id] = actor });
         var handler = CreateHandler();
 
-        var result = await handler.ApplyAsync(CastAction(actor.Id, "test_spark"), context, CancellationToken.None);
+        var result = await handler.ApplyAsync(CastAction(actor.Id, "test_spark"), context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("SpellcastingBlocked", result.Message);
@@ -162,7 +162,7 @@ public class RulesetActionHandlerSpellComponentTests : IClassFixture<RavenDBFixt
         var context = CreateContext(session, new Dictionary<string, Character> { [actor.Id] = actor });
         var handler = CreateHandler();
 
-        var result = await handler.ApplyAsync(CastAction(actor.Id, "test_word_of_power"), context, CancellationToken.None);
+        var result = await handler.ApplyAsync(CastAction(actor.Id, "test_word_of_power"), context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("SpellcastingBlocked", result.Message);
@@ -201,7 +201,7 @@ public class RulesetActionHandlerSpellComponentTests : IClassFixture<RavenDBFixt
         var context = CreateContext(session, new Dictionary<string, Character> { [actor.Id] = actor });
         var handler = CreateHandler();
 
-        var result = await handler.ApplyAsync(CastAction(actor.Id, "test_gesture_spell"), context, CancellationToken.None);
+        var result = await handler.ApplyAsync(CastAction(actor.Id, "test_gesture_spell"), context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
     }
@@ -219,8 +219,8 @@ public class RulesetActionHandlerSpellComponentTests : IClassFixture<RavenDBFixt
             System = RulesetSystem.Dnd5e,
             CastingWaivers = [CastingComponentGate.SomaticHandsFullWaiver],
             CampaignName = _campaign,
-        });
-        await session.SaveChangesAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var actor = new Character
         {
@@ -244,7 +244,7 @@ public class RulesetActionHandlerSpellComponentTests : IClassFixture<RavenDBFixt
         var context = CreateContext(session, new Dictionary<string, Character> { [actor.Id] = actor });
         var handler = CreateHandler();
 
-        var result = await handler.ApplyAsync(CastAction(actor.Id, "test_gesture_spell2"), context, CancellationToken.None);
+        var result = await handler.ApplyAsync(CastAction(actor.Id, "test_gesture_spell2"), context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
     }
@@ -269,7 +269,7 @@ public class RulesetActionHandlerSpellComponentTests : IClassFixture<RavenDBFixt
         var context = CreateContext(session, new Dictionary<string, Character> { [actor.Id] = actor });
         var handler = CreateHandler();
 
-        var result = await handler.ApplyAsync(CastAction(actor.Id, "test_mind_word"), context, CancellationToken.None);
+        var result = await handler.ApplyAsync(CastAction(actor.Id, "test_mind_word"), context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
     }
@@ -302,7 +302,7 @@ public class RulesetActionHandlerSpellComponentTests : IClassFixture<RavenDBFixt
         var context = CreateContext(session, new Dictionary<string, Character> { [actor.Id] = actor });
         var handler = CreateHandler();
 
-        var result = await handler.ApplyAsync(CastAction(actor.Id, "test_pure_thought"), context, CancellationToken.None);
+        var result = await handler.ApplyAsync(CastAction(actor.Id, "test_pure_thought"), context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
     }
@@ -334,7 +334,7 @@ public class RulesetActionHandlerSpellComponentTests : IClassFixture<RavenDBFixt
         var context = CreateContext(session, new Dictionary<string, Character> { [actor.Id] = actor });
         var handler = CreateHandler();
 
-        var result = await handler.ApplyAsync(CastAction(actor.Id, "totally_made_up_spell_name"), context, CancellationToken.None);
+        var result = await handler.ApplyAsync(CastAction(actor.Id, "totally_made_up_spell_name"), context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
     }

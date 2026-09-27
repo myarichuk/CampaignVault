@@ -79,7 +79,7 @@ public class Round4FunctionalFixTests
             Parameters = [],
         };
 
-        var output = await resolver.ResolveAsync(CreateContext(Caster(), Target()), action);
+        var output = await resolver.ResolveAsync(CreateContext(Caster(), Target()), action, TestContext.Current.CancellationToken);
 
         Assert.False(output.Result.Success);
         Assert.Contains("resolution=attack", output.Result.Narrative);
@@ -100,7 +100,7 @@ public class Round4FunctionalFixTests
             Parameters = [],
         };
 
-        var output = await resolver.ResolveAsync(CreateContext(Caster()), action);
+        var output = await resolver.ResolveAsync(CreateContext(Caster()), action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
     }
@@ -119,7 +119,7 @@ public class Round4FunctionalFixTests
             Parameters = new Dictionary<string, string> { { "resolution", "utility" } },
         };
 
-        var output = await resolver.ResolveAsync(CreateContext(Caster(), Target()), action);
+        var output = await resolver.ResolveAsync(CreateContext(Caster(), Target()), action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
     }
@@ -179,7 +179,7 @@ public class Round4FunctionalFixTests
         };
         var ctx = new PressureContext("campaign", new CampaignTime(), new CampaignConfig(), null!, Scene: scene);
 
-        Assert.Single(await contributor.EvaluateAsync(ctx));
+        Assert.Single(await contributor.EvaluateAsync(ctx, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -188,7 +188,7 @@ public class Round4FunctionalFixTests
         var contributor = new CombatStartedGuidanceContributor();
         var ctx = new PressureContext("campaign", new CampaignTime(), new CampaignConfig(), null!);
 
-        Assert.Empty(await contributor.EvaluateAsync(ctx));
+        Assert.Empty(await contributor.EvaluateAsync(ctx, TestContext.Current.CancellationToken));
     }
 
     [Fact]

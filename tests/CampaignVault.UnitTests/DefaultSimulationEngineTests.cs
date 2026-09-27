@@ -42,7 +42,7 @@ public class DefaultSimulationEngineTests
             null!,
             DaysPassed: 1);
 
-        var result = await engine.RunAsync(context);
+        var result = await engine.RunAsync(context, TestContext.Current.CancellationToken);
 
         // Engine surfaces a narrative for the failed rule (so failures are visible, not silent)
         // AND continues on to run the remaining rules.

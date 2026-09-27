@@ -35,15 +35,15 @@ public class ItemDetailStalenessRuleTests : IClassFixture<RavenDBFixture>
 
         var detail = new ItemDetail { Id = "detail-stale", Name = "Old scratch", Description = "desc", UpdatedOnDay = 0 };
         var item = MakeItem("items/staleness_stale", campaign, detail);
-        await session.StoreAsync(item);
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var rule = new ItemDetailStalenessRule();
         var time = new CampaignTime { TotalDaysElapsed = 61 }; // >= 60-day staleDays threshold
         var ctx = new SimulationContext(time, [], [], session, 1, campaign);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         Assert.Contains(result.Narratives, n => n.Text.Contains("Old scratch"));
         Assert.Empty(result.Deltas);
@@ -59,15 +59,15 @@ public class ItemDetailStalenessRuleTests : IClassFixture<RavenDBFixture>
 
         var detail = new ItemDetail { Id = "detail-recent", Name = "Fresh scratch", Description = "desc", UpdatedOnDay = 55 };
         var item = MakeItem("items/staleness_recent", campaign, detail);
-        await session.StoreAsync(item);
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var rule = new ItemDetailStalenessRule();
         var time = new CampaignTime { TotalDaysElapsed = 61 }; // only 6 days since update, below threshold
         var ctx = new SimulationContext(time, [], [], session, 1, campaign);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         Assert.Empty(result.Narratives);
         Assert.Empty(result.Deltas);
@@ -87,15 +87,15 @@ public class ItemDetailStalenessRuleTests : IClassFixture<RavenDBFixture>
             UpdatedOnDay = 0, ReviewIntervalDays = 1
         };
         var item = MakeItem("items/staleness_short_interval", campaign, detail);
-        await session.StoreAsync(item);
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var rule = new ItemDetailStalenessRule();
         var time = new CampaignTime { TotalDaysElapsed = 2 }; // 2 days since update, past the 1-day interval but far below the 60-day default
         var ctx = new SimulationContext(time, [], [], session, 1, campaign);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         Assert.Contains(result.Narratives, n => n.Text.Contains("Punctured waterskin"));
     }
@@ -114,15 +114,15 @@ public class ItemDetailStalenessRuleTests : IClassFixture<RavenDBFixture>
             UpdatedOnDay = 0, ReviewIntervalDays = 90
         };
         var item = MakeItem("items/staleness_long_interval", campaign, detail);
-        await session.StoreAsync(item);
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var rule = new ItemDetailStalenessRule();
         var time = new CampaignTime { TotalDaysElapsed = 65 }; // past the 60-day default, short of the 90-day interval
         var ctx = new SimulationContext(time, [], [], session, 1, campaign);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         Assert.Empty(result.Narratives);
     }
@@ -135,15 +135,15 @@ public class ItemDetailStalenessRuleTests : IClassFixture<RavenDBFixture>
 
         var detail = new ItemDetail { Id = "detail-retired", Name = "Old stain", Description = "desc", UpdatedOnDay = 0, IsRetired = true };
         var item = MakeItem("items/staleness_retired", campaign, detail);
-        await session.StoreAsync(item);
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var rule = new ItemDetailStalenessRule();
         var time = new CampaignTime { TotalDaysElapsed = 1000 };
         var ctx = new SimulationContext(time, [], [], session, 1, campaign);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         Assert.Empty(result.Narratives);
         Assert.Empty(result.Deltas);

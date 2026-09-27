@@ -48,7 +48,7 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
             },
             Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 50f } }
         });
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Wait for indexes (with timeout to prevent CI hangs)
         var indexWaitStart = DateTime.UtcNow;
@@ -60,7 +60,7 @@ public class DeterministicScenarios : IClassFixture<RavenDBFixture>
                 break;
             }
 
-            await Task.Delay(30);
+            await Task.Delay(30, TestContext.Current.CancellationToken);
         }
 
         if ((DateTime.UtcNow - indexWaitStart).TotalSeconds >= 10)

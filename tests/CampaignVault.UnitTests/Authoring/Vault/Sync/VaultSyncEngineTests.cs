@@ -38,7 +38,7 @@ public sealed class VaultSyncEngineTests : IDisposable
     {
         await CreateVaultAsync();
         ConfigureMockClient();
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
 
         var cacheRoot = Path.Combine(_tempDirectory, VaultPaths.AppConfigDirectoryName, "remote-cache");
         var manifestPath = Path.Combine(cacheRoot, VaultRemoteCache.ManifestFileName);
@@ -58,11 +58,11 @@ public sealed class VaultSyncEngineTests : IDisposable
         await CreateVaultAsync();
         ConfigureMockClient();
 
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
         var first = File.ReadAllText(Path.Combine(_tempDirectory, VaultPaths.AppConfigDirectoryName, "remote-cache", VaultRemoteCache.ManifestFileName));
 
-        await Task.Delay(50);
-        await _session.FetchAsync();
+        await Task.Delay(50, TestContext.Current.CancellationToken);
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
         var second = File.ReadAllText(Path.Combine(_tempDirectory, VaultPaths.AppConfigDirectoryName, "remote-cache", VaultRemoteCache.ManifestFileName));
 
         Assert.NotEqual(first, second);
@@ -84,7 +84,7 @@ public sealed class VaultSyncEngineTests : IDisposable
         await AdvanceSyncedToHeadAsync();
 
         ConfigureMockClientWithMatchingRemote();
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
 
         var summary = _session.GetSyncSummary();
         Assert.Equal(1, summary.SyncedCount);
@@ -107,7 +107,7 @@ public sealed class VaultSyncEngineTests : IDisposable
             """);
 
         ConfigureMockClientWithMatchingRemote();
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
         await AdvanceSyncedToHeadAsync();
 
         await WriteAndCommitEntityAsync("""
@@ -142,7 +142,7 @@ public sealed class VaultSyncEngineTests : IDisposable
         await AdvanceSyncedToHeadAsync();
 
         ConfigureMockClientWithDifferentRemote();
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
 
         var pullPlan = _session.GetPullPlan();
         var item = Assert.Single(pullPlan);
@@ -165,7 +165,7 @@ public sealed class VaultSyncEngineTests : IDisposable
             """);
 
         ConfigureMockClientWithMatchingRemote();
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
         await AdvanceSyncedToHeadAsync();
 
         await WriteAndCommitEntityAsync("""
@@ -179,7 +179,7 @@ public sealed class VaultSyncEngineTests : IDisposable
             """);
 
         ConfigureMockClientWithDifferentRemote();
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
 
         var summary = _session.GetSyncSummary();
         Assert.Equal(1, summary.ConflictCount);
@@ -200,7 +200,7 @@ public sealed class VaultSyncEngineTests : IDisposable
             """);
 
         ConfigureMockClientWithMatchingRemote();
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
         await AdvanceSyncedToHeadAsync();
 
         Assert.Empty(_session.GetPushPlan());
@@ -219,7 +219,7 @@ public sealed class VaultSyncEngineTests : IDisposable
             .GetCampaignEntitiesAsync(Arg.Any<GetCampaignEntitiesRequest>(), Arg.Any<Metadata>(), Arg.Any<DateTime?>(), Arg.Any<CancellationToken>())
             .Returns(call);
 
-        var ex = await Assert.ThrowsAsync<VaultException>(() => _session.FetchAsync());
+        var ex = await Assert.ThrowsAsync<VaultException>(() => _session.FetchAsync(TestContext.Current.CancellationToken));
         Assert.Contains("unavailable", ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(VaultConnectionState.Offline, _session.VaultConnection.State);
     }

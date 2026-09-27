@@ -252,6 +252,6 @@ public class ConditionDefinitionTests
             daysPassed,
             "test_campaign");
 
-        return rule.ApplyAsync(context, CancellationToken.None);
+        return rule.ApplyAsync(context, TestContext.Current.CancellationToken);
     }
 }

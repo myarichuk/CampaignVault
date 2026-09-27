@@ -10,7 +10,7 @@ public class GrpcSyncConnectionTests
     [Fact]
     public async Task TestConnection_WhenServerRunning_ReturnsSuccessOrActionableError()
     {
-        var (success, message) = await VaultGrpcClientFactory.TestConnectionAsync("localhost", 50051);
+        var (success, message) = await VaultGrpcClientFactory.TestConnectionAsync("localhost", 50051, cancellationToken: TestContext.Current.CancellationToken);
 
         // When CampaignVault is running locally, this should connect.
         // In CI without a server, we still want a clear refusal message rather than a crash.

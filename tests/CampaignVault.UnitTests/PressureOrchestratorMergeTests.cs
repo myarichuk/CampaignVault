@@ -46,7 +46,7 @@ public class PressureOrchestratorMergeTests
             selector);
 
         var ctx = new PressureContext("test-camp", new CampaignTime(), new CampaignConfig { ActiveSystem = RulesetSystem.Narrative }, null!);
-        var result = await orchestrator.CollectAndCapAsync(PressureScope.World, ctx);
+        var result = await orchestrator.CollectAndCapAsync(PressureScope.World, ctx, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.Count);
         Assert.Contains(result, p => p.Text == "Character is starving.");
@@ -71,7 +71,7 @@ public class PressureOrchestratorMergeTests
             selector);
 
         var ctx = new PressureContext("test-camp", new CampaignTime(), new CampaignConfig { ActiveSystem = RulesetSystem.Narrative }, null!);
-        var result = await orchestrator.CollectAndCapAsync(PressureScope.World, ctx);
+        var result = await orchestrator.CollectAndCapAsync(PressureScope.World, ctx, TestContext.Current.CancellationToken);
 
         Assert.Single(result);
     }

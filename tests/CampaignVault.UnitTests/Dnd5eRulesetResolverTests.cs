@@ -89,7 +89,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["damageDice"] = "1d8" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Single(output.Mutations);
         var hpChange = Assert.IsType<HpChange>(output.Mutations[0]);
@@ -121,7 +121,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["toHitBonus"] = "4" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Equal(4, rollService.RecordedRequests[0].Bonus);
         Assert.Single(output.Mutations);
@@ -150,7 +150,7 @@ public class Dnd5eRulesetResolverTests
             ActionName = "Longsword"
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Empty(output.Mutations);
         Assert.Contains("Missed", output.Result.Narrative);
@@ -180,7 +180,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["damageDice"] = "1d8" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Single(output.Mutations);
         var hpChange = Assert.IsType<HpChange>(output.Mutations[0]);
@@ -210,7 +210,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["skill"] = "Stealth", ["dc"] = "15" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Empty(output.Mutations);
         Assert.Contains("Success", output.Result.Narrative);
@@ -245,7 +245,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["dc"] = "15" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Equal(3, rollService.RecordedRequests[0].Bonus);
         Assert.Contains("Investigation", output.Result.Narrative);
@@ -278,7 +278,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["bonus"] = "9", ["damageDice"] = "3d10" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Single(output.Mutations);
         var hpChange = Assert.IsType<HpChange>(output.Mutations[0]);
@@ -309,7 +309,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["bonus"] = "9", ["damageDice"] = "1d10" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain("[WARNING]", output.Result.Narrative);
     }
@@ -337,7 +337,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["bonus"] = "9", ["damageDice"] = "3d10" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain("[WARNING]", output.Result.Narrative);
     }
@@ -367,7 +367,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["dc"] = "15", ["save"] = "Dexterity", ["damageDice"] = "20d6" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Contains("[WARNING]", output.Result.Narrative);
         Assert.Contains("doesn't match any known spell-slot tier", output.Result.Narrative);
@@ -394,7 +394,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["dc"] = "15", ["save"] = "Dexterity", ["damageDice"] = "9d6" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain("[WARNING]", output.Result.Narrative);
     }
@@ -421,7 +421,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["dc"] = "15", ["save"] = "Wisdom" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Contains("[WARNING]", output.Result.Narrative);
         Assert.Contains("should use a Dexterity save, not Wisdom", output.Result.Narrative);
@@ -452,7 +452,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["dc"] = "15", ["save"] = "Dexterity", ["damageDice"] = "2d8+4d6" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
         var damageRequests = rollService.RecordedRequests.Where(r => r.Tag == "spell-damage").ToList();
@@ -488,7 +488,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["dc"] = "15", ["save"] = "Dexterity", ["damageDice"] = "4d6+2d8" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
         var hp = Assert.Single(output.Mutations.OfType<HpChange>());
@@ -521,7 +521,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["dc"] = "15", ["save"] = "Dexterity", ["damageDice"] = "2d8" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
         Assert.Contains("doesn't match any known multi-pool total", output.Result.Narrative);
@@ -555,7 +555,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["dc"] = "15", ["save"] = "Dexterity", ["damageDice"] = "3d8+4d6" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
         var damageRequests = rollService.RecordedRequests.Where(r => r.Tag == "spell-damage").ToList();
@@ -588,7 +588,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["dc"] = "15", ["save"] = "Dexterity", ["damageDice"] = "40d6" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
         var damageRequests = rollService.RecordedRequests.Where(r => r.Tag == "spell-damage").ToList();
@@ -623,7 +623,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["dc"] = "15", ["save"] = "Dexterity", ["damageDice"] = "8d6" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
         var damageRequests = rollService.RecordedRequests.Where(r => r.Tag == "spell-damage").ToList();
@@ -665,7 +665,7 @@ public class Dnd5eRulesetResolverTests
             }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
         var damageRequests = rollService.RecordedRequests.Where(r => r.Tag == "spell-damage").ToList();
@@ -704,7 +704,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["dc"] = "15", ["save"] = "Dexterity", ["damageDice"] = "9d6" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
         Assert.Equal(3, rollService.RecordedRequests.Count(r => r.Tag == "spell-damage"));
@@ -736,7 +736,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["bonus"] = "5", ["damageDice"] = "4d6" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
         Assert.Contains("doesn't match any known multi-pool total", output.Result.Narrative);
@@ -763,7 +763,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["bonus"] = "not_a_number" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Contains("invalid bonus value", output.Result.Narrative);
     }
@@ -787,7 +787,7 @@ public class Dnd5eRulesetResolverTests
             ActionName = "Attack"
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Contains("incompatible ruleset stats", output.Result.Narrative);
     }
@@ -812,7 +812,7 @@ public class Dnd5eRulesetResolverTests
             ActionName = "Grapple"
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Contains("Actor Wins", output.Result.Narrative);
     }
@@ -838,7 +838,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { { "dc", "14" }, { "save", "Dexterity" } }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
         await mockRollService.Received(1).RollAsync(Arg.Is<RollRequest>(req => req.Mechanic == DiceMechanic.Advantage),
@@ -878,7 +878,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { { "damageDice", "1d10" } }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         var hpChange = output.Mutations.OfType<HpChange>().FirstOrDefault();
         Assert.NotNull(hpChange);
@@ -923,7 +923,7 @@ public class Dnd5eRulesetResolverTests
             ActionName = "Schlag"
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Equal(9, rollService.RecordedRequests[0].Bonus);
         Assert.Equal("1d10", rollService.RecordedRequests[1].Expression);
@@ -962,7 +962,7 @@ public class Dnd5eRulesetResolverTests
             }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, output.Mutations.Count);
         Assert.Contains("Merc 1", output.Result.Narrative);
@@ -993,7 +993,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["damageDice"] = "3d4+3" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Equal(3, output.Mutations.Count);
         Assert.Equal(new[] { -4, -3, -5 }, output.Mutations.Select(m => Assert.IsType<HpChange>(m).Delta));
@@ -1034,7 +1034,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["damageDice"] = "3d4+3" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Equal(3, output.Mutations.Count);
         Assert.Equal("char2", Assert.IsType<HpChange>(output.Mutations[0]).CharacterId);
@@ -1069,7 +1069,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["damageDice"] = "5d4+5" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Equal(5, output.Mutations.Count);
         Assert.Equal(5, output.Result.Narrative.Split(" | ").Length);
@@ -1102,7 +1102,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["bonus"] = "0", ["damageDice"] = "2d6" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, output.Mutations.Count);
         Assert.Equal(-7, Assert.IsType<HpChange>(output.Mutations[0]).Delta);
@@ -1143,7 +1143,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["bonus"] = "0", ["damageDice"] = "2d6" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Equal(3, output.Mutations.Count);
         Assert.Equal("char2", Assert.IsType<HpChange>(output.Mutations[0]).CharacterId);
@@ -1177,7 +1177,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["bonus"] = "0", ["damageDice"] = "2d6", ["attackCount"] = "4" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Equal(4, output.Mutations.Count);
         Assert.Equal(4, output.Result.Narrative.Split(" | ").Length);
@@ -1207,7 +1207,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["bonus"] = "0", ["damageDice"] = "1d10" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, output.Mutations.Count);
         Assert.Equal(-8, Assert.IsType<HpChange>(output.Mutations[0]).Delta);
@@ -1240,7 +1240,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["bonus"] = "0", ["damageDice"] = "4d4" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Single(output.Mutations);
         Assert.Equal(-5, Assert.IsType<HpChange>(output.Mutations[0]).Delta);
@@ -1270,7 +1270,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["bonus"] = "0", ["damageDice"] = "4d4" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, output.Mutations.Count);
         Assert.Equal(-12, Assert.IsType<HpChange>(output.Mutations[0]).Delta);
@@ -1307,7 +1307,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["bonus"] = "0", ["damageDice"] = "5d4" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         var status = Assert.IsType<StatusChange>(output.Mutations[1]);
         Assert.Equal("3d4", status.Effect!.PendingDamage!.DiceExpression);
@@ -1336,7 +1336,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["bonus"] = "0", ["damageDice"] = "4d4" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Single(output.Mutations);
         Assert.IsType<HpChange>(output.Mutations[0]);
@@ -1366,7 +1366,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "save", ["save"] = "Dexterity", ["dc"] = "15", ["damageDice"] = "1d8" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Single(output.Mutations);
         Assert.Equal(-3, Assert.IsType<HpChange>(output.Mutations[0]).Delta);
@@ -1396,7 +1396,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "save", ["save"] = "Dexterity", ["dc"] = "15", ["damageDice"] = "1d8", ["halfOnSave"] = "false" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Empty(output.Mutations);
         Assert.Contains("Saved", output.Result.Narrative);
@@ -1424,7 +1424,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["damageDice"] = "5d8" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.False(output.Result.Success);
         Assert.Equal("UnresolvableMechanic", output.Result.ErrorCode);
@@ -1452,7 +1452,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "save", ["dc"] = "15", ["damageDice"] = "5d8" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.False(output.Result.Success);
         Assert.Equal("UnresolvableMechanic", output.Result.ErrorCode);
@@ -1481,7 +1481,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "save", ["save"] = "Wisdom", ["dc"] = "15" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
         Assert.Empty(output.Mutations);
@@ -1506,7 +1506,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["dc"] = "15", ["save"] = "Wisdom", ["damageDice"] = "5d8" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.False(output.Result.Success);
         Assert.Equal("UnresolvableMechanic", output.Result.ErrorCode);
@@ -1532,7 +1532,7 @@ public class Dnd5eRulesetResolverTests
             Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["damageDice"] = "3d4+3" }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.False(output.Result.Success);
         Assert.Equal("InvalidTarget", output.Result.ErrorCode);

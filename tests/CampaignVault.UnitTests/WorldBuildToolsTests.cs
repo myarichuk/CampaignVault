@@ -81,7 +81,7 @@ public class WorldBuildToolsTests : IClassFixture<RavenDBFixture>
         Assert.Contains("characters[1]", result.Summary);
 
         using var session = _fixture.Store.OpenAsyncSession();
-        var rolledBack = await session.LoadAsync<Character>("chars/wb-rollback-good");
+        var rolledBack = await session.LoadAsync<Character>("chars/wb-rollback-good", TestContext.Current.CancellationToken);
         Assert.Null(rolledBack);
     }
 
@@ -137,7 +137,7 @@ public class WorldBuildToolsTests : IClassFixture<RavenDBFixture>
         Assert.Contains(result.Data!.Warnings, w => w.Contains("was normalized to 'chars/wb-alias'"));
 
         using var session = _fixture.Store.OpenAsyncSession();
-        var stored = await session.LoadAsync<Character>("chars/wb-alias");
+        var stored = await session.LoadAsync<Character>("chars/wb-alias", TestContext.Current.CancellationToken);
         Assert.NotNull(stored);
     }
 
@@ -220,9 +220,9 @@ public class WorldBuildToolsTests : IClassFixture<RavenDBFixture>
 
         using (var verifySession = _fixture.Store.OpenAsyncSession())
         {
-            var stored = await verifySession.LoadAsync<Character>("chars/wb-xfer-foo");
+            var stored = await verifySession.LoadAsync<Character>("chars/wb-xfer-foo", TestContext.Current.CancellationToken);
             Assert.NotNull(stored);
-            var aliased = await verifySession.LoadAsync<Character>("characters/wb-xfer-foo");
+            var aliased = await verifySession.LoadAsync<Character>("characters/wb-xfer-foo", TestContext.Current.CancellationToken);
             Assert.Null(aliased);
         }
 
@@ -234,12 +234,12 @@ public class WorldBuildToolsTests : IClassFixture<RavenDBFixture>
                 new ItemTransfer { ItemId = "items/wb-xfer-armor", ToHolderId = "chars/wb-xfer-foo" },
             ]);
             Assert.True(toCharacter.Success, string.Join("; ", toCharacter.Summary));
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            var item = await session.LoadAsync<Item>("items/wb-xfer-armor");
+            var item = await session.LoadAsync<Item>("items/wb-xfer-armor", TestContext.Current.CancellationToken);
             Assert.Equal("chars/wb-xfer-foo", item.HolderId);
             Assert.Null(item.Persistence); // Transfer onto a character clears ambient-decay tracking.
         }
@@ -250,12 +250,12 @@ public class WorldBuildToolsTests : IClassFixture<RavenDBFixture>
                 new ItemEquip { CharacterId = "chars/wb-xfer-foo", ItemId = "items/wb-xfer-armor" },
             ]);
             Assert.True(equip.Success, string.Join("; ", equip.Summary));
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            var character = await session.LoadAsync<Character>("chars/wb-xfer-foo");
+            var character = await session.LoadAsync<Character>("chars/wb-xfer-foo", TestContext.Current.CancellationToken);
             var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
             Assert.Equal(15, stats.ArmorClass); // 10 base + 5 acBonus from the equipped armor.
         }
@@ -288,7 +288,7 @@ public class WorldBuildToolsTests : IClassFixture<RavenDBFixture>
 
         Assert.True(result.Success, result.Summary);
         using var session = _fixture.Store.OpenAsyncSession();
-        var stored = await session.LoadAsync<Character>("chars/wb-bootstrap");
+        var stored = await session.LoadAsync<Character>("chars/wb-bootstrap", TestContext.Current.CancellationToken);
         Assert.NotNull(stored);
         Assert.True(stored.MaxHp > 0, "Bootstrap should have derived MaxHp from systemStats.");
     }
@@ -314,7 +314,7 @@ public class WorldBuildToolsTests : IClassFixture<RavenDBFixture>
 
         using var session = _fixture.Store.OpenAsyncSession();
         var keys = new CampaignVault.Data.CampaignDocumentKeys();
-        var config = await session.LoadAsync<CampaignConfig>(keys.Config(slug));
+        var config = await session.LoadAsync<CampaignConfig>(keys.Config(slug), TestContext.Current.CancellationToken);
         Assert.Null(config);
     }
 }

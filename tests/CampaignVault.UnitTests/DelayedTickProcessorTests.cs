@@ -38,7 +38,7 @@ public class DelayedTickProcessorTests
         var rolls = new FakeRollService();
         var messages = new List<string>();
 
-        var events = await DelayedTickProcessor.ProcessAsync(character, rolls, messages);
+        var events = await DelayedTickProcessor.ProcessAsync(character, rolls, messages, TestContext.Current.CancellationToken);
 
         Assert.Empty(events);
         Assert.Empty(messages);
@@ -55,7 +55,7 @@ public class DelayedTickProcessorTests
         rolls.NextRolls.Enqueue(new RollOutcome { Result = 5, Summary = "Rolled 5" });
         var messages = new List<string>();
 
-        var events = await DelayedTickProcessor.ProcessAsync(character, rolls, messages);
+        var events = await DelayedTickProcessor.ProcessAsync(character, rolls, messages, TestContext.Current.CancellationToken);
 
         Assert.Equal(5, character.CurrentHp);
         Assert.Empty(character.SystemStats.StatusEffects);
@@ -80,7 +80,7 @@ public class DelayedTickProcessorTests
         rolls.NextRolls.Enqueue(new RollOutcome { Result = 8, Summary = "Rolled 8" });
         var messages = new List<string>();
 
-        var events = await DelayedTickProcessor.ProcessAsync(character, rolls, messages);
+        var events = await DelayedTickProcessor.ProcessAsync(character, rolls, messages, TestContext.Current.CancellationToken);
 
         Assert.Equal(0, character.CurrentHp);
         Assert.Empty(character.SystemStats.StatusEffects);
@@ -101,7 +101,7 @@ public class DelayedTickProcessorTests
         var rolls = new FakeRollService();
         var messages = new List<string>();
 
-        var events = await DelayedTickProcessor.ProcessAsync(character, rolls, messages);
+        var events = await DelayedTickProcessor.ProcessAsync(character, rolls, messages, TestContext.Current.CancellationToken);
 
         Assert.Empty(events);
         Assert.Empty(rolls.RecordedRequests);
@@ -118,7 +118,7 @@ public class DelayedTickProcessorTests
         var messages = new List<string>();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            DelayedTickProcessor.ProcessAsync(character, null, messages));
+            DelayedTickProcessor.ProcessAsync(character, null, messages, TestContext.Current.CancellationToken));
 
         Assert.Single(character.SystemStats.StatusEffects);
     }
@@ -130,7 +130,7 @@ public class DelayedTickProcessorTests
         var rolls = new FakeRollService();
         var messages = new List<string>();
 
-        var events = await DelayedTickProcessor.ProcessAsync(character, rolls, messages);
+        var events = await DelayedTickProcessor.ProcessAsync(character, rolls, messages, TestContext.Current.CancellationToken);
 
         Assert.Empty(events);
         Assert.Empty(rolls.RecordedRequests);
@@ -150,7 +150,7 @@ public class DelayedTickProcessorTests
         rolls.NextRolls.Enqueue(new RollOutcome { Result = 7, Summary = "Rolled 7" });
         var messages = new List<string>();
 
-        await DelayedTickProcessor.ProcessAsync(character, rolls, messages);
+        await DelayedTickProcessor.ProcessAsync(character, rolls, messages, TestContext.Current.CancellationToken);
 
         Assert.Equal(4, character.CurrentHp);
         Assert.Empty(character.SystemStats.StatusEffects);
@@ -170,7 +170,7 @@ public class DelayedTickProcessorTests
         rolls.NextRolls.Enqueue(new RollOutcome { Result = 15, Summary = "Rolled 15" });
         var messages = new List<string>();
 
-        await DelayedTickProcessor.ProcessAsync(character, rolls, messages);
+        await DelayedTickProcessor.ProcessAsync(character, rolls, messages, TestContext.Current.CancellationToken);
 
         var remaining = Assert.Single(character.SystemStats.StatusEffects);
         Assert.Equal("Concentration (Bless)", remaining.Name);

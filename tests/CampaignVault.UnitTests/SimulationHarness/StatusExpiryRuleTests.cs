@@ -38,8 +38,8 @@ public class StatusExpiryRuleTests(RavenDBFixture fixture) : IClassFixture<Raven
 
         using (var session = _store.OpenAsyncSession())
         {
-            await session.StoreAsync(character);
-            await session.SaveChangesAsync();
+            await session.StoreAsync(character, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Set simulation day to 10
@@ -53,7 +53,7 @@ public class StatusExpiryRuleTests(RavenDBFixture fixture) : IClassFixture<Raven
             "test_campaign"
         );
 
-        var result = await rule.ApplyAsync(simContext, CancellationToken.None);
+        var result = await rule.ApplyAsync(simContext, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Single(result.Deltas); // Only "Poisoned" should be removed

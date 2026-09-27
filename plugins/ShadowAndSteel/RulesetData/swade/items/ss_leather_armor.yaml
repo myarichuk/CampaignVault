@@ -1,0 +1,15 @@
+# Shadow & Steel: fantasy-tier cured-hide armor (original homebrew seed data).
+# NOTE: the engine has no SWADE armor-class resolver yet; acBonus is seed data for future/GM use.
+name: ss_leather_armor
+system: swade
+category: Armor
+tags: [fantasy, light]
+description: Cured-hide jerkin and greaves for scouts and skirmishers. Armor bonus +1.
+properties:
+  acBonus: 1
+  armorType: Light
+  weight: 10
+  costGp: 50
+  era: fantasy
+equipZones: [Torso]
+equipLayer: Armor

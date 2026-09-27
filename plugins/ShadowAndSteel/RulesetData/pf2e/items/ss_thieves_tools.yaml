@@ -1,0 +1,11 @@
+# Shadow & Steel: picks, files, and tension bars in a leather roll (original homebrew; no ORC text copied).
+# Mirrors the grantsAdvantageOn convention from the core dnd5e climbers_kit blueprint.
+name: ss_thieves_tools
+system: pf2e
+category: Tool
+tags: [rogue, burglary, adventuring-gear]
+description: Picks, files, pliers, and tension bars in a leather roll — the burglar's trade kit.
+properties:
+  bulk: 0.1
+  costGp: 5
+  grantsAdvantageOn: lockpicking and trap-disarming checks

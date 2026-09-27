@@ -50,7 +50,7 @@ public class RestThenAdvanceWorldIntegrationTests : IClassFixture<RavenDBFixture
 
         await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, campaign), new LocationUpsertRequest { Id = locId, Name = "Inn", Type = LocationType.Room });
         await repo.SaveTimeAsync(_fixture.CreateCampaignSession(session, campaign), new CampaignTime { TotalDaysElapsed = 10 });
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await repo.StageChangesAsync(_fixture.CreateCampaignSession(session, campaign), [
             new RestChange
@@ -62,11 +62,11 @@ public class RestThenAdvanceWorldIntegrationTests : IClassFixture<RavenDBFixture
                 RestType = RestType.LongRest
             }
         ]);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Pool recovers immediately when the rest commits — RestChangeHandler applies
         // RestRecoveryLogic synchronously rather than waiting for the next advance_world call.
-        var afterRest = await session.LoadAsync<Character>(charId);
+        var afterRest = await session.LoadAsync<Character>(charId, TestContext.Current.CancellationToken);
         Assert.Equal(4, afterRest.SystemStats!.ResourcePools["spell_slots_1"].Current);
         Assert.NotNull(afterRest.LastRestedDay);
         Assert.Equal(RestType.LongRest, afterRest.LastRestType);
@@ -76,9 +76,9 @@ public class RestThenAdvanceWorldIntegrationTests : IClassFixture<RavenDBFixture
         // advance_world's ResourceRecoveryRule sweep must be a no-op here — it's a defense-in-depth
         // fallback guarded by the same idempotency check, not a second source of recovery.
         await repo.AdvanceWorldAsync(session, 0, 12, campaign);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var afterAdvance = await session.LoadAsync<Character>(charId);
+        var afterAdvance = await session.LoadAsync<Character>(charId, TestContext.Current.CancellationToken);
         Assert.Equal(4, afterAdvance.SystemStats!.ResourcePools["spell_slots_1"].Current);
         Assert.Equal(afterRest.LastRestedDay, afterAdvance.LastRestRecoveredDay);
         Assert.Equal(afterAdvance.LastRestedDay, afterAdvance.SystemStats.ResourcePools["spell_slots_1"].LastRecoveredDay);
@@ -110,32 +110,32 @@ public class RestThenAdvanceWorldIntegrationTests : IClassFixture<RavenDBFixture
             }
         });
         await repo.SaveTimeAsync(_fixture.CreateCampaignSession(session, campaign), new CampaignTime { TotalDaysElapsed = 10 });
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await repo.AdvanceWorldAsync(session, 0, 12, campaign);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var afterFirst = await session.LoadAsync<Character>(charId);
+        var afterFirst = await session.LoadAsync<Character>(charId, TestContext.Current.CancellationToken);
         Assert.Equal(5, afterFirst.SystemStats!.ResourcePools["daily_pool"].Current);
         Assert.Equal(10, afterFirst.SystemStats.ResourcePools["daily_pool"].LastRecoveredDay);
 
         await repo.StageChangesAsync(_fixture.CreateCampaignSession(session, campaign), [
             new ResourceChange { CharacterId = charId, PoolName = "daily_pool", Delta = -3 }
         ]);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Same day: must NOT recover again.
         await repo.AdvanceWorldAsync(session, 0, 12, campaign);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var sameDay = await session.LoadAsync<Character>(charId);
+        var sameDay = await session.LoadAsync<Character>(charId, TestContext.Current.CancellationToken);
         Assert.Equal(2, sameDay.SystemStats!.ResourcePools["daily_pool"].Current);
 
         // Next day: recovers again.
         await repo.AdvanceWorldAsync(session, 1, 12, campaign);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var nextDay = await session.LoadAsync<Character>(charId);
+        var nextDay = await session.LoadAsync<Character>(charId, TestContext.Current.CancellationToken);
         Assert.Equal(5, nextDay.SystemStats!.ResourcePools["daily_pool"].Current);
         Assert.Equal(11, nextDay.SystemStats.ResourcePools["daily_pool"].LastRecoveredDay);
     }

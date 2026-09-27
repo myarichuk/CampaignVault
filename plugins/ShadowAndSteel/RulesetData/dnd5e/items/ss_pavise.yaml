@@ -1,0 +1,14 @@
+# Shadow & Steel: tall deployable siege shield (original homebrew stats, not an SRD entry).
+# NOTE: the cover effect is prose-only and resolves narratively / by GM arbitration.
+name: ss_pavise
+system: dnd5e
+category: Armor
+tags: [shield, heavy]
+description: A tall shield planted in the ground as portable cover for crossbow lines. +2 AC when wielded in the off hand.
+properties:
+  acBonus: 2
+  weight: 10
+  costGp: 30
+  specialMechanic: "Can be planted as stationary half cover for one crouching shooter (narrative/GM-arbitrated; not computed by the engine)."
+equipZones: [OffHand]
+equipLayer: Held

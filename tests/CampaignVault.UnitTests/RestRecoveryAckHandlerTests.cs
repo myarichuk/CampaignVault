@@ -31,7 +31,7 @@ public class RestRecoveryAckHandlerTests
         var result = await handler.ApplyAsync(
             new RestRecoveryAck { CharacterId = "chars/wizard", RestDay = 5, RestSequence = 3 },
             context,
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(5, character.LastRestRecoveredDay);

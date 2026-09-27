@@ -37,7 +37,7 @@ public class RestChangeHandlerTests
         );
 
         // Act
-        var result = await handler.ApplyAsync(change, context, CancellationToken.None);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.Success);
@@ -92,7 +92,7 @@ public class RestChangeHandlerTests
             LocationId = "loc/1",
             IntendedHours = 8,
             RestType = RestType.LongRest
-        }, context, CancellationToken.None);
+        }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.DoesNotContain(character.SystemStats!.StatusEffects, e => e.ConditionName == "exhaustion");
@@ -144,7 +144,7 @@ public class RestChangeHandlerTests
             LocationId = "loc/1",
             IntendedHours = 8,
             RestType = RestType.LongRest
-        }, context, CancellationToken.None);
+        }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         var effect = Assert.Single(character.SystemStats!.StatusEffects, e => e.ConditionName == "exhaustion");
@@ -197,7 +197,7 @@ public class RestChangeHandlerTests
             LocationId = "loc/1",
             IntendedHours = 8,
             RestType = RestType.LongRest
-        }, context, CancellationToken.None);
+        }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.DoesNotContain(character.SystemStats!.StatusEffects, e => e.ConditionName == "fatigued");
@@ -246,7 +246,7 @@ public class RestChangeHandlerTests
             LocationId = "loc/1",
             IntendedHours = 8,
             RestType = RestType.LongRest
-        }, context, CancellationToken.None);
+        }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(4, character.SystemStats!.ResourcePools!["spell_slots_1"].Current);
@@ -289,7 +289,7 @@ public class RestChangeHandlerTests
             LocationId = "loc/1",
             IntendedHours = 8,
             SecurityModifier = -50
-        }, context, CancellationToken.None);
+        }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(0, character.SystemStats!.ResourcePools!["spell_slots_1"].Current);
@@ -332,7 +332,7 @@ public class RestChangeHandlerTests
             LocationId = "loc/1",
             IntendedHours = 8,
             RestType = RestType.LongRest
-        }, context, CancellationToken.None);
+        }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         // Default NeedSatisfactionBaseline (20, since context.Config is null here) — long rest settles fully.
@@ -375,7 +375,7 @@ public class RestChangeHandlerTests
             LocationId = "loc/1",
             IntendedHours = 1,
             RestType = RestType.ShortRest
-        }, context, CancellationToken.None);
+        }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         // 90 -> baseline 20 is a distance of 70; short rest only settles half of that: 90 - 35 = 55.
@@ -411,7 +411,7 @@ public class RestChangeHandlerTests
                 Category = "Condition",
                 ConditionName = "not_a_real_condition_xyz"
             }
-        }, context, CancellationToken.None);
+        }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Contains(summary, m => m.Contains("[WARNING]", StringComparison.Ordinal)

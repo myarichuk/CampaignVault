@@ -105,7 +105,7 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
                 CurrentState = "Peaceful meadow"
             });
             await repo.SaveTimeAsync(_fixture.CreateCampaignSession(session, campaign), new CampaignTime { TotalDaysElapsed = 5 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var commitResult = await tools.Commit([
@@ -121,10 +121,10 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            var locBefore = await session.LoadAsync<Location>(locId);
+            var locBefore = await session.LoadAsync<Location>(locId, TestContext.Current.CancellationToken);
             Assert.Equal("Peaceful meadow", locBefore!.CurrentState);
             session.Advanced.WaitForIndexesAfterSaveChanges();
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var sceneResult = await tools.GetScene(locId, campaignName: campaign, partyPresent: true);
@@ -140,7 +140,7 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
 
         using (var verifySession = _fixture.Store.OpenAsyncSession())
         {
-            var locAfter = await verifySession.LoadAsync<Location>(locId);
+            var locAfter = await verifySession.LoadAsync<Location>(locId, TestContext.Current.CancellationToken);
             Assert.Equal("Peaceful meadow", locAfter!.CurrentState);
         }
     }
@@ -165,7 +165,7 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
                 CurrentState = "Quiet evening crowd"
             });
             await repo.SaveTimeAsync(_fixture.CreateCampaignSession(session, campaign), new CampaignTime { TotalDaysElapsed = 5 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var commitResult = await tools.Commit([
@@ -182,7 +182,7 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             session.Advanced.WaitForIndexesAfterSaveChanges();
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
         
         var sceneResult = await tools.GetScene(locId, campaignName: campaign, partyPresent: true);
@@ -203,7 +203,7 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
         var locId = $"locations/hall-{suffix}";
 
         using var session = _fixture.Store.OpenAsyncSession();
-        await session.StoreAsync(new Location { Id = locId, Name = "Hall", Type = LocationType.Room, CampaignName = campaign });
+        await session.StoreAsync(new Location { Id = locId, Name = "Hall", Type = LocationType.Room, CampaignName = campaign }, TestContext.Current.CancellationToken);
         await session.StoreAsync(new Event
         {
             Id = $"events/combat-locid-{suffix}",
@@ -213,9 +213,9 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
             Involved = ["chars/brawler"],
             DayLogged = 3,
             CampaignName = campaign
-        });
+        }, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var contributor = new EventConsequencePressureContributor();
         var scene = new SceneView { IsLocationAnchored = true, Location = LocationDetailView.From(new Location { Id = locId, Name = "Hall" }) };
@@ -224,7 +224,7 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
             new CampaignTime { TotalDaysElapsed = 5 },
             new CampaignConfig(),
             session,
-            Scene: scene));
+            Scene: scene), TestContext.Current.CancellationToken);
 
         Assert.Contains(pressures, p => p.GroupingKey.StartsWith(EventConsequenceRegistry.EventConsequenceGroupingKey));
     }
@@ -237,7 +237,7 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
         var locId = $"locations/hall-{suffix}";
 
         using var session = _fixture.Store.OpenAsyncSession();
-        await session.StoreAsync(new Location { Id = locId, Name = "Hall", Type = LocationType.Room, CampaignName = campaign });
+        await session.StoreAsync(new Location { Id = locId, Name = "Hall", Type = LocationType.Room, CampaignName = campaign }, TestContext.Current.CancellationToken);
         await session.StoreAsync(new Event
         {
             Id = $"events/combat-1-{suffix}",
@@ -246,9 +246,9 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
             RelatedEntityId = "chars/brawler",
             DayLogged = 3,
             CampaignName = campaign
-        });
+        }, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var contributor = new EventConsequencePressureContributor();
         var scene = new SceneView { IsLocationAnchored = true, Location = LocationDetailView.From(new Location { Id = locId, Name = "Hall" }) };
@@ -257,7 +257,7 @@ public class EventConsequenceTests : IClassFixture<RavenDBFixture>
             new CampaignTime { TotalDaysElapsed = 5 },
             new CampaignConfig(),
             session,
-            Scene: scene));
+            Scene: scene), TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain(pressures, p => p.GroupingKey.StartsWith(EventConsequenceRegistry.EventConsequenceGroupingKey));
     }

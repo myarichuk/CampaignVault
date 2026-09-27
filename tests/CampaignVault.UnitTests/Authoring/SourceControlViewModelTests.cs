@@ -44,7 +44,7 @@ public class SourceControlViewModelTests : IDisposable
 
         var entityPath = Path.Combine(_tempDirectory, "characters", "grog.md");
         Directory.CreateDirectory(Path.GetDirectoryName(entityPath)!);
-        await File.WriteAllTextAsync(entityPath, "---\nid: characters/grog\nname: Grog\n---\n\nUpdated notes.");
+        await File.WriteAllTextAsync(entityPath, "---\nid: characters/grog\nname: Grog\n---\n\nUpdated notes.", TestContext.Current.CancellationToken);
         _sourceControl.RefreshStatus();
         Assert.True(_sourceControl.IsDirty);
         Assert.NotEmpty(_sourceControl.ChangedPaths);
@@ -57,7 +57,7 @@ public class SourceControlViewModelTests : IDisposable
 
         var entityPath = Path.Combine(_tempDirectory, "characters", "grog.md");
         Directory.CreateDirectory(Path.GetDirectoryName(entityPath)!);
-        await File.WriteAllTextAsync(entityPath, "---\nid: characters/grog\nname: Grog\n---\n\nUncommitted notes.");
+        await File.WriteAllTextAsync(entityPath, "---\nid: characters/grog\nname: Grog\n---\n\nUncommitted notes.", TestContext.Current.CancellationToken);
 
         _sourceControl.Bind(_session);
         _sourceControl.RefreshStatus();
@@ -79,7 +79,7 @@ public class SourceControlViewModelTests : IDisposable
 
         var entityPath = Path.Combine(_tempDirectory, "characters", "grog.md");
         Directory.CreateDirectory(Path.GetDirectoryName(entityPath)!);
-        await File.WriteAllTextAsync(entityPath, "---\nid: characters/grog\nname: Grog\n---\n\nNotes.");
+        await File.WriteAllTextAsync(entityPath, "---\nid: characters/grog\nname: Grog\n---\n\nNotes.", TestContext.Current.CancellationToken);
 
         _sourceControl.Bind(_session);
         _sourceControl.CommitMessage = "Add Grog";

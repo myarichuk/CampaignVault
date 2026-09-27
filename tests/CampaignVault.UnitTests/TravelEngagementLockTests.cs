@@ -56,7 +56,7 @@ public class TravelEngagementLockTests
         var handler = new TravelChangeHandler(new EncounterResolver());
         var change = new TravelChange { CharacterId = "char_1", DestinationLocationId = "loc_2" };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("cannot travel because they are GrappledBy with character", result.Message);
@@ -90,10 +90,10 @@ public class TravelEngagementLockTests
         var handler = new TravelChangeHandler(new EncounterResolver());
 
         context.Batch = [alone];
-        Assert.False((await handler.ApplyAsync(alone, context)).Success);
+        Assert.False((await handler.ApplyAsync(alone, context, TestContext.Current.CancellationToken)).Success);
 
         context.Batch = [new TravelChange { CharacterId = "chars/guard", DestinationLocationId = "loc_2" }, alone];
-        var together = await handler.ApplyAsync(alone, context);
+        var together = await handler.ApplyAsync(alone, context, TestContext.Current.CancellationToken);
         Assert.DoesNotContain("cannot travel because", together.Message ?? "");
     }
 }

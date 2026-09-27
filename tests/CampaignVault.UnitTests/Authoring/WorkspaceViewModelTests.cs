@@ -42,8 +42,7 @@ public class WorkspaceViewModelTests : IDisposable
 
         var entityPath = Path.Combine(_tempDirectory, "characters", "grog.md");
         Directory.CreateDirectory(Path.GetDirectoryName(entityPath)!);
-        await File.WriteAllTextAsync(entityPath,
-            "---\nid: characters/grog\nname: Grog\n---\n\nA barbarian.");
+        await File.WriteAllTextAsync(entityPath, "---\nid: characters/grog\nname: Grog\n---\n\nA barbarian.", TestContext.Current.CancellationToken);
 
         _workspace.BindSession(_session);
         _workspace.RefreshFilesList();

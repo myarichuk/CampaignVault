@@ -51,7 +51,7 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
         }
 
         await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest { Id = regionId, Name = "Fuzz Test Ground", Type = LocationType.Region });
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // RUN LOOP
         await simulator.Kickoff(regionId);
@@ -87,12 +87,12 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
             var advanceResult = await tools.AdvanceWorld(days, 0, "Fuzz time skip");
             Assert.True(advanceResult.Success);
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             // 3. Invariant Checks
             foreach (var id in npcs)
             {
-                var charDoc = await session.LoadAsync<Character>(id);
+                var charDoc = await session.LoadAsync<Character>(id, TestContext.Current.CancellationToken);
                 Assert.NotNull(charDoc.Social);
                 Assert.NotNull(charDoc.Needs);
 

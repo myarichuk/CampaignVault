@@ -30,7 +30,7 @@ public class LevelUpResourcePoolTests : IClassFixture<RavenDBFixture>
         {
             Id = keys.Config(campaign),
             ActiveSystem = RulesetSystem.Dnd5e,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var wizard = new Character
         {
@@ -53,8 +53,8 @@ public class LevelUpResourcePoolTests : IClassFixture<RavenDBFixture>
                 }
             }
         };
-        await session.StoreAsync(wizard);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(wizard, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = RulesetDataTestHelper.CreateLevelUpHandler(keys);
         var ctx = CreateContext(session, campaign);
@@ -64,7 +64,7 @@ public class LevelUpResourcePoolTests : IClassFixture<RavenDBFixture>
         {
             CharacterId = "chars/wizard",
             LevelsGained = 1,
-        }, ctx);
+        }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(5, ((Dnd5eExtension)wizard.SystemStats).Level);
@@ -87,7 +87,7 @@ public class LevelUpResourcePoolTests : IClassFixture<RavenDBFixture>
         {
             Id = keys.Config(campaign),
             ActiveSystem = RulesetSystem.Dnd5e,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var gish = new Character
         {
@@ -116,8 +116,8 @@ public class LevelUpResourcePoolTests : IClassFixture<RavenDBFixture>
                 }
             }
         };
-        await session.StoreAsync(gish);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(gish, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = RulesetDataTestHelper.CreateLevelUpHandler(keys);
         var ctx = CreateContext(session, campaign);
@@ -128,7 +128,7 @@ public class LevelUpResourcePoolTests : IClassFixture<RavenDBFixture>
             CharacterId = "chars/gish",
             LevelsGained = 1,
             ClassGained = "Wizard",
-        }, ctx);
+        }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal("Fighter 5 / Wizard 4", gish.ClassLevel);

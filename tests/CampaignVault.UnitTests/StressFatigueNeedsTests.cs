@@ -61,8 +61,7 @@ public class StressFatigueNeedsTests : IClassFixture<RavenDBFixture>
         var ctx = CreateContext(session, character);
         var handler = new NeedChangeHandler();
 
-        var result = await handler.ApplyAsync(
-            new NeedChange { CharacterId = character.Id, Need = need, Delta = 35f }, ctx);
+        var result = await handler.ApplyAsync(new NeedChange { CharacterId = character.Id, Need = need, Delta = 35f }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(35f, character.Needs.ActiveNeeds[need]);

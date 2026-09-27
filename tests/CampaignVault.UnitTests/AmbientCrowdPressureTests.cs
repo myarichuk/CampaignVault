@@ -86,7 +86,7 @@ public class AmbientCrowdPressureContributorTests
             Time: new CampaignTime { TotalDaysElapsed = 5 },
             Config: new CampaignConfig(),
             Session: null!,
-            Scene: scene));
+            Scene: scene), TestContext.Current.CancellationToken);
 
         Assert.Contains(pressures, p =>
             p.GroupingKey == AmbientCrowdPressureContributor.SparseCrowdGroupingKey
@@ -115,7 +115,7 @@ public class AmbientCrowdPressureContributorTests
             Time: new CampaignTime(),
             Config: new CampaignConfig(),
             Session: null!,
-            Scene: scene));
+            Scene: scene), TestContext.Current.CancellationToken);
 
         // The sparse-crowd nag retired with points of interest: seeding flavor is no longer pushed.
         Assert.DoesNotContain(pressures, p => p.GroupingKey == AmbientCrowdPressureContributor.SparseCrowdGroupingKey);
@@ -151,7 +151,7 @@ public class AmbientCrowdPressureContributorTests
             Time: new CampaignTime(),
             Config: new CampaignConfig(),
             Session: null!,
-            Scene: scene));
+            Scene: scene), TestContext.Current.CancellationToken);
 
         Assert.Contains(pressures, p =>
             p.GroupingKey == AmbientCrowdPressureContributor.UnanchoredBeatGroupingKey

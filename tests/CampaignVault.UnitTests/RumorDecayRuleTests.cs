@@ -33,7 +33,7 @@ public class RumorDecayRuleTests
         };
 
         // 20 days of silence crosses both the Nascent->Spreading (7d) and Spreading->Peak (7d) thresholds.
-        var result = await _sut.ApplyAsync(CreateContext(20, rumor));
+        var result = await _sut.ApplyAsync(CreateContext(20, rumor), TestContext.Current.CancellationToken);
 
         var delta = Assert.Single(result.Deltas.OfType<RumorEvolves>());
         Assert.Equal("rumors/r1", delta.RumorId);
@@ -55,7 +55,7 @@ public class RumorDecayRuleTests
         };
 
         // 40 days of silence crosses both the Peak->Fading (14d) and Fading->Forgotten (14d) thresholds.
-        var result = await _sut.ApplyAsync(CreateContext(40, rumor));
+        var result = await _sut.ApplyAsync(CreateContext(40, rumor), TestContext.Current.CancellationToken);
 
         var delta = Assert.Single(result.Deltas.OfType<RumorEvolves>());
         Assert.Equal(RumorState.Forgotten, delta.NewState);
@@ -76,7 +76,7 @@ public class RumorDecayRuleTests
         };
 
         // 10 days crosses only the first threshold (7d); not enough remaining (3d) to reach Peak.
-        var result = await _sut.ApplyAsync(CreateContext(10, rumor));
+        var result = await _sut.ApplyAsync(CreateContext(10, rumor), TestContext.Current.CancellationToken);
 
         var delta = Assert.Single(result.Deltas.OfType<RumorEvolves>());
         Assert.Equal(RumorState.Spreading, delta.NewState);
@@ -94,7 +94,7 @@ public class RumorDecayRuleTests
             LastStateChangeDay = 0
         };
 
-        var result = await _sut.ApplyAsync(CreateContext(3, rumor));
+        var result = await _sut.ApplyAsync(CreateContext(3, rumor), TestContext.Current.CancellationToken);
 
         Assert.Empty(result.Deltas);
         Assert.Empty(result.Narratives);

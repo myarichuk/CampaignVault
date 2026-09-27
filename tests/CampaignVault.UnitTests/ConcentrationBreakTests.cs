@@ -111,7 +111,7 @@ public class ConcentrationBreakTests : IClassFixture<RavenDBFixture>
         var ctx = CreateContext(session, character);
         var handler = new HpChangeHandler(new FixedRollService(1)); // 1 + 0 bonus = 1, well below DC 10
 
-        var result = await handler.ApplyAsync(new HpChange { CharacterId = character.Id, Delta = -20 }, ctx);
+        var result = await handler.ApplyAsync(new HpChange { CharacterId = character.Id, Delta = -20 }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.DoesNotContain(character.SystemStats!.StatusEffects, e => e.Name.Contains("Concentration"));
@@ -125,7 +125,7 @@ public class ConcentrationBreakTests : IClassFixture<RavenDBFixture>
         var ctx = CreateContext(session, character);
         var handler = new HpChangeHandler(new FixedRollService(20)); // 20 + 0 bonus, well above DC
 
-        var result = await handler.ApplyAsync(new HpChange { CharacterId = character.Id, Delta = -20 }, ctx);
+        var result = await handler.ApplyAsync(new HpChange { CharacterId = character.Id, Delta = -20 }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Contains(character.SystemStats!.StatusEffects, e => e.Name.Contains("Concentration"));
@@ -139,7 +139,7 @@ public class ConcentrationBreakTests : IClassFixture<RavenDBFixture>
         var ctx = CreateContext(session, character);
         var handler = new HpChangeHandler(new FixedRollService(1));
 
-        var result = await handler.ApplyAsync(new HpChange { CharacterId = character.Id, Delta = 5 }, ctx);
+        var result = await handler.ApplyAsync(new HpChange { CharacterId = character.Id, Delta = 5 }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Contains(character.SystemStats!.StatusEffects, e => e.Name.Contains("Concentration"));
@@ -153,7 +153,7 @@ public class ConcentrationBreakTests : IClassFixture<RavenDBFixture>
         var ctx = CreateContext(session, character);
         var handler = new HpChangeHandler(new FixedRollService(1)); // 1 + 2 bonus = 3, well below DC 10
 
-        var result = await handler.ApplyAsync(new HpChange { CharacterId = character.Id, Delta = -20 }, ctx);
+        var result = await handler.ApplyAsync(new HpChange { CharacterId = character.Id, Delta = -20 }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.DoesNotContain(character.SystemStats!.StatusEffects, e => e.Name.Contains("Concentration"));
@@ -167,7 +167,7 @@ public class ConcentrationBreakTests : IClassFixture<RavenDBFixture>
         var ctx = CreateContext(session, character);
         var handler = new HpChangeHandler(new FixedRollService(15)); // 15 + 8 bonus, well above DC
 
-        var result = await handler.ApplyAsync(new HpChange { CharacterId = character.Id, Delta = -20 }, ctx);
+        var result = await handler.ApplyAsync(new HpChange { CharacterId = character.Id, Delta = -20 }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Contains(character.SystemStats!.StatusEffects, e => e.Name.Contains("Concentration"));
@@ -181,7 +181,7 @@ public class ConcentrationBreakTests : IClassFixture<RavenDBFixture>
         var ctx = CreateContext(session, character);
         var handler = new HpChangeHandler(new FixedRollService(10)); // 10 + 6 fallback mod = 16, above DC 10
 
-        var result = await handler.ApplyAsync(new HpChange { CharacterId = character.Id, Delta = -20 }, ctx);
+        var result = await handler.ApplyAsync(new HpChange { CharacterId = character.Id, Delta = -20 }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Contains(character.SystemStats!.StatusEffects, e => e.Name.Contains("Concentration"));
@@ -199,7 +199,7 @@ public class ConcentrationBreakTests : IClassFixture<RavenDBFixture>
         {
             CharacterId = character.Id,
             Effect = new StatusEffect { Name = "Concentration: Hold Person", Category = "Debuff" }
-        }, ctx);
+        }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Single(character.SystemStats!.StatusEffects);

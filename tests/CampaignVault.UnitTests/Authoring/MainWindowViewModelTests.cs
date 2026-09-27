@@ -84,7 +84,7 @@ public class MainWindowViewModelTests
             var entityPath = Path.Combine(tempDirectory, "characters", "grog.md");
             Directory.CreateDirectory(Path.GetDirectoryName(entityPath)!);
             const string onDisk = "---\nid: characters/grog\nname: Grog\n---\nSaved.";
-            await File.WriteAllTextAsync(entityPath, onDisk);
+            await File.WriteAllTextAsync(entityPath, onDisk, TestContext.Current.CancellationToken);
 
             var entity = new VaultEntity
             {
@@ -95,13 +95,13 @@ public class MainWindowViewModelTests
             };
             viewModel.Workspace.SelectedNode = new EntityNodeViewModel(
                 entity, VaultSyncState.Synced, isGitDirty: false, hasLocalFile: true);
-            await Task.Delay(50); // allow the async SelectedNode handler to load EditorText
+            await Task.Delay(50, TestContext.Current.CancellationToken); // allow the async SelectedNode handler to load EditorText
 
             const string unsavedEdit = "---\nid: characters/grog\nname: Grog\n---\nUnsaved edit.";
             viewModel.EditorText = unsavedEdit;
             Assert.True(viewModel.IsEditorDirty);
 
-            await File.WriteAllTextAsync(entityPath, onDisk + " Changed on disk.");
+            await File.WriteAllTextAsync(entityPath, onDisk + " Changed on disk.", TestContext.Current.CancellationToken);
 
             await viewModel.ReloadActiveFileContentAsync();
 

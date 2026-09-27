@@ -101,7 +101,7 @@ public class TravelEngagementClearingTests
         var (handler, context, _, eventSpy) = BuildScenario(characters, locations);
 
         var change = new TravelChange { CharacterId = traveler.Id, DestinationLocationId = destination.Id, TravelCostHoursOverride = 1.0 };
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Empty(traveler.SystemStats!.EngagementRelations);
@@ -139,7 +139,7 @@ public class TravelEngagementClearingTests
         var (handler, context, _, _) = BuildScenario(characters, locations);
 
         var change = new TravelChange { CharacterId = traveler.Id, DestinationLocationId = destination.Id, TravelCostHoursOverride = 1.0 };
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Single(traveler.SystemStats!.EngagementRelations);
@@ -189,7 +189,7 @@ public class TravelEngagementClearingTests
         ((ChangeContext)context).Batch = [travelerChange, companionChange];
         ((ChangeContext)context).BatchIndex = 0;
 
-        var result = await handler.ApplyAsync(travelerChange, context);
+        var result = await handler.ApplyAsync(travelerChange, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Single(traveler.SystemStats!.EngagementRelations);
@@ -217,7 +217,7 @@ public class TravelEngagementClearingTests
         var (handler, context, _, _) = BuildScenario(characters, locations);
 
         var change = new TravelChange { CharacterId = traveler.Id, DestinationLocationId = destination.Id, TravelCostHoursOverride = 1.0 };
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Empty(traveler.SystemStats!.EngagementRelations);
@@ -258,7 +258,7 @@ public class TravelEngagementClearingTests
         );
 
         var change = new TravelChange { CharacterId = traveler.Id, DestinationLocationId = destination.Id, TravelCostHoursOverride = 4.0 };
-        var result = await travelHandler.ApplyAsync(change, context);
+        var result = await travelHandler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         var travelEvents = eventSpy.Received.Where(e => e.Category == EventCategory.Travel).ToList();

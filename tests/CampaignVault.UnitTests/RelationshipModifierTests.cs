@@ -147,7 +147,7 @@ public class RelationshipModifierTests
             Parameters = new Dictionary<string, string> { { "skill", "Persuasion" }, { "dc", "15" } }
         };
 
-        var result = await resolver.ResolveAsync(context, action);
+        var result = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(result.Result.Success);
         Assert.Contains("trusted friend", result.Result.Narrative);
@@ -191,7 +191,7 @@ public class RelationshipModifierTests
             Parameters = new Dictionary<string, string> { { "skill", "Persuasion" }, { "dc", "15" } }
         };
 
-        var result = await resolver.ResolveAsync(context, action);
+        var result = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(result.Result.Success);
         Assert.Contains("trusted friend", result.Result.Narrative);
@@ -234,7 +234,7 @@ public class RelationshipModifierTests
             Parameters = new Dictionary<string, string> { { "skill", "Athletics" }, { "dc", "15" } }
         };
 
-        var result = await resolver.ResolveAsync(context, action);
+        var result = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(result.Result.Success);
         Assert.DoesNotContain("trusted friend", result.Result.Narrative);
@@ -284,7 +284,7 @@ public class RelationshipModifierTests
             Parameters = new Dictionary<string, string> { { "skill", "Persuasion" } }
         };
 
-        var result = await resolver.ResolveAsync(context, action);
+        var result = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(result.Result.Success);
         Assert.Contains("friendly", result.Result.Narrative);

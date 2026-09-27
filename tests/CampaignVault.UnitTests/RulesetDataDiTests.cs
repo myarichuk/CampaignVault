@@ -121,7 +121,7 @@ public class RulesetDataDiTests
                 SpellName = "fireball"
             },
             context,
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("fireball", result.Message!, System.StringComparison.OrdinalIgnoreCase);

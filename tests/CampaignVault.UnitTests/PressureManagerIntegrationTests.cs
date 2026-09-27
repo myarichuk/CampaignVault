@@ -32,7 +32,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             // Create a campaign config with cap = 1
-            await session.StoreAsync(new CampaignConfig { Id = new CampaignDocumentKeys().Config(campaignName), MaxPressuresPerResponse = 1 });
+            await session.StoreAsync(new CampaignConfig { Id = new CampaignDocumentKeys().Config(campaignName), MaxPressuresPerResponse = 1 }, TestContext.Current.CancellationToken);
             
             // Create a location with multiple issues
             var loc = new Location
@@ -45,15 +45,15 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
                 AmbientCrowd = "Should be a crowd here",
                 CampaignName = campaignName
             };
-            await session.StoreAsync(loc);
+            await session.StoreAsync(loc, TestContext.Current.CancellationToken);
             
             // Missing parent
             loc.ParentLocationId = "locations/parent-" + Guid.NewGuid();
             var parent = new Location { Id = loc.ParentLocationId, Name = "Parent", CampaignName = campaignName };
             // Parent doesn't link back -> 1 pressure
-            await session.StoreAsync(parent);
+            await session.StoreAsync(parent, TestContext.Current.CancellationToken);
             
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Without capping, this would emit 3 pressures:
@@ -91,8 +91,8 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
                 Type = LocationType.Room, // No exits -> 1 pressure
                 CampaignName = campaignName
             };
-            await session.StoreAsync(loc);
-            await session.SaveChangesAsync();
+            await session.StoreAsync(loc, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Config max defaults to 5. We have 2 pressures.
@@ -127,9 +127,9 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
                 Type = LocationType.Room, // No exits -> 1 pressure
                 CampaignName = campaignName
             };
-            await session.StoreAsync(loc);
-            await session.StoreAsync(new Campaign { Name = campaignName, Id = new CampaignDocumentKeys().Meta(campaignName) });
-            await session.SaveChangesAsync();
+            await session.StoreAsync(loc, TestContext.Current.CancellationToken);
+            await session.StoreAsync(new Campaign { Name = campaignName, Id = new CampaignDocumentKeys().Meta(campaignName) }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // 1. Initial read -> Surface pressure
@@ -178,7 +178,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
             var cs = _fixture.CreateCampaignSession(session, campaignName);
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = npcId, Name = "Owen", KeepAlive = true });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, campaignName);
@@ -219,7 +219,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
             await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Tavern" });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = npcId, Name = "Owen", KeepAlive = true, CurrentLocationId = locId });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         Task<ToolResult<TurnResult>> Turn(WorldChange[]? changes) => tools.TakeTurn(new TakeTurnRequest
@@ -266,7 +266,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             var config = new CampaignConfig { Id = new CampaignDocumentKeys().Config(campaignName), MaxPressuresPerResponse = 50 };
-            await session.StoreAsync(config);
+            await session.StoreAsync(config, TestContext.Current.CancellationToken);
 
             // Add 3 characters who are all starving (same GroupingKey)
             for (var i = 1; i <= 3; i++)
@@ -291,7 +291,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
                     }
                 };
                 c.Needs.ActiveNeeds["hunger"] = 95f;
-                await session.StoreAsync(c);
+                await session.StoreAsync(c, TestContext.Current.CancellationToken);
             }
 
             var uniqueChar = new Character { 
@@ -308,10 +308,10 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
                     StatusEffects = [new StatusEffect { Name = "Super Unique Curse", Category = "Curse" }]
                 }
             };
-            await session.StoreAsync(uniqueChar);
+            await session.StoreAsync(uniqueChar, TestContext.Current.CancellationToken);
 
             session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5));
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.GetWorldState("locations/any", campaignName);
@@ -370,7 +370,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
                 }
             };
             companion.Needs.ActiveNeeds["thirst"] = 95f;
-            await session.StoreAsync(companion);
+            await session.StoreAsync(companion, TestContext.Current.CancellationToken);
 
             var bystander = new Character
             {
@@ -388,10 +388,10 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
                 }
             };
             bystander.Needs.ActiveNeeds["thirst"] = 95f;
-            await session.StoreAsync(bystander);
+            await session.StoreAsync(bystander, TestContext.Current.CancellationToken);
 
             session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5));
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.GetWorldState("locations/any", campaignName);
@@ -412,9 +412,9 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Campaign { Name = campaignName, Id = keys.Meta(campaignName) });
-            await session.StoreAsync(new CampaignConfig { Id = keys.Config(campaignName), PressureCooldownDays = 3, PressureEscalationCount = 3 });
-            await session.SaveChangesAsync();
+            await session.StoreAsync(new Campaign { Name = campaignName, Id = keys.Meta(campaignName) }, TestContext.Current.CancellationToken);
+            await session.StoreAsync(new CampaignConfig { Id = keys.Config(campaignName), PressureCooldownDays = 3, PressureEscalationCount = 3 }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var pressures = new[] { new WorldPressureItem(PressureSeverity.NarrativePrompt, "locations/test", "You should do X.", "test-issue") };
@@ -423,7 +423,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             var items1 = await pm.FilterAndCapAsync(session, campaignName, 1, pressures);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
             var p1 = PressureManager.ToDisplayStrings(items1);
             Assert.Single(items1);
             Assert.Contains("NARRATIVE PROMPT", p1[0]);
@@ -434,7 +434,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             var itemsSup = await pm.FilterAndCapAsync(session, campaignName, 2, pressures);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
             Assert.Empty(itemsSup);
         }
 
@@ -442,7 +442,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             var items2 = await pm.FilterAndCapAsync(session, campaignName, 4, pressures);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
             var p2 = PressureManager.ToDisplayStrings(items2);
             Assert.Single(items2);
             Assert.Contains("NARRATIVE PROMPT", p2[0]);
@@ -452,7 +452,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             var items3 = await pm.FilterAndCapAsync(session, campaignName, 7, pressures);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
             var p3 = PressureManager.ToDisplayStrings(items3);
             Assert.Single(items3);
             Assert.Contains("NARRATIVE PROMPT", p3[0]);
@@ -462,7 +462,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             var items4 = await pm.FilterAndCapAsync(session, campaignName, 10, pressures);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
             var p4 = PressureManager.ToDisplayStrings(items4);
             Assert.Single(items4);
             Assert.Contains("ENGINE WARNING", p4[0]);
@@ -477,9 +477,9 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Campaign { Id = new CampaignDocumentKeys().Meta(campName), Name = campName });
-            await session.StoreAsync(new CampaignConfig { Id = new CampaignDocumentKeys().Config(campName), MaxPressuresPerResponse = 5 });
-            await session.SaveChangesAsync();
+            await session.StoreAsync(new Campaign { Id = new CampaignDocumentKeys().Meta(campName), Name = campName }, TestContext.Current.CancellationToken);
+            await session.StoreAsync(new CampaignConfig { Id = new CampaignDocumentKeys().Config(campName), MaxPressuresPerResponse = 5 }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var manager = new PressureManager(new CampaignDocumentKeys());
@@ -500,7 +500,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             cappedItems = await manager.FilterAndCapAsync(session, campName, 10, rawPressures);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
         var formatted = PressureManager.ToDisplayStrings(cappedItems);
 
@@ -522,7 +522,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         // Verify the discarded ones did NOT trigger cooldowns
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            var camp = await session.LoadAsync<Campaign>(new CampaignDocumentKeys().Meta(campName));
+            var camp = await session.LoadAsync<Campaign>(new CampaignDocumentKeys().Meta(campName), TestContext.Current.CancellationToken);
             
             // Only 5 cooldowns should be registered
             Assert.Equal(5, camp.PressureCooldowns.Count);
@@ -545,9 +545,9 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Campaign { Name = campaignName, Id = keys.Meta(campaignName) });
-            await session.StoreAsync(new CampaignConfig { Id = keys.Config(campaignName), PressureCooldownDays = 3, PressureEscalationCount = 3 });
-            await session.SaveChangesAsync();
+            await session.StoreAsync(new Campaign { Name = campaignName, Id = keys.Meta(campaignName) }, TestContext.Current.CancellationToken);
+            await session.StoreAsync(new CampaignConfig { Id = keys.Config(campaignName), PressureCooldownDays = 3, PressureEscalationCount = 3 }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Day 1: morale at 8% — surfaces.
@@ -555,7 +555,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         {
             var pressures = new[] { new WorldPressureItem(PressureSeverity.NarrativePrompt, "chars/1", "Morale is at 8%.", "Character:Morale") };
             var items = await pm.FilterAndCapAsync(session, campaignName, 1, pressures);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
             Assert.Single(items);
         }
 
@@ -565,7 +565,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         {
             var pressures = new[] { new WorldPressureItem(PressureSeverity.NarrativePrompt, "chars/1", "Morale is at 3%.", "Character:Morale") };
             var items = await pm.FilterAndCapAsync(session, campaignName, 2, pressures);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
             Assert.Empty(items);
         }
     }
@@ -579,9 +579,9 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Campaign { Name = campaignName, Id = keys.Meta(campaignName) });
-            await session.StoreAsync(new CampaignConfig { Id = keys.Config(campaignName), PressureCooldownDays = 3, PressureEscalationCount = 3 });
-            await session.SaveChangesAsync();
+            await session.StoreAsync(new Campaign { Name = campaignName, Id = keys.Meta(campaignName) }, TestContext.Current.CancellationToken);
+            await session.StoreAsync(new CampaignConfig { Id = keys.Config(campaignName), PressureCooldownDays = 3, PressureEscalationCount = 3 }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Day 1: "starving" nag surfaces.
@@ -589,7 +589,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         {
             var pressures = new[] { new WorldPressureItem(PressureSeverity.NarrativePrompt, "chars/1", "Character is starving.", "Character:Morale") };
             var items = await pm.FilterAndCapAsync(session, campaignName, 1, pressures);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
             Assert.Single(items);
         }
 
@@ -600,7 +600,7 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
         {
             var pressures = new[] { new WorldPressureItem(PressureSeverity.NarrativePrompt, "chars/1", "Character is dehydrated.", "Character:Morale") };
             var items = await pm.FilterAndCapAsync(session, campaignName, 2, pressures);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
             var displayed = PressureManager.ToDisplayStrings(items);
             Assert.Single(items);
             Assert.Contains("NARRATIVE PROMPT", displayed[0]);
@@ -620,16 +620,16 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
             var campaign = new Campaign { Name = campaignName, Id = keys.Meta(campaignName) };
             // Simulate a pre-existing cooldown entry written before LastSignature existed.
             campaign.PressureCooldowns[$"{PressureSeverity.NarrativePrompt}:Character:Morale:chars/1"] = new PressureState(1, 0);
-            await session.StoreAsync(campaign);
-            await session.StoreAsync(new CampaignConfig { Id = keys.Config(campaignName), PressureCooldownDays = 3, PressureEscalationCount = 3 });
-            await session.SaveChangesAsync();
+            await session.StoreAsync(campaign, TestContext.Current.CancellationToken);
+            await session.StoreAsync(new CampaignConfig { Id = keys.Config(campaignName), PressureCooldownDays = 3, PressureEscalationCount = 3 }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             var pressures = new[] { new WorldPressureItem(PressureSeverity.NarrativePrompt, "chars/1", "Character is starving.", "Character:Morale") };
             var items = await pm.FilterAndCapAsync(session, campaignName, 2, pressures);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
             // Null LastSignature => treated as "no prior signature to compare" => normal cooldown applies.
             Assert.Empty(items);
         }
@@ -656,8 +656,8 @@ public class PressureManagerIntegrationTests : IClassFixture<RavenDBFixture>
                 Name = "Gate Yards",
                 CampaignName = campaignName,
                 RecentlyDeparted = [new DepartedNpcRecord("chars/kael", "Kael", 2, "Followed their daily routine")]
-            });
-            await session.SaveChangesAsync();
+            }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.GetWorldState(locationId, campaignName);

@@ -1,0 +1,15 @@
+# Shadow & Steel: weighted cosh for quiet nonlethal work (original homebrew stats, not an SRD entry).
+name: ss_sap
+system: dnd5e
+category: Weapon
+tags: [simple, melee, light]
+description: A leather-wrapped weight of lead or sand, made for quiet knockouts. Deals 1d4 bludgeoning damage.
+properties:
+  damage: 1d4
+  damageType: bludgeoning
+  weight: 2
+  costGp: 5
+  specialMechanic: "Favored for nonlethal takedowns; any knockout intent resolves narratively / by GM arbitration."
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

@@ -92,15 +92,15 @@ public class CombatEventTests : IClassFixture<RavenDBFixture>
 
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            await session.StoreAsync(new CampaignConfig { Id = keys.Config(effective), EnabledModeIds = ["astral"] });
+            await session.StoreAsync(new CampaignConfig { Id = keys.Config(effective), EnabledModeIds = ["astral"] }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new ModeEncounter
             {
                 Id = keys.ModeCurrent(effective, "astral"),
                 ModeId = "astral",
                 IsActive = true,
                 Participants = [new ModeParticipantState { CharacterId = body }]
-            });
-            await session.SaveChangesAsync();
+            }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var astral = Substitute.For<IInteractionMode>();
@@ -129,7 +129,7 @@ public class CombatEventTests : IClassFixture<RavenDBFixture>
         Assert.Equal(2, actors.Distinct().Count());
 
         using var verify = _fixture.Store.OpenAsyncSession();
-        var savedBody = await verify.LoadAsync<Character>(body);
+        var savedBody = await verify.LoadAsync<Character>(body, TestContext.Current.CancellationToken);
         Assert.Equal(10 - 5, savedBody.CurrentHp);
     }
 }

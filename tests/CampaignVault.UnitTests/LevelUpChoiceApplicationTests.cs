@@ -30,7 +30,7 @@ public class LevelUpChoiceApplicationTests : IClassFixture<RavenDBFixture>
         {
             Id = keys.Config(campaign),
             ActiveSystem = RulesetSystem.Dnd5e,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var fighter = new Character
         {
@@ -43,8 +43,8 @@ public class LevelUpChoiceApplicationTests : IClassFixture<RavenDBFixture>
             ClassLevel = "Fighter 2",
             SystemStats = new Dnd5eExtension { Constitution = 14, HitDie = "d10", Level = 2 },
         };
-        await session.StoreAsync(fighter);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(fighter, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = RulesetDataTestHelper.CreateLevelUpHandler(keys);
         var ctx = CreateContext(session, campaign);
@@ -55,7 +55,7 @@ public class LevelUpChoiceApplicationTests : IClassFixture<RavenDBFixture>
             CharacterId = "chars/fighter",
             LevelsGained = 1,
             Choices = new Dictionary<string, string> { ["subclass"] = "battleMaster" },
-        }, ctx);
+        }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         var entry = Assert.Single(fighter.SystemStats!.LevelUpChoices);
@@ -75,7 +75,7 @@ public class LevelUpChoiceApplicationTests : IClassFixture<RavenDBFixture>
         {
             Id = keys.Config(campaign),
             ActiveSystem = RulesetSystem.Dnd5e,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var fighter = new Character
         {
@@ -88,8 +88,8 @@ public class LevelUpChoiceApplicationTests : IClassFixture<RavenDBFixture>
             ClassLevel = "Fighter 3",
             SystemStats = new Dnd5eExtension { Constitution = 14, HitDie = "d10", Level = 3 },
         };
-        await session.StoreAsync(fighter);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(fighter, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = RulesetDataTestHelper.CreateLevelUpHandler(keys);
         var ctx = CreateContext(session, campaign);
@@ -100,14 +100,14 @@ public class LevelUpChoiceApplicationTests : IClassFixture<RavenDBFixture>
             CharacterId = "chars/fighter2",
             LevelsGained = 1,
             Choices = new Dictionary<string, string> { ["asiOrFeat"] = "greatWeaponMaster" },
-        }, ctx);
+        }, ctx, TestContext.Current.CancellationToken);
 
         await handler.ApplyAsync(new LevelUpChange
         {
             CharacterId = "chars/fighter2",
             LevelsGained = 1,
             Choices = new Dictionary<string, string> { ["asiOrFeat"] = "sentinel" },
-        }, ctx);
+        }, ctx, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, fighter.SystemStats!.LevelUpChoices.Count);
         Assert.Equal("greatWeaponMaster", fighter.SystemStats.LevelUpChoices[0].Value);
@@ -127,7 +127,7 @@ public class LevelUpChoiceApplicationTests : IClassFixture<RavenDBFixture>
         {
             Id = keys.Config(campaign),
             ActiveSystem = RulesetSystem.Dnd5e,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var fighter = new Character
         {
@@ -140,8 +140,8 @@ public class LevelUpChoiceApplicationTests : IClassFixture<RavenDBFixture>
             ClassLevel = "Fighter 3",
             SystemStats = new Dnd5eExtension { Strength = 16, Dexterity = 12, Constitution = 14, HitDie = "d10", Level = 3 },
         };
-        await session.StoreAsync(fighter);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(fighter, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = RulesetDataTestHelper.CreateLevelUpHandler(keys);
         var ctx = CreateContext(session, campaign);
@@ -152,7 +152,7 @@ public class LevelUpChoiceApplicationTests : IClassFixture<RavenDBFixture>
             CharacterId = "chars/fighter3",
             LevelsGained = 1,
             AbilityScoreIncreases = new Dictionary<string, int> { ["Strength"] = 2 },
-        }, ctx);
+        }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(18, ((Dnd5eExtension)fighter.SystemStats!).Strength);

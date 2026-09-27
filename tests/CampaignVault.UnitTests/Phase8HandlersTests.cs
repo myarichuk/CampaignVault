@@ -47,7 +47,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         var ctx = CreateContext(session);
         var handler = new ItemUpdateHandler(new TestFakeEmbeddingService());
 
-        var result = await handler.ApplyAsync(new ItemUpdate { ItemId = "items/missing", NewState = "Broken" }, ctx);
+        var result = await handler.ApplyAsync(new ItemUpdate { ItemId = "items/missing", NewState = "Broken" }, ctx, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("not found", result.Message, StringComparison.OrdinalIgnoreCase);
@@ -62,8 +62,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             Id = "items/1", Name = "Sword", Tags = ["sharp"], DistinctiveFeatures = ["rusty"],
             Properties = new Dictionary<string, object> { ["weight"] = 5 }
         };
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var ctx = CreateContext(session);
 
@@ -80,11 +80,11 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             PropertiesToRemove = ["weight"]
         };
 
-        var result = await handler.ApplyAsync(update, ctx);
+        var result = await handler.ApplyAsync(update, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
 
-        var loaded = await session.LoadAsync<Item>("items/1");
+        var loaded = await session.LoadAsync<Item>("items/1", TestContext.Current.CancellationToken);
         Assert.Equal("Glows blue", loaded.CurrentState);
         Assert.Contains("glowing", loaded.Tags);
         Assert.DoesNotContain("sharp", loaded.Tags);
@@ -99,8 +99,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
         var c = new Character { Id = "chars/1", Name = "Bob", VisualTags = ["clean"], DistinctiveFeatures = ["scar"] };
-        await session.StoreAsync(c);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(c, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var ctx = CreateContext(session);
 
@@ -117,11 +117,11 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             FeaturesToRemove = ["scar"]
         };
 
-        var result = await handler.ApplyAsync(update, ctx);
+        var result = await handler.ApplyAsync(update, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
 
-        var loaded = await session.LoadAsync<Character>("chars/1");
+        var loaded = await session.LoadAsync<Character>("chars/1", TestContext.Current.CancellationToken);
         Assert.Equal("Muddy and tired", loaded.CurrentAppearance);
         Assert.Contains("muddy", loaded.VisualTags);
         Assert.DoesNotContain("clean", loaded.VisualTags);
@@ -134,8 +134,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
         var c = new Character { Id = "chars/giver", Name = "Quest Giver", KeepAlive = false };
-        await session.StoreAsync(c);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(c, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var ctx = CreateContext(session);
         var handler = new CharacterUpdateHandler(
@@ -145,10 +145,10 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         {
             CharacterId = "chars/giver",
             KeepAlive = true
-        }, ctx);
+        }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
-        var loaded = await session.LoadAsync<Character>("chars/giver");
+        var loaded = await session.LoadAsync<Character>("chars/giver", TestContext.Current.CancellationToken);
         Assert.True(loaded.KeepAlive);
     }
 
@@ -157,8 +157,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
         var c = new Character { Id = "chars/bob", Name = "Bob" };
-        await session.StoreAsync(c);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(c, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var ctx = CreateContext(session);
 
@@ -171,11 +171,11 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             Importance = MemoryImportance.Core
         };
 
-        var result = await handler.ApplyAsync(update, ctx);
+        var result = await handler.ApplyAsync(update, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
 
-        var loaded = await session.LoadAsync<Character>("chars/bob");
+        var loaded = await session.LoadAsync<Character>("chars/bob", TestContext.Current.CancellationToken);
         Assert.True(loaded.Psychology.Memories.ContainsKey("The Rusty Tavern"));
         var mem = loaded.Psychology.Memories["The Rusty Tavern"];
         Assert.Equal("Owned by Bram.", mem.Details);
@@ -191,8 +191,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
         var c = new Character { Id = "chars/nulltopic", Name = "Nell" };
         c.Psychology.Memories["The Old Mill"] = new MemoryNode { Topic = null!, Details = "Burned down." };
-        await session.StoreAsync(c);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(c, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new KnowledgeUpdateHandler(new TestFakeEmbeddingService());
         var result = await handler.ApplyAsync(new KnowledgeUpdate
@@ -200,10 +200,10 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             CharacterId = "chars/nulltopic",
             Topic = "The Old Mill",
             Details = "Burned down."
-        }, CreateContext(session));
+        }, CreateContext(session), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
-        var loaded = await session.LoadAsync<Character>("chars/nulltopic");
+        var loaded = await session.LoadAsync<Character>("chars/nulltopic", TestContext.Current.CancellationToken);
         Assert.Equal("The Old Mill", loaded.Psychology.Memories["The Old Mill"].Topic);
     }
 
@@ -219,8 +219,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             DayAcquired = 2,
             Importance = MemoryImportance.Important
         };
-        await session.StoreAsync(c);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(c, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var ctx = CreateContext(session);
 
@@ -232,11 +232,11 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             Details = "Actually a thief!"
         };
 
-        var result = await handler.ApplyAsync(update, ctx);
+        var result = await handler.ApplyAsync(update, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
 
-        var loaded = await session.LoadAsync<Character>("chars/alice");
+        var loaded = await session.LoadAsync<Character>("chars/alice", TestContext.Current.CancellationToken);
         var mem = loaded.Psychology.Memories["Mayor Bob"];
         Assert.Equal("Actually a thief!", mem.Details);
         // Importance unchanged because it was null in update
@@ -256,8 +256,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             Details = "Unchanged.",
             DayAcquired = 3
         };
-        await session.StoreAsync(c);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(c, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var ctx = CreateContext(session);
         var handler = new KnowledgeUpdateHandler(new TestFakeEmbeddingService());
@@ -269,10 +269,10 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             CreateMemory = false
         };
 
-        var result = await handler.ApplyAsync(update, ctx);
+        var result = await handler.ApplyAsync(update, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
-        var loaded = await session.LoadAsync<Character>("chars/skip");
+        var loaded = await session.LoadAsync<Character>("chars/skip", TestContext.Current.CancellationToken);
         Assert.False(loaded.Psychology.Memories.ContainsKey("New Topic"));
         Assert.Equal("Unchanged.", loaded.Psychology.Memories["Old Topic"].Details);
     }
@@ -282,8 +282,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
         var c = new Character { Id = "chars/enriched", Name = "Enriched" };
-        await session.StoreAsync(c);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(c, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var ctx = CreateContext(session);
         var handler = new KnowledgeUpdateHandler(new TestFakeEmbeddingService());
@@ -300,10 +300,10 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             SourceEventIds = ["events/party-gift"]
         };
 
-        var result = await handler.ApplyAsync(update, ctx);
+        var result = await handler.ApplyAsync(update, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
-        var mem = (await session.LoadAsync<Character>("chars/enriched")).Psychology.Memories["Party gift"];
+        var mem = (await session.LoadAsync<Character>("chars/enriched", TestContext.Current.CancellationToken)).Psychology.Memories["Party gift"];
         Assert.Equal(MemorySource.Experienced, mem.Source);
         Assert.Equal(EmotionalValence.Positive, mem.Valence);
         Assert.Equal(0.8, mem.Salience);
@@ -316,8 +316,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
         var c = new Character { Id = "chars/sourced", Name = "Sourced" };
-        await session.StoreAsync(c);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(c, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var ctx = CreateContext(session);
         var handler = new KnowledgeUpdateHandler(new TestFakeEmbeddingService());
@@ -329,10 +329,10 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             SourceEventIds = ["events/valen-lirael-caravans"]
         };
 
-        var result = await handler.ApplyAsync(update, ctx);
+        var result = await handler.ApplyAsync(update, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
-        var mem = (await session.LoadAsync<Character>("chars/sourced")).Psychology.Memories["Caravan disappearances"];
+        var mem = (await session.LoadAsync<Character>("chars/sourced", TestContext.Current.CancellationToken)).Psychology.Memories["Caravan disappearances"];
         Assert.Equal(["events/valen-lirael-caravans"], mem.SourceEventIds);
     }
 
@@ -341,8 +341,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
         var c = new Character { Id = "chars/infer", Name = "Infer" };
-        await session.StoreAsync(c);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(c, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var ctx = CreateContext(session);
         var handler = new KnowledgeUpdateHandler(new TestFakeEmbeddingService());
@@ -354,10 +354,10 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             SourceEventIds = ["events/square-brawl"]
         };
 
-        var result = await handler.ApplyAsync(update, ctx);
+        var result = await handler.ApplyAsync(update, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
-        var mem = (await session.LoadAsync<Character>("chars/infer")).Psychology.Memories["The brawl"];
+        var mem = (await session.LoadAsync<Character>("chars/infer", TestContext.Current.CancellationToken)).Psychology.Memories["The brawl"];
         Assert.NotEqual(MemorySource.Witnessed, mem.Source);
         Assert.NotEqual(MemorySource.Experienced, mem.Source);
         Assert.Equal(EmotionalValence.Negative, mem.Valence);
@@ -370,8 +370,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
         var c = new Character { Id = "chars/infer-missing-source", Name = "InferMissingSource" };
-        await session.StoreAsync(c);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(c, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var ctx = CreateContext(session);
         var handler = new KnowledgeUpdateHandler(new TestFakeEmbeddingService());
@@ -383,7 +383,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             Source = MemorySource.Witnessed
         };
 
-        var result = await handler.ApplyAsync(update, ctx);
+        var result = await handler.ApplyAsync(update, ctx, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("sourceEventIds", result.Message, StringComparison.OrdinalIgnoreCase);
@@ -394,8 +394,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
         var c = new Character { Id = "chars/saw-prose", Name = "SawProse" };
-        await session.StoreAsync(c);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(c, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var ctx = CreateContext(session);
         var handler = new KnowledgeUpdateHandler(new TestFakeEmbeddingService());
@@ -406,10 +406,10 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             Details = "I saw the watch drag a man from the tavern."
         };
 
-        var result = await handler.ApplyAsync(update, ctx);
+        var result = await handler.ApplyAsync(update, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, result.Message);
-        var mem = (await session.LoadAsync<Character>("chars/saw-prose")).Psychology.Memories["The square"];
+        var mem = (await session.LoadAsync<Character>("chars/saw-prose", TestContext.Current.CancellationToken)).Psychology.Memories["The square"];
         Assert.NotEqual(MemorySource.Witnessed, mem.Source);
         Assert.NotEqual(MemorySource.Experienced, mem.Source);
     }
@@ -427,8 +427,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             Importance = MemoryImportance.Important,
             Salience = 0
         };
-        await session.StoreAsync(c);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(c, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var ctx = CreateContext(session);
         var handler = new KnowledgeUpdateHandler(new TestFakeEmbeddingService());
@@ -439,10 +439,10 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             Details = "Updated details."
         };
 
-        var result = await handler.ApplyAsync(update, ctx);
+        var result = await handler.ApplyAsync(update, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
-        var mem = (await session.LoadAsync<Character>("chars/legacy")).Psychology.Memories["Mayor"];
+        var mem = (await session.LoadAsync<Character>("chars/legacy", TestContext.Current.CancellationToken)).Psychology.Memories["Mayor"];
         Assert.Equal(MemorySource.Told, mem.Source);
         Assert.Equal(EmotionalValence.Neutral, mem.Valence);
         // Migration sets Salience to 0.5, then the existing-memory touch nudges it +0.1.
@@ -456,8 +456,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
         var l = new Location
             { Id = "locations/1", Name = "Tavern", VisualTags = ["clean"], DistinctiveFeatures = ["sign"] };
-        await session.StoreAsync(l);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(l, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var ctx = CreateContext(session);
 
@@ -472,11 +472,11 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             FeaturesToRemove = ["sign"]
         };
 
-        var result = await handler.ApplyAsync(update, ctx);
+        var result = await handler.ApplyAsync(update, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
 
-        var loaded = await session.LoadAsync<Location>("locations/1");
+        var loaded = await session.LoadAsync<Location>("locations/1", TestContext.Current.CancellationToken);
         Assert.Equal("On fire!", loaded.CurrentState);
         Assert.Contains("smoky", loaded.VisualTags);
         Assert.DoesNotContain("clean", loaded.VisualTags);
@@ -494,8 +494,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             Name = "Offline NPC",
             CurrentActivity = "Idle"
         };
-        await session.StoreAsync(character);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(character, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var ctx = CreateContext(session);
         var handler = new ActivityChangeHandler();
@@ -504,7 +504,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         {
             CharacterId = character.Id,
             NewActivity = "Patrolling"
-        }, ctx);
+        }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal("Patrolling", character.CurrentActivity);
@@ -516,8 +516,8 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
     {
         using var session = _fixture.Store.OpenAsyncSession();
         var character = new Character { Id = "chars/wanderer", Name = "Wanderer" };
-        await session.StoreAsync(character);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(character, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var ctx = CreateContext(session);
         var handler = new ActivityChangeHandler();
@@ -527,7 +527,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             CharacterId = character.Id,
             NewLocationId = "locations/does-not-exist",
             UpdateLocation = true
-        }, ctx);
+        }, ctx, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Null(character.CurrentLocationId);
@@ -539,9 +539,9 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
         var character = new Character { Id = "chars/wanderer2", Name = "Wanderer2" };
         var location = new Location { Id = "locations/rented-room", Name = "Rented Room" };
-        await session.StoreAsync(character);
-        await session.StoreAsync(location);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(character, TestContext.Current.CancellationToken);
+        await session.StoreAsync(location, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var ctx = new ChangeContext(
             session,
@@ -567,7 +567,7 @@ public class Phase8HandlersTests : IClassFixture<RavenDBFixture>
             CharacterId = character.Id,
             NewLocationId = location.Id,
             UpdateLocation = true
-        }, ctx);
+        }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, result.Message);
         Assert.Equal(location.Id, character.CurrentLocationId);

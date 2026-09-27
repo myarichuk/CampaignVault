@@ -33,7 +33,7 @@ public class FactionEcosystemRuleTests
         );
 
         // Act
-        var result = await rule.ApplyAsync(context);
+        var result = await rule.ApplyAsync(context, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEmpty(result.Deltas);
@@ -77,7 +77,7 @@ public class FactionEcosystemRuleTests
         );
 
         // Act
-        var result = await rule.ApplyAsync(context);
+        var result = await rule.ApplyAsync(context, TestContext.Current.CancellationToken);
 
         // Assert
         var stateChange = result.Deltas.OfType<FactionStateChange>().FirstOrDefault(c => c.FactionId == "factions/1");
@@ -124,7 +124,7 @@ public class FactionEcosystemRuleTests
         );
 
         // Act
-        var result = await rule.ApplyAsync(context);
+        var result = await rule.ApplyAsync(context, TestContext.Current.CancellationToken);
 
         // Assert
         // They should skip interaction because domains don't overlap and Random (0.8) >= 0.7
@@ -167,7 +167,7 @@ public class FactionEcosystemRuleTests
         );
 
         // Act
-        var result = await rule.ApplyAsync(context);
+        var result = await rule.ApplyAsync(context, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(2.0f, faction1.EconomicDemand["Weapon"]);

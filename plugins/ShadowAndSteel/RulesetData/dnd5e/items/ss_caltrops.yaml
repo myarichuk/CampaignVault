@@ -1,0 +1,12 @@
+# Shadow & Steel: bag of sharpened spikes for slowing pursuit (original homebrew, not an SRD entry).
+# Rogue/ninja staple (cf. tetsubishi). Single bag covers one chokepoint; spikes dull with use.
+name: ss_caltrops
+system: dnd5e
+category: Tool
+tags: [rogue, trap, adventuring-gear]
+description: A bag of sharpened four-pointed spikes scattered to lame pursuers. One bag covers a doorway or narrow passage.
+properties:
+  weight: 2
+  costGp: 1
+  uses: 1
+  specialMechanic: "Creatures crossing the spiked area risk foot wounds and slowed movement until tended (narrative/GM-arbitrated; not computed by the engine)."

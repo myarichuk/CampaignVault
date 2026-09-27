@@ -45,7 +45,7 @@ public class WorldEventRuleTests
 
         // Day 0 to 1: first cycle crosses interval boundary
         var context1 = CreateContext(daysElapsed: 1, daysPassed: 1, [evt]);
-        var result1 = await rule.ApplyAsync(context1);
+        var result1 = await rule.ApplyAsync(context1, TestContext.Current.CancellationToken);
 
         // Should emit both EventOccurred effect and WorldEventStatusChange
         Assert.Equal(2, result1.Deltas.Count);
@@ -57,7 +57,7 @@ public class WorldEventRuleTests
         // Cycles = (5 / 1) - (1 / 1) = 5 - 1 = 4 cycles crossed
         evt.LastTriggeredDay = 1;
         var context2 = CreateContext(daysElapsed: 5, daysPassed: 4, [evt]);
-        var result2 = await rule.ApplyAsync(context2);
+        var result2 = await rule.ApplyAsync(context2, TestContext.Current.CancellationToken);
 
         // Should fire once because cycles were crossed and lastTriggeredDay (1) != currentDays (5)
         var statusChanges = result2.Deltas.OfType<WorldEventStatusChange>().ToList();
@@ -85,12 +85,12 @@ public class WorldEventRuleTests
 
         // Before target day
         var context1 = CreateContext(daysElapsed: 9, daysPassed: 1, [evt]);
-        var result1 = await rule.ApplyAsync(context1);
+        var result1 = await rule.ApplyAsync(context1, TestContext.Current.CancellationToken);
         Assert.Empty(result1.Deltas);
 
         // Exactly at target day
         var context2 = CreateContext(daysElapsed: 10, daysPassed: 1, [evt]);
-        var result2 = await rule.ApplyAsync(context2);
+        var result2 = await rule.ApplyAsync(context2, TestContext.Current.CancellationToken);
 
         var statusChange = result2.Deltas.OfType<WorldEventStatusChange>().First();
         Assert.Equal(WorldEventStatus.Triggered, statusChange.NewStatus);
@@ -120,7 +120,7 @@ public class WorldEventRuleTests
 
         // Simulate later days
         var context = CreateContext(daysElapsed: 15, daysPassed: 5, [evt]);
-        var result = await rule.ApplyAsync(context);
+        var result = await rule.ApplyAsync(context, TestContext.Current.CancellationToken);
 
         // Should not fire again because status is Triggered, not Pending
         Assert.Empty(result.Deltas);

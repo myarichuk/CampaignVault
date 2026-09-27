@@ -34,7 +34,7 @@ public class DeepDiveToolsGetItemTests : IClassFixture<RavenDBFixture>
                 HolderId = "locations/armory",
                 ItemDetails = [new ItemDetailUpsertRequest { Name = "Dent", Description = "A large dent near the rim." }],
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.GetItem(itemId, TestCampaignDefaults.Slug);
@@ -62,7 +62,7 @@ public class DeepDiveToolsGetItemTests : IClassFixture<RavenDBFixture>
                 Description = "An item that exists.",
                 HolderId = "locations/armory",
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var indexWaitStart = DateTime.UtcNow;
@@ -74,7 +74,7 @@ public class DeepDiveToolsGetItemTests : IClassFixture<RavenDBFixture>
                 break;
             }
 
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
         }
 
         var result = await tools.GetItem("items/nonexistent-" + Guid.NewGuid(), TestCampaignDefaults.Slug);

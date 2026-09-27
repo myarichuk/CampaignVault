@@ -1,0 +1,16 @@
+# Shadow & Steel: fantasy-tier utility axe, thrown or swung (original homebrew seed data).
+name: ss_hand_axe
+system: swade
+category: Weapon
+tags: [fantasy, melee, thrown]
+description: Small woodsman's axe that splits shields as well as firewood. Damage Strength + d6. Thrown at Close range.
+properties:
+  damage: Str+d6
+  damageType: slashing
+  weight: 2
+  costGp: 75
+  range: Close
+  era: fantasy
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

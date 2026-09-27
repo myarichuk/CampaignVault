@@ -1,0 +1,15 @@
+# Shadow & Steel: Thief-inspired fire arrow (original homebrew, not an SRD entry).
+name: ss_fire_arrow
+system: dnd5e
+category: Consumable
+tags: [rogue, thief, ammunition, adventuring-gear]
+description: Arrow with an alchemical head that bursts into flame on impact — the one that goes kaboom. Single use.
+properties:
+  damage: 1d6
+  damageType: fire
+  weight: 0.1
+  costGp: 25
+  uses: 1
+  chargeUnit: arrows
+  ammoFor: shortbow, longbow
+  specialMechanic: "Erupts in flame on impact, igniting oil, powder, and other flammables nearby (narrative/GM-arbitrated; not computed by the engine)."

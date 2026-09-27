@@ -27,8 +27,8 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
 
         var parent = new Location { Id = "locations/parent", Name = "Parent", Exits = [] };
-        await session.StoreAsync(parent);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(parent, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var repository = _fixture.CreateRepository();
         var request = new LocationUpsertRequest
@@ -41,7 +41,7 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
         };
 
         var child = await repository.UpsertLocationAsync(_fixture.CreateCampaignSession(session, "test-camp"), request);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Check if child got the reverse exit to the parent (derived)
         Assert.Single(child.Exits);
@@ -49,7 +49,7 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
         Assert.Equal("Leads back toward Parent (A sturdy oak door)", child.Exits[0].Description);
 
         using var verifySession = _fixture.Store.OpenAsyncSession();
-        var reloadedParent = await verifySession.LoadAsync<Location>("locations/parent");
+        var reloadedParent = await verifySession.LoadAsync<Location>("locations/parent", TestContext.Current.CancellationToken);
         Assert.NotNull(reloadedParent);
         Assert.Single(reloadedParent.Exits);
         Assert.Equal("locations/child", reloadedParent.Exits[0].TargetLocationId);
@@ -64,8 +64,8 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
         var keys = new CampaignDocumentKeys();
         var configId = keys.Config("test-camp-hp");
         var config = new CampaignConfig { Id = configId, ActiveSystem = RulesetSystem.Dnd5e };
-        await session.StoreAsync(config);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(config, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = RulesetDataTestHelper.CreateCharacterCreateHandler();
         var change = new CharacterCreate
@@ -82,12 +82,12 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
             NullLogger.Instance,
             [], dispatcher, null, null, "test-camp-hp");
 
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
 
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var character = await session.LoadAsync<Character>("characters/test-char-hp");
+        var character = await session.LoadAsync<Character>("characters/test-char-hp", TestContext.Current.CancellationToken);
         Assert.NotNull(character);
         Assert.Equal(25, character.MaxHp);
         Assert.Equal(25, character.CurrentHp);
@@ -102,9 +102,9 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
         var keys = new CampaignDocumentKeys();
         var configId = keys.Config("test-camp-collision");
         var config = new CampaignConfig { Id = configId, ActiveSystem = RulesetSystem.Dnd5e };
-        await session.StoreAsync(config);
-        await session.StoreAsync(new Character { Id = "chars/already-there", Name = "Original", MaxHp = 10, CurrentHp = 10 });
-        await session.SaveChangesAsync();
+        await session.StoreAsync(config, TestContext.Current.CancellationToken);
+        await session.StoreAsync(new Character { Id = "chars/already-there", Name = "Original", MaxHp = 10, CurrentHp = 10 }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = RulesetDataTestHelper.CreateCharacterCreateHandler();
         var dispatcher = new WorldChangeDispatcher([handler], keys, NullLogger<WorldChangeDispatcher>.Instance);
@@ -130,8 +130,8 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
 
         var sourceId = "chars/relationship-source-" + Guid.NewGuid();
-        await session.StoreAsync(new Character { Id = sourceId, Name = "Source" });
-        await session.SaveChangesAsync();
+        await session.StoreAsync(new Character { Id = sourceId, Name = "Source" }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new RelationshipChangeHandler();
         var dispatcher = new WorldChangeDispatcher([handler], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
@@ -156,8 +156,8 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
 
         var locId = "locations/add-exit-source-" + Guid.NewGuid();
-        await session.StoreAsync(new Location { Id = locId, Name = "Source", Exits = [] });
-        await session.SaveChangesAsync();
+        await session.StoreAsync(new Location { Id = locId, Name = "Source", Exits = [] }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new LocationUpdateHandler();
         var dispatcher = new WorldChangeDispatcher([handler], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
@@ -173,7 +173,7 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
         Assert.True(result.Success);
         Assert.Contains(result.Summary, s => s.Contains("locations/ghost-target") && s.Contains("does not currently exist"));
 
-        var reloaded = await session.LoadAsync<Location>(locId);
+        var reloaded = await session.LoadAsync<Location>(locId, TestContext.Current.CancellationToken);
         Assert.Single(reloaded.Exits);
         Assert.Equal("locations/ghost-target", reloaded.Exits[0].TargetLocationId);
     }
@@ -184,8 +184,8 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
 
         var questId = "quests/archive-target-" + Guid.NewGuid();
-        await session.StoreAsync(new Quest { Id = questId, Title = "Archivable Quest", IsArchived = false });
-        await session.SaveChangesAsync();
+        await session.StoreAsync(new Quest { Id = questId, Title = "Archivable Quest", IsArchived = false }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new ArchiveEntityChangeHandler();
         var dispatcher = new WorldChangeDispatcher([handler], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
@@ -199,7 +199,7 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
             _ => Task.CompletedTask);
 
         Assert.True(archiveResult.Success);
-        var afterArchive = await session.LoadAsync<Quest>(questId);
+        var afterArchive = await session.LoadAsync<Quest>(questId, TestContext.Current.CancellationToken);
         Assert.True(afterArchive.IsArchived);
 
         var restoreResult = await dispatcher.DispatchAsync(
@@ -211,7 +211,7 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
             _ => Task.CompletedTask);
 
         Assert.True(restoreResult.Success);
-        var afterRestore = await session.LoadAsync<Quest>(questId);
+        var afterRestore = await session.LoadAsync<Quest>(questId, TestContext.Current.CancellationToken);
         Assert.False(afterRestore.IsArchived);
     }
 
@@ -240,13 +240,13 @@ public class Phase6HandlersTests : IClassFixture<RavenDBFixture>
             {
                 Id = visibleId, Title = "Visible Thread", State = PlotThreadState.Active,
                 CampaignName = slug, IsArchived = false
-            });
+            }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new PlotThread
             {
                 Id = archivedId, Title = "Archived Thread", State = PlotThreadState.Active,
                 CampaignName = slug, IsArchived = true
-            });
-            await session.SaveChangesAsync();
+            }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         using (var session = _fixture.Store.OpenAsyncSession())

@@ -1,0 +1,13 @@
+# Shadow & Steel: fitted armor for a warhorse or riding beast (original homebrew; no ORC text copied).
+# Seeded as Tool (not Armor): mountAcBonus is a hint for the mount's protection and has
+# no AC effect if worn by a humanoid.
+name: ss_barding
+system: pf2e
+category: Tool
+tags: [mount, cavalry, adventuring-gear]
+description: Leather-and-plate barding fitted to a warhorse. Protects the mount; unwearable by humanoids.
+properties:
+  bulk: 4
+  costGp: 60
+  mountAcBonus: 3
+  specialMechanic: "Fitted to one mount; grants the mount +3 AC while worn (narrative/GM-arbitrated; not computed by the engine)."

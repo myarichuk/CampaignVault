@@ -43,7 +43,7 @@ public class EngagementRelationChangeHandlerTests
         };
 
         var handler = new EngagementRelationChangeHandler();
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
 
@@ -72,7 +72,7 @@ public class EngagementRelationChangeHandlerTests
             Bidirectional = true
         };
 
-        var result = await new EngagementRelationChangeHandler().ApplyAsync(change, context);
+        var result = await new EngagementRelationChangeHandler().ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal("ranting at", actor.SystemStats.EngagementRelations[0].Verb);
@@ -98,7 +98,7 @@ public class EngagementRelationChangeHandlerTests
             Bidirectional = true
         };
 
-        var result = await new EngagementRelationChangeHandler().ApplyAsync(change, context);
+        var result = await new EngagementRelationChangeHandler().ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Empty(actor.SystemStats.EngagementRelations);
@@ -121,7 +121,7 @@ public class EngagementRelationChangeHandlerTests
             Bidirectional = false
         };
 
-        var result = await new EngagementRelationChangeHandler().ApplyAsync(change, context);
+        var result = await new EngagementRelationChangeHandler().ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Single(actor.SystemStats.EngagementRelations);

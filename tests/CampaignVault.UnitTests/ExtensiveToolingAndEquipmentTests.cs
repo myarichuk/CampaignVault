@@ -60,7 +60,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 character.SemanticVector[i] = (float)i / 384f;
             }
 
-            await session.StoreAsync(character);
+            await session.StoreAsync(character, TestContext.Current.CancellationToken);
 
             var location = new Location
             {
@@ -70,8 +70,8 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 SemanticVector = new float[384],
                 EmbeddingTextHash = "location_hash_xyz"
             };
-            await session.StoreAsync(location);
-            await session.SaveChangesAsync();
+            await session.StoreAsync(location, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Call get_scene - should strip embedding vectors
@@ -108,9 +108,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 SemanticVector = new float[384],
                 EmbeddingTextHash = "forest_semantic_hash"
             };
-            await session.StoreAsync(location);
+            await session.StoreAsync(location, TestContext.Current.CancellationToken);
             session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Call search_world with keyword - should strip vectors
@@ -158,8 +158,8 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                     }
                 }
             };
-            await session.StoreAsync(character);
-            await session.SaveChangesAsync();
+            await session.StoreAsync(character, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.GetNpcContext(characterId, campaignName: campaign);
@@ -196,7 +196,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
         using (var session = _store.OpenAsyncSession())
         {
             var location = new Location { Id = locationId, Name = "Courtyard", CampaignName = campaign };
-            await session.StoreAsync(location);
+            await session.StoreAsync(location, TestContext.Current.CancellationToken);
 
             var character = new Character
             {
@@ -207,7 +207,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 CurrentLocationId = locationId,
                 CampaignName = campaign
             };
-            await session.StoreAsync(character);
+            await session.StoreAsync(character, TestContext.Current.CancellationToken);
 
             // Base layer: tunic
             var tunic = new Item
@@ -220,7 +220,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 EquipLayer = EquipLayers.Base,
                 CoreCategory = ItemCategories.Clothing
             };
-            await session.StoreAsync(tunic);
+            await session.StoreAsync(tunic, TestContext.Current.CancellationToken);
 
             // Armor layer: chainmail
             var chainmail = new Item
@@ -234,7 +234,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 CoreCategory = ItemCategories.Armor,
                 Properties = new Dictionary<string, object> { { "acBonus", 4 }, { "armorType", "medium" } }
             };
-            await session.StoreAsync(chainmail);
+            await session.StoreAsync(chainmail, TestContext.Current.CancellationToken);
 
             // Outer layer: cloak
             var cloak = new Item
@@ -248,9 +248,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 CoreCategory = ItemCategories.Clothing,
                 Properties = new Dictionary<string, object> { { "warmth", 2f } }
             };
-            await session.StoreAsync(cloak);
+            await session.StoreAsync(cloak, TestContext.Current.CancellationToken);
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Equip base layer
@@ -298,7 +298,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 MaxHp = 20,
                 CampaignName = campaign
             };
-            await session.StoreAsync(character);
+            await session.StoreAsync(character, TestContext.Current.CancellationToken);
 
             var sword1 = new Item
             {
@@ -310,7 +310,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 CoreCategory = ItemCategories.Weapon,
                 Properties = new Dictionary<string, object> { { "acBonus", 1 } }
             };
-            await session.StoreAsync(sword1);
+            await session.StoreAsync(sword1, TestContext.Current.CancellationToken);
 
             var sword2 = new Item
             {
@@ -322,9 +322,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 CoreCategory = ItemCategories.Weapon,
                 Properties = new Dictionary<string, object> { { "acBonus", 3 } }
             };
-            await session.StoreAsync(sword2);
+            await session.StoreAsync(sword2, TestContext.Current.CancellationToken);
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Equip first sword
@@ -348,8 +348,8 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            var replacedSword = await session.LoadAsync<Item>(sword1Id);
-            var newSword = await session.LoadAsync<Item>(sword2Id);
+            var replacedSword = await session.LoadAsync<Item>(sword1Id, TestContext.Current.CancellationToken);
+            var newSword = await session.LoadAsync<Item>(sword2Id, TestContext.Current.CancellationToken);
             Assert.False(replacedSword.IsEquipped);
             Assert.True(newSword.IsEquipped);
         }
@@ -375,7 +375,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 MaxHp = 35,
                 CampaignName = campaign
             };
-            await session.StoreAsync(character);
+            await session.StoreAsync(character, TestContext.Current.CancellationToken);
 
             var chest = new Item
             {
@@ -387,7 +387,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 CoreCategory = ItemCategories.Armor,
                 Properties = new Dictionary<string, object> { { "acBonus", 6 } }
             };
-            await session.StoreAsync(chest);
+            await session.StoreAsync(chest, TestContext.Current.CancellationToken);
 
             // Pauldron with StackGroup - allows two to coexist on same zone/layer
             var pauldronLeft = new Item
@@ -402,7 +402,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 RequiresEquippedTags = ["chest-armor"]
             };
             chest.Tags.Add("chest-armor");
-            await session.StoreAsync(pauldronLeft);
+            await session.StoreAsync(pauldronLeft, TestContext.Current.CancellationToken);
 
             var pauldronRight = new Item
             {
@@ -415,18 +415,18 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 CoreCategory = ItemCategories.Armor,
                 RequiresEquippedTags = ["chest-armor"]
             };
-            await session.StoreAsync(pauldronRight);
-            await session.SaveChangesAsync();
+            await session.StoreAsync(pauldronRight, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             // Update chest tags to add the prerequisite marker
             using (var session2 = _store.OpenAsyncSession())
             {
-                var chestReload = await session2.LoadAsync<Item>(chestId);
+                var chestReload = await session2.LoadAsync<Item>(chestId, TestContext.Current.CancellationToken);
                 if (!chestReload.Tags.Contains("chest-armor"))
                 {
                     chestReload.Tags.Add("chest-armor");
                 }
-                await session2.SaveChangesAsync();
+                await session2.SaveChangesAsync(TestContext.Current.CancellationToken);
             }
         }
 
@@ -468,7 +468,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 MaxHp = 18,
                 CampaignName = campaign
             };
-            await session.StoreAsync(character);
+            await session.StoreAsync(character, TestContext.Current.CancellationToken);
 
             // Ceremonial robe - incompatible with "wielded-weapon" tag
             var robe = new Item
@@ -481,7 +481,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 CoreCategory = ItemCategories.Clothing,
                 IncompatibleWithEquippedTags = ["wielded-weapon"]
             };
-            await session.StoreAsync(robe);
+            await session.StoreAsync(robe, TestContext.Current.CancellationToken);
 
             // Holy sword - tagged as "wielded-weapon"
             var sword = new Item
@@ -494,9 +494,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 CoreCategory = ItemCategories.Weapon,
                 Tags = ["wielded-weapon"]
             };
-            await session.StoreAsync(sword);
+            await session.StoreAsync(sword, TestContext.Current.CancellationToken);
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Equip sword first (the incompatibility is declared on the robe, so it's only checked
@@ -527,7 +527,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
         using (var session = _store.OpenAsyncSession())
         {
             var location = new Location { Id = locationId, Name = "Trailhead", CampaignName = campaign };
-            await session.StoreAsync(location);
+            await session.StoreAsync(location, TestContext.Current.CancellationToken);
 
             var character = new Character
             {
@@ -538,7 +538,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 CurrentLocationId = locationId,
                 CampaignName = campaign
             };
-            await session.StoreAsync(character);
+            await session.StoreAsync(character, TestContext.Current.CancellationToken);
 
             var oldBoots = new Item
             {
@@ -549,7 +549,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 EquipLayer = EquipLayers.Base,
                 CoreCategory = ItemCategories.Clothing
             };
-            await session.StoreAsync(oldBoots);
+            await session.StoreAsync(oldBoots, TestContext.Current.CancellationToken);
 
             var newBoots = new Item
             {
@@ -561,9 +561,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 CoreCategory = ItemCategories.Clothing,
                 Properties = new Dictionary<string, object> { { "speedModifier", 1f } }
             };
-            await session.StoreAsync(newBoots);
+            await session.StoreAsync(newBoots, TestContext.Current.CancellationToken);
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Equip old boots first
@@ -637,7 +637,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                     { "armorType", "light" }
                 }
             };
-            await session.StoreAsync(leather);
+            await session.StoreAsync(leather, TestContext.Current.CancellationToken);
 
             // Shield: +2 AC
             var shield = new Item
@@ -650,9 +650,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 CoreCategory = ItemCategories.Armor,
                 Properties = new Dictionary<string, object> { { "acBonus", 2 } }
             };
-            await session.StoreAsync(shield);
+            await session.StoreAsync(shield, TestContext.Current.CancellationToken);
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Before any armor: AC = 10 + 3 (dex) = 13
@@ -698,7 +698,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 MaxHp = 22,
                 CampaignName = campaign
             };
-            await session.StoreAsync(character);
+            await session.StoreAsync(character, TestContext.Current.CancellationToken);
 
             var coat = new Item
             {
@@ -710,7 +710,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 CoreCategory = ItemCategories.Clothing,
                 Properties = new Dictionary<string, object> { { "warmth", 5f } }
             };
-            await session.StoreAsync(coat);
+            await session.StoreAsync(coat, TestContext.Current.CancellationToken);
 
             var furs = new Item
             {
@@ -722,9 +722,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 CoreCategory = ItemCategories.Clothing,
                 Properties = new Dictionary<string, object> { { "warmth", 7f } }
             };
-            await session.StoreAsync(furs);
+            await session.StoreAsync(furs, TestContext.Current.CancellationToken);
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Equip winter coat: warmth = 5
@@ -771,7 +771,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
         {
             // Setup location
             var location = new Location { Id = locationId, Name = "Goblin Lair", CampaignName = campaign };
-            await session.StoreAsync(location);
+            await session.StoreAsync(location, TestContext.Current.CancellationToken);
 
             // Setup Elara with D&D 5e stats
             var elara = new Character
@@ -788,7 +788,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                     Wisdom = 14     // +2 modifier
                 }
             };
-            await session.StoreAsync(elara);
+            await session.StoreAsync(elara, TestContext.Current.CancellationToken);
 
             // Elara's armor
             var armor = new Item
@@ -805,7 +805,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                     { "armorType", "light" }
                 }
             };
-            await session.StoreAsync(armor);
+            await session.StoreAsync(armor, TestContext.Current.CancellationToken);
 
             // Elara's sword
             var sword = new Item
@@ -818,7 +818,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 CoreCategory = ItemCategories.Weapon,
                 Properties = new Dictionary<string, object> { { "acBonus", 1 } }
             };
-            await session.StoreAsync(sword);
+            await session.StoreAsync(sword, TestContext.Current.CancellationToken);
 
             // Goblin 1
             var goblin1 = new Character
@@ -835,7 +835,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                     Wisdom = 10
                 }
             };
-            await session.StoreAsync(goblin1);
+            await session.StoreAsync(goblin1, TestContext.Current.CancellationToken);
 
             // Goblin 2
             var goblin2 = new Character
@@ -852,9 +852,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                     Wisdom = 12
                 }
             };
-            await session.StoreAsync(goblin2);
+            await session.StoreAsync(goblin2, TestContext.Current.CancellationToken);
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Equip Elara

@@ -48,8 +48,8 @@ public class LocationAndRumorHandlersTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
         
         var targetId = "locations/target-" + Guid.NewGuid().ToString("N");
-        await session.StoreAsync(new Location { Id = targetId, Name = "Target Tavern" });
-        await session.SaveChangesAsync();
+        await session.StoreAsync(new Location { Id = targetId, Name = "Target Tavern" }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Wait for Indexing so suggestion lookup finds it
         var indexWaitStart = DateTime.UtcNow;
@@ -60,7 +60,7 @@ public class LocationAndRumorHandlersTests : IClassFixture<RavenDBFixture>
             {
                 break;
             }
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
         }
 
         var handler = new LocationUpdateHandler();
@@ -70,7 +70,7 @@ public class LocationAndRumorHandlersTests : IClassFixture<RavenDBFixture>
         };
 
         var ctx = CreateContext(session);
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("Did you mean", result.Message);
@@ -94,8 +94,8 @@ public class LocationAndRumorHandlersTests : IClassFixture<RavenDBFixture>
             VisualTags = ["tag-remove"],
             DistinctiveFeatures = ["feat-remove"]
         };
-        await session.StoreAsync(loc);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(loc, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new LocationUpdateHandler();
         var change = new LocationUpdate
@@ -115,12 +115,12 @@ public class LocationAndRumorHandlersTests : IClassFixture<RavenDBFixture>
         };
 
         var ctx = CreateContext(session, new Dictionary<string, Location> { { locId, loc } });
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
 
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var reloaded = await session.LoadAsync<Location>(locId);
+        var reloaded = await session.LoadAsync<Location>(locId, TestContext.Current.CancellationToken);
         Assert.Equal("After", reloaded.Name);
         Assert.Equal("After Desc", reloaded.Description);
         Assert.Null(reloaded.AmbientCrowd);
@@ -153,12 +153,12 @@ public class LocationAndRumorHandlersTests : IClassFixture<RavenDBFixture>
         };
 
         var ctx = CreateContext(session);
-        var resultCreate = await createHandler.ApplyAsync(createChange, ctx);
+        var resultCreate = await createHandler.ApplyAsync(createChange, ctx, TestContext.Current.CancellationToken);
         Assert.True(resultCreate.Success);
 
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var created = await session.LoadAsync<Rumor>(rumorId);
+        var created = await session.LoadAsync<Rumor>(rumorId, TestContext.Current.CancellationToken);
         Assert.NotNull(created);
         Assert.Equal("The Dragon", created.Subject);
         Assert.Equal("A dragon was spotted.", created.CurrentText);
@@ -173,14 +173,14 @@ public class LocationAndRumorHandlersTests : IClassFixture<RavenDBFixture>
             NewText = "The dragon burned a barn."
         };
 
-        var resultEvolve = await evolvesHandler.ApplyAsync(evolveChange, ctx);
+        var resultEvolve = await evolvesHandler.ApplyAsync(evolveChange, ctx, TestContext.Current.CancellationToken);
         Assert.True(resultEvolve.Success);
 
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Refresh session
         using var session2 = _fixture.Store.OpenAsyncSession();
-        var evolved = await session2.LoadAsync<Rumor>(rumorId);
+        var evolved = await session2.LoadAsync<Rumor>(rumorId, TestContext.Current.CancellationToken);
         Assert.NotNull(evolved);
         Assert.Equal(RumorState.Spreading, evolved.State);
         Assert.Equal("The dragon burned a barn.", evolved.CurrentText);

@@ -92,8 +92,8 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             CampaignName = campaign,
             ItemDetails = [new ItemDetail { Id = "detail-existing", Name = "Scratch", Description = "A scratch." }],
         };
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var embeddingService = new StubEmbeddingService();
         var handler = new ItemUpdateHandler(embeddingService);
@@ -105,7 +105,7 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             UpsertItemDetail = new ItemDetailUpsertRequest { Id = "detail-existing", Name = "Deep scratch", Description = "A deep scratch." },
         };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         var detail = Assert.Single(item.ItemDetails);
@@ -128,8 +128,8 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             CampaignName = campaign,
             ItemDetails = [],
         };
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var embeddingService = new StubEmbeddingService();
         var handler = new ItemUpdateHandler(embeddingService);
@@ -146,7 +146,7 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             },
         };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         var detail = Assert.Single(item.ItemDetails);
@@ -168,8 +168,8 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             CampaignName = campaign,
             ItemDetails = [new ItemDetail { Id = "detail-hole", Name = "Punctured waterskin", Description = "leaking", ReviewIntervalDays = 1 }],
         };
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var embeddingService = new StubEmbeddingService();
         var handler = new ItemUpdateHandler(embeddingService);
@@ -181,7 +181,7 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             UpsertItemDetail = new ItemDetailUpsertRequest { Id = "detail-hole", Name = "Punctured waterskin", Description = "leaking worse now" },
         };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         var detail = Assert.Single(item.ItemDetails);
@@ -203,8 +203,8 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             CampaignName = campaign,
             ItemDetails = [],
         };
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var summary = new List<string>();
         var embeddingService = new StubEmbeddingService();
@@ -223,7 +223,7 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             },
         };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Contains(summary, m => m.Contains("NOTE", StringComparison.Ordinal) && m.Contains("reviewIntervalDays", StringComparison.Ordinal));
@@ -244,8 +244,8 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             CampaignName = campaign,
             ItemDetails = [],
         };
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var summary = new List<string>();
         var embeddingService = new StubEmbeddingService();
@@ -264,7 +264,7 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             },
         };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.DoesNotContain(summary, m => m.Contains("NOTE", StringComparison.Ordinal) && m.Contains("reviewIntervalDays", StringComparison.Ordinal));
@@ -285,8 +285,8 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             CampaignName = campaign,
             ItemDetails = [],
         };
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var summary = new List<string>();
         var embeddingService = new StubEmbeddingService();
@@ -305,7 +305,7 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             },
         };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.DoesNotContain(summary, m => m.Contains("NOTE", StringComparison.Ordinal) && m.Contains("reviewIntervalDays", StringComparison.Ordinal));
@@ -326,8 +326,8 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             CampaignName = campaign,
             ItemDetails = [new ItemDetail { Id = "detail-tether", Name = "Lashed end", Description = "Tied off." }],
         };
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new ItemUpdateHandler(new StubEmbeddingService());
         var context = BuildContext(session, BuildDispatcher(handler), campaign);
@@ -344,7 +344,7 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             },
         };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         var detail = Assert.Single(item.ItemDetails);
@@ -366,8 +366,8 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             CampaignName = campaign,
             ItemDetails = [new ItemDetail { Id = "detail-tether", Name = "Lashed end", Description = "Tied off.", TetheredToId = "locations/ruins-column" }],
         };
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new ItemUpdateHandler(new StubEmbeddingService());
         var context = BuildContext(session, BuildDispatcher(handler), campaign);
@@ -384,7 +384,7 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             },
         };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         var detail = Assert.Single(item.ItemDetails);
@@ -398,8 +398,8 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
 
         var item = new Item { Id = "items/id_not_found_test", Name = "Table", Description = "A table.", HolderId = "locations/tavern", CampaignName = campaign };
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new ItemUpdateHandler(new StubEmbeddingService());
         var context = BuildContext(session, BuildDispatcher(handler), campaign);
@@ -410,7 +410,7 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             UpsertItemDetail = new ItemDetailUpsertRequest { Id = "detail-does-not-exist", Name = "X", Description = "Y" },
         };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("not found", result.Message);
@@ -440,8 +440,8 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             CampaignName = campaign,
             ItemDetails = [seed],
         };
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var probeText = new ItemDetail { Name = "The hidden compartment", Description = "alt desc" }.BuildEmbeddingText();
         // cosine([0.9, 0.4359], [1,0]) ≈ 0.9 — above the handler's 0.86 match threshold.
@@ -455,7 +455,7 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             UpsertItemDetail = new ItemDetailUpsertRequest { Name = "The hidden compartment", Description = "alt desc" },
         };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         var detail = Assert.Single(item.ItemDetails);
@@ -486,8 +486,8 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             CampaignName = campaign,
             ItemDetails = [seed],
         };
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var probeText = new ItemDetail { Name = "Rusty hinge", Description = "corroded hinge on the trapdoor" }.BuildEmbeddingText();
         // cosine([0,1], [1,0]) == 0 — well below threshold.
@@ -501,7 +501,7 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             UpsertItemDetail = new ItemDetailUpsertRequest { Name = "Rusty hinge", Description = "corroded hinge on the trapdoor" },
         };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(2, item.ItemDetails.Count);
@@ -524,14 +524,14 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             CampaignName = campaign,
             ItemDetails = [new ItemDetail { Id = "detail-a", Name = "Stain", Description = "A wine stain." }],
         };
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new ItemUpdateHandler(new StubEmbeddingService());
         var context = BuildContext(session, BuildDispatcher(handler), campaign);
 
         var change = new ItemUpdate { ItemId = item.Id, RetireItemDetailId = "detail-a" };
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         var detail = Assert.Single(item.ItemDetails);
@@ -546,14 +546,14 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
 
         var item = new Item { Id = "items/retire_not_found_test", Name = "Cloak", Description = "A cloak.", HolderId = "chars/hero", CampaignName = campaign };
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new ItemUpdateHandler(new StubEmbeddingService());
         var context = BuildContext(session, BuildDispatcher(handler), campaign);
 
         var change = new ItemUpdate { ItemId = item.Id, RetireItemDetailId = "detail-nope" };
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("not found", result.Message);
@@ -568,10 +568,10 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
         var causer = new Character { Id = "chars/causer", Name = "Causer", CampaignName = campaign };
         var witness = new Character { Id = "chars/witness", Name = "Witness", CampaignName = campaign };
         var item = new Item { Id = "items/memory_test", Name = "Old Table", Description = "A table.", HolderId = "locations/tavern", CampaignName = campaign };
-        await session.StoreAsync(causer);
-        await session.StoreAsync(witness);
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(causer, TestContext.Current.CancellationToken);
+        await session.StoreAsync(witness, TestContext.Current.CancellationToken);
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new ItemUpdateHandler(new StubEmbeddingService());
         var context = BuildContext(session, BuildDispatcher(handler), campaign);
@@ -591,7 +591,7 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             },
         };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
 
         var detail = Assert.Single(item.ItemDetails);
@@ -615,7 +615,7 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
                 Participants = [new ItemDetailParticipant { Id = causer.Id, Role = ItemDetailParticipantRole.Caused }],
             },
         };
-        await handler.ApplyAsync(change2, context);
+        await handler.ApplyAsync(change2, context, TestContext.Current.CancellationToken);
 
         Assert.Single(causer.Psychology.Memories);
         Assert.Contains("brighter", causer.Psychology.Memories[topic].Details);
@@ -628,8 +628,8 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
 
         var item = new Item { Id = "items/embed_refresh_test", Name = "Lantern", Description = "A lantern.", HolderId = "chars/hero", CampaignName = campaign };
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var embeddingService = new CountingEmbeddingService();
         var handler = new ItemUpdateHandler(embeddingService);
@@ -640,7 +640,7 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             ItemId = item.Id,
             UpsertItemDetail = new ItemDetailUpsertRequest { Name = "Soot mark", Description = "black soot on the glass" },
         };
-        await handler.ApplyAsync(change1, context);
+        await handler.ApplyAsync(change1, context, TestContext.Current.CancellationToken);
 
         Assert.NotNull(item.SemanticVector);
         var callCountAfterFirst = embeddingService.CallCount;
@@ -652,7 +652,7 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             ItemId = item.Id,
             UpsertItemDetail = new ItemDetailUpsertRequest { Id = detailId, Name = "Soot mark", Description = "black soot on the glass" },
         };
-        await handler.ApplyAsync(change2, context);
+        await handler.ApplyAsync(change2, context, TestContext.Current.CancellationToken);
 
         Assert.Equal(callCountAfterFirst, embeddingService.CallCount);
     }
@@ -665,9 +665,9 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
 
         var causer = new Character { Id = "chars/event_causer", Name = "Causer", CampaignName = campaign };
         var item = new Item { Id = "items/event_log_test", Name = "Door", Description = "A door.", HolderId = "locations/tavern", CampaignName = campaign };
-        await session.StoreAsync(causer);
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(causer, TestContext.Current.CancellationToken);
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var loggedEvents = new List<Event>();
         var handler = new ItemUpdateHandler(new StubEmbeddingService());
@@ -684,7 +684,7 @@ public class ItemDetailHandlerTests : IClassFixture<RavenDBFixture>
             },
         };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         var loggedEvent = Assert.Single(loggedEvents);

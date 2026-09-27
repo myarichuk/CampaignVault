@@ -1137,7 +1137,7 @@ public class WorldChangeDispatcherTests
             campaignName: "test_campaign");
 
         var targetId = "chars/goblin-42";
-        await dispatcher.DispatchMutationAsync(context, new HpChange { CharacterId = targetId, Delta = -3 });
+        await dispatcher.DispatchMutationAsync(context, new HpChange { CharacterId = targetId, Delta = -3 }, TestContext.Current.CancellationToken);
 
         Assert.Contains(targetId, context.InvolvedEntities);
     }
@@ -1284,8 +1284,8 @@ public class WorldChangeDispatcherTests
             .Returns(new Dictionary<string, Item>());
         session.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<string, Location>());
-        session.LoadAsync<CampaignConfig>(Arg.Any<string>()).Returns(config);
-        session.LoadAsync<ModeEncounter>(Arg.Any<string>()).Returns(encounter);
+        session.LoadAsync<CampaignConfig>(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(config);
+        session.LoadAsync<ModeEncounter>(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(encounter);
 
         var result = await dispatcher.DispatchAsync(
             session,

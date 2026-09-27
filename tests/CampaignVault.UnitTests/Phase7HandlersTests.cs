@@ -70,10 +70,10 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         var start = new Location { Id = "locations/start", Name = "Start" };
         var dest = new Location { Id = "locations/dest", Name = "Destination" };
 
-        await session.StoreAsync(char1);
-        await session.StoreAsync(start);
-        await session.StoreAsync(dest);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(char1, TestContext.Current.CancellationToken);
+        await session.StoreAsync(start, TestContext.Current.CancellationToken);
+        await session.StoreAsync(dest, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // EncounterRiskModifier alone can't guarantee no interrupt (chance is clamped to a 1% floor,
         // see EncounterResolver.cs), so pin the roll deterministically to never trigger.
@@ -92,7 +92,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             EncounterRiskModifier = -100 // Prevent random encounters during this test
         };
 
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
 
         Assert.Equal(10,
@@ -123,10 +123,10 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         };
         var dest = new Location { Id = "locations/dest", Name = "Destination" };
 
-        await session.StoreAsync(char1);
-        await session.StoreAsync(start);
-        await session.StoreAsync(dest);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(char1, TestContext.Current.CancellationToken);
+        await session.StoreAsync(start, TestContext.Current.CancellationToken);
+        await session.StoreAsync(dest, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // EncounterRiskModifier alone can't guarantee no interrupt (chance is clamped to a 1% floor,
         // see EncounterResolver.cs), so pin the roll deterministically to never trigger.
@@ -146,7 +146,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             EncounterRiskModifier = -10000 // Prevent random encounters during this test
         };
 
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
 
         // 8 hours from exit -> (8/4.0f)*10f = 20f tiredness (instead of default 4h=10f)
@@ -172,10 +172,10 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         };
         var dest = new Location { Id = "locations/dest", Name = "Destination" };
 
-        await session.StoreAsync(char1);
-        await session.StoreAsync(start);
-        await session.StoreAsync(dest);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(char1, TestContext.Current.CancellationToken);
+        await session.StoreAsync(start, TestContext.Current.CancellationToken);
+        await session.StoreAsync(dest, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new TravelChangeHandler(new EncounterResolver(() => 0.99));
         var capture = new CapturingHandler();
@@ -194,7 +194,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             EncounterRiskModifier = -100
         };
 
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
 
         // 12 hours from exit via fallback load -> (12/4.0f)*10f = 30f tiredness
@@ -223,7 +223,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             Reason = "Helped the boss"
         };
 
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
 
         Assert.True(char1.Social.FactionReputations.ContainsKey(faction.Id));
@@ -251,7 +251,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             InfluenceDelta = -5
         };
 
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
 
         Assert.Equal(45, faction.InfluenceLevel);
@@ -278,7 +278,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             TargetFactionId = null
         };
 
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.False(result.Success);
         Assert.Contains("targetFactionId", result.Message);
         Assert.Empty(faction.StanceToward ?? []);
@@ -311,7 +311,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             NarrativeNote = "Rats are dead"
         };
 
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
 
         Assert.Equal(QuestState.Complete, quest.Objectives[0].State);
@@ -366,7 +366,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             QuestId = quest.Id,
             ObjectiveIndex = 0,
             NewState = QuestState.Complete
-        }, ctx);
+        }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(400, quest.Objectives[0].DayCompleted);
@@ -394,7 +394,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             // ObjectiveIndex and ObjectiveName are both missing
         };
 
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.False(result.Success);
         Assert.Contains("Must specify either", result.Message ?? "");
     }
@@ -421,7 +421,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             NewState = QuestState.Open
         };
 
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
         Assert.Null(quest.Objectives[0].DayCompleted); // Regression for bug 4
         Assert.Equal(QuestState.Open, quest.OverallState); // OverallState must be downgraded too
@@ -462,7 +462,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             InfluenceDelta = null
         };
 
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
         Assert.Equal(50, faction.InfluenceLevel); // Unchanged
         Assert.Contains(summary, m => m.Contains("no stance or influence delta specified"));
@@ -490,7 +490,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             Delta = 20
         };
 
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
         Assert.Equal(100, char1.Social.FactionReputations[faction.Id]);
 
@@ -502,7 +502,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             FactionId = faction.Id,
             Delta = -20
         };
-        var result2 = await handler.ApplyAsync(change2, ctx);
+        var result2 = await handler.ApplyAsync(change2, ctx, TestContext.Current.CancellationToken);
         Assert.True(result2.Success);
         Assert.Equal(-100, char1.Social.FactionReputations[faction.Id]);
     }
@@ -538,7 +538,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             NewState = QuestState.Complete
         };
 
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
 
         Assert.Equal(QuestState.Complete, quest.Objectives[0].State);
@@ -570,7 +570,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             Narrative = "Walked there"
         };
 
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.False(result.Success);
         Assert.Contains("locations/dest", result.Message ?? "");
         // Character location unchanged
@@ -586,10 +586,10 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         var start = new Location { Id = "locations/no-exit-start", Name = "Start" };
         var dest = new Location { Id = "locations/no-exit-dest", Name = "Destination" };
 
-        await session.StoreAsync(char1);
-        await session.StoreAsync(start);
-        await session.StoreAsync(dest);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(char1, TestContext.Current.CancellationToken);
+        await session.StoreAsync(start, TestContext.Current.CancellationToken);
+        await session.StoreAsync(dest, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new TravelChangeHandler(new EncounterResolver());
         var dispatcher = new WorldChangeDispatcher([handler], new CampaignVault.Data.CampaignDocumentKeys(),
@@ -604,7 +604,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             EncounterRiskModifier = -100
         };
 
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.False(result.Success);
         Assert.Contains("No LocationExit", result.Message);
         Assert.Contains("travelCostHoursOverride", result.Message);
@@ -619,10 +619,10 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         var start = new Location { Id = "locations/override-start", Name = "Start" };
         var dest = new Location { Id = "locations/override-dest", Name = "Destination" };
 
-        await session.StoreAsync(char1);
-        await session.StoreAsync(start);
-        await session.StoreAsync(dest);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(char1, TestContext.Current.CancellationToken);
+        await session.StoreAsync(start, TestContext.Current.CancellationToken);
+        await session.StoreAsync(dest, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // EncounterRiskModifier alone can't guarantee no interrupt (chance is clamped to a 1% floor,
         // see EncounterResolver.cs), so pin the roll deterministically to never trigger.
@@ -640,7 +640,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             EncounterRiskModifier = -100
         };
 
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
         Assert.Contains(capture.Captured,
             m => m is NeedChange nc && nc.CharacterId == char1.Id && nc.Need == "tiredness" && nc.Delta == 10f);
@@ -660,10 +660,10 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
         };
         var dest = new Location { Id = "locations/interrupt-dest", Name = "Destination" };
 
-        await session.StoreAsync(char1);
-        await session.StoreAsync(start);
-        await session.StoreAsync(dest);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(char1, TestContext.Current.CancellationToken);
+        await session.StoreAsync(start, TestContext.Current.CancellationToken);
+        await session.StoreAsync(dest, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new TravelChangeHandler(new EncounterResolver(() => 0.0));
         var capture = new CapturingHandler();
@@ -678,7 +678,7 @@ public class Phase7HandlersTests : IClassFixture<RavenDBFixture>
             EncounterRiskModifier = 100
         };
 
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
         Assert.Equal(start.Id, char1.CurrentLocationId);
         Assert.Contains(capture.Captured,

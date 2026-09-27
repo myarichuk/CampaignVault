@@ -62,7 +62,7 @@ public class McpResponseEscapingMiddlewareTests
         await middleware.InvokeAsync(context);
 
         responseStream.Position = 0;
-        var result = await new StreamReader(responseStream, Encoding.UTF8).ReadToEndAsync();
+        var result = await new StreamReader(responseStream, Encoding.UTF8).ReadToEndAsync(TestContext.Current.CancellationToken);
 
         // Relaxed encoder emits \" (2 bytes) for an embedded quote, not " (6 bytes).
         Assert.Contains("\\\"hi", result);

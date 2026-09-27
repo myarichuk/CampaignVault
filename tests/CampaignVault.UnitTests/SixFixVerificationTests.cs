@@ -67,9 +67,9 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
 
         var witness = new Character { Id = "chars/fixverify_witness", Name = "Witness", CampaignName = campaign };
         var item = new Item { Id = "items/fixverify_participants", Name = "Urn", Description = "An urn.", HolderId = "locations/tomb", CampaignName = campaign };
-        await session.StoreAsync(witness);
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(witness, TestContext.Current.CancellationToken);
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new ItemUpdateHandler(new StubEmbeddingService());
         var dispatcher = new WorldChangeDispatcher([handler, new KnowledgeUpdateHandler(new StubEmbeddingService())], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
@@ -86,7 +86,7 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
             },
         };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         var detail = Assert.Single(item.ItemDetails);
@@ -106,13 +106,13 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
 
         var oldStamp = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var character = new Character { Id = "chars/fixverify_armor", Name = "Hero", CampaignName = campaign, LastUpdated = oldStamp };
-        await session.StoreAsync(character);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(character, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var dispatcher = new WorldChangeDispatcher([new KnowledgeUpdateHandler(new StubEmbeddingService())], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
         var context = BuildContext(session, dispatcher, campaign);
 
-        await CampaignVault.Rulesets.ArmorParameterResolver.ApplyAsync(character, context);
+        await CampaignVault.Rulesets.ArmorParameterResolver.ApplyAsync(character, context, TestContext.Current.CancellationToken);
 
         Assert.True(character.LastUpdated > oldStamp);
     }
@@ -125,15 +125,15 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
 
         var oldStamp = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var character = new Character { Id = "chars/fixverify_knowledge", Name = "Sage", CampaignName = campaign, LastUpdated = oldStamp };
-        await session.StoreAsync(character);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(character, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new KnowledgeUpdateHandler(new StubEmbeddingService());
         var dispatcher = new WorldChangeDispatcher([handler], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
         var context = BuildContext(session, dispatcher, campaign);
 
         var change = new KnowledgeUpdate { CharacterId = character.Id, Topic = "the-old-well", Details = "It's cursed.", CreateMemory = true };
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.True(character.LastUpdated > oldStamp);
@@ -197,7 +197,7 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             var configId = new CampaignDocumentKeys().Config(campaignName);
-            await session.StoreAsync(new CampaignConfig { Id = configId });
+            await session.StoreAsync(new CampaignConfig { Id = configId }, TestContext.Current.CancellationToken);
 
             await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, campaignName), new CharacterUpsertRequest
             {
@@ -230,17 +230,17 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
                 IsEquipped = false,
             });
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Retire one of the two details on the equipped item so we can assert it's excluded.
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            var item = await session.LoadAsync<Item>(equippedItemId);
+            var item = await session.LoadAsync<Item>(equippedItemId, TestContext.Current.CancellationToken);
             var retired = item.ItemDetails.Single(d => d.Name == "Old rust");
             retired.IsRetired = true;
             retired.Status = "Retired";
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Wait on the same (auto-)indexes GetParty queries; its held-items query doesn't wait for staleness.
@@ -249,11 +249,11 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
             await session.Query<Character>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(10)))
                 .Where(c => c.CampaignName == campaignName && (c.IsPc || c.IsPartyCompanion))
-                .ToListAsync();
+                .ToListAsync(token: TestContext.Current.CancellationToken);
             await session.Query<Item>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(10)))
                 .Where(i => i.HolderId == pcId && !i.IsArchived)
-                .ToListAsync();
+                .ToListAsync(token: TestContext.Current.CancellationToken);
         }
 
         var result = await tools.GetParty(campaignName);
@@ -288,10 +288,10 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
             CampaignName = campaign,
             IsEquipped = true,
         };
-        await session.StoreAsync(fromChar);
-        await session.StoreAsync(toChar);
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(fromChar, TestContext.Current.CancellationToken);
+        await session.StoreAsync(toChar, TestContext.Current.CancellationToken);
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new ItemTransferHandler();
         var dispatcher = new WorldChangeDispatcher([handler], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
@@ -314,7 +314,7 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
             campaignName: campaign);
 
         var change = new ItemTransfer { ItemId = item.Id, ToHolderId = toChar.Id };
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.False(item.IsEquipped);
@@ -330,10 +330,10 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
         var fromChar = new Character { Id = "chars/fixverify_from2", Name = "From2", CampaignName = campaign };
         var toChar = new Character { Id = "chars/fixverify_to2", Name = "To2", CampaignName = campaign };
         var item = new Item { Id = "items/fixverify_transfer2", Name = "Coin", Description = "d", HolderId = fromChar.Id, CampaignName = campaign, IsEquipped = false };
-        await session.StoreAsync(fromChar);
-        await session.StoreAsync(toChar);
-        await session.StoreAsync(item);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(fromChar, TestContext.Current.CancellationToken);
+        await session.StoreAsync(toChar, TestContext.Current.CancellationToken);
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new ItemTransferHandler();
         var dispatcher = new WorldChangeDispatcher([handler], new CampaignDocumentKeys(), NullLogger<WorldChangeDispatcher>.Instance);
@@ -346,7 +346,7 @@ public class SixFixVerificationTests : IClassFixture<RavenDBFixture>
             _ => Task.CompletedTask, summary, dispatcher, campaignName: campaign);
 
         var change = new ItemTransfer { ItemId = item.Id, ToHolderId = toChar.Id };
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         // No auto-unequip side effect occurred, so nothing worth reporting — the destination itself is

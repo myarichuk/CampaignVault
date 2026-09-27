@@ -13,7 +13,7 @@ public class LocalEmbeddingServiceTests
     {
         using var service = new LocalEmbeddingService();
 
-        var result = await service.GenerateEmbeddingAsync("innkeeper at the tavern");
+        var result = await service.GenerateEmbeddingAsync("innkeeper at the tavern", TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal(384, result.Length);
@@ -28,7 +28,7 @@ public class LocalEmbeddingServiceTests
     {
         using var service = new LocalEmbeddingService();
 
-        var result = await service.GenerateEmbeddingAsync("   ");
+        var result = await service.GenerateEmbeddingAsync("   ", TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal(384, result.Length);

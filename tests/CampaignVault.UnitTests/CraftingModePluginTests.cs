@@ -65,7 +65,7 @@ public class CraftingModePluginTests
 
             var enterOk = mode.StateMachine.TryConsumeActionSlot(encounter.Participants[0], parsed[0], out _);
             Assert.True(enterOk);
-            var stepResult = await handler.ApplyAsync(parsed[0], context);
+            var stepResult = await handler.ApplyAsync(parsed[0], context, TestContext.Current.CancellationToken);
             Assert.True(stepResult.Success);
             Assert.Equal("forge", encounter.Participants[0].State["stage"]?.ToString());
 
@@ -116,8 +116,8 @@ public class CraftingModePluginTests
                 .Returns(new Dictionary<string, Item>());
             session.LoadAsync<Location>(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
                 .Returns(new Dictionary<string, Location>());
-            session.LoadAsync<CampaignConfig>(Arg.Any<string>()).Returns(config);
-            session.LoadAsync<ModeEncounter>(Arg.Any<string>()).Returns(encounter);
+            session.LoadAsync<CampaignConfig>(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(config);
+            session.LoadAsync<ModeEncounter>(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(encounter);
 
             var dispatcher = new WorldChangeDispatcher(
                 [handler],

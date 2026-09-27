@@ -33,7 +33,7 @@ public class PlotThreadEvolutionRuleTests
         };
 
         // +5/day * 2 days = 10 -> tension 60, crosses Active->Escalating only.
-        var result = await _sut.ApplyAsync(CreateContext(2, thread));
+        var result = await _sut.ApplyAsync(CreateContext(2, thread), TestContext.Current.CancellationToken);
 
         var delta = Assert.Single(result.Deltas.OfType<PlotThreadProgress>());
         Assert.Equal(PlotThreadState.Escalating, delta.NewState);
@@ -54,7 +54,7 @@ public class PlotThreadEvolutionRuleTests
 
         // +5/day * 16 days = 80 -> tension 100 (clamped), crosses BOTH Active->Escalating and
         // Escalating->Climax thresholds in a single AdvanceWorld tick.
-        var result = await _sut.ApplyAsync(CreateContext(16, thread));
+        var result = await _sut.ApplyAsync(CreateContext(16, thread), TestContext.Current.CancellationToken);
 
         var delta = Assert.Single(result.Deltas.OfType<PlotThreadProgress>());
         Assert.Equal(PlotThreadState.Climax, delta.NewState);
@@ -74,7 +74,7 @@ public class PlotThreadEvolutionRuleTests
         };
 
         // +10/day * 2 days = 20 -> tension 85, crosses Escalating->Climax.
-        var result = await _sut.ApplyAsync(CreateContext(2, thread));
+        var result = await _sut.ApplyAsync(CreateContext(2, thread), TestContext.Current.CancellationToken);
 
         var delta = Assert.Single(result.Deltas.OfType<PlotThreadProgress>());
         Assert.Equal(PlotThreadState.Climax, delta.NewState);

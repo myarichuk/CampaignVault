@@ -1,0 +1,16 @@
+# Shadow & Steel: fantasy-tier hunting bow (original homebrew seed data).
+name: ss_short_bow
+system: swade
+category: Weapon
+tags: [fantasy, ranged]
+description: Short hunting bow, quick to draw from horseback or brush. Damage 2d6 at Near range.
+properties:
+  damage: 2d6
+  damageType: piercing
+  weight: 3
+  costGp: 150
+  range: Near
+  era: fantasy
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: true

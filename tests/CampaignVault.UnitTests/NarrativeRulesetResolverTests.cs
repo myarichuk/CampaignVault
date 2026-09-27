@@ -34,7 +34,7 @@ public class NarrativeRulesetResolverTests
         _rollServiceSub.RollAsync(Arg.Any<RollRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RollOutcome { Result = 5, Summary = "Narrative Initiative" }));
 
-        var init = await _resolver.Combat.RollInitiativeAsync(_actor);
+        var init = await _resolver.Combat.RollInitiativeAsync(_actor, TestContext.Current.CancellationToken);
 
         Assert.Equal(5f, init);
     }
@@ -70,7 +70,7 @@ public class NarrativeRulesetResolverTests
             dispatcher: dispatcher
         );
 
-        var output = await _resolver.Actions.ResolveAsync(context, action);
+        var output = await _resolver.Actions.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.Equal(expectedSuccess, output.Result.Success);
         Assert.Contains(expectedNarrativePrefix, output.Result.Narrative);
@@ -112,7 +112,7 @@ public class NarrativeRulesetResolverTests
             dispatcher: dispatcher,
             config: new CampaignConfig());
 
-        var output = await _resolver.Actions.ResolveAsync(context, action);
+        var output = await _resolver.Actions.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
         Assert.Contains("Narrative Oracle Result", output.Result.Narrative);
@@ -147,7 +147,7 @@ public class NarrativeRulesetResolverTests
             dispatcher: dispatcher
         );
 
-        var output = await _resolver.Actions.ResolveAsync(context, action);
+        var output = await _resolver.Actions.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
         

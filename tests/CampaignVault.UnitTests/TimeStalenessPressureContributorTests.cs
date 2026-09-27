@@ -30,13 +30,13 @@ public class TimeStalenessPressureContributorTests : IClassFixture<RavenDBFixtur
             Name = campaign,
             DisplayName = campaign,
             CommitsSinceTimeRecorded = 5
-        });
-        await session.SaveChangesAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var contributor = new TimeStalenessPressureContributor(_keys);
         var ctx = new PressureContext(campaign, new CampaignTime(), new CampaignConfig(), session);
 
-        var pressures = (await contributor.EvaluateAsync(ctx)).ToList();
+        var pressures = (await contributor.EvaluateAsync(ctx, TestContext.Current.CancellationToken)).ToList();
 
         Assert.Empty(pressures);
     }
@@ -52,13 +52,13 @@ public class TimeStalenessPressureContributorTests : IClassFixture<RavenDBFixtur
             Name = campaign,
             DisplayName = campaign,
             CommitsSinceTimeRecorded = 15
-        });
-        await session.SaveChangesAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var contributor = new TimeStalenessPressureContributor(_keys);
         var ctx = new PressureContext(campaign, new CampaignTime(), new CampaignConfig(), session);
 
-        var pressures = (await contributor.EvaluateAsync(ctx)).ToList();
+        var pressures = (await contributor.EvaluateAsync(ctx, TestContext.Current.CancellationToken)).ToList();
 
         var pressure = Assert.Single(pressures);
         Assert.Equal(TimeStalenessPressureContributor.GroupingKey, pressure.GroupingKey);
@@ -76,13 +76,13 @@ public class TimeStalenessPressureContributorTests : IClassFixture<RavenDBFixtur
             Name = campaign,
             DisplayName = campaign,
             CommitsSinceTimeRecorded = 3
-        });
-        await session.SaveChangesAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var contributor = new TimeStalenessPressureContributor(_keys);
         var ctx = new PressureContext(campaign, new CampaignTime(), new CampaignConfig { TimeStalenessNudgeThreshold = 3 }, session);
 
-        var pressures = (await contributor.EvaluateAsync(ctx)).ToList();
+        var pressures = (await contributor.EvaluateAsync(ctx, TestContext.Current.CancellationToken)).ToList();
 
         Assert.Single(pressures);
     }

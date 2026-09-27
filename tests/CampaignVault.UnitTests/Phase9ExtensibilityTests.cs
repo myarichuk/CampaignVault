@@ -48,7 +48,7 @@ public class Phase9ExtensibilityTests : IClassFixture<RavenDBFixture>
             PointsOfInterest = [],
             AmbientCrowd = null
         });
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var time = await repo.GetTimeAsync(_fixture.CreateCampaignSession(session, "scope-test"));
         var config = await repo.GetCampaignConfigAsync(_fixture.CreateCampaignSession(session, "scope-test"));
@@ -59,7 +59,7 @@ public class Phase9ExtensibilityTests : IClassFixture<RavenDBFixture>
 
         var worldCtx = new PressureContext("scope-test", time, config, session,
             Scene: scene, RequestedLocationId: locId);
-        var worldPressures = await orchestrator.CollectAndCapAsync(PressureScope.World, worldCtx);
+        var worldPressures = await orchestrator.CollectAndCapAsync(PressureScope.World, worldCtx, TestContext.Current.CancellationToken);
         var worldText = string.Join(" | ", worldPressures);
 
         Assert.DoesNotContain("flavor details", worldText, StringComparison.OrdinalIgnoreCase);
@@ -67,7 +67,7 @@ public class Phase9ExtensibilityTests : IClassFixture<RavenDBFixture>
 
         var sceneCtx = new PressureContext("scope-test", time, config, session,
             Scene: scene, RequestedLocationId: locId);
-        var scenePressures = await orchestrator.CollectAndCapAsync(PressureScope.Scene, sceneCtx);
+        var scenePressures = await orchestrator.CollectAndCapAsync(PressureScope.Scene, sceneCtx, TestContext.Current.CancellationToken);
         var sceneText = string.Join(" | ", scenePressures);
 
         Assert.DoesNotContain("flavor details", sceneText, StringComparison.OrdinalIgnoreCase); // nag retired with PoIs
@@ -85,23 +85,22 @@ public class Phase9ExtensibilityTests : IClassFixture<RavenDBFixture>
             State = RumorState.Spreading,
             CampaignName = "config-test"
         };
-        await session.StoreAsync(rumor);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(rumor, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var time = new CampaignTime { TotalDaysElapsed = 10 };
         var config = new CampaignConfig { RumorAgingPressureDays = 20 };
         var contributor = new AgingRumorPressureContributor();
         var ctx = new PressureContext("config-test", time, config, session, ActiveRumors: [rumor]);
 
-        var pressures = (await contributor.EvaluateAsync(ctx)).ToList();
+        var pressures = (await contributor.EvaluateAsync(ctx, TestContext.Current.CancellationToken)).ToList();
         Assert.Empty(pressures);
 
         var strictConfig = new CampaignConfig { RumorAgingPressureDays = 5 };
         pressures =
         [
             .. await contributor.EvaluateAsync(new PressureContext("config-test", time, strictConfig, session,
-                ActiveRumors: [rumor]))
-        ];
+                ActiveRumors: [rumor]), TestContext.Current.CancellationToken)];
         Assert.Single(pressures);
         Assert.Contains("Old Gossip", pressures[0].Text);
     }

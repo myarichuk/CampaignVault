@@ -43,7 +43,7 @@ public class SurvivalDeprivationRuleTests
             "test_campaign",
             Config: config);
 
-        return rule.ApplyAsync(context, CancellationToken.None);
+        return rule.ApplyAsync(context, TestContext.Current.CancellationToken);
     }
 
     [Fact]

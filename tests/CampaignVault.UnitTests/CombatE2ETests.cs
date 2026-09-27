@@ -81,7 +81,7 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
                     Id = goblinId, Name = "Goblin", CurrentHp = 15, MaxHp = 15,
                     SystemStats = new Dnd5eExtension { ArmorClass = 10 }
                 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // 1. Initialize System

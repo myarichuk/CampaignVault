@@ -1,0 +1,16 @@
+# Shadow & Steel: wire or cord for silent strangling (original homebrew stats; no ORC text copied).
+# Assassin staple. Requires the victim to be unaware or restrained — enforced narratively.
+name: ss_garrote
+system: pf2e
+category: Weapon
+tags: [martial, melee, finesse]
+description: A loop of wire with wooden toggles, made for silent strangling. Deals 1d4 bludgeoning damage on a cinched grip.
+properties:
+  damage: 1d4
+  damageType: bludgeoning
+  bulk: 0.1
+  costGp: 2
+  specialMechanic: "Only usable against unaware or restrained victims; a cinched garrote restricts speech and breathing (narrative/GM-arbitrated; not computed by the engine)."
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: true

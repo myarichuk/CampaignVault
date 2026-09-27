@@ -77,7 +77,7 @@ public class AmbientEncounterChangeHandlerTests : IClassFixture<RavenDBFixture>
         var result = await handler.ApplyAsync(
             new AmbientEncounterCheck { LocationId = location.Id, Hours = 24 },
             CreateContext(session, location, campaignName, dispatcher),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Contains(dispatched, d => d is CharacterCreate);
@@ -96,7 +96,7 @@ public class AmbientEncounterChangeHandlerTests : IClassFixture<RavenDBFixture>
         var result = await handler.ApplyAsync(
             new AmbientEncounterCheck { LocationId = location.Id, Hours = 24 },
             CreateContext(session, location, campaignName),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
     }
@@ -114,7 +114,7 @@ public class AmbientEncounterChangeHandlerTests : IClassFixture<RavenDBFixture>
         var result = await handler.ApplyAsync(
             new AmbientEncounterCheck { LocationId = location.Id, Hours = 24 },
             CreateContext(session, location, campaignName),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
     }

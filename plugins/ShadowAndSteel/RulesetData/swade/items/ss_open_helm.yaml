@@ -1,0 +1,14 @@
+# Shadow & Steel: fantasy-tier open-faced helm (original homebrew seed data).
+# NOTE: the engine has no SWADE armor-class resolver yet; acBonus is seed data for future/GM use.
+name: ss_open_helm
+system: swade
+category: Armor
+tags: [fantasy, helm]
+description: Open-faced steel helm with nasal guard — protects the skull without blinding the wearer. +1 armor with other protection.
+properties:
+  acBonus: 1
+  weight: 3
+  costGp: 25
+  era: fantasy
+equipZones: [Head]
+equipLayer: Armor

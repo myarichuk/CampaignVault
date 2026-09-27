@@ -37,7 +37,7 @@ public class EntityIntegrityPressureTests : IClassFixture<RavenDBFixture>
             Id = keys.Config(slug),
             ActiveSystem = RulesetSystem.Dnd5e,
         };
-        await session.StoreAsync(config);
+        await session.StoreAsync(config, TestContext.Current.CancellationToken);
 
         var nullNameId = $"chars/{slug}-noname";
         var nullTraitsId = $"chars/{slug}-notraits";
@@ -49,7 +49,7 @@ public class EntityIntegrityPressureTests : IClassFixture<RavenDBFixture>
             KeepAlive = true,
             MaxHp = 10,
             CurrentHp = 10,
-        });
+        }, TestContext.Current.CancellationToken);
         await session.StoreAsync(new Character
         {
             Id = nullTraitsId,
@@ -68,17 +68,17 @@ public class EntityIntegrityPressureTests : IClassFixture<RavenDBFixture>
             },
             VisualTags = [null!],
             CurrentLocationId = $"locations/{slug}-missing",
-        });
-        await session.SaveChangesAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await WaitForIndexAsync(session, slug, [nullNameId, nullTraitsId]);
 
         var time = new CampaignTime { Id = keys.StateTime(slug), TotalDaysElapsed = 1 };
-        var loadedConfig = await session.LoadAsync<CampaignConfig>(keys.Config(slug));
+        var loadedConfig = await session.LoadAsync<CampaignConfig>(keys.Config(slug), TestContext.Current.CancellationToken);
         Assert.NotNull(loadedConfig);
 
         var contributor = new EntityIntegrityPressureContributor();
-        var pressures = (await contributor.EvaluateAsync(new PressureContext(slug, time, loadedConfig, session))).ToList();
+        var pressures = (await contributor.EvaluateAsync(new PressureContext(slug, time, loadedConfig, session), TestContext.Current.CancellationToken)).ToList();
 
         var nameWarning = pressures.FirstOrDefault(p =>
             p.EntityId == nullNameId && p.GroupingKey == EntityIntegrityPressureContributor.CharacterNameGroupingKey);
@@ -111,7 +111,7 @@ public class EntityIntegrityPressureTests : IClassFixture<RavenDBFixture>
         {
             Id = keys.Config(slug),
             ActiveSystem = RulesetSystem.Dnd5e,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var charId = $"chars/{slug}-ragged";
         var locId = $"locations/{slug}-nameless";
@@ -122,7 +122,7 @@ public class EntityIntegrityPressureTests : IClassFixture<RavenDBFixture>
             Name = null!,
             Description = "A place.",
             CampaignName = slug,
-        });
+        }, TestContext.Current.CancellationToken);
         await session.StoreAsync(new Character
         {
             Id = charId,
@@ -137,24 +137,23 @@ public class EntityIntegrityPressureTests : IClassFixture<RavenDBFixture>
             SystemStats = null!,
             VisualTags = [null!, "muddy"],
             CurrentLocationId = locId,
-        });
+        }, TestContext.Current.CancellationToken);
         await session.StoreAsync(new Character
         {
             Id = nullNameId,
             Name = "   ",
             CampaignName = slug,
             KeepAlive = true,
-        });
-        await session.SaveChangesAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await WaitForIndexAsync(session, slug, [charId, nullNameId]);
 
         var time = new CampaignTime { Id = keys.StateTime(slug), TotalDaysElapsed = 1 };
-        var loadedConfig = await session.LoadAsync<CampaignConfig>(keys.Config(slug));
+        var loadedConfig = await session.LoadAsync<CampaignConfig>(keys.Config(slug), TestContext.Current.CancellationToken);
         Assert.NotNull(loadedConfig);
 
-        var pressures = (await new EntityIntegrityPressureContributor().EvaluateAsync(
-            new PressureContext(slug, time, loadedConfig, session, RequestedLocationId: locId))).ToList();
+        var pressures = (await new EntityIntegrityPressureContributor().EvaluateAsync(new PressureContext(slug, time, loadedConfig, session, RequestedLocationId: locId), TestContext.Current.CancellationToken)).ToList();
 
         // Anchored location exists → no dangling-location warning for the character …
         Assert.DoesNotContain(pressures, p =>
@@ -166,11 +165,11 @@ public class EntityIntegrityPressureTests : IClassFixture<RavenDBFixture>
         Assert.Equal(PressureSeverity.EngineWarning, locWarning.Severity);
         Assert.Contains("location_update", locWarning.SuggestedCommitJson);
 
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         using (var verify = _fixture.Store.OpenAsyncSession())
         {
-            var reloaded = await verify.LoadAsync<Character>(charId);
+            var reloaded = await verify.LoadAsync<Character>(charId, TestContext.Current.CancellationToken);
             Assert.NotNull(reloaded);
             Assert.NotNull(reloaded.Psychology);
             Assert.NotNull(reloaded.Social);
@@ -180,7 +179,7 @@ public class EntityIntegrityPressureTests : IClassFixture<RavenDBFixture>
             Assert.Empty(reloaded.Psychology.Traits);
             Assert.Equal(new[] { "muddy" }, reloaded.VisualTags.ToArray());
 
-            var reloadedLoc = await verify.LoadAsync<Location>(locId);
+            var reloadedLoc = await verify.LoadAsync<Location>(locId, TestContext.Current.CancellationToken);
             Assert.NotNull(reloadedLoc);
             // Nudge-only: blank location name is never auto-fixed.
             Assert.True(string.IsNullOrWhiteSpace(reloadedLoc.Name));

@@ -1,0 +1,14 @@
+# Shadow & Steel: bundle of 20 field arrows (original homebrew, not an SRD entry).
+# Consumable blueprint: charges live on the item instance (item_use decrements per shot).
+# The engine does not auto-track ammunition — expenditure resolves narratively / by GM arbitration.
+name: ss_arrows_20
+system: dnd5e
+category: Consumable
+tags: [ammunition, adventuring-gear]
+description: Bundle of 20 straight field arrows for shortbows and longbows. One arrow per attack.
+properties:
+  weight: 1
+  costGp: 1
+  uses: 20
+  chargeUnit: arrows
+  ammoFor: shortbow, longbow

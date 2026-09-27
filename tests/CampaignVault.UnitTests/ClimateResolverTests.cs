@@ -21,7 +21,7 @@ public class ClimateResolverTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
         var location = new Location { Id = "locations/climate_own_zone", Name = "Own Zone", ClimateZone = ClimateZone.Desert };
 
-        var zone = await ClimateResolver.ResolveEffectiveZoneAsync(session, location);
+        var zone = await ClimateResolver.ResolveEffectiveZoneAsync(session, location, TestContext.Current.CancellationToken);
 
         Assert.Equal(ClimateZone.Desert, zone);
     }
@@ -34,12 +34,12 @@ public class ClimateResolverTests : IClassFixture<RavenDBFixture>
         var settlement = new Location { Id = "locations/climate_inherit_settlement", Name = "Settlement", ParentLocationId = region.Id };
         var room = new Location { Id = "locations/climate_inherit_room", Name = "Room", ParentLocationId = settlement.Id };
 
-        await session.StoreAsync(region);
-        await session.StoreAsync(settlement);
-        await session.StoreAsync(room);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(region, TestContext.Current.CancellationToken);
+        await session.StoreAsync(settlement, TestContext.Current.CancellationToken);
+        await session.StoreAsync(room, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var zone = await ClimateResolver.ResolveEffectiveZoneAsync(session, room);
+        var zone = await ClimateResolver.ResolveEffectiveZoneAsync(session, room, TestContext.Current.CancellationToken);
 
         Assert.Equal(ClimateZone.Arctic, zone);
     }
@@ -52,12 +52,12 @@ public class ClimateResolverTests : IClassFixture<RavenDBFixture>
         var settlement = new Location { Id = "locations/climate_override_settlement", Name = "Settlement", ParentLocationId = region.Id, ClimateZone = ClimateZone.Temperate };
         var room = new Location { Id = "locations/climate_override_room", Name = "Room", ParentLocationId = settlement.Id };
 
-        await session.StoreAsync(region);
-        await session.StoreAsync(settlement);
-        await session.StoreAsync(room);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(region, TestContext.Current.CancellationToken);
+        await session.StoreAsync(settlement, TestContext.Current.CancellationToken);
+        await session.StoreAsync(room, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var zone = await ClimateResolver.ResolveEffectiveZoneAsync(session, room);
+        var zone = await ClimateResolver.ResolveEffectiveZoneAsync(session, room, TestContext.Current.CancellationToken);
 
         Assert.Equal(ClimateZone.Temperate, zone);
     }
@@ -69,11 +69,11 @@ public class ClimateResolverTests : IClassFixture<RavenDBFixture>
         var region = new Location { Id = "locations/climate_default_region", Name = "Region" };
         var room = new Location { Id = "locations/climate_default_room", Name = "Room", ParentLocationId = region.Id };
 
-        await session.StoreAsync(region);
-        await session.StoreAsync(room);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(region, TestContext.Current.CancellationToken);
+        await session.StoreAsync(room, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var zone = await ClimateResolver.ResolveEffectiveZoneAsync(session, room);
+        var zone = await ClimateResolver.ResolveEffectiveZoneAsync(session, room, TestContext.Current.CancellationToken);
 
         Assert.Equal(ClimateZone.Temperate, zone);
     }
@@ -85,11 +85,11 @@ public class ClimateResolverTests : IClassFixture<RavenDBFixture>
         var a = new Location { Id = "locations/climate_cycle_a", Name = "A", ParentLocationId = "locations/climate_cycle_b" };
         var b = new Location { Id = "locations/climate_cycle_b", Name = "B", ParentLocationId = "locations/climate_cycle_a" };
 
-        await session.StoreAsync(a);
-        await session.StoreAsync(b);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(a, TestContext.Current.CancellationToken);
+        await session.StoreAsync(b, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var zone = await ClimateResolver.ResolveEffectiveZoneAsync(session, a);
+        var zone = await ClimateResolver.ResolveEffectiveZoneAsync(session, a, TestContext.Current.CancellationToken);
 
         Assert.Equal(ClimateZone.Temperate, zone);
     }

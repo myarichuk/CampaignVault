@@ -55,7 +55,7 @@ public class Dnd5eMulticlassTests
         {
             Character = character,
             ActiveSystem = RulesetSystem.Dnd5e,
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Contains("multiclass", result!.Message);

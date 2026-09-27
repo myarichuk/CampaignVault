@@ -42,9 +42,9 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Character { Id = c1, Name = "Alice", CurrentHp = 10 });
-            await session.StoreAsync(new Character { Id = c2, Name = "Bob", CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.StoreAsync(new Character { Id = c1, Name = "Alice", CurrentHp = 10 }, TestContext.Current.CancellationToken);
+            await session.StoreAsync(new Character { Id = c2, Name = "Bob", CurrentHp = 10 }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.StartCombat(loc, [c1, c2], campaignName: campaign);
@@ -87,8 +87,8 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
                 Name = "Foreign Enemy",
                 CampaignName = "other-campaign",
                 CurrentHp = 10
-            });
-            await session.SaveChangesAsync();
+            }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.StartCombat("loc1", [foreignId], campaignName: campaign);
@@ -108,8 +108,8 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Character { Id = canonId, Name = "Bob", CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.StoreAsync(new Character { Id = canonId, Name = "Bob", CurrentHp = 10 }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.StartCombat("loc1", [canonId], campaignName: campaign);
@@ -129,9 +129,9 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Character { Id = c1, Name = "Alice", CurrentHp = 0 }); // Dead
-            await session.StoreAsync(new Character { Id = c2, Name = "Bob", CurrentHp = -5 }); // Dead
-            await session.SaveChangesAsync();
+            await session.StoreAsync(new Character { Id = c1, Name = "Alice", CurrentHp = 0 }, TestContext.Current.CancellationToken); // Dead
+            await session.StoreAsync(new Character { Id = c2, Name = "Bob", CurrentHp = -5 }, TestContext.Current.CancellationToken); // Dead
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.StartCombat("loc1", [c1, c2], campaignName: campaign);
@@ -151,9 +151,9 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Character { Id = alive, Name = "Alice", CurrentHp = 10 });
-            await session.StoreAsync(new Character { Id = downed, Name = "Bob", CurrentHp = 0 });
-            await session.SaveChangesAsync();
+            await session.StoreAsync(new Character { Id = alive, Name = "Alice", CurrentHp = 10 }, TestContext.Current.CancellationToken);
+            await session.StoreAsync(new Character { Id = downed, Name = "Bob", CurrentHp = 0 }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.StartCombat("loc1", [alive, downed], campaignName: campaign);
@@ -177,9 +177,9 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Character { Id = c1, Name = "Alice", CurrentHp = 10 });
-            await session.StoreAsync(new Character { Id = c2, Name = "Bob", CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.StoreAsync(new Character { Id = c1, Name = "Alice", CurrentHp = 10 }, TestContext.Current.CancellationToken);
+            await session.StoreAsync(new Character { Id = c2, Name = "Bob", CurrentHp = 10 }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Start combat
@@ -193,9 +193,9 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
         // Kill the second actor
         using (var session = store.OpenAsyncSession())
         {
-            var char2 = await session.LoadAsync<Character>(secondCharacterId);
+            var char2 = await session.LoadAsync<Character>(secondCharacterId, TestContext.Current.CancellationToken);
             char2.CurrentHp = 0;
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Advance turn
@@ -220,9 +220,9 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Character { Id = c1, Name = "Alice", CurrentHp = 10 });
-            await session.StoreAsync(new Character { Id = c2, Name = "Bob", CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.StoreAsync(new Character { Id = c1, Name = "Alice", CurrentHp = 10 }, TestContext.Current.CancellationToken);
+            await session.StoreAsync(new Character { Id = c2, Name = "Bob", CurrentHp = 10 }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Start combat
@@ -233,11 +233,11 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
         // Kill EVERYONE
         using (var session = store.OpenAsyncSession())
         {
-            var char1 = await session.LoadAsync<Character>(c1);
-            var char2 = await session.LoadAsync<Character>(c2);
+            var char1 = await session.LoadAsync<Character>(c1, TestContext.Current.CancellationToken);
+            var char2 = await session.LoadAsync<Character>(c2, TestContext.Current.CancellationToken);
             char1.CurrentHp = 0;
             char2.CurrentHp = 0;
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Advance turn
@@ -249,11 +249,11 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = store.OpenAsyncSession())
         {
-            var char1 = await session.LoadAsync<Character>(c1);
-            var char2 = await session.LoadAsync<Character>(c2);
+            var char1 = await session.LoadAsync<Character>(c1, TestContext.Current.CancellationToken);
+            var char2 = await session.LoadAsync<Character>(c2, TestContext.Current.CancellationToken);
             char1.CurrentHp = 10;
             char2.CurrentHp = 10;
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var restart = await tools.StartCombat(loc, [c1, c2], campaignName: campaign);
@@ -272,8 +272,8 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Character { Id = c1, Name = "Alice", CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.StoreAsync(new Character { Id = c1, Name = "Alice", CurrentHp = 10 }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         await tools.StartCombat(loc, [c1], campaignName: campaign);
@@ -308,9 +308,9 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
                         new StatusEffect { Name = "Poisoned", ExpiresAtRound = 3 }
                     ]
                 }
-            });
-            await session.StoreAsync(new Character { Id = c2, Name = "Bob", CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            }, TestContext.Current.CancellationToken);
+            await session.StoreAsync(new Character { Id = c2, Name = "Bob", CurrentHp = 10 }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Start combat (Round 1)
@@ -322,7 +322,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = store.OpenAsyncSession())
         {
-            var alice = await session.LoadAsync<Character>(c1);
+            var alice = await session.LoadAsync<Character>(c1, TestContext.Current.CancellationToken);
             Assert.Single(alice.SystemStats.StatusEffects);
             Assert.Equal("Poisoned", alice.SystemStats.StatusEffects[0].Name);
         }
@@ -353,8 +353,8 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
                         new StatusEffect { Name = "Poisoned", ExpiresAtRound = 10 }
                     ]
                 }
-            });
-            await session.SaveChangesAsync();
+            }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         await tools.StartCombat(loc, [c1], campaignName: campaign);
@@ -366,7 +366,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = store.OpenAsyncSession())
         {
-            var alice = await session.LoadAsync<Character>(c1);
+            var alice = await session.LoadAsync<Character>(c1, TestContext.Current.CancellationToken);
             Assert.Single(alice.SystemStats.StatusEffects);
             Assert.Equal("Cursed", alice.SystemStats.StatusEffects[0].Name);
         }
@@ -395,8 +395,8 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
                         ["encounter_pool"] = new() { Current = 2, Max = 5, Recovery = RecoveryType.EncounterEnd }
                     }
                 }
-            });
-            await session.SaveChangesAsync();
+            }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         await tools.StartCombat(loc, [c1], campaignName: campaign);
@@ -406,7 +406,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = store.OpenAsyncSession())
         {
-            var alice = await session.LoadAsync<Character>(c1);
+            var alice = await session.LoadAsync<Character>(c1, TestContext.Current.CancellationToken);
             Assert.Equal(5, alice.SystemStats.ResourcePools["encounter_pool"].Current);
             Assert.Contains("encounter_pool", endResult.Summary);
         }
@@ -433,7 +433,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Character { Id = c1, Name = "Alice", CurrentHp = 20, MaxHp = 20 });
+            await session.StoreAsync(new Character { Id = c1, Name = "Alice", CurrentHp = 20, MaxHp = 20 }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new Character
             {
                 Id = c2,
@@ -454,8 +454,8 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
                         }
                     ]
                 }
-            });
-            await session.SaveChangesAsync();
+            }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         await tools.StartCombat(loc, [c1, c2], campaignName: campaign);
@@ -474,7 +474,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = store.OpenAsyncSession())
         {
-            var bob = await session.LoadAsync<Character>(c2);
+            var bob = await session.LoadAsync<Character>(c2, TestContext.Current.CancellationToken);
             Assert.Equal(14, bob.CurrentHp);
             Assert.Empty(bob.SystemStats.StatusEffects);
         }
@@ -502,7 +502,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Character { Id = c1, Name = "Alice", CurrentHp = 20, MaxHp = 20 });
+            await session.StoreAsync(new Character { Id = c1, Name = "Alice", CurrentHp = 20, MaxHp = 20 }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new Character
             {
                 Id = c2,
@@ -524,8 +524,8 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
                         new StatusEffect { Name = "Haste", Category = "Buff", ExpiresAtRound = 5 }
                     ]
                 }
-            });
-            await session.SaveChangesAsync();
+            }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var first = await combat.StartCombat(loc, [c1, c2], campaign);
@@ -540,7 +540,7 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
 
         using (var session = store.OpenAsyncSession())
         {
-            var bob = await session.LoadAsync<Character>(c2);
+            var bob = await session.LoadAsync<Character>(c2, TestContext.Current.CancellationToken);
             Assert.Equal(14, bob.CurrentHp);
             Assert.Empty(bob.SystemStats.StatusEffects);
         }

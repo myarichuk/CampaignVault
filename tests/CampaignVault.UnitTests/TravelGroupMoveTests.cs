@@ -47,8 +47,7 @@ public class TravelGroupMoveTests
 
         foreach (var id in new[] { "chars/a", "chars/b" })
         {
-            var result = await handler.ApplyAsync(
-                new TravelChange { CharacterId = id, DestinationLocationId = street.Id }, context);
+            var result = await handler.ApplyAsync(new TravelChange { CharacterId = id, DestinationLocationId = street.Id }, context, TestContext.Current.CancellationToken);
             Assert.True(result.Success);
         }
 

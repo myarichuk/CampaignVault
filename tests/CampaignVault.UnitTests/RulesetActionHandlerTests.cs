@@ -120,7 +120,7 @@ public class RulesetActionHandlerTests : IClassFixture<RavenDBFixture>
             ActionName = "Shortbow",
         };
 
-        var result = await handler.ApplyAsync(action, context, CancellationToken.None);
+        var result = await handler.ApplyAsync(action, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("OutOfRange", result.Message);
@@ -169,7 +169,7 @@ public class RulesetActionHandlerTests : IClassFixture<RavenDBFixture>
             Parameters = new Dictionary<string, string> { { "damageDice", "1d6" } }
         };
 
-        var result = await handler.ApplyAsync(action, context, CancellationToken.None);
+        var result = await handler.ApplyAsync(action, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
     }
@@ -207,7 +207,7 @@ public class RulesetActionHandlerTests : IClassFixture<RavenDBFixture>
             Parameters = new Dictionary<string, string> { { "range", "nEaR" } }
         };
 
-        var result = await handler.ApplyAsync(action, context, CancellationToken.None);
+        var result = await handler.ApplyAsync(action, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("OutOfRange", result.Message);
@@ -246,7 +246,7 @@ public class RulesetActionHandlerTests : IClassFixture<RavenDBFixture>
             Parameters = new Dictionary<string, string> { { "dc", "15" } }
         };
 
-        var result = await handler.ApplyAsync(action, context, CancellationToken.None);
+        var result = await handler.ApplyAsync(action, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("NoActionAvailable", result.Message);
@@ -290,7 +290,7 @@ public class RulesetActionHandlerTests : IClassFixture<RavenDBFixture>
             Parameters = new Dictionary<string, string> { { "dc", "10" } }
         };
 
-        var result = await handler.ApplyAsync(action, context, CancellationToken.None);
+        var result = await handler.ApplyAsync(action, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("[NotInCombat]", result.Message);
@@ -333,7 +333,7 @@ public class RulesetActionHandlerTests : IClassFixture<RavenDBFixture>
             Parameters = new Dictionary<string, string>()
         };
 
-        var result = await handler.ApplyAsync(action, context, CancellationToken.None);
+        var result = await handler.ApplyAsync(action, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("[NotInCombat]", result.Message);

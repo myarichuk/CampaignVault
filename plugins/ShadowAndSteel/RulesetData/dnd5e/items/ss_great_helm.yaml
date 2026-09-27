@@ -1,0 +1,16 @@
+# Shadow & Steel: full head enclosure for late-period men-at-arms (original homebrew stats, not an SRD entry).
+# Head-zone Armor-layer piece: its acBonus stacks with (not instead of) torso armor per
+# ArmorParameterResolver, and only Torso-zone items govern the dex cap.
+name: ss_great_helm
+system: dnd5e
+category: Armor
+tags: [heavy, helm]
+description: A flat-topped steel helm enclosing the whole head. +1 AC worn with other armor; narrow slits hinder hearing and side vision.
+properties:
+  acBonus: 1
+  armorType: Heavy
+  weight: 8
+  costGp: 40
+  specialMechanic: "Wearer suffers narrowed senses — hearing-based checks at disadvantage (narrative/GM-arbitrated)."
+equipZones: [Head]
+equipLayer: Armor

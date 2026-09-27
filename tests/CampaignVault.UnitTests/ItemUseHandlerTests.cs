@@ -55,7 +55,7 @@ public class ItemUseHandlerTests : IClassFixture<RavenDBFixture>
         var context = BuildContext(null, new Dictionary<string, Item> { [item.Id] = item });
 
         var handler = new ItemUseHandler();
-        var result = await handler.ApplyAsync(new ItemUse { ItemId = item.Id, Delta = -1 }, context);
+        var result = await handler.ApplyAsync(new ItemUse { ItemId = item.Id, Delta = -1 }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(2, item.CurrentCharges);
@@ -68,7 +68,7 @@ public class ItemUseHandlerTests : IClassFixture<RavenDBFixture>
         var context = BuildContext(null, new Dictionary<string, Item> { [item.Id] = item });
 
         var handler = new ItemUseHandler();
-        var result = await handler.ApplyAsync(new ItemUse { ItemId = item.Id, Delta = -2 }, context);
+        var result = await handler.ApplyAsync(new ItemUse { ItemId = item.Id, Delta = -2 }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(1, item.CurrentCharges);
@@ -81,7 +81,7 @@ public class ItemUseHandlerTests : IClassFixture<RavenDBFixture>
         var context = BuildContext(null, new Dictionary<string, Item> { [item.Id] = item });
 
         var handler = new ItemUseHandler();
-        var result = await handler.ApplyAsync(new ItemUse { ItemId = item.Id, Delta = -2 }, context);
+        var result = await handler.ApplyAsync(new ItemUse { ItemId = item.Id, Delta = -2 }, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("Insufficient charges", result.Message);
@@ -96,7 +96,7 @@ public class ItemUseHandlerTests : IClassFixture<RavenDBFixture>
         var context = BuildContext(null, new Dictionary<string, Item> { [item.Id] = item });
 
         var handler = new ItemUseHandler();
-        var result = await handler.ApplyAsync(new ItemUse { ItemId = item.Id, Delta = +10 }, context);
+        var result = await handler.ApplyAsync(new ItemUse { ItemId = item.Id, Delta = +10 }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(3, item.CurrentCharges);
@@ -109,7 +109,7 @@ public class ItemUseHandlerTests : IClassFixture<RavenDBFixture>
         var context = BuildContext(null, new Dictionary<string, Item> { [item.Id] = item });
 
         var handler = new ItemUseHandler();
-        var result = await handler.ApplyAsync(new ItemUse { ItemId = item.Id, Delta = -1 }, context);
+        var result = await handler.ApplyAsync(new ItemUse { ItemId = item.Id, Delta = -1 }, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("not a limited-use item", result.Message);
@@ -140,7 +140,7 @@ public class ItemUseHandlerTests : IClassFixture<RavenDBFixture>
             campaignName: "item-use-test");
 
         var handler = new ItemUseHandler();
-        var result = await handler.ApplyAsync(new ItemUse { ItemId = item.Id, Delta = -1 }, context);
+        var result = await handler.ApplyAsync(new ItemUse { ItemId = item.Id, Delta = -1 }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(0, item.CurrentCharges);

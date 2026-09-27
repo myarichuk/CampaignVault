@@ -1,0 +1,16 @@
+# Shadow & Steel: broad-bladed spear with a crossbar for stopping charging game and cavalry
+# (original homebrew stats; no ORC text copied).
+name: ss_boar_spear
+system: pf2e
+category: Weapon
+tags: [martial, melee]
+description: Heavy spear with a broad head and crossbar that stops a charging foe from running down the shaft. Deals 1d8 piercing damage.
+properties:
+  damage: 1d8
+  damageType: piercing
+  bulk: 1
+  costGp: 1
+  specialMechanic: "Braced against a charge, the crossbar halts the target short of the wielder (narrative/GM-arbitrated; not computed by the engine)."
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: true

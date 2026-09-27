@@ -1,0 +1,15 @@
+# Shadow & Steel: armor of small laced steel plates in eastern style (original homebrew stats; no ORC text copied).
+name: ss_lamellar
+system: pf2e
+category: Armor
+tags: [medium]
+description: Rows of small steel plates laced to cords in steppe fashion. AC bonus +3. Dex cap +2. Check penalty -2.
+properties:
+  acBonus: 3
+  dexCap: 2
+  checkPenalty: -2
+  speedModifier: 0
+  bulk: 2
+  costGp: 15
+equipZones: [Torso]
+equipLayer: Armor

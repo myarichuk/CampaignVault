@@ -113,7 +113,7 @@ public class SpellDefinitionTests
             Reason = "Cast Fireball"
         };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(3, character.SystemStats.ResourcePools["spell_slots_3"].Current);
@@ -191,7 +191,7 @@ public class SpellDefinitionTests
             PoolName = "spell_slots_3",
             Delta = -1,
             Reason = "Cast something"
-        }, context);
+        }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Contains(summary, m => m.Contains("spellName", StringComparison.OrdinalIgnoreCase));
@@ -223,7 +223,7 @@ public class SpellDefinitionTests
             Delta = -1,
             SpellName = "fire_bolt",
             Reason = "Cast Fire Bolt by mistake"
-        }, context);
+        }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Contains(summary, m => m.Contains("cantrip", StringComparison.OrdinalIgnoreCase));
@@ -244,7 +244,7 @@ public class SpellDefinitionTests
             SpellName = "fireball"
         };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("fireball", result.Message!, StringComparison.OrdinalIgnoreCase);
@@ -292,7 +292,7 @@ public class SpellDefinitionTests
             Reason = "Spend from empty pool"
         };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("Insufficient", result.Message!);
@@ -325,7 +325,7 @@ public class SpellDefinitionTests
             Reason = "Spend more than available"
         };
 
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("Insufficient", result.Message!);

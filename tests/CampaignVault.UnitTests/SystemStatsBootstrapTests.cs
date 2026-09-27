@@ -84,12 +84,12 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
         };
 
         var ctx = CreateContext(session, "bootstrap-create");
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
 
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var character = await session.LoadAsync<Character>(characterId);
+        var character = await session.LoadAsync<Character>(characterId, TestContext.Current.CancellationToken);
         var stats = Assert.IsType<Dnd5eExtension>(character!.SystemStats);
         Assert.Equal(16, stats.ArmorClass);
         Assert.Equal(16, stats.Strength);
@@ -115,8 +115,8 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
                 SkillModifiers = new Dictionary<string, int> { { "Stealth", 6 } }
             }
         };
-        await session.StoreAsync(existing);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(existing, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new CharacterUpdateHandler(new CampaignVault.Data.CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator());
         var change = new CharacterUpdate
@@ -130,7 +130,7 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
         };
 
         var ctx = CreateContext(session, "bootstrap-merge");
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
 
         var stats = Assert.IsType<Dnd5eExtension>(existing.SystemStats);
@@ -157,7 +157,7 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
         };
 
         var ctx = CreateContext(session, "bootstrap-mismatch");
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.False(result.Success);
     }
 
@@ -223,7 +223,7 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
             Id = keys.Config("pressure-bootstrap"),
             ActiveSystem = RulesetSystem.Dnd5e
         };
-        await session.StoreAsync(config);
+        await session.StoreAsync(config, TestContext.Current.CancellationToken);
 
         await session.StoreAsync(new Character
         {
@@ -234,20 +234,19 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
             MaxHp = 18,
             CurrentHp = 18,
             SystemStats = new Dnd5eExtension()
-        });
-        await session.SaveChangesAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         List<Character> indexedCombatants = [];
         for (var attempt = 0; attempt < 50; attempt++)
         {
-            indexedCombatants = await PressureQueryHelper.QueryCombatantCharactersAsync(
-                session, "pressure-bootstrap", 100);
+            indexedCombatants = await PressureQueryHelper.QueryCombatantCharactersAsync(session, "pressure-bootstrap", 100, TestContext.Current.CancellationToken);
             if (indexedCombatants.Any(c => c.Id == "chars/unbootstrapped"))
             {
                 break;
             }
 
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
         }
 
         Assert.Contains(indexedCombatants, c => c.Id == "chars/unbootstrapped");
@@ -255,7 +254,7 @@ public class SystemStatsBootstrapTests : IClassFixture<RavenDBFixture>
         var time = new CampaignTime { Id = keys.StateTime("pressure-bootstrap"), TotalDaysElapsed = 1 };
         var contributor = new IncompleteSystemStatsPressureContributor();
         var ctx = new PressureContext("pressure-bootstrap", time, config, session);
-        var pressures = (await contributor.EvaluateAsync(ctx)).ToList();
+        var pressures = (await contributor.EvaluateAsync(ctx, TestContext.Current.CancellationToken)).ToList();
 
         Assert.Contains(pressures, p =>
             p.Severity == PressureSeverity.EngineWarning

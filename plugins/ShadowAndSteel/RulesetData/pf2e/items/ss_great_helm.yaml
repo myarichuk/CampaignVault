@@ -1,0 +1,16 @@
+# Shadow & Steel: full head enclosure (original homebrew stats; no ORC text copied).
+# Head-zone Armor-layer piece: its acBonus counts alongside torso armor per
+# ArmorParameterResolver, and only Torso-zone items govern the dex cap.
+name: ss_great_helm
+system: pf2e
+category: Armor
+tags: [heavy, helm]
+description: Flat-topped steel helm enclosing the whole head. +1 AC worn with other armor; narrow slits hinder hearing.
+properties:
+  acBonus: 1
+  checkPenalty: -1
+  bulk: 0.5
+  costGp: 8
+  specialMechanic: "Wearer suffers narrowed senses — hearing-based checks impaired (narrative/GM-arbitrated)."
+equipZones: [Head]
+equipLayer: Armor

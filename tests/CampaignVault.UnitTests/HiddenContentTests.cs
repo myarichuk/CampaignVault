@@ -232,7 +232,7 @@ public class HiddenContentTests : IClassFixture<RavenDBFixture>
             await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = inn, Name = "Inn", Description = "Warm.", Exits = [new LocationExit(road, "Next door", TravelCostHours: 0.2)] });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest { Id = pc, Name = "Tamsin", IsPc = true, CurrentLocationId = road, MaxHp = 10, CurrentHp = 10 });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest { Id = bram, Name = "Bram", IsPartyCompanion = true, CurrentLocationId = road, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         Task<ToolResult<TurnResult>> Go(string to, string? hazard) => tools.TakeTurn(new TakeTurnRequest

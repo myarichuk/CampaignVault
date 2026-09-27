@@ -249,7 +249,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
                     { Id = "chars/char-1", Name = "Char 1", CurrentHp = 10, MaxHp = 10, KeepAlive = true });
             await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, "campaign-b"), new CharacterUpsertRequest
                     { Id = "chars/char-2", Name = "Char 2", CurrentHp = 10, MaxHp = 10, KeepAlive = true });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Setup Campaign A (D&D 5e)
@@ -282,23 +282,23 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         // Set high need on both for pressure test (loose filter for shareables, but here per-camp)
         using (var session = _store.OpenAsyncSession())
         {
-            var cfgA = await session.LoadAsync<CampaignConfig>(new CampaignDocumentKeys().Config("campaign-a"));
+            var cfgA = await session.LoadAsync<CampaignConfig>(new CampaignDocumentKeys().Config("campaign-a"), TestContext.Current.CancellationToken);
             if (cfgA != null)
             {
                 cfgA.MaxPressuresPerResponse = 50;
             }
 
-            var cfgB = await session.LoadAsync<CampaignConfig>(new CampaignDocumentKeys().Config("campaign-b"));
+            var cfgB = await session.LoadAsync<CampaignConfig>(new CampaignDocumentKeys().Config("campaign-b"), TestContext.Current.CancellationToken);
             if (cfgB != null)
             {
                 cfgB.MaxPressuresPerResponse = 50;
             }
 
-            var c1 = await session.LoadAsync<Character>("chars/char-1");
+            var c1 = await session.LoadAsync<Character>("chars/char-1", TestContext.Current.CancellationToken);
             c1.Needs.ActiveNeeds["hunger"] = 95f; // triggers pressure for A
-            var c2 = await session.LoadAsync<Character>("chars/char-2");
+            var c2 = await session.LoadAsync<Character>("chars/char-2", TestContext.Current.CancellationToken);
             c2.Needs.ActiveNeeds["hunger"] = 95f; // triggers for B
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             // Verify scoping set during upsert
             Assert.Equal("campaign-a", c1.CampaignName);
@@ -319,7 +319,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
             var config = await repo.GetCampaignConfigAsync(_fixture.CreateCampaignSession(ps, "campaign-b"));
             var contributor = new CampaignVault.Data.Pressure.Contributors.CharacterDistressPressureContributor();
             var ctx = new CampaignVault.Data.Pressure.PressureContext("campaign-b", time, config, ps);
-            var dps = await contributor.EvaluateAsync(ctx);
+            var dps = await contributor.EvaluateAsync(ctx, TestContext.Current.CancellationToken);
             var dpText = string.Join(" | ", dps.Select(p => p.Text));
             Assert.Contains("Char 2", dpText);
             Assert.DoesNotContain("Char 1", dpText);
@@ -334,21 +334,21 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         // Sim scoping: add schedules to both, set needs, advance only A, verify only A affected
         using (var session = _store.OpenAsyncSession())
         {
-            var c1 = await session.LoadAsync<Character>("chars/char-1");
+            var c1 = await session.LoadAsync<Character>("chars/char-1", TestContext.Current.CancellationToken);
             c1.Schedule = new Schedule { DefaultLocationId = "loc-1", Routines = [] };
             c1.Needs.ActiveNeeds["tiredness"] = 50f;
-            var c2 = await session.LoadAsync<Character>("chars/char-2");
+            var c2 = await session.LoadAsync<Character>("chars/char-2", TestContext.Current.CancellationToken);
             c2.Schedule = new Schedule { DefaultLocationId = "loc-2", Routines = [] };
             c2.Needs.ActiveNeeds["tiredness"] = 50f;
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         await tools.AdvanceWorld(1, 9, "Advance A only", "campaign-a");
 
         using (var verify = _store.OpenAsyncSession())
         {
-            var c1After = await verify.LoadAsync<Character>("chars/char-1");
-            var c2After = await verify.LoadAsync<Character>("chars/char-2");
+            var c1After = await verify.LoadAsync<Character>("chars/char-1", TestContext.Current.CancellationToken);
+            var c2After = await verify.LoadAsync<Character>("chars/char-2", TestContext.Current.CancellationToken);
             // A should have changed (needs accumulation or schedule), B should not (or at least test no cross)
             // Since needs rule runs, tiredness may increase for scheduled; check A was processed
             // A may or may not have changed depending on rules/time (not strict for this test); main is B untouched by A advance

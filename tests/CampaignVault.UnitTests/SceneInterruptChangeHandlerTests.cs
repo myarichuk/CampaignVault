@@ -88,7 +88,7 @@ public class SceneInterruptChangeHandlerTests : IClassFixture<RavenDBFixture>
                 LocationId = "locations/hall",
                 RiskModifier = 30,
                 Notes = "Famous wanted face"
-            }, CreateContext(session, character, location, dispatcher: dispatcher), CancellationToken.None);
+            }, CreateContext(session, character, location, dispatcher: dispatcher), TestContext.Current.CancellationToken);
 
             Assert.True(result.Success);
             Assert.Contains("INTERRUPT", result.Message, StringComparison.OrdinalIgnoreCase);
@@ -121,7 +121,7 @@ public class SceneInterruptChangeHandlerTests : IClassFixture<RavenDBFixture>
             {
                 CharacterId = "chars/valen",
                 LocationId = "locations/hall"
-            }, CreateContext(session, character, location), CancellationToken.None);
+            }, CreateContext(session, character, location), TestContext.Current.CancellationToken);
 
             Assert.True(result.Success);
             Assert.Contains("no reaction", result.Message, StringComparison.OrdinalIgnoreCase);
@@ -146,7 +146,7 @@ public class SceneInterruptChangeHandlerTests : IClassFixture<RavenDBFixture>
             {
                 CharacterId = "chars/valen",
                 LocationId = "locations/clearing"
-            }, CreateContext(session, character, location), CancellationToken.None);
+            }, CreateContext(session, character, location), TestContext.Current.CancellationToken);
 
             Assert.False(result.Success);
             Assert.Contains("ambientCrowd", result.Message, StringComparison.OrdinalIgnoreCase);
@@ -175,7 +175,7 @@ public class SceneInterruptChangeHandlerTests : IClassFixture<RavenDBFixture>
             var result = await handler.ApplyAsync(
                 new SceneInterruptCheck { CharacterId = "chars/valen", LocationId = "locations/hall" },
                 CreateContext(session, character, location, activeCombat: new CombatEncounter { Id = "combat/1", LocationId = "locations/hall" }),
-                CancellationToken.None);
+                TestContext.Current.CancellationToken);
 
             Assert.False(result.Success);
             Assert.Contains("combat", result.Message, StringComparison.OrdinalIgnoreCase);
@@ -208,7 +208,7 @@ public class SceneInterruptChangeHandlerTests : IClassFixture<RavenDBFixture>
                 CharacterId = "chars/valen",
                 LocationId = "locations/plaza",
                 RiskModifier = 40
-            }, CreateContext(session, character, location, others), CancellationToken.None);
+            }, CreateContext(session, character, location, others), TestContext.Current.CancellationToken);
 
             Assert.True(result.Success);
             Assert.Contains("INTERRUPT", result.Message, StringComparison.OrdinalIgnoreCase);

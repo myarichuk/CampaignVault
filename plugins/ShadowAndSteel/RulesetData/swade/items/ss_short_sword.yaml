@@ -1,0 +1,15 @@
+# Shadow & Steel: fantasy-tier one-handed blade (original homebrew seed data).
+name: ss_short_sword
+system: swade
+category: Weapon
+tags: [fantasy, melee]
+description: Handy one-handed blade, the sellsword's default. Damage Strength + d6.
+properties:
+  damage: Str+d6
+  damageType: slashing
+  weight: 4
+  costGp: 150
+  era: fantasy
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

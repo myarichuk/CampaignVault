@@ -37,7 +37,7 @@ public sealed class VaultSyncClassificationTests : IDisposable
         await WriteEntityOnDiskAsync(GrogMarkdown("Local only notes."));
 
         SetupEmptyRemote();
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
 
         var item = FindPlan("characters/grog");
         Assert.Equal(VaultSyncState.LocalOnly, item.State);
@@ -48,7 +48,7 @@ public sealed class VaultSyncClassificationTests : IDisposable
     {
         await CreateVaultAsync();
         SetupRemoteEntities(("characters/grog", "character", GrogJson("Remote only.")));
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
 
         var item = FindPlan("characters/grog");
         Assert.Equal(VaultSyncState.RemoteOnly, item.State);
@@ -61,7 +61,7 @@ public sealed class VaultSyncClassificationTests : IDisposable
         await WriteAndCommitEntityAsync(GrogMarkdown("To be deleted."));
         await AdvanceSyncedToHeadAsync();
         SetupRemoteEntities(("characters/grog", "character", GrogJson("To be deleted.")));
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
 
         File.Delete(Path.Combine(_tempDirectory, "characters", "grog.md"));
         await CommitAllAsync("delete grog");
@@ -77,7 +77,7 @@ public sealed class VaultSyncClassificationTests : IDisposable
         await WriteAndCommitEntityAsync(GrogMarkdown("Local copy."));
         await AdvanceSyncedToHeadAsync();
         SetupEmptyRemote();
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
 
         var item = FindPlan("characters/grog");
         Assert.Equal(VaultSyncState.DeletedRemotely, item.State);
@@ -90,7 +90,7 @@ public sealed class VaultSyncClassificationTests : IDisposable
         await WriteAndCommitEntityAsync(GrogMarkdown("Committed baseline."));
         await AdvanceSyncedToHeadAsync();
         SetupRemoteEntities(("characters/grog", "character", GrogJson("Committed baseline.")));
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
 
         await WriteEntityOnDiskAsync(GrogMarkdown("Dirty working tree edit."));
 
@@ -102,7 +102,7 @@ public sealed class VaultSyncClassificationTests : IDisposable
     public async Task FetchAsync_WhenSyncNotConfigured_Throws()
     {
         await _session.CreateAsync(_tempDirectory, "test-campaign");
-        var ex = await Assert.ThrowsAsync<VaultException>(() => _session.FetchAsync());
+        var ex = await Assert.ThrowsAsync<VaultException>(() => _session.FetchAsync(TestContext.Current.CancellationToken));
         Assert.Contains("not configured", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -116,7 +116,7 @@ public sealed class VaultSyncClassificationTests : IDisposable
             "remote-cache",
             VaultRemoteCache.ManifestFileName);
         Directory.CreateDirectory(Path.GetDirectoryName(manifestPath)!);
-        await File.WriteAllTextAsync(manifestPath, "{ not valid json");
+        await File.WriteAllTextAsync(manifestPath, "{ not valid json", TestContext.Current.CancellationToken);
 
         var summary = _session.GetSyncSummary();
         Assert.True(summary.RemoteCacheCorrupt);

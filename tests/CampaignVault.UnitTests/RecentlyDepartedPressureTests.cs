@@ -41,7 +41,7 @@ public class RecentlyDepartedPressureTests : IClassFixture<RavenDBFixture>
             new CampaignTime { TotalDaysElapsed = 5 },
             new CampaignConfig(),
             null!,
-            Scene: scene));
+            Scene: scene), TestContext.Current.CancellationToken);
 
         var pressure = Assert.Single(pressures);
         Assert.Equal(PressureSeverity.NarrativePrompt, pressure.Severity);
@@ -73,8 +73,8 @@ public class RecentlyDepartedPressureTests : IClassFixture<RavenDBFixture>
                 [
                     new DepartedNpcRecord(charId, "Mira the Bard", 2, "transient eviction")
                 ]
-            });
-            await session.SaveChangesAsync();
+            }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.GetScene(locId, campaignName: campaign, partyPresent: true);

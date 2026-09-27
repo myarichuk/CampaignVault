@@ -29,7 +29,7 @@ public class DefaultRollServiceTests
         };
 
         // Act
-        var outcome = await service.RollAsync(request);
+        var outcome = await service.RollAsync(request, TestContext.Current.CancellationToken);
 
         // Assert
         var expectedDice = new List<int> { testRng.Next(1, 11), testRng.Next(1, 11) };
@@ -64,7 +64,7 @@ public class DefaultRollServiceTests
         {
             Expression = "1d20",
             Mechanic = DiceMechanic.Standard
-        });
+        }, TestContext.Current.CancellationToken);
         Assert.True(outcomeCrit.HasCritical);
         Assert.False(outcomeCrit.HasComplication);
 
@@ -85,7 +85,7 @@ public class DefaultRollServiceTests
         {
             Expression = "1d20",
             Mechanic = DiceMechanic.Standard
-        });
+        }, TestContext.Current.CancellationToken);
         Assert.True(outcomeComp.HasComplication);
         Assert.False(outcomeCrit.HasComplication);
     }
@@ -107,7 +107,7 @@ public class DefaultRollServiceTests
         };
 
         // Act
-        var outcome = await service.RollAsync(request);
+        var outcome = await service.RollAsync(request, TestContext.Current.CancellationToken);
 
         // Assert
         // First set
@@ -140,7 +140,7 @@ public class DefaultRollServiceTests
         };
 
         // Act
-        var outcome = await service.RollAsync(request);
+        var outcome = await service.RollAsync(request, TestContext.Current.CancellationToken);
 
         // Assert
         // First set
@@ -184,7 +184,7 @@ public class DefaultRollServiceTests
         };
 
         // Act
-        var outcome = await service.RollAsync(request);
+        var outcome = await service.RollAsync(request, TestContext.Current.CancellationToken);
 
         // Assert
         var expectedDice = new List<int>();
@@ -219,7 +219,7 @@ public class DefaultRollServiceTests
         };
 
         // Act
-        var outcome = await service.RollAsync(request);
+        var outcome = await service.RollAsync(request, TestContext.Current.CancellationToken);
 
         // Assert
         var rolled = Enumerable.Range(0, 4).Select(_ => testRng.Next(1, 7)).ToList();
@@ -246,7 +246,7 @@ public class DefaultRollServiceTests
         };
 
         // Act
-        var outcome = await service.RollAsync(request);
+        var outcome = await service.RollAsync(request, TestContext.Current.CancellationToken);
 
         // Assert
         var rolled = Enumerable.Range(0, 4).Select(_ => testRng.Next(1, 7)).ToList();
@@ -273,7 +273,7 @@ public class DefaultRollServiceTests
         };
 
         // Act
-        var outcome = await service.RollAsync(request);
+        var outcome = await service.RollAsync(request, TestContext.Current.CancellationToken);
 
         // Assert
         var rolled = Enumerable.Range(0, 3).Select(_ => testRng.Next(1, 7)).ToList();
@@ -296,7 +296,7 @@ public class DefaultRollServiceTests
             // TargetNumber omitted
         };
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.RollAsync(request));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.RollAsync(request, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -315,7 +315,7 @@ public class DefaultRollServiceTests
             new RollRequest { Tag = "t2", Expression = "2d8" }
         };
 
-        var results = await service.RollBatchAsync(requests);
+        var results = await service.RollBatchAsync(requests, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, results.Count);
         Assert.Equal("t1", results[0].Tag);

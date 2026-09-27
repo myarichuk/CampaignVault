@@ -43,7 +43,7 @@ public sealed class CampaignVaultSessionTests : IDisposable
         foreach (var (folder, _) in VaultPaths.EntityFolders)
             Assert.True(Directory.Exists(Path.Combine(_tempDirectory, folder)));
 
-        var gitIgnore = await File.ReadAllTextAsync(Path.Combine(_tempDirectory, VaultPaths.GitIgnoreFileName));
+        var gitIgnore = await File.ReadAllTextAsync(Path.Combine(_tempDirectory, VaultPaths.GitIgnoreFileName), TestContext.Current.CancellationToken);
         Assert.Contains(".cv/", gitIgnore);
 
         Assert.False(string.IsNullOrWhiteSpace(_session.HeadCommitSha));
@@ -109,7 +109,7 @@ public sealed class CampaignVaultSessionTests : IDisposable
             ---
 
             A brave warrior.
-            """);
+            """, TestContext.Current.CancellationToken);
 
         var newRelativePath = await _session.RenameEntityAsync("characters/grog.md", "Groggan the Bold");
 
@@ -134,7 +134,7 @@ public sealed class CampaignVaultSessionTests : IDisposable
             ---
 
             A brave warrior.
-            """);
+            """, TestContext.Current.CancellationToken);
 
         var entities = _session.ScanEntities();
 
@@ -153,7 +153,7 @@ public sealed class CampaignVaultSessionTests : IDisposable
         await _session.CreateAsync(_tempDirectory, "test-campaign");
 
         var badPath = Path.Combine(_tempDirectory, "characters", "broken.md");
-        await File.WriteAllTextAsync(badPath, "No frontmatter here.");
+        await File.WriteAllTextAsync(badPath, "No frontmatter here.", TestContext.Current.CancellationToken);
 
         var entity = Assert.Single(_session.ScanEntities());
         Assert.False(entity.HasValidFrontmatter);
@@ -174,7 +174,7 @@ public sealed class CampaignVaultSessionTests : IDisposable
             ---
 
             Notes
-            """);
+            """, TestContext.Current.CancellationToken);
 
         var entity = Assert.Single(_session.ScanEntities());
         Assert.Equal("characters/npcs/grog", entity.Id);
@@ -193,7 +193,7 @@ public sealed class CampaignVaultSessionTests : IDisposable
             ---
 
             Notes
-            """);
+            """, TestContext.Current.CancellationToken);
 
         var status = _session.GetGitStatus();
         Assert.True(status.IsDirty);

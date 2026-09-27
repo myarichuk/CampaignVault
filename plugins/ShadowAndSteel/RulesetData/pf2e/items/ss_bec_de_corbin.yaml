@@ -1,0 +1,16 @@
+# Shadow & Steel: crow's-beak polehammer for hooking riders and cracking plate
+# (original homebrew stats; no ORC text copied).
+name: ss_bec_de_corbin
+system: pf2e
+category: Weapon
+tags: [martial, melee, reach]
+description: Long pole topped with a crow's-beak pick and hammer face. Deals 1d8 bludgeoning damage at reach.
+properties:
+  damage: 1d8
+  damageType: bludgeoning
+  bulk: 2
+  costGp: 5
+  specialMechanic: "The beak can hook shields and riders; +1 damage per die against heavily armored targets (narrative/GM-arbitrated; not computed by the engine)."
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: true

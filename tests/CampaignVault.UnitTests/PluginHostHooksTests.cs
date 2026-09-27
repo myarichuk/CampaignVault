@@ -71,23 +71,23 @@ public class PluginHostHooksTests(RavenDBFixture fixture) : IClassFixture<RavenD
         var name = $"hooks-{Guid.NewGuid():N}";
         using (var session = fixture.Store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Campaign { Id = keys.Meta(name), Name = name, SystemOptions = new() { ["hooksOldOpt"] = "fade" } });
+            await session.StoreAsync(new Campaign { Id = keys.Meta(name), Name = name, SystemOptions = new() { ["hooksOldOpt"] = "fade" } }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new CampaignConfig
             {
                 Id = keys.Config(name),
                 SystemOptions = new() { ["hooksOldOpt"] = "fade", ["hooksNewOpt"] = "player-set" }
-            });
-            await session.SaveChangesAsync();
+            }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var migration = new UpgradePluginCampaignOptions(fixture.Store, [new RenameUpgrader()]);
-        Assert.True(await migration.ExecuteAsync() >= 2);
-        Assert.Equal(0, await migration.ExecuteAsync());
+        Assert.True(await migration.ExecuteAsync(TestContext.Current.CancellationToken) >= 2);
+        Assert.Equal(0, await migration.ExecuteAsync(TestContext.Current.CancellationToken));
 
         using (var session = fixture.Store.OpenAsyncSession())
         {
-            var meta = await session.LoadAsync<Campaign>(keys.Meta(name));
-            var config = await session.LoadAsync<CampaignConfig>(keys.Config(name));
+            var meta = await session.LoadAsync<Campaign>(keys.Meta(name), TestContext.Current.CancellationToken);
+            var config = await session.LoadAsync<CampaignConfig>(keys.Config(name), TestContext.Current.CancellationToken);
             Assert.Equal("FADE", meta.SystemOptions["hooksNewOpt"]);
             Assert.False(meta.SystemOptions.ContainsKey("hooksOldOpt"));
             Assert.Equal("player-set", config.SystemOptions["hooksNewOpt"]); // never overwrites the new key
@@ -293,9 +293,9 @@ public class PluginHostHooksTests(RavenDBFixture fixture) : IClassFixture<RavenD
             Party = [pc]
         };
 
-        Assert.Same(pc, await turn.LoadCharacterAsync("CHARS/PC"));
-        Assert.Same(npc, await turn.LoadCharacterAsync("chars/npc"));
-        Assert.Null(await turn.LoadCharacterAsync("chars/nobody"));
+        Assert.Same(pc, await turn.LoadCharacterAsync("CHARS/PC", TestContext.Current.CancellationToken));
+        Assert.Same(npc, await turn.LoadCharacterAsync("chars/npc", TestContext.Current.CancellationToken));
+        Assert.Null(await turn.LoadCharacterAsync("chars/nobody", TestContext.Current.CancellationToken));
         Assert.Equal(["crafting"], turn.Config!.EnabledModeIds);
         session.Advanced.Received().Evict(npc);
     }

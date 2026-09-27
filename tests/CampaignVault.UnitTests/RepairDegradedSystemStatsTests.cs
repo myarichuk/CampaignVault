@@ -39,7 +39,7 @@ public class RepairDegradedSystemStatsTests
             {
                 Id = _keys.Config(campaign),
                 ActiveSystem = RulesetSystem.Dnd5e,
-            });
+            }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new Character
             {
                 Id = charId,
@@ -47,20 +47,20 @@ public class RepairDegradedSystemStatsTests
                 CampaignName = campaign,
                 KeepAlive = true,
                 SystemStats = new SystemExtension { Willpower = 55 }, // exact base type — the corruption shape
-            }, charId);
-            await session.SaveChangesAsync();
+            }, charId, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // The embedded (non-Docker) test fallback shares one RavenDB database across every test
         // class, so `repaired` reflects whatever else is in that shared database at the moment —
         // assert on this test's own character by id, not the aggregate count.
         var repair = new RepairDegradedSystemStats(store);
-        var (_, details) = await repair.ExecuteAsync();
+        var (_, details) = await repair.ExecuteAsync(TestContext.Current.CancellationToken);
 
         Assert.Contains(details, d => d.Contains(charId));
 
         using var readSession = store.OpenAsyncSession();
-        var reloaded = await readSession.LoadAsync<Character>(charId);
+        var reloaded = await readSession.LoadAsync<Character>(charId, TestContext.Current.CancellationToken);
         var stats = Assert.IsType<Dnd5eExtension>(reloaded!.SystemStats);
         Assert.Equal(55, stats.Willpower); // base-class field preserved, not reset
         Assert.Equal(10, stats.ArmorClass); // ruleset-specific field: was already lost, now at type default
@@ -79,7 +79,7 @@ public class RepairDegradedSystemStatsTests
             {
                 Id = _keys.Config(campaign),
                 ActiveSystem = RulesetSystem.Narrative,
-            });
+            }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new Character
             {
                 Id = charId,
@@ -87,17 +87,17 @@ public class RepairDegradedSystemStatsTests
                 CampaignName = campaign,
                 KeepAlive = true,
                 SystemStats = new SystemExtension(),
-            }, charId);
-            await session.SaveChangesAsync();
+            }, charId, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var repair = new RepairDegradedSystemStats(store);
-        var (_, details) = await repair.ExecuteAsync();
+        var (_, details) = await repair.ExecuteAsync(TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain(details, d => d.Contains(charId));
 
         using var readSession = store.OpenAsyncSession();
-        var reloaded = await readSession.LoadAsync<Character>(charId);
+        var reloaded = await readSession.LoadAsync<Character>(charId, TestContext.Current.CancellationToken);
         Assert.IsType<SystemExtension>(reloaded!.SystemStats);
     }
 
@@ -114,7 +114,7 @@ public class RepairDegradedSystemStatsTests
             {
                 Id = _keys.Config(campaign),
                 ActiveSystem = RulesetSystem.Dnd5e,
-            });
+            }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new Character
             {
                 Id = charId,
@@ -122,17 +122,17 @@ public class RepairDegradedSystemStatsTests
                 CampaignName = campaign,
                 KeepAlive = true,
                 SystemStats = new Dnd5eExtension { ArmorClass = 14 },
-            }, charId);
-            await session.SaveChangesAsync();
+            }, charId, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var repair = new RepairDegradedSystemStats(store);
-        var (_, details) = await repair.ExecuteAsync();
+        var (_, details) = await repair.ExecuteAsync(TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain(details, d => d.Contains(charId));
 
         using var readSession = store.OpenAsyncSession();
-        var reloaded = await readSession.LoadAsync<Character>(charId);
+        var reloaded = await readSession.LoadAsync<Character>(charId, TestContext.Current.CancellationToken);
         var stats = Assert.IsType<Dnd5eExtension>(reloaded!.SystemStats);
         Assert.Equal(14, stats.ArmorClass);
     }
@@ -150,7 +150,7 @@ public class RepairDegradedSystemStatsTests
             {
                 Id = _keys.Config(campaign),
                 ActiveSystem = RulesetSystem.Dnd5e,
-            });
+            }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new Character
             {
                 Id = charId,
@@ -159,12 +159,12 @@ public class RepairDegradedSystemStatsTests
                 KeepAlive = false,
                 MaxHp = 0,
                 SystemStats = new SystemExtension(),
-            }, charId);
-            await session.SaveChangesAsync();
+            }, charId, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var repair = new RepairDegradedSystemStats(store);
-        var (_, details) = await repair.ExecuteAsync();
+        var (_, details) = await repair.ExecuteAsync(TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain(details, d => d.Contains(charId));
     }

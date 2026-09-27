@@ -39,7 +39,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             var config = await repo.GetCampaignConfigAsync(cs);
             config.DeltaModeReseedIntervalTurns = 2;
             await repo.UpsertCampaignConfigAsync(session, config, slug);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         Task<ToolResult<TurnResult>> Query(bool forceFullReseed = false) =>
@@ -96,7 +96,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             await repo.UpsertCampaignConfigAsync(session, config, slug);
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = companionId, Name = "Companion", IsPartyCompanion = true, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
@@ -153,7 +153,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             { Id = pcId, Name = "PC", IsPc = true, MaxHp = 10, CurrentHp = 10 });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = npcId, Name = "NPC", MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { IncludeParty = true }, slug);
@@ -220,7 +220,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             await repo.UpsertCampaignConfigAsync(session, config, slug);
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = pcId, Name = "PC", IsPc = true, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { IncludeParty = true }, slug);
@@ -313,7 +313,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             var cs = _fixture.CreateCampaignSession(session, slug);
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = brokenId, Name = "Broken", KeepAlive = true });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var third = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
@@ -396,7 +396,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 MaxHp = 10,
                 CurrentHp = 10
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         using var actSession = _fixture.Store.OpenAsyncSession();
@@ -404,7 +404,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         var commitResult = await repo.StageChangesAsync(actCs, [
             new RestChange { CharacterId = charId, LocationId = locId, IntendedHours = 30, SecurityModifier = 0 }
         ]);
-        await actSession.SaveChangesAsync();
+        await actSession.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         Assert.True(commitResult.Success, string.Join("; ", commitResult.Summary));
         Assert.NotEmpty(commitResult.AmbientDeltas);
@@ -463,7 +463,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 MaxHp = 10,
                 CurrentHp = 10
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         using var actSession = _fixture.Store.OpenAsyncSession();
@@ -471,7 +471,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         var commitResult = await repo.StageChangesAsync(actCs, [
             new RestChange { CharacterId = charId, LocationId = innId, IntendedHours = 30, SecurityModifier = 0 }
         ]);
-        await actSession.SaveChangesAsync();
+        await actSession.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         Assert.True(commitResult.Success, string.Join("; ", commitResult.Summary));
         Assert.Contains(commitResult.AmbientDeltas, d => d is NeedChange nc && nc.CharacterId == bystanderId);
@@ -497,7 +497,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Hub" });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // A change that touches only the PC lands the PC id in InvolvedEntities, which
@@ -548,7 +548,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = companionId, Name = "Companion", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // No includeParty, no extraCharacterIds, no partyLocationId — the initiative pool must fall back
@@ -595,7 +595,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Destination" });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = pcId, Name = "PC", IsPc = true, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.TakeTurn(new TakeTurnRequest
@@ -651,7 +651,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 EquipLayer = EquipLayers.Held,
                 IsEquipped = true
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         Task<ToolResult<TurnResult>> Refresh(WorldChange[]? changes = null) => tools.TakeTurn(new TakeTurnRequest
@@ -729,7 +729,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 EquipLayer = EquipLayers.Held,
                 IsEquipped = true
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         Task<ToolResult<TurnResult>> Refresh(WorldChange[]? changes = null) => tools.TakeTurn(new TakeTurnRequest
@@ -795,7 +795,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 EquipLayer = EquipLayers.Held,
                 IsEquipped = true
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         Task<ToolResult<TurnResult>> Refresh(WorldChange[]? changes = null) => tools.TakeTurn(new TakeTurnRequest
@@ -846,7 +846,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = companionId, Name = "Companion", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.TakeTurn(new TakeTurnRequest
@@ -898,7 +898,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             { Id = companionBId, Name = "Companion B", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = villagerId, Name = "Villager", CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.TakeTurn(new TakeTurnRequest
@@ -958,7 +958,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = nudgedId, Name = "Touchy", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var reason = "watched the rabbit being field-dressed and is visibly disturbed";
@@ -1014,7 +1014,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = nudgedId, Name = "Touchy", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // NpcInitiativeNudge.CharacterId is itself an "involved entity" this turn (reflection-based
@@ -1072,7 +1072,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = elsewhereId, MaxHp = 10, CurrentHp = 10 });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = nudgedId, Name = "Touchy", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // AutoRefreshInvolved: false on the issuing call itself — otherwise NpcInitiativeNudge.CharacterId
@@ -1128,7 +1128,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = elsewhereId, MaxHp = 10, CurrentHp = 10 });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = nudgedId, Name = "Touchy", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // AutoRefreshInvolved: false so neither nudge gets consumed by a same-call selection (otherwise
@@ -1201,7 +1201,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                     }
                 }
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Call 1 (Full, first-ever call): MemoryHint is only computed in Delta mode, so nothing to
@@ -1263,7 +1263,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             { Id = pcId, Name = "PC", IsPc = true, MaxHp = 10, CurrentHp = 10 });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = npcId, Name = "NPC", MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
@@ -1301,7 +1301,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             { Id = pcId, Name = "PC", IsPc = true, MaxHp = 10, CurrentHp = 10 });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = npcId, Name = "NPC", MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
@@ -1354,7 +1354,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locBId, Name = "B" });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locAId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
@@ -1398,7 +1398,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locAId, Name = "A" });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locAId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
@@ -1447,7 +1447,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             var cs = _fixture.CreateCampaignSession(session, slug);
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = companionId, Name = "Companion", IsPartyCompanion = true, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraCharacterIds = [companionId] }, slug);
@@ -1494,7 +1494,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
 
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = companionId, Name = "Companion", IsPartyCompanion = true, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraCharacterIds = [companionId] }, slug);
@@ -1540,7 +1540,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
 
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = companionId, Name = "Companion", IsPartyCompanion = true, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraCharacterIds = [companionId] }, slug);
@@ -1601,7 +1601,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             var cs = _fixture.CreateCampaignSession(session, slug);
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = companionId, Name = "Companion", IsPartyCompanion = true, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraCharacterIds = [companionId] }, slug);
@@ -1641,7 +1641,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             var cs = _fixture.CreateCampaignSession(session, slug);
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = companionId, Name = "Companion", IsPartyCompanion = true, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraCharacterIds = [companionId] }, slug);
@@ -1709,7 +1709,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 MaxHp = 10,
                 CurrentHp = 10
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraCharacterIds = [companionId] }, slug);
@@ -1762,7 +1762,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
                 { Id = id, Name = id, MaxHp = 10, CurrentHp = 10 });
             }
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.TakeTurn(new TakeTurnRequest { ExtraCharacterIds = extraIds }, slug);
@@ -1805,7 +1805,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 MaxHp = 10,
                 CurrentHp = 10
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         Task<ToolResult<TurnResult>> Refresh(WorldChange[]? changes = null) => tools.TakeTurn(new TakeTurnRequest
@@ -1862,7 +1862,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Tavern" });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = companionId, Name = "Companion", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
@@ -1922,7 +1922,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locAId, MaxHp = 10, CurrentHp = 10 });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = companionId, Name = "Companion", IsPartyCompanion = true, CurrentLocationId = locAId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
@@ -1983,7 +1983,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 CurrentText = "They say the granary fire wasn't an accident.",
                 State = RumorState.Spreading
             }, slug);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.TakeTurn(new TakeTurnRequest
@@ -2038,7 +2038,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 CurrentText = "They say the granary fire wasn't an accident.",
                 State = RumorState.Nascent
             }, slug);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraLocationIds = [locId] }, slug);
@@ -2089,7 +2089,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Hub" });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var first = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
@@ -2127,7 +2127,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Hub" });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var first = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
@@ -2169,7 +2169,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Hub" });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var pureQuery = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
@@ -2229,7 +2229,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                     }
                 }
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         Task<ToolResult<TurnResult>> Refresh(WorldChange[]? changes = null) => tools.TakeTurn(new TakeTurnRequest
@@ -2292,7 +2292,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
                 { Id = id, Name = id, IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
             }
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraLocationIds = [locId] }, slug);
@@ -2352,7 +2352,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             { Id = departing, Name = "Departing", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = arriving, Name = "Arriving", IsPartyCompanion = true, CurrentLocationId = otherLocId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraLocationIds = [locId] }, slug);
@@ -2406,7 +2406,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             { Id = stays, Name = "Stays", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = leaves, Name = "Leaves", IsPartyCompanion = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraLocationIds = [locId] }, slug);
@@ -2464,7 +2464,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         Task<ToolResult<TurnResult>> Refresh(WorldChange[]? changes = null) => tools.TakeTurn(new TakeTurnRequest
@@ -2514,7 +2514,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             var repo = _fixture.CreateRepository();
             var cs = _fixture.CreateCampaignSession(session, slug);
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest { Id = pcId, Name = "PC", IsPc = true });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.TakeTurn(new TakeTurnRequest
@@ -2548,7 +2548,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             var repo = _fixture.CreateRepository();
             var cs = _fixture.CreateCampaignSession(session, slug);
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest { Id = pcId, Name = "PC", IsPc = true });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.TakeTurn(new TakeTurnRequest
@@ -2595,7 +2595,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locBId, Name = "B" });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = moverId, Name = "Mover", IsPartyCompanion = true, CurrentLocationId = locAId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var seed = await tools.TakeTurn(new TakeTurnRequest { ExtraLocationIds = [locAId] }, slug);
@@ -2667,7 +2667,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 EquipLayer = EquipLayers.Held,
                 IsEquipped = true
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         Task<ToolResult<TurnResult>> Refresh(WorldChange[]? changes = null) => tools.TakeTurn(new TakeTurnRequest
@@ -2734,7 +2734,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 MaxHp = 10,
                 CurrentHp = 10
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         Task<ToolResult<TurnResult>> Refresh(WorldChange[]? changes = null) => tools.TakeTurn(new TakeTurnRequest
@@ -2810,7 +2810,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                     }
                 }
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         Task<ToolResult<TurnResult>> Refresh(WorldChange[]? changes = null) => tools.TakeTurn(new TakeTurnRequest
@@ -2879,7 +2879,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = bystanderId, Name = "Bystander", CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         Task<ToolResult<TurnResult>> Refresh(WorldChange[]? changes = null) => tools.TakeTurn(new TakeTurnRequest
@@ -2958,7 +2958,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 Id = winnerId, Name = "Winner", CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10,
                 Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["hunger"] = 500f } }
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var reason = "watched the stew boil over and is visibly alarmed";
@@ -3033,7 +3033,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Camp" });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = foeId, Name = "Foe", CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var advance = await tools.AdvanceWorld(days: 1, resultingHour: 8, narrative: "Time passes.", campaignName: slug);
@@ -3079,7 +3079,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Camp" });
             await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
             { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.TakeTurn(new TakeTurnRequest
@@ -3127,7 +3127,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 CurrentHp = 10,
                 Needs = new NeedsProfile { ActiveNeeds = new() { ["stress"] = 40f } }
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         Task<ToolResult<TurnResult>> Arrive() => tools.TakeTurn(new TakeTurnRequest
@@ -3189,7 +3189,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 EquipLayer = EquipLayers.Held,
                 IsEquipped = true
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.TakeTurn(new TakeTurnRequest
@@ -3250,7 +3250,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 EquipLayer = EquipLayers.Held,
                 IsEquipped = true
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.TakeTurn(new TakeTurnRequest
@@ -3322,7 +3322,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 EquipLayer = EquipLayers.Held,
                 IsEquipped = true
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.TakeTurn(new TakeTurnRequest
@@ -3379,7 +3379,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
                 EquipLayer = EquipLayers.Held,
                 IsEquipped = true
             });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // No ExtraLocationIds/location touched: if the NPC's scene rode along too,

@@ -69,7 +69,7 @@ public class ConsolidatedSurfaceTests : IClassFixture<RavenDBFixture>
         var starters = await session.Query<Character>()
             .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
             .Where(c => c.CampaignName == slug && c.Id.StartsWith($"chars/{slug}/starter-"))
-            .ToListAsync();
+            .ToListAsync(token: TestContext.Current.CancellationToken);
         Assert.Empty(starters);
     }
 

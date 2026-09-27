@@ -41,7 +41,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Campaign { Id = keys.Meta("LenientTest"), Name = "LenientTest" });
+            await session.StoreAsync(new Campaign { Id = keys.Meta("LenientTest"), Name = "LenientTest" }, TestContext.Current.CancellationToken);
 
             var loc = new LocationUpsertRequest
             {
@@ -52,7 +52,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 CampaignName = "LenientTest"
             };
             await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, "LenientTest"), loc);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.GetScene("Prancing Pony", false, "LenientTest");
@@ -81,7 +81,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         using (var session = _store.OpenAsyncSession())
         {
             await session.StoreAsync(new Campaign
-                { Id = keys.Meta(campaignSlug), Name = campaignSlug });
+                { Id = keys.Meta(campaignSlug), Name = campaignSlug }, TestContext.Current.CancellationToken);
 
             var character = new Character
             {
@@ -91,13 +91,13 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 CurrentHp = 10,
                 MaxHp = 10
             };
-            await session.StoreAsync(character);
-            await session.SaveChangesAsync();
+            await session.StoreAsync(character, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             // Wait for index
             await session.Query<Character, Character_Search>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
-                .ToListAsync();
+                .ToListAsync(token: TestContext.Current.CancellationToken);
         }
 
         var changes = new WorldChange[]
@@ -126,30 +126,30 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         using (var session = _store.OpenAsyncSession())
         {
             await session.StoreAsync(new Campaign
-                { Id = keys.Meta("TravelLazinessTest"), Name = "TravelLazinessTest" });
+                { Id = keys.Meta("TravelLazinessTest"), Name = "TravelLazinessTest" }, TestContext.Current.CancellationToken);
 
             var startLoc = new Location
             {
                 Id = "locations/start", Name = "The Start", CampaignName = "TravelLazinessTest",
                 Type = LocationType.Settlement, LastVisitedDay = 0
             };
-            await session.StoreAsync(startLoc);
+            await session.StoreAsync(startLoc, TestContext.Current.CancellationToken);
 
             var c = new Character
             {
                 Id = charId, Name = "Lazy Bob", CampaignName = "TravelLazinessTest",
                 CurrentLocationId = "locations/start"
             };
-            await session.StoreAsync(c);
+            await session.StoreAsync(c, TestContext.Current.CancellationToken);
 
             var loc = new Location
             {
                 Id = destLocId, Name = "The Goal", CampaignName = "TravelLazinessTest", Type = LocationType.Settlement
             };
-            await session.StoreAsync(loc);
+            await session.StoreAsync(loc, TestContext.Current.CancellationToken);
 
             session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // 1. LLM issues ActivityChange indicating travel, but FORGETS TravelChange
@@ -218,14 +218,14 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 Id = "locations/town_01", Name = "Town", CampaignName = "FactionInfluenceTest",
                 Type = LocationType.Settlement
             };
-            await session.StoreAsync(loc);
+            await session.StoreAsync(loc, TestContext.Current.CancellationToken);
 
             var fac = new Faction
             {
                 Id = "factions/guild", Name = "The Guild", CampaignName = "FactionInfluenceTest", TerritoryLocationIds =
                     ["locations/town_01"]
             };
-            await session.StoreAsync(fac);
+            await session.StoreAsync(fac, TestContext.Current.CancellationToken);
 
             var ev = new Event
             {
@@ -234,10 +234,10 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                     ["factions/guild"],
                 DayLogged = 0
             };
-            await session.StoreAsync(ev);
+            await session.StoreAsync(ev, TestContext.Current.CancellationToken);
 
             session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Simulating get_scene right after the event
@@ -262,10 +262,10 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
 
         using (var s = _store.OpenAsyncSession())
         {
-            await s.StoreAsync(new Event { Id = "events/dummy1", CampaignName = "FactionInfluenceTest" });
+            await s.StoreAsync(new Event { Id = "events/dummy1", CampaignName = "FactionInfluenceTest" }, TestContext.Current.CancellationToken);
             s.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true,
                 indexes: ["Event/Search"]);
-            await s.SaveChangesAsync();
+            await s.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Next scene load should clear pressure
@@ -287,28 +287,28 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Campaign { Id = keys.Meta("FactionWarTest"), Name = "FactionWarTest" });
+            await session.StoreAsync(new Campaign { Id = keys.Meta("FactionWarTest"), Name = "FactionWarTest" }, TestContext.Current.CancellationToken);
 
             var loc = new Location
             {
                 Id = "locations/town_02", Name = "Town 2", CampaignName = "FactionWarTest",
                 Type = LocationType.Settlement
             };
-            await session.StoreAsync(loc);
+            await session.StoreAsync(loc, TestContext.Current.CancellationToken);
 
             var fac = new Faction
             {
                 Id = "factions/kingdom", Name = "The Kingdom", CampaignName = "FactionWarTest", TerritoryLocationIds =
                     ["locations/town_02"]
             };
-            await session.StoreAsync(fac);
+            await session.StoreAsync(fac, TestContext.Current.CancellationToken);
 
             var c = new Character
             {
                 Id = "chars/local_01", Name = "Local Peasant", CampaignName = "FactionWarTest",
                 CurrentLocationId = "locations/town_02"
             };
-            await session.StoreAsync(c);
+            await session.StoreAsync(c, TestContext.Current.CancellationToken);
 
             var ev = new Event
             {
@@ -317,10 +317,10 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                     ["factions/kingdom"],
                 DayLogged = 0
             };
-            await session.StoreAsync(ev);
+            await session.StoreAsync(ev, TestContext.Current.CancellationToken);
 
             session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var sceneResult = await tools.GetScene("locations/town_02", true, "FactionWarTest");
@@ -339,9 +339,9 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
 
         using (var s = _store.OpenAsyncSession())
         {
-            await s.StoreAsync(new Event { Id = "events/dummy2", CampaignName = "FactionWarTest" });
+            await s.StoreAsync(new Event { Id = "events/dummy2", CampaignName = "FactionWarTest" }, TestContext.Current.CancellationToken);
             s.Advanced.WaitForIndexesAfterSaveChanges(TimeSpan.FromSeconds(5));
-            await s.SaveChangesAsync();
+            await s.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var finalSceneResult = await tools.GetScene("locations/town_02", true, "FactionWarTest");
@@ -350,7 +350,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         {
             using (var s = _store.OpenAsyncSession())
             {
-                var evs = await s.Query<Event>().Where(e => e.CampaignName == "FactionWarTest").ToListAsync();
+                var evs = await s.Query<Event>().Where(e => e.CampaignName == "FactionWarTest").ToListAsync(token: TestContext.Current.CancellationToken);
                 var msg = "Events found: " + string.Join("; ",
                     evs.Select(e =>
                         $"{e.Category} {e.DayLogged} {e.Timestamp:O} Inv:[{string.Join(",", e.Involved ?? [])}]"));
@@ -370,14 +370,14 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Campaign { Id = keys.Meta("QuestStaleTest"), Name = "QuestStaleTest" });
+            await session.StoreAsync(new Campaign { Id = keys.Meta("QuestStaleTest"), Name = "QuestStaleTest" }, TestContext.Current.CancellationToken);
 
             var loc = new Location
             {
                 Id = "locations/town_03", Name = "Town 3", CampaignName = "QuestStaleTest",
                 Type = LocationType.Settlement
             };
-            await session.StoreAsync(loc);
+            await session.StoreAsync(loc, TestContext.Current.CancellationToken);
 
             var q = new Quest
             {
@@ -389,10 +389,10 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 RelatedLocationIds = ["locations/town_03"],
                 Objectives = [new QuestObjective("Do something", QuestState.InProgress)]
             };
-            await session.StoreAsync(q);
+            await session.StoreAsync(q, TestContext.Current.CancellationToken);
 
             session.Advanced.WaitForIndexesAfterSaveChanges(TimeSpan.FromSeconds(5));
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var advanceResult = await tools.AdvanceWorld(14, 6, "Simulating days passing", "QuestStaleTest");
@@ -424,7 +424,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
              finalSceneResult.WorldPressure.Any(p => p.Contains("Quest 'The Stale Quest' deadline"));
              i++)
         {
-            await Task.Delay(200);
+            await Task.Delay(200, TestContext.Current.CancellationToken);
             finalSceneResult = await tools.GetScene("locations/town_03", true, "QuestStaleTest");
         }
 
@@ -450,7 +450,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         using (var session = _store.OpenAsyncSession())
         {
             await session.StoreAsync(new Campaign
-                { Id = keys.Meta("QuestGiverEvictionTest"), Name = "QuestGiverEvictionTest" });
+                { Id = keys.Meta("QuestGiverEvictionTest"), Name = "QuestGiverEvictionTest" }, TestContext.Current.CancellationToken);
 
             var loc = new Location
             {
@@ -459,14 +459,14 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
             };
             // Simulate that it was visited a long time ago, so transient rule kicks in if not protected
             loc.LastVisitedDay = 0;
-            await session.StoreAsync(loc);
+            await session.StoreAsync(loc, TestContext.Current.CancellationToken);
 
             var c = new Character
             {
                 Id = "chars/transient_giver", Name = "Transient Guy", CampaignName = "QuestGiverEvictionTest",
                 CurrentLocationId = "locations/town_04", KeepAlive = false
             };
-            await session.StoreAsync(c);
+            await session.StoreAsync(c, TestContext.Current.CancellationToken);
 
             var q = new Quest
             {
@@ -478,21 +478,21 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 RelatedLocationIds = ["locations/town_04"],
                 Objectives = [new QuestObjective("Do something", QuestState.InProgress)]
             };
-            await session.StoreAsync(q);
+            await session.StoreAsync(q, TestContext.Current.CancellationToken);
 
             session.Advanced.WaitForIndexesAfterSaveChanges(TimeSpan.FromSeconds(5));
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             // Force index creation so AdvanceWorld doesn't get 0 results on first run
             await session.Query<Quest>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
                 .Where(q => q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
-                .ToListAsync();
+                .ToListAsync(token: TestContext.Current.CancellationToken);
 
             await session.Query<Character>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
                 .Where(c => c.CurrentLocationId != null)
-                .ToListAsync();
+                .ToListAsync(token: TestContext.Current.CancellationToken);
         }
 
         // Advance 3 days, eviction should skip the quest giver
@@ -501,7 +501,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            var c = await session.LoadAsync<Character>("chars/transient_giver");
+            var c = await session.LoadAsync<Character>("chars/transient_giver", TestContext.Current.CancellationToken);
             Assert.NotNull(c.CurrentLocationId); // He is NOT evicted!
         }
 
@@ -520,16 +520,16 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
             await s.Query<Quest>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
                 .Where(q => q.OverallState == QuestState.Open || q.OverallState == QuestState.InProgress)
-                .ToListAsync();
+                .ToListAsync(token: TestContext.Current.CancellationToken);
 
-            var quest = await s.LoadAsync<Quest>("quests/q2");
+            var quest = await s.LoadAsync<Quest>("quests/q2", TestContext.Current.CancellationToken);
             Assert.Equal(QuestState.Complete, quest.OverallState);
 
             // Also ensure the character index used by TransientEvictionRule is not stale
             await s.Query<Character>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
                 .Where(c => c.CurrentLocationId != null)
-                .ToListAsync();
+                .ToListAsync(token: TestContext.Current.CancellationToken);
         }
 
         // Advance another 3 days, now he should be evicted
@@ -538,7 +538,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            var c = await session.LoadAsync<Character>("chars/transient_giver");
+            var c = await session.LoadAsync<Character>("chars/transient_giver", TestContext.Current.CancellationToken);
             Assert.Null(c.CurrentLocationId); // He IS evicted!
         }
     }
@@ -558,18 +558,18 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Campaign { Id = keys.Meta(campaignSlug), Name = campaignSlug });
+            await session.StoreAsync(new Campaign { Id = keys.Meta(campaignSlug), Name = campaignSlug }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new Location
             {
                 Id = "locations/start-mt", Name = "Start", CampaignName = campaignSlug,
                 Type = LocationType.Settlement,
                 Exits = [new LocationExit(destId, "Road to Far Town")]
-            });
+            }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new Location
             {
                 Id = destId, Name = "Far Town", CampaignName = campaignSlug, Type = LocationType.Settlement,
                 Exits = [new LocationExit("locations/start-mt", "Road back to Start")]
-            });
+            }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new Character
             {
                 Id = pcId,
@@ -578,10 +578,10 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 IsPc = true,
                 KeepAlive = true,
                 CurrentLocationId = "locations/start-mt"
-            });
+            }, TestContext.Current.CancellationToken);
             session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: false,
                 indexes: ["Location/Search", "Character/Search"]);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // LLM narrates arrival but forgets travel commit — party still at start
@@ -605,7 +605,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
             await s.Advanced.AsyncDocumentQuery<Character, Character_Search>()
                 .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
                 .Take(1)
-                .AnyAsync();
+                .AnyAsync(TestContext.Current.CancellationToken);
         }
 
         var finalScene = await tools.GetScene(destId, partyPresent: true, campaignSlug);
@@ -630,17 +630,17 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         using (var session = _store.OpenAsyncSession())
         {
             await session.StoreAsync(new Campaign
-                { Id = keys.Meta("TransientGiverPressureTest"), Name = "TransientGiverPressureTest" });
+                { Id = keys.Meta("TransientGiverPressureTest"), Name = "TransientGiverPressureTest" }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new Location
             {
                 Id = locId, Name = "Giver Town", CampaignName = "TransientGiverPressureTest",
                 Type = LocationType.Settlement, LastVisitedDay = 1
-            });
+            }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new Character
             {
                 Id = giverId, Name = "Bram", CampaignName = "TransientGiverPressureTest", KeepAlive = false,
                 CurrentLocationId = locId, CurrentActivity = "Waiting for the party"
-            });
+            }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new Quest
             {
                 Id = "quests/giver_q",
@@ -650,9 +650,9 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 OverallState = QuestState.InProgress,
                 RelatedLocationIds = [locId],
                 Objectives = [new QuestObjective("Deliver the package", QuestState.InProgress)]
-            });
+            }, TestContext.Current.CancellationToken);
             session.Advanced.WaitForIndexesAfterSaveChanges(TimeSpan.FromSeconds(5), throwOnTimeout: true);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var sceneResult = await tools.GetScene(locId, true, "TransientGiverPressureTest");
@@ -685,11 +685,11 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Campaign { Id = keys.Meta("QuestCooldownTest"), Name = "QuestCooldownTest" });
+            await session.StoreAsync(new Campaign { Id = keys.Meta("QuestCooldownTest"), Name = "QuestCooldownTest" }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new CampaignTime
-                { Id = keys.StateTime("QuestCooldownTest"), TotalDaysElapsed = 20 });
+                { Id = keys.StateTime("QuestCooldownTest"), TotalDaysElapsed = 20 }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new Location
-                { Id = locId, Name = "Town", CampaignName = "QuestCooldownTest", Type = LocationType.Settlement });
+                { Id = locId, Name = "Town", CampaignName = "QuestCooldownTest", Type = LocationType.Settlement }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new Character
             {
                 Id = charId,
@@ -697,7 +697,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 CampaignName = "QuestCooldownTest",
                 IsPc = true,
                 CurrentLocationId = locId
-            });
+            }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new Quest
             {
                 Id = questId,
@@ -707,10 +707,10 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 LastUpdatedDay = 5,
                 RelatedLocationIds = [locId],
                 Objectives = [new QuestObjective("Step one", QuestState.Open)]
-            });
+            }, TestContext.Current.CancellationToken);
             session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true,
                 indexes: ["Location/Search", "Quest/Search"]);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var first = await tools.GetScene(locId, true, "QuestCooldownTest");
@@ -748,11 +748,11 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         using (var session = _store.OpenAsyncSession())
         {
             await session.StoreAsync(new Campaign
-                { Id = keys.Meta("ObjectiveStaleTest"), Name = "ObjectiveStaleTest" });
+                { Id = keys.Meta("ObjectiveStaleTest"), Name = "ObjectiveStaleTest" }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new CampaignTime
-                { Id = keys.StateTime("ObjectiveStaleTest"), TotalDaysElapsed = 20 });
+                { Id = keys.StateTime("ObjectiveStaleTest"), TotalDaysElapsed = 20 }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new Location
-                { Id = locId, Name = "Town", CampaignName = "ObjectiveStaleTest", Type = LocationType.Settlement });
+                { Id = locId, Name = "Town", CampaignName = "ObjectiveStaleTest", Type = LocationType.Settlement }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new Quest
             {
                 Id = "quests/multi_obj",
@@ -766,9 +766,9 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                     new QuestObjective("First step", QuestState.Complete, DayStarted: 5, DayCompleted: 6),
                     new QuestObjective("Second step", QuestState.Open, DayStarted: 5) // stale 15 days
                 ]
-            });
+            }, TestContext.Current.CancellationToken);
             session.Advanced.WaitForIndexesAfterSaveChanges(TimeSpan.FromSeconds(5), throwOnTimeout: true);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var sceneResult = await tools.GetScene(locId, true, "ObjectiveStaleTest");
@@ -789,17 +789,17 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         using (var session = _store.OpenAsyncSession())
         {
             await session.StoreAsync(new Campaign
-                { Id = keys.Meta("QuestStalenessTest"), Name = "QuestStalenessTest" });
+                { Id = keys.Meta("QuestStalenessTest"), Name = "QuestStalenessTest" }, TestContext.Current.CancellationToken);
 
             var time = new CampaignTime { Id = keys.StateTime("QuestStalenessTest"), TotalDaysElapsed = 20 };
-            await session.StoreAsync(time);
+            await session.StoreAsync(time, TestContext.Current.CancellationToken);
 
             var loc = new Location
             {
                 Id = "locations/town_01", Name = "Town", CampaignName = "QuestStalenessTest",
                 Type = LocationType.Settlement
             };
-            await session.StoreAsync(loc);
+            await session.StoreAsync(loc, TestContext.Current.CancellationToken);
 
             var quest = new Quest
             {
@@ -811,10 +811,10 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
                 RelatedLocationIds = ["locations/town_01"],
                 Objectives = [new QuestObjective("Find the thing")]
             };
-            await session.StoreAsync(quest);
+            await session.StoreAsync(quest, TestContext.Current.CancellationToken);
 
             session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var sceneResult = await tools.GetScene("locations/town_01", true, "QuestStalenessTest");
@@ -850,33 +850,33 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Campaign { Id = keys.Meta("VisualStateTest"), Name = "VisualStateTest" });
+            await session.StoreAsync(new Campaign { Id = keys.Meta("VisualStateTest"), Name = "VisualStateTest" }, TestContext.Current.CancellationToken);
             var time = new CampaignTime { Id = keys.StateTime("VisualStateTest"), TotalDaysElapsed = 1 };
-            await session.StoreAsync(time);
+            await session.StoreAsync(time, TestContext.Current.CancellationToken);
 
             var loc = new Location
             {
                 Id = "locations/tavern_01", Name = "Tavern", CampaignName = "VisualStateTest",
                 Type = LocationType.Settlement
             };
-            await session.StoreAsync(loc);
+            await session.StoreAsync(loc, TestContext.Current.CancellationToken);
 
             var c = new Character
             {
                 Id = "chars/bob", Name = "Bob", CampaignName = "VisualStateTest", KeepAlive = true,
                 CurrentLocationId = "locations/tavern_01"
             };
-            await session.StoreAsync(c);
+            await session.StoreAsync(c, TestContext.Current.CancellationToken);
 
             var item = new Item
             {
                 Id = "items/sword", Name = "Sword", CampaignName = "VisualStateTest", HolderId = "locations/tavern_01",
                 CoreCategory = ItemCategories.Weapon
             };
-            await session.StoreAsync(item);
+            await session.StoreAsync(item, TestContext.Current.CancellationToken);
 
             session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var changes = new WorldChange[]

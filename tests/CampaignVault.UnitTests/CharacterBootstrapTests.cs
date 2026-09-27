@@ -44,7 +44,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             Character = character,
             ActiveSystem = RulesetSystem.Dnd5e,
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(105, character.MaxHp);
         Assert.Equal(105, character.CurrentHp);
@@ -74,7 +74,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
             ActiveSystem = RulesetSystem.Dnd5e,
             ExplicitMaxHp = 7,
             ExplicitCurrentHp = 7,
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(7, character.MaxHp);
         Assert.Equal(7, character.CurrentHp);
@@ -104,7 +104,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             Character = character,
             ActiveSystem = RulesetSystem.Dnd5e,
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(7, character.MaxHp);
         var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
@@ -131,7 +131,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             Character = character,
             ActiveSystem = RulesetSystem.Dnd5e,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
         Assert.Equal(16, stats.Constitution); // 14 base + 2 dwarf ability bonus
@@ -162,7 +162,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             Character = character,
             ActiveSystem = RulesetSystem.Dnd5e,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
         Assert.Equal(40f, stats.Movement);
@@ -187,7 +187,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             Character = character,
             ActiveSystem = RulesetSystem.Pathfinder2e,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var stats = Assert.IsType<Pf2eExtension>(character.SystemStats);
         Assert.Equal(30f, stats.Movement); // elf base speed
@@ -212,7 +212,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             Character = character,
             ActiveSystem = RulesetSystem.Dnd5e,
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain(report.Steps, s => s.StepName == "dnd5e.derive_race");
         Assert.Empty(character.DistinctiveFeatures);
@@ -240,7 +240,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             Character = character,
             ActiveSystem = RulesetSystem.Pathfinder2e,
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(32, character.MaxHp);
         Assert.Equal(32, character.CurrentHp);
@@ -271,7 +271,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
             Character = character,
             ActiveSystem = RulesetSystem.Dnd5e,
             LevelsGained = 1,
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(105, character.MaxHp);
         Assert.Equal(60, character.CurrentHp);
@@ -292,8 +292,8 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             Id = keys.Config("resolved-echo"),
             ActiveSystem = RulesetSystem.Dnd5e,
-        });
-        await session.SaveChangesAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = RulesetDataTestHelper.CreateCharacterCreateHandler(keys);
         var summary = new List<string>();
@@ -310,7 +310,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
                 HitDie = "d10",
                 Level = 2,
             },
-        }, ctx);
+        }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Contains(summary, m =>
@@ -329,8 +329,8 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             Id = keys.Config("unknown-class"),
             ActiveSystem = RulesetSystem.Dnd5e,
-        });
-        await session.SaveChangesAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = RulesetDataTestHelper.CreateCharacterCreateHandler(keys);
         var summary = new List<string>();
@@ -342,7 +342,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
             IsPc = true,
             ClassLevel = "Totally Unknown Class XYZ 1",
             SystemStats = new Dnd5eExtension { Level = 1 },
-        }, ctx);
+        }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Contains(summary, m =>
@@ -361,8 +361,8 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             Id = keys.Config("bootstrap-hp"),
             ActiveSystem = RulesetSystem.Dnd5e,
-        });
-        await session.SaveChangesAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = RulesetDataTestHelper.CreateCharacterCreateHandler(keys);
         var change = new CharacterCreate
@@ -380,12 +380,12 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
 
         var summary = new List<string>();
         var ctx = CreateContext(session, "bootstrap-hp", summary);
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
 
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var character = await session.LoadAsync<Character>("chars/bootstrap-fighter");
+        var character = await session.LoadAsync<Character>("chars/bootstrap-fighter", TestContext.Current.CancellationToken);
         var stats = Assert.IsType<Dnd5eExtension>(character!.SystemStats);
         Assert.Equal(12, character.MaxHp);
         Assert.Equal(12, character.CurrentHp);
@@ -403,7 +403,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             Id = keys.Config("level-up-heal"),
             ActiveSystem = RulesetSystem.Dnd5e,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var existing = new Character
         {
@@ -421,8 +421,8 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
                 Level = 1,
             },
         };
-        await session.StoreAsync(existing);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(existing, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = RulesetDataTestHelper.CreateLevelUpHandler(keys);
         var change = new LevelUpChange
@@ -434,7 +434,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
 
         var ctx = CreateContext(session, "level-up-heal", []);
         ctx.RegisterNewCharacter(existing);
-        var result = await handler.ApplyAsync(change, ctx);
+        var result = await handler.ApplyAsync(change, ctx, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
 
         Assert.Equal(20, existing.MaxHp);
@@ -450,7 +450,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             Id = keys.Config("level-up-noop"),
             ActiveSystem = RulesetSystem.Narrative,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var existing = new Character
         {
@@ -461,8 +461,8 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
             MaxHp = 10,
             SystemStats = new Dnd5eExtension(),
         };
-        await session.StoreAsync(existing);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(existing, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = RulesetDataTestHelper.CreateLevelUpHandler(keys);
         var summary = new List<string>();
@@ -473,7 +473,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             CharacterId = "chars/narrative-npc",
             LevelsGained = 1,
-        }, ctx);
+        }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Contains(summary, m => m.Contains("level_up") && m.Contains("no ruleset changes"));
@@ -488,7 +488,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             Id = keys.Config("char-update-bootstrap"),
             ActiveSystem = RulesetSystem.Dnd5e,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var existing = new Character
         {
@@ -499,8 +499,8 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
             ClassLevel = "Human Fighter 1",
             SystemStats = new Dnd5eExtension { Constitution = 14 },
         };
-        await session.StoreAsync(existing);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(existing, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new CharacterUpdateHandler(keys, BootstrapTestHelper.CreateOrchestrator());
         var summary = new List<string>();
@@ -509,7 +509,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             CharacterId = "chars/updated",
             SystemStats = new Dnd5eExtension { Dexterity = 14 },
-        }, ctx);
+        }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(12, existing.MaxHp);
@@ -532,7 +532,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             Character = character,
             ActiveSystem = RulesetSystem.Pathfinder2e,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var stats = Assert.IsType<Pf2eExtension>(character.SystemStats);
         Assert.Equal(14, stats.ArmorClass);
@@ -548,7 +548,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             Id = keys.Config("level-up-statblock"),
             ActiveSystem = RulesetSystem.Dnd5e,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var existing = new Character
         {
@@ -565,8 +565,8 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
                 Level = 3,
             },
         };
-        await session.StoreAsync(existing);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(existing, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = RulesetDataTestHelper.CreateLevelUpHandler(keys);
         var summary = new List<string>();
@@ -577,7 +577,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             CharacterId = "chars/goblin-boss",
             LevelsGained = 1,
-        }, ctx);
+        }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Contains(summary, m => m.Contains("statBlockHp") && m.Contains("skipped formula HP gain"));
@@ -592,7 +592,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             Id = keys.Config("stats-patch"),
             ActiveSystem = RulesetSystem.Dnd5e,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var existing = new Character
         {
@@ -606,8 +606,8 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
                 Dexterity = 10,
             },
         };
-        await session.StoreAsync(existing);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(existing, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new CharacterUpdateHandler(keys, BootstrapTestHelper.CreateOrchestrator());
         var summary = new List<string>();
@@ -616,7 +616,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         {
             CharacterId = "chars/patched",
             SystemStats = new Dnd5eExtension { Dexterity = 16 },
-        }, ctx);
+        }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         var stats = Assert.IsType<Dnd5eExtension>(existing.SystemStats);

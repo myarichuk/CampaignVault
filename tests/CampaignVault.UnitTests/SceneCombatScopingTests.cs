@@ -33,7 +33,7 @@ public class SceneCombatScopingTests : IClassFixture<RavenDBFixture>
         using (var session = _store.OpenAsyncSession())
         {
             await _repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, owner), new LocationUpsertRequest { Id = locId, Name = "Private Room", CampaignName = owner });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         using (var session = _store.OpenAsyncSession())
@@ -53,15 +53,15 @@ public class SceneCombatScopingTests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Location { Id = locId, Name = "Arena", CampaignName = null });
+            await session.StoreAsync(new Location { Id = locId, Name = "Arena", CampaignName = null }, TestContext.Current.CancellationToken);
             await session.StoreAsync(new CombatEncounter
             {
                 Id = _keys.CombatCurrent(campA),
                 LocationId = locId,
                 IsActive = true,
                 Round = 2,
-            });
-            await session.SaveChangesAsync();
+            }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Each GetSceneAsync call issues many round trips; production always opens a fresh

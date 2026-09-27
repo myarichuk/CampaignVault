@@ -27,7 +27,7 @@ public class CampaignSyncServiceTests : IClassFixture<RavenDBFixture>
 
     private static ServerCallContext CreateContext() => TestServerCallContext.Create(
         method: "test", host: "test", deadline: DateTime.UtcNow.AddMinutes(1), requestHeaders: [],
-        cancellationToken: CancellationToken.None, peer: "test", authContext: null, contextPropagationToken: null,
+        cancellationToken: TestContext.Current.CancellationToken, peer: "test", authContext: null, contextPropagationToken: null,
         writeHeadersFunc: _ => Task.CompletedTask, writeOptionsGetter: () => new WriteOptions(),
         writeOptionsSetter: _ => { });
 
@@ -40,9 +40,9 @@ public class CampaignSyncServiceTests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Character { Id = "characters/orphan-" + Guid.NewGuid(), Name = "Orphan", CampaignName = null });
-            await session.StoreAsync(new Character { Id = "characters/a-" + Guid.NewGuid(), Name = "InA", CampaignName = campaignA });
-            await session.SaveChangesAsync();
+            await session.StoreAsync(new Character { Id = "characters/orphan-" + Guid.NewGuid(), Name = "Orphan", CampaignName = null }, TestContext.Current.CancellationToken);
+            await session.StoreAsync(new Character { Id = "characters/a-" + Guid.NewGuid(), Name = "InA", CampaignName = campaignA }, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var response = await service.GetCampaignEntities(
@@ -109,8 +109,8 @@ public class CampaignSyncServiceTests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Character { Id = id, Name = "Canon NPC", CampaignName = null }, id);
-            await session.SaveChangesAsync();
+            await session.StoreAsync(new Character { Id = id, Name = "Canon NPC", CampaignName = null }, id, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var response = await service.PushCampaignEntity(new PushCampaignEntityRequest
@@ -150,7 +150,7 @@ public class CampaignSyncServiceTests : IClassFixture<RavenDBFixture>
         Assert.True(secondPush.Success, secondPush.Message);
 
         using var verifySession = _store.OpenAsyncSession();
-        var updated = await verifySession.LoadAsync<Character>(id);
+        var updated = await verifySession.LoadAsync<Character>(id, TestContext.Current.CancellationToken);
         Assert.Equal("After", updated!.Name);
     }
 
@@ -164,8 +164,8 @@ public class CampaignSyncServiceTests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Character { Id = id, Name = "Owned", CampaignName = ownerCampaign }, id);
-            await session.SaveChangesAsync();
+            await session.StoreAsync(new Character { Id = id, Name = "Owned", CampaignName = ownerCampaign }, id, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var response = await service.PushCampaignEntity(new PushCampaignEntityRequest
@@ -179,7 +179,7 @@ public class CampaignSyncServiceTests : IClassFixture<RavenDBFixture>
         Assert.False(response.Success);
 
         using var verifySession = _store.OpenAsyncSession();
-        var stillOwned = await verifySession.LoadAsync<Character>(id);
+        var stillOwned = await verifySession.LoadAsync<Character>(id, TestContext.Current.CancellationToken);
         Assert.Equal(ownerCampaign, stillOwned!.CampaignName);
         Assert.Equal("Owned", stillOwned.Name);
     }
@@ -193,8 +193,8 @@ public class CampaignSyncServiceTests : IClassFixture<RavenDBFixture>
 
         using (var session = _store.OpenAsyncSession())
         {
-            await session.StoreAsync(new Character { Id = id, Name = "Guarded", CampaignName = campaignName }, id);
-            await session.SaveChangesAsync();
+            await session.StoreAsync(new Character { Id = id, Name = "Guarded", CampaignName = campaignName }, id, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var response = await service.DeleteCampaignEntity(new DeleteCampaignEntityRequest
@@ -207,7 +207,7 @@ public class CampaignSyncServiceTests : IClassFixture<RavenDBFixture>
         Assert.False(response.Success);
 
         using var verifySession = _store.OpenAsyncSession();
-        var stillExists = await verifySession.LoadAsync<Character>(id);
+        var stillExists = await verifySession.LoadAsync<Character>(id, TestContext.Current.CancellationToken);
         Assert.NotNull(stillExists);
     }
 }

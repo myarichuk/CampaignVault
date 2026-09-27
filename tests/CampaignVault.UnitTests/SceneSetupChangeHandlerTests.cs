@@ -42,7 +42,7 @@ public class SceneSetupChangeHandlerTests
         };
 
         var handler = new SceneSetupChangeHandler();
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Single(actor.SystemStats.EngagementRelations);
@@ -66,7 +66,7 @@ public class SceneSetupChangeHandlerTests
         };
 
         var handler = new SceneSetupChangeHandler();
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Empty(actor.SystemStats.EngagementRelations);
@@ -91,7 +91,7 @@ public class SceneSetupChangeHandlerTests
         };
 
         var handler = new SceneSetupChangeHandler();
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Single(actor.SystemStats.EngagementRelations);
@@ -112,7 +112,7 @@ public class SceneSetupChangeHandlerTests
         var change = new SceneSetupChange { CharacterId = "char_1", TargetId = "char_2" };
 
         var handler = new SceneSetupChangeHandler();
-        var result = await handler.ApplyAsync(change, context);
+        var result = await handler.ApplyAsync(change, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
     }

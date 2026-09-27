@@ -1,0 +1,15 @@
+# Shadow & Steel: punch-dagger worn across the knuckles (original homebrew stats; no ORC text copied).
+name: ss_katar
+system: pf2e
+category: Weapon
+tags: [martial, melee, agile, finesse]
+description: Punch-dagger gripped across the knuckles, easily hidden up a sleeve. Deals 1d4 piercing damage.
+properties:
+  damage: 1d4
+  damageType: piercing
+  bulk: 0.1
+  costGp: 1
+  specialMechanic: "Easily concealed on the body (narrative/GM-arbitrated)."
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

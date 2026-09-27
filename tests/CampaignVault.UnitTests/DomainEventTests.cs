@@ -363,7 +363,7 @@ public class DomainEventTests
             characters: new Dictionary<string, Character> { ["chars/aang"] = new() { Id = "chars/aang", MaxHp = 10, CurrentHp = 0 } });
 
         await new HpChangeHandler(Substitute.For<IRollService>())
-            .ApplyAsync(new HpChange { CharacterId = "chars/aang", Delta = -4 }, context);
+            .ApplyAsync(new HpChange { CharacterId = "chars/aang", Delta = -4 }, context, TestContext.Current.CancellationToken);
 
         var damaged = Assert.Single(context.TakePendingEvents());
         Assert.True(damaged.TryGet<int>(CoreEvents.Fields.HpLost, out var lost));
@@ -382,8 +382,8 @@ public class DomainEventTests
             });
         var handler = new HpChangeHandler(Substitute.For<IRollService>());
 
-        await handler.ApplyAsync(new HpChange { CharacterId = "chars/aang", Delta = -5 }, context);
-        await handler.ApplyAsync(new HpChange { CharacterId = "chars/zuko", Delta = -5 }, context);
+        await handler.ApplyAsync(new HpChange { CharacterId = "chars/aang", Delta = -5 }, context, TestContext.Current.CancellationToken);
+        await handler.ApplyAsync(new HpChange { CharacterId = "chars/zuko", Delta = -5 }, context, TestContext.Current.CancellationToken);
 
         var downed = Assert.Single(context.TakePendingEvents(), e => e.Topic == CoreEvents.CharacterDowned);
         Assert.True(downed.TryGet<string>(CoreEvents.Fields.CharacterId, out var id));
@@ -404,7 +404,7 @@ public class DomainEventTests
             InitiatorId = "chars/katara",
             EventId = "events/pond-talk",
             Importance = MemoryImportance.Important
-        }, context);
+        }, context, TestContext.Current.CancellationToken);
 
         var logged = Assert.Single(context.TakePendingEvents(), e => e.Topic == CoreEvents.EventLogged);
         Assert.True(logged.TryGet<string>(CoreEvents.Fields.Category, out var category));
@@ -427,9 +427,7 @@ public class DomainEventTests
                 ["locations/pond"] = new() { Id = "locations/pond", Name = "Pond" }
             });
 
-        var result = await new TravelChangeHandler(new EncounterResolver(() => 0.99)).ApplyAsync(
-            new TravelChange { CharacterId = traveler.Id, DestinationLocationId = "locations/pond", TravelCostHoursOverride = 2 },
-            context);
+        var result = await new TravelChangeHandler(new EncounterResolver(() => 0.99)).ApplyAsync(new TravelChange { CharacterId = traveler.Id, DestinationLocationId = "locations/pond", TravelCostHoursOverride = 2 }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, result.Message);
         var traveled = Assert.Single(context.TakePendingEvents(), e => e.Topic == CoreEvents.Traveled);
@@ -452,13 +450,13 @@ public class DomainEventTests
         var conditions = RulesetDataTestHelper.CreateServices().Conditions;
 
         var calm = Context(Sleeper());
-        await new RestChangeHandler(new EncounterResolver(() => 0.99), conditions).ApplyAsync(rest, calm);
+        await new RestChangeHandler(new EncounterResolver(() => 0.99), conditions).ApplyAsync(rest, calm, TestContext.Current.CancellationToken);
         var rested = Assert.Single(calm.TakePendingEvents(), e => e.Topic == CoreEvents.Rested);
         Assert.True(rested.TryGet<string>(CoreEvents.Fields.RestType, out var restType));
         Assert.Equal(nameof(RestType.LongRest), restType);
 
         var ambushed = Context(Sleeper());
-        await new RestChangeHandler(new EncounterResolver(() => 0.0), conditions).ApplyAsync(rest, ambushed);
+        await new RestChangeHandler(new EncounterResolver(() => 0.0), conditions).ApplyAsync(rest, ambushed, TestContext.Current.CancellationToken);
         var events = ambushed.TakePendingEvents();
         Assert.DoesNotContain(events, e => e.Topic == CoreEvents.Rested);
         Assert.Contains(events, e => e.Topic == CoreEvents.EncounterInterrupted);
@@ -563,7 +561,7 @@ public class DomainEventTests
         await handler.ApplyAsync(new ModeTransitionChange
         {
             ModeId = "crafting", Action = "enter", LocationId = "locations/forge", ParticipantIds = ["chars/smith"]
-        }, context);
+        }, context, TestContext.Current.CancellationToken);
 
         var entered = Assert.Single(context.TakePendingEvents());
         Assert.Equal(CoreEvents.ModeEntered, entered.Topic);

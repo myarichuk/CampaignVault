@@ -41,7 +41,7 @@ public class QuestStalenessRuleTests
         );
 
         // Act
-        var result = await _sut.ApplyAsync(context);
+        var result = await _sut.ApplyAsync(context, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains(result.NarrativeEvents, n => n.Contains("failed because its deadline"));
@@ -87,7 +87,7 @@ public class QuestStalenessRuleTests
         );
 
         // Act
-        var result = await _sut.ApplyAsync(context);
+        var result = await _sut.ApplyAsync(context, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Empty(result.NarrativeEvents);
@@ -119,7 +119,7 @@ public class QuestStalenessRuleTests
         );
 
         // Act
-        var result = await _sut.ApplyAsync(context);
+        var result = await _sut.ApplyAsync(context, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains(result.NarrativeEvents, n => n.Contains("pending for over 10 days"));

@@ -1,0 +1,14 @@
+# Shadow & Steel: fantasy-tier mid-size shield (original homebrew seed data).
+# NOTE: the engine has no SWADE armor-class resolver yet; acBonus is seed data for future/GM use.
+name: ss_heater_shield
+system: swade
+category: Armor
+tags: [fantasy, shield]
+description: Flat-topped heater shield, easy to brace in a shield wall. +1 armor while wielded in the off hand.
+properties:
+  acBonus: 1
+  weight: 6
+  costGp: 40
+  era: fantasy
+equipZones: [OffHand]
+equipLayer: Held

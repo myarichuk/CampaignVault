@@ -1,0 +1,14 @@
+# Shadow & Steel: single-use clay pellet of blinding smoke (original homebrew seed data).
+# Ninja/assassin staple. Consumable blueprint: charges live on the item instance (item_use).
+name: ss_smoke_bomb
+system: swade
+category: Consumable
+tags: [fantasy, rogue, ninja, alchemical, adventuring-gear]
+description: Clay pellet that bursts into thick smoke on impact — the classic vanishing trick. Single use.
+properties:
+  weight: 0.5
+  costGp: 20
+  uses: 1
+  chargeUnit: uses
+  era: fantasy
+  specialMechanic: "Shatters into a burst of heavy smoke lasting about a minute, blocking sight through the area (narrative/GM-arbitrated; not computed by the engine)."

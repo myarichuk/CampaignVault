@@ -41,9 +41,9 @@ public class LocationConnectivityTests : IClassFixture<RavenDBFixture>
             Type = LocationType.Room,
             Exits = []
         };
-        await session.StoreAsync(source);
-        await session.StoreAsync(target);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(source, TestContext.Current.CancellationToken);
+        await session.StoreAsync(target, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var contributor = new LocationConnectivityPressureContributor();
         var scene = new SceneView
@@ -59,7 +59,7 @@ public class LocationConnectivityTests : IClassFixture<RavenDBFixture>
             new CampaignTime(),
             new CampaignConfig(),
             session,
-            Scene: scene))).ToList();
+            Scene: scene), TestContext.Current.CancellationToken)).ToList();
 
         var oneWayPressure = Assert.Single(pressures);
         Assert.Equal(PressureSeverity.EngineWarning, oneWayPressure.Severity);
@@ -83,9 +83,9 @@ public class LocationConnectivityTests : IClassFixture<RavenDBFixture>
             Type = LocationType.Room,
             Exits = [new LocationExit(targetId, "One-way chute", OneWay: true)]
         };
-        await session.StoreAsync(source);
-        await session.StoreAsync(new Location { Id = targetId, Name = "Pit", Type = LocationType.Room });
-        await session.SaveChangesAsync();
+        await session.StoreAsync(source, TestContext.Current.CancellationToken);
+        await session.StoreAsync(new Location { Id = targetId, Name = "Pit", Type = LocationType.Room }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var contributor = new LocationConnectivityPressureContributor();
         var scene = new SceneView
@@ -99,7 +99,7 @@ public class LocationConnectivityTests : IClassFixture<RavenDBFixture>
             new CampaignTime(),
             new CampaignConfig(),
             session,
-            Scene: scene));
+            Scene: scene), TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain(pressures, p => p.GroupingKey == LocationConnectivityPressureContributor.MissingReverseLinkGroupingKey);
     }
@@ -113,18 +113,16 @@ public class LocationConnectivityTests : IClassFixture<RavenDBFixture>
 
         var source = new Location { Id = sourceId, Name = "Source", Exits = [] };
         var target = new Location { Id = targetId, Name = "Target", Exits = [] };
-        await session.StoreAsync(source);
-        await session.StoreAsync(target);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(source, TestContext.Current.CancellationToken);
+        await session.StoreAsync(target, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new LocationUpdateHandler();
         var locations = new Dictionary<string, Location> { { sourceId, source }, { targetId, target } };
         var ctxDisabled = CreateContext(session, locations, new CampaignConfig { AutoRepairLocationConnectivity = false });
         var oneWayExit = new LocationExit(targetId, "Trap door", OneWay: true);
 
-        var result = await handler.ApplyAsync(
-            new LocationUpdate { LocationId = sourceId, AddExit = oneWayExit },
-            ctxDisabled);
+        var result = await handler.ApplyAsync(new LocationUpdate { LocationId = sourceId, AddExit = oneWayExit }, ctxDisabled, TestContext.Current.CancellationToken);
         Assert.True(result.Success);
         Assert.DoesNotContain(target.Exits, e => e.TargetLocationId == sourceId);
     }
@@ -138,17 +136,15 @@ public class LocationConnectivityTests : IClassFixture<RavenDBFixture>
 
         var source = new Location { Id = sourceId, Name = "Source", Exits = [] };
         var target = new Location { Id = targetId, Name = "Target", Exits = [] };
-        await session.StoreAsync(source);
-        await session.StoreAsync(target);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(source, TestContext.Current.CancellationToken);
+        await session.StoreAsync(target, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new LocationUpdateHandler();
         var locations = new Dictionary<string, Location> { { sourceId, source }, { targetId, target } };
         var ctxEnabled = CreateContext(session, locations, new CampaignConfig { AutoRepairLocationConnectivity = true });
 
-        var resultRepair = await handler.ApplyAsync(
-            new LocationUpdate { LocationId = sourceId, AddExit = new LocationExit(targetId, "Hallway") },
-            ctxEnabled);
+        var resultRepair = await handler.ApplyAsync(new LocationUpdate { LocationId = sourceId, AddExit = new LocationExit(targetId, "Hallway") }, ctxEnabled, TestContext.Current.CancellationToken);
         Assert.True(resultRepair.Success);
         Assert.Contains(target.Exits, e => e.TargetLocationId == sourceId);
     }
@@ -168,15 +164,14 @@ public class LocationConnectivityTests : IClassFixture<RavenDBFixture>
         var newId = "locations/hollow-" + System.Guid.NewGuid().ToString("N")[..8];
 
         var parent = new Location { Id = parentId, Name = "Sword Coast", Type = LocationType.Region, Exits = [] };
-        await session.StoreAsync(parent);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(parent, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new LocationUpdateHandler();
         var locations = new Dictionary<string, Location> { { parentId, parent } };
         var ctx = CreateContext(session, locations, new CampaignConfig { AutoRepairLocationConnectivity = true });
 
-        var result = await handler.ApplyAsync(
-            new LocationUpdate
+        var result = await handler.ApplyAsync(new LocationUpdate
             {
                 LocationId = newId,
                 Name = "Hidden Forest Hollow",
@@ -184,8 +179,7 @@ public class LocationConnectivityTests : IClassFixture<RavenDBFixture>
                 Type = LocationType.Wilderness,
                 ParentLocationId = parentId,
                 AddExit = new LocationExit(parentId, "Back toward the High Road")
-            },
-            ctx);
+            }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Contains("Created new location", result.Message);
@@ -205,7 +199,7 @@ public class LocationConnectivityTests : IClassFixture<RavenDBFixture>
         var handler = new LocationUpdateHandler();
         var ctx = CreateContext(session, new Dictionary<string, Location>(), new CampaignConfig());
 
-        var result = await handler.ApplyAsync(new LocationUpdate { LocationId = missingId, NewState = "Collapsed" }, ctx);
+        var result = await handler.ApplyAsync(new LocationUpdate { LocationId = missingId, NewState = "Collapsed" }, ctx, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("not found", result.Message);

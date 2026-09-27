@@ -1,0 +1,15 @@
+# Shadow & Steel: Thief-inspired rope arrow (original homebrew, not an SRD entry).
+name: ss_rope_arrow
+system: dnd5e
+category: Consumable
+tags: [rogue, thief, ammunition, adventuring-gear]
+description: Heavy barbed arrow trailing a thin rope; lodges in wood and stone to leave a climbing line. Single use.
+properties:
+  damage: 1d4
+  damageType: piercing
+  weight: 0.5
+  costGp: 20
+  uses: 1
+  chargeUnit: arrows
+  ammoFor: shortbow, longbow
+  specialMechanic: "Lodges in wood, earth, or soft stone and trails 50 feet of line for climbing (narrative/GM-arbitrated; not computed by the engine). Useless against bare metal or worked marble."

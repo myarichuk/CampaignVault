@@ -35,12 +35,12 @@ public class ContainerCycleTests : IClassFixture<RavenDBFixture>
         // The pouch is already inside the backpack.
         var pouch = MakeContainer("items/cycle_direct_pouch", backpack.Id);
 
-        await session.StoreAsync(backpack);
-        await session.StoreAsync(pouch);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(backpack, TestContext.Current.CancellationToken);
+        await session.StoreAsync(pouch, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Now try to move the backpack into the pouch it already contains.
-        var error = await ContainerResolver.ValidateNestingAsync(session, backpack, pouch);
+        var error = await ContainerResolver.ValidateNestingAsync(session, backpack, pouch, TestContext.Current.CancellationToken);
 
         Assert.NotNull(error);
         Assert.Contains("cycle", error);
@@ -55,13 +55,13 @@ public class ContainerCycleTests : IClassFixture<RavenDBFixture>
         var pouch = MakeContainer("items/cycle_indirect_pouch", backpack.Id);
         var vial = MakeContainer("items/cycle_indirect_vial", pouch.Id);
 
-        await session.StoreAsync(backpack);
-        await session.StoreAsync(pouch);
-        await session.StoreAsync(vial);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(backpack, TestContext.Current.CancellationToken);
+        await session.StoreAsync(pouch, TestContext.Current.CancellationToken);
+        await session.StoreAsync(vial, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // backpack -> pouch -> vial; try to move the backpack into the vial (two levels down).
-        var error = await ContainerResolver.ValidateNestingAsync(session, backpack, vial);
+        var error = await ContainerResolver.ValidateNestingAsync(session, backpack, vial, TestContext.Current.CancellationToken);
 
         Assert.NotNull(error);
         Assert.Contains("cycle", error);
@@ -78,17 +78,17 @@ public class ContainerCycleTests : IClassFixture<RavenDBFixture>
         {
             var holderId = previous?.Id ?? "chars/hero";
             var container = MakeContainer($"items/cycle_depth_c{i}", holderId);
-            await session.StoreAsync(container);
+            await session.StoreAsync(container, TestContext.Current.CancellationToken);
             previous = container;
         }
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var deepest = previous!;
         var movingItem = MakeContainer("items/cycle_depth_mover", "chars/hero");
-        await session.StoreAsync(movingItem);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(movingItem, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var error = await ContainerResolver.ValidateNestingAsync(session, movingItem, deepest);
+        var error = await ContainerResolver.ValidateNestingAsync(session, movingItem, deepest, TestContext.Current.CancellationToken);
 
         Assert.NotNull(error);
         Assert.Contains("depth", error, StringComparison.OrdinalIgnoreCase);
@@ -104,14 +104,14 @@ public class ContainerCycleTests : IClassFixture<RavenDBFixture>
         var coin2 = new Item { Id = "items/cycle_capacity_coin2", Name = "Coin", HolderId = pouch.Id, Quantity = 1, CampaignName = "container-test" };
         var coin3 = new Item { Id = "items/cycle_capacity_coin3", Name = "Coin", HolderId = "chars/hero", Quantity = 1, CampaignName = "container-test" };
 
-        await session.StoreAsync(pouch);
-        await session.StoreAsync(coin1);
-        await session.StoreAsync(coin2);
-        await session.StoreAsync(coin3);
+        await session.StoreAsync(pouch, TestContext.Current.CancellationToken);
+        await session.StoreAsync(coin1, TestContext.Current.CancellationToken);
+        await session.StoreAsync(coin2, TestContext.Current.CancellationToken);
+        await session.StoreAsync(coin3, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var error = await ContainerResolver.ValidateNestingAsync(session, coin3, pouch);
+        var error = await ContainerResolver.ValidateNestingAsync(session, coin3, pouch, TestContext.Current.CancellationToken);
 
         Assert.NotNull(error);
         Assert.Contains("capacity", error, StringComparison.OrdinalIgnoreCase);
@@ -125,12 +125,12 @@ public class ContainerCycleTests : IClassFixture<RavenDBFixture>
         var pouch = MakeContainer("items/cycle_valid_pouch", "chars/hero", capacity: 5);
         var coin = new Item { Id = "items/cycle_valid_coin", Name = "Coin", HolderId = "chars/hero", Quantity = 1, CampaignName = "container-test" };
 
-        await session.StoreAsync(pouch);
-        await session.StoreAsync(coin);
+        await session.StoreAsync(pouch, TestContext.Current.CancellationToken);
+        await session.StoreAsync(coin, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var error = await ContainerResolver.ValidateNestingAsync(session, coin, pouch);
+        var error = await ContainerResolver.ValidateNestingAsync(session, coin, pouch, TestContext.Current.CancellationToken);
 
         Assert.Null(error);
     }

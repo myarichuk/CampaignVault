@@ -41,7 +41,7 @@ public class ScheduleEvaluationRuleTests : IClassFixture<RavenDBFixture>
         var time = new CampaignTime { TotalDaysElapsed = 3, Hour = 10 };
         var ctx = new SimulationContext(time, [], [companion], session, 1, "companion-schedule-test");
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         Assert.Empty(result.Deltas);
         Assert.DoesNotContain(result.NarrativeEvents, n => n.Contains(companion.Name));
@@ -70,7 +70,7 @@ public class ScheduleEvaluationRuleTests : IClassFixture<RavenDBFixture>
         var time = new CampaignTime { TotalDaysElapsed = 3, Hour = 10 };
         var ctx = new SimulationContext(time, [], [npc], session, 1, "keepalive-schedule-test");
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         var activity = Assert.Single(result.Deltas.OfType<ActivityChange>());
         Assert.Equal("locations/npc-home", activity.NewLocationId);
@@ -106,7 +106,7 @@ public class ScheduleEvaluationRuleTests : IClassFixture<RavenDBFixture>
         var time = new CampaignTime { TotalDaysElapsed = 3, Hour = 10 };
         var ctx = new SimulationContext(time, [], [npc], session, 1, "background-schedule-test");
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         Assert.Single(result.Deltas.OfType<ActivityChange>());
         Assert.Empty(result.Deltas.OfType<LocationUpdate>());

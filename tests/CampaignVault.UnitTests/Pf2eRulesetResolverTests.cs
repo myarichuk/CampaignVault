@@ -54,7 +54,7 @@ public class Pf2eRulesetResolverTests
             Parameters = new Dictionary<string, string> { { "dc", "15" }, { "save", "Dexterity" } }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
         Assert.Contains("CriticalSuccess", output.Result.Narrative);
@@ -89,7 +89,7 @@ public class Pf2eRulesetResolverTests
             }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         await mockRollService.Received(1).RollAsync(
             Arg.Is<RollRequest>(req => req.Tag == "attack" && req.Bonus == -1),
@@ -119,7 +119,7 @@ public class Pf2eRulesetResolverTests
             Parameters = new Dictionary<string, string> { { "resolution", "save" }, { "save", "Reflex" } }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success, output.Result.Narrative);
         Assert.Contains("DC 18", output.Result.Narrative);
@@ -156,7 +156,7 @@ public class Pf2eRulesetResolverTests
             Parameters = new Dictionary<string, string> { { "dc", "15" } }
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         await mockRollService.Received(1).RollAsync(
             Arg.Is<RollRequest>(req => req.Bonus == 2),
@@ -180,7 +180,7 @@ public class Pf2eRulesetResolverTests
             Parameters = new Dictionary<string, string>()
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.False(output.Result.Success);
         Assert.Contains("requires a 'dc' parameter", output.Result.Narrative);
@@ -288,7 +288,7 @@ public class Pf2eRulesetResolverTests
             Session = null
         };
 
-        var result = await step.ApplyAsync(context);
+        var result = await step.ApplyAsync(context, TestContext.Current.CancellationToken);
 
         var stats = Assert.IsType<Pf2eExtension>(character.SystemStats);
         // Expected: 10 + DEX 2 + Level 1 + Proficiency (Trained) 2 = 15

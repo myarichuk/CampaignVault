@@ -115,7 +115,7 @@ public class NeedAccumulationRateTests
             daysPassed,
             "test_campaign",
             Config: new CampaignConfig());
-        return rule.ApplyAsync(context, CancellationToken.None);
+        return rule.ApplyAsync(context, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -260,8 +260,7 @@ public class NeedAccumulationRateTests
             characters: new Dictionary<string, Character> { [character.Id] = character });
         var handler = new NeedChangeHandler();
 
-        var result = await handler.ApplyAsync(
-            new NeedChange { CharacterId = character.Id, Need = "hunger", AccumulationRate = 48f }, ctx);
+        var result = await handler.ApplyAsync(new NeedChange { CharacterId = character.Id, Need = "hunger", AccumulationRate = 48f }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(48f, character.Needs.AccumulationRates["hunger"]);
@@ -281,8 +280,7 @@ public class NeedAccumulationRateTests
             characters: new Dictionary<string, Character> { [character.Id] = character });
         var handler = new NeedChangeHandler();
 
-        var result = await handler.ApplyAsync(
-            new NeedChange { CharacterId = character.Id, Need = "paranoia", Delta = 20f, AccumulationRate = 10f }, ctx);
+        var result = await handler.ApplyAsync(new NeedChange { CharacterId = character.Id, Need = "paranoia", Delta = 20f, AccumulationRate = 10f }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(20f, character.Needs.ActiveNeeds["paranoia"]);

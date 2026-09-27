@@ -37,15 +37,15 @@ public class AmbientItemDecayRuleTests : IClassFixture<RavenDBFixture>
         const string campaign = "ambient-decay-test-future";
         using var session = _fixture.Store.OpenAsyncSession();
         var item = MakeItem("items/ambient_future", new AmbientPersistence { Note = "still warm", ExpiresAtDay = 100 }, campaign);
-        await session.StoreAsync(item);
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var rule = new AmbientItemDecayRule();
         var time = new CampaignTime { TotalDaysElapsed = 5 };
         var ctx = new SimulationContext(time, [], [], session, 1, campaign);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         Assert.Empty(result.Deltas.OfType<ItemPersistenceSurfaced>());
     }
@@ -56,15 +56,15 @@ public class AmbientItemDecayRuleTests : IClassFixture<RavenDBFixture>
         const string campaign = "ambient-decay-test-past";
         using var session = _fixture.Store.OpenAsyncSession();
         var item = MakeItem("items/ambient_past", new AmbientPersistence { Note = "porridge going cold", ExpiresAtDay = 3 }, campaign);
-        await session.StoreAsync(item);
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var rule = new AmbientItemDecayRule();
         var time = new CampaignTime { TotalDaysElapsed = 5 };
         var ctx = new SimulationContext(time, [], [], session, 1, campaign);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         var delta = Assert.Single(result.Deltas.OfType<ItemPersistenceSurfaced>());
         Assert.Equal(item.Id, delta.ItemId);
@@ -87,12 +87,12 @@ public class AmbientItemDecayRuleTests : IClassFixture<RavenDBFixture>
             dispatcher: dispatcher,
             campaignName: campaign);
 
-        await handler.ApplyAsync(delta, changeContext);
+        await handler.ApplyAsync(delta, changeContext, TestContext.Current.CancellationToken);
 
         Assert.True(item.Persistence!.PressureSurfaced);
 
         // Idempotent: a second pass with the same current day should not re-surface it.
-        var secondPass = await rule.ApplyAsync(ctx);
+        var secondPass = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
         Assert.Empty(secondPass.Deltas.OfType<ItemPersistenceSurfaced>());
     }
 
@@ -102,15 +102,15 @@ public class AmbientItemDecayRuleTests : IClassFixture<RavenDBFixture>
         const string campaign = "ambient-decay-test-null";
         using var session = _fixture.Store.OpenAsyncSession();
         var item = MakeItem("items/ambient_no_persistence", null, campaign);
-        await session.StoreAsync(item);
+        await session.StoreAsync(item, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var rule = new AmbientItemDecayRule();
         var time = new CampaignTime { TotalDaysElapsed = 999 };
         var ctx = new SimulationContext(time, [], [], session, 1, campaign);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         Assert.Empty(result.Deltas.OfType<ItemPersistenceSurfaced>());
     }

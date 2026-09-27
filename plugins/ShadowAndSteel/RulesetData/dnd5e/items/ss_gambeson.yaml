@@ -1,0 +1,13 @@
+# Shadow & Steel: layered quilted cloth armor, the common soldier's defense (original homebrew stats, not an SRD entry).
+name: ss_gambeson
+system: dnd5e
+category: Armor
+tags: [light]
+description: A thick quilted coat worn alone by militia or under mail by men-at-arms. Base AC 12 + Dexterity bonus.
+properties:
+  acBonus: 2
+  armorType: Light
+  weight: 10
+  costGp: 20
+equipZones: [Torso]
+equipLayer: Armor

@@ -41,15 +41,15 @@ public class RepairAnonymousTypeDiscriminatorsTests
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
         {
             using var session = store.OpenAsyncSession();
-            await session.LoadAsync<Event>(docId);
+            await session.LoadAsync<Event>(docId, TestContext.Current.CancellationToken);
         });
 
         var repair = new RepairAnonymousTypeDiscriminators(store);
-        await repair.ExecuteAsync();
+        await repair.ExecuteAsync(TestContext.Current.CancellationToken);
 
         using (var session = store.OpenAsyncSession())
         {
-            var loaded = await session.LoadAsync<Event>(docId);
+            var loaded = await session.LoadAsync<Event>(docId, TestContext.Current.CancellationToken);
             Assert.NotNull(loaded);
             Assert.Equal("Test event with corrupted Details", loaded.Summary);
             Assert.True(loaded.Details!.ContainsKey("factsDiscovered"));

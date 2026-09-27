@@ -1,0 +1,16 @@
+# Shadow & Steel: Thief-inspired water arrow (original homebrew seed data).
+name: ss_water_arrow
+system: swade
+category: Consumable
+tags: [fantasy, rogue, thief, ammunition, adventuring-gear]
+description: Arrow with a fragile water-filled head. Snuffs torches, lanterns, and small flames on impact; barely harms flesh.
+properties:
+  damage: Str+d4
+  damageType: piercing
+  weight: 0.1
+  costGp: 10
+  uses: 1
+  chargeUnit: arrows
+  ammoFor: short bow
+  era: fantasy
+  specialMechanic: "On impact, douses one torch-sized flame and cleans bloodstains it strikes (narrative/GM-arbitrated; not computed by the engine)."

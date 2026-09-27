@@ -64,7 +64,7 @@ public class ClimateShiftPressureContributorTests : IClassFixture<RavenDBFixture
             RequestedLocationId: location.Id,
             PartyPresent: true);
 
-        var pressures = (await contributor.EvaluateAsync(ctx)).ToList();
+        var pressures = (await contributor.EvaluateAsync(ctx, TestContext.Current.CancellationToken)).ToList();
 
         var pressure = Assert.Single(pressures, p => p.EntityId == pc.Id);
         Assert.Contains("underdressed", pressure.Text);
@@ -88,7 +88,7 @@ public class ClimateShiftPressureContributorTests : IClassFixture<RavenDBFixture
             RequestedLocationId: location.Id,
             PartyPresent: true);
 
-        var pressures = (await contributor.EvaluateAsync(ctx)).ToList();
+        var pressures = (await contributor.EvaluateAsync(ctx, TestContext.Current.CancellationToken)).ToList();
 
         Assert.DoesNotContain(pressures, p => p.EntityId == pc.Id);
     }
@@ -110,7 +110,7 @@ public class ClimateShiftPressureContributorTests : IClassFixture<RavenDBFixture
             RequestedLocationId: location.Id,
             PartyPresent: true);
 
-        var pressures = (await contributor.EvaluateAsync(ctx)).ToList();
+        var pressures = (await contributor.EvaluateAsync(ctx, TestContext.Current.CancellationToken)).ToList();
 
         var pressure = Assert.Single(pressures, p => p.EntityId == pc.Id);
         Assert.Contains("overdressed", pressure.Text);
@@ -133,7 +133,7 @@ public class ClimateShiftPressureContributorTests : IClassFixture<RavenDBFixture
             RequestedLocationId: location.Id,
             PartyPresent: false);
 
-        var pressures = (await contributor.EvaluateAsync(ctx)).ToList();
+        var pressures = (await contributor.EvaluateAsync(ctx, TestContext.Current.CancellationToken)).ToList();
 
         Assert.DoesNotContain(pressures, p => p.EntityId == pc.Id);
     }

@@ -1,0 +1,14 @@
+# Shadow & Steel: cloth jacket studded with riveted steel plates (original homebrew stats, not an SRD entry).
+name: ss_brigandine
+system: dnd5e
+category: Armor
+tags: [medium]
+description: A cloth jacket lined with small riveted steel plates — the burgher's plate. Base AC 14 + Dexterity bonus (max 2). Imposes disadvantage on Stealth checks.
+properties:
+  acBonus: 4
+  armorType: Medium
+  weight: 35
+  costGp: 120
+  stealthDisadvantage: true
+equipZones: [Torso]
+equipLayer: Armor

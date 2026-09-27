@@ -1,0 +1,13 @@
+# Shadow & Steel: case of 20 blowgun needles (original homebrew, not an SRD entry).
+# Unpoisoned by default; pair with injury poison at the GM's discretion.
+name: ss_blowgun_needles_20
+system: dnd5e
+category: Consumable
+tags: [ammunition, adventuring-gear]
+description: Lacquered case of 20 needle darts for blowguns. One needle per attack.
+properties:
+  weight: 1
+  costGp: 1
+  uses: 20
+  chargeUnit: needles
+  ammoFor: blowgun

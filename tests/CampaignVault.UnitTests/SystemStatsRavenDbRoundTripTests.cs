@@ -51,15 +51,15 @@ public class SystemStatsRavenDbRoundTripTests : IClassFixture<RavenDBFixture>
                     SkillModifiers = { ["Athletics"] = 6 },
                 },
             };
-            await writeSession.StoreAsync(character, id);
-            await writeSession.SaveChangesAsync();
+            await writeSession.StoreAsync(character, id, TestContext.Current.CancellationToken);
+            await writeSession.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // A fresh session forces a real reload from RavenDB storage rather than returning the
         // same in-memory object the write session's identity map already holds — this is exactly
         // what happens between two separate take_turn calls in production.
         using var readSession = _store.OpenAsyncSession();
-        var reloaded = await readSession.LoadAsync<Character>(id);
+        var reloaded = await readSession.LoadAsync<Character>(id, TestContext.Current.CancellationToken);
 
         Assert.NotNull(reloaded);
         var stats = Assert.IsType<Dnd5eExtension>(reloaded!.SystemStats);
@@ -96,12 +96,12 @@ public class SystemStatsRavenDbRoundTripTests : IClassFixture<RavenDBFixture>
                     SkillModifiers = { ["Perception"] = 8 },
                 },
             };
-            await writeSession.StoreAsync(character, id);
-            await writeSession.SaveChangesAsync();
+            await writeSession.StoreAsync(character, id, TestContext.Current.CancellationToken);
+            await writeSession.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         using var readSession = _store.OpenAsyncSession();
-        var reloaded = await readSession.LoadAsync<Character>(id);
+        var reloaded = await readSession.LoadAsync<Character>(id, TestContext.Current.CancellationToken);
 
         Assert.NotNull(reloaded);
         var stats = Assert.IsType<Pf2eExtension>(reloaded!.SystemStats);
@@ -131,12 +131,12 @@ public class SystemStatsRavenDbRoundTripTests : IClassFixture<RavenDBFixture>
                 CampaignName = TestCampaignDefaults.Slug,
                 SystemStats = new SystemExtension { Willpower = 40 },
             };
-            await writeSession.StoreAsync(character, id);
-            await writeSession.SaveChangesAsync();
+            await writeSession.StoreAsync(character, id, TestContext.Current.CancellationToken);
+            await writeSession.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         using var readSession = _store.OpenAsyncSession();
-        var reloaded = await readSession.LoadAsync<Character>(id);
+        var reloaded = await readSession.LoadAsync<Character>(id, TestContext.Current.CancellationToken);
 
         Assert.NotNull(reloaded);
         Assert.IsType<SystemExtension>(reloaded!.SystemStats);

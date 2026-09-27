@@ -1,0 +1,16 @@
+# Shadow & Steel: fantasy-tier full plate harness (original homebrew seed data).
+# NOTE: the engine has no SWADE armor-class resolver yet; acBonus is seed data for future/GM use.
+name: ss_plate_armor
+system: swade
+category: Armor
+tags: [fantasy, heavy]
+description: Full articulated plate harness for heavy cavalry and champions. Armor bonus +4 but loud and tiring.
+properties:
+  acBonus: 4
+  armorType: Heavy
+  weight: 50
+  costGp: 800
+  era: fantasy
+  specialMechanic: "Clatters and tires the wearer — stealth and long marches suffer (narrative/GM-arbitrated)."
+equipZones: [Torso]
+equipLayer: Armor

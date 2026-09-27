@@ -203,18 +203,18 @@ public class Phase10InitiativeCoreTests : IClassFixture<RavenDBFixture>
             CampaignName = "suppression-test",
             CurrentLocationId = "locs/prancing"
         };
-        await session.StoreAsync(npc);
+        await session.StoreAsync(npc, TestContext.Current.CancellationToken);
         await session.StoreAsync(new Location
         {
             Id = "locs/prancing",
             Name = "Prancing Pony",
             CampaignName = "suppression-test"
-        });
-        await session.SaveChangesAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var first = await repo.EnrichNpcInitiativeAsync(
             session, npc, "suppression-test", "get_npc_context", includeTensionBreakdown: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         Assert.Single(first.ActiveInitiatives);
 
@@ -223,7 +223,7 @@ public class Phase10InitiativeCoreTests : IClassFixture<RavenDBFixture>
 
         Assert.Empty(second.ActiveInitiatives);
 
-        var campaign = await session.LoadAsync<Campaign>(_keys.Meta("suppression-test"));
+        var campaign = await session.LoadAsync<Campaign>(_keys.Meta("suppression-test"), TestContext.Current.CancellationToken);
         Assert.Contains(campaign!.InitiativeSurfaced.Keys, k => k.Contains("test:once", StringComparison.Ordinal));
     }
 
@@ -235,7 +235,7 @@ public class Phase10InitiativeCoreTests : IClassFixture<RavenDBFixture>
         using var session = _fixture.Store.OpenAsyncSession();
 
         var locId = "locs/tavern";
-        await session.StoreAsync(new Location { Id = locId, Name = "Tavern", CampaignName = "scene-tension" });
+        await session.StoreAsync(new Location { Id = locId, Name = "Tavern", CampaignName = "scene-tension" }, TestContext.Current.CancellationToken);
         await session.StoreAsync(new Character
         {
             Id = "chars/tired",
@@ -248,8 +248,8 @@ public class Phase10InitiativeCoreTests : IClassFixture<RavenDBFixture>
                 ActiveNeeds = new Dictionary<string, float> { ["tiredness"] = 90f },
                 ActivityConflictActive = true
             }
-        });
-        await session.SaveChangesAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(
             timeout: TimeSpan.FromSeconds(10),
             throwOnTimeout: true,
@@ -294,8 +294,8 @@ public class Phase10InitiativeCoreTests : IClassFixture<RavenDBFixture>
             {
                 ActiveNeeds = new Dictionary<string, float> { ["hunger"] = 50f }
             }
-        });
-        await session.SaveChangesAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await tools.GetNpcContext(charId, "context-tension");
         Assert.True(result.Success);

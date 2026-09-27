@@ -47,7 +47,7 @@ public class GrappleRulesetTests
             ActionName = "Grapple"
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
         var mutation = Assert.Single(output.Mutations);
@@ -77,7 +77,7 @@ public class GrappleRulesetTests
             ActionName = "Trip"
         };
 
-        var output = await resolver.ResolveAsync(context, action);
+        var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
         var grappleRelations = output.Mutations
@@ -122,9 +122,7 @@ public class GrappleRulesetTests
 
         // EncounterRiskModifier alone can't guarantee no interrupt (chance is clamped to a 1% floor,
         // see EncounterResolver.cs), so pin the roll deterministically to never trigger.
-        var result = await new TravelChangeHandler(new EncounterResolver(() => 1.0)).ApplyAsync(
-            new TravelChange { CharacterId = "char_1", DestinationLocationId = "loc_2", TravelCostHoursOverride = 1, EncounterRiskModifier = -100 },
-            context);
+        var result = await new TravelChangeHandler(new EncounterResolver(() => 1.0)).ApplyAsync(new TravelChange { CharacterId = "char_1", DestinationLocationId = "loc_2", TravelCostHoursOverride = 1, EncounterRiskModifier = -100 }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
     }

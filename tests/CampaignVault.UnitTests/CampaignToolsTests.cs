@@ -181,7 +181,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             await repo.UpsertFactionAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new Faction { Id = fid, Name = "Guild of Tests", InfluenceLevel = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.GetFactionContext(fid);
@@ -200,7 +200,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             await repo.UpsertFactionAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new Faction { Id = fid, Name = "Real Guild", InfluenceLevel = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Wait for index
@@ -213,7 +213,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 break;
             }
 
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
         }
 
         var result = await tools.GetFactionContext("factions/real-fac"); // typo
@@ -233,7 +233,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             await repo.UpsertQuestAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new Quest { Id = qid, Title = "Test Quest", OverallState = QuestState.Open });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.GetQuestDetails(qid);
@@ -252,7 +252,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             await repo.UpsertQuestAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new Quest { Id = qid, Title = "Real Quest", OverallState = QuestState.Open });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Wait for index
@@ -265,7 +265,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 break;
             }
 
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
         }
 
         var result = await tools.GetQuestDetails("quests/real-que"); // typo
@@ -285,7 +285,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             await repo.UpsertFactionAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new Faction { Id = fid, Name = "Silver Hand", InfluenceLevel = 10 });
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var indexWaitStart = DateTime.UtcNow;
@@ -297,7 +297,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 break;
             }
 
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
         }
 
         // Query by typo in Name, not ID prefix
@@ -330,7 +330,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
             var time = await repo.GetTimeAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug));
             time.TotalDaysElapsed = 10;
-            await session.StoreAsync(time);
+            await session.StoreAsync(time, TestContext.Current.CancellationToken);
 
             // Deadline in 2 days -> should emit a pressure in GetScene
             await repo.UpsertQuestAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new Quest
@@ -340,7 +340,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                     [locId]
             });
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var indexWaitStart = DateTime.UtcNow;
@@ -353,7 +353,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 break;
             }
 
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
         }
 
         var result = await tools.GetScene(locId);
@@ -418,7 +418,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 }
             });
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var indexWaitStart = DateTime.UtcNow;
@@ -431,7 +431,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 break;
             }
 
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
         }
 
         var result = await tools.GetScene(locId);
@@ -461,7 +461,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, slug), new LocationUpsertRequest { Id = locId, Name = "Some Loc" });
             var time = await repo.GetTimeAsync(_fixture.CreateCampaignSession(session, slug));
             time.TotalDaysElapsed = 10;
-            await session.StoreAsync(time);
+            await session.StoreAsync(time, TestContext.Current.CancellationToken);
 
             // Deadline in 2 days
             await repo.UpsertQuestAsync(_fixture.CreateCampaignSession(session, slug), new Quest { Id = qid, Title = "Impending Doom", OverallState = QuestState.Open, DeadlineDay = 12 });
@@ -478,7 +478,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             };
             await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, slug), npc);
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var indexWaitStart = DateTime.UtcNow;
@@ -492,7 +492,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 break;
             }
 
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
         }
 
         // GetActiveQuestsAsync queries the Quest/Search index without waiting for non-stale results,
@@ -518,7 +518,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 break;
             }
 
-            await Task.Delay(200);
+            await Task.Delay(200, TestContext.Current.CancellationToken);
         }
 
         Assert.NotNull(view);
@@ -559,7 +559,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             t.TotalDaysElapsed = 51; // 51 - 10 = 41 > 40
             // t is automatically tracked by session.SaveChangesAsync()
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.GetScene(locId, true);
@@ -589,7 +589,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             t.TotalDaysElapsed = 100; // Even at 90 days diff, core shouldn't decay
             // t is automatically tracked by session.SaveChangesAsync()
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.GetScene(locId, true);
@@ -619,7 +619,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             };
             await repo.UpsertFactionAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), f);
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var result = await tools.GetScene(locId, true);
@@ -668,9 +668,9 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 Description = "A sword",
                 HolderId = charId,
                 CoreCategory = ItemCategories.Weapon
-            });
+            }, TestContext.Current.CancellationToken);
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         await WaitForCharacterAndFactionIndexesAsync();
@@ -722,9 +722,9 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 HolderId = charId,
                 CoreCategory = ItemCategories.Document,
                 Tags = ["Spell Scrolls"]
-            });
+            }, TestContext.Current.CancellationToken);
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         await WaitForCharacterAndFactionIndexesAsync();
@@ -762,7 +762,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         using (var session = _fixture.Store.OpenAsyncSession())
         {
             var configId = new CampaignDocumentKeys().Config(campaignName);
-            await session.StoreAsync(new CampaignConfig { Id = configId });
+            await session.StoreAsync(new CampaignConfig { Id = configId }, TestContext.Current.CancellationToken);
 
             await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, campaignName), new CharacterUpsertRequest
             {
@@ -786,7 +786,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 KeepAlive = true
             });
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var indexWaitStart = DateTime.UtcNow;
@@ -798,7 +798,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
                 break;
             }
 
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
         }
 
         var result = await tools.GetParty(campaignName);
@@ -843,7 +843,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             await session.Query<Campaign>()
                 .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(15)))
                 .Where(c => c.Id.StartsWith("campaigns/") && c.Id.EndsWith("/meta"))
-                .ToListAsync();
+                .ToListAsync(token: TestContext.Current.CancellationToken);
         }
 
         var result = await tools.ListCampaigns();
@@ -925,9 +925,9 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
 
             var time = await repo.GetTimeAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug));
             time.TotalDaysElapsed = 7;
-            await session.StoreAsync(time);
+            await session.StoreAsync(time, TestContext.Current.CancellationToken);
 
-            await session.SaveChangesAsync();
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Call GetScene with partyPresent: true

@@ -32,18 +32,18 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
             CampaignName = "evict-test"
         };
 
-        await session.StoreAsync(loc);
-        await session.StoreAsync(c);
+        await session.StoreAsync(loc, TestContext.Current.CancellationToken);
+        await session.StoreAsync(c, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true,
             indexes: ["Character/Search"]);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
         var time = new CampaignTime { TotalDaysElapsed = 3 };
 
         var ctx = new SimulationContext(time, new List<Rumor>(), new List<Character>(), session, 2, "evict-test");
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         var activity = Assert.Single(result.Deltas.OfType<ActivityChange>());
         Assert.Equal(c.Id, activity.CharacterId);
@@ -85,18 +85,18 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
             CampaignName = "keep-test"
         };
 
-        await session.StoreAsync(loc);
-        await session.StoreAsync(c);
+        await session.StoreAsync(loc, TestContext.Current.CancellationToken);
+        await session.StoreAsync(c, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true,
             indexes: ["Character/Search"]);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
         var time = new CampaignTime { TotalDaysElapsed = 3 };
 
         var ctx = new SimulationContext(time, new List<Rumor>(), new List<Character>(), session, 1, "keep-test");
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain(result.Deltas, d => d is ActivityChange ac && ac.CharacterId == "chars/transient_guy2");
         Assert.DoesNotContain(result.NarrativeEvents, n => n.Contains("transient_guy2"));
@@ -115,11 +115,11 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
             Schedule = null, CampaignName = "quest-test"
         };
 
-        await session.StoreAsync(loc);
-        await session.StoreAsync(c);
+        await session.StoreAsync(loc, TestContext.Current.CancellationToken);
+        await session.StoreAsync(c, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true,
             indexes: ["Character/Search"]);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
         var time = new CampaignTime { TotalDaysElapsed = 3 };
@@ -132,7 +132,7 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
         var ctx = new SimulationContext(time, new List<Rumor>(), new List<Character>(), session, 2, "quest-test", null,
             activeQuests);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         Assert.Empty(result.Deltas);
         Assert.Single(result.NarrativeEvents);
@@ -155,19 +155,19 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
         var i = new Item
             { Id = "items/cool_sword", Name = "Cool Sword", HolderId = c.Id, CampaignName = "item-evict-test" };
 
-        await session.StoreAsync(loc);
-        await session.StoreAsync(c);
-        await session.StoreAsync(i);
+        await session.StoreAsync(loc, TestContext.Current.CancellationToken);
+        await session.StoreAsync(c, TestContext.Current.CancellationToken);
+        await session.StoreAsync(i, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true,
             indexes: ["Character/Search", "Item/Search"]);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
         var time = new CampaignTime { TotalDaysElapsed = 3 };
 
         var ctx = new SimulationContext(time, new List<Rumor>(), new List<Character>(), session, 2, "item-evict-test");
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         var transfer = Assert.Single(result.Deltas.OfType<ItemTransfer>());
         Assert.Equal(i.Id, transfer.ItemId);
@@ -190,11 +190,11 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
             CampaignName = "grace-test"
         };
 
-        await session.StoreAsync(loc);
-        await session.StoreAsync(c);
+        await session.StoreAsync(loc, TestContext.Current.CancellationToken);
+        await session.StoreAsync(c, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true,
             indexes: ["Character/Search"]);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
         var time = new CampaignTime { TotalDaysElapsed = 3 };
@@ -202,13 +202,13 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
         var ctx = new SimulationContext(time, new List<Rumor>(), new List<Character>(), session, 2, "grace-test",
             Config: config);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
         Assert.DoesNotContain(result.Deltas, d => d is ActivityChange ac && ac.CharacterId == c.Id);
 
         time = new CampaignTime { TotalDaysElapsed = 5 };
         ctx = new SimulationContext(time, new List<Rumor>(), new List<Character>(), session, 4, "grace-test",
             Config: config);
-        result = await rule.ApplyAsync(ctx);
+        result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
         Assert.Contains(result.Deltas, d => d is ActivityChange ac && ac.CharacterId == c.Id);
     }
 
@@ -225,11 +225,11 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
             Schedule = null, CampaignName = "quest-evict-test"
         };
 
-        await session.StoreAsync(loc);
-        await session.StoreAsync(c);
+        await session.StoreAsync(loc, TestContext.Current.CancellationToken);
+        await session.StoreAsync(c, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true,
             indexes: ["Character/Search"]);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
         var time = new CampaignTime { TotalDaysElapsed = 3 };
@@ -245,7 +245,7 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
         var ctx = new SimulationContext(time, new List<Rumor>(), new List<Character>(), session, 2, "quest-evict-test",
             null, activeQuests);
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         Assert.Contains(result.Deltas, d => d is ActivityChange);
         Assert.DoesNotContain(result.NarrativeEvents, n => n.Contains("has an active quest"));
@@ -264,17 +264,17 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
             CampaignName = "never-visit-test"
         };
 
-        await session.StoreAsync(loc);
-        await session.StoreAsync(c);
+        await session.StoreAsync(loc, TestContext.Current.CancellationToken);
+        await session.StoreAsync(c, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true,
             indexes: ["Character/Search"]);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
         var time = new CampaignTime { TotalDaysElapsed = 3 };
         var ctx = new SimulationContext(time, new List<Rumor>(), new List<Character>(), session, 2, "never-visit-test");
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain(result.Deltas, d => d is ActivityChange ac && ac.CharacterId == c.Id);
         Assert.True(result.EvictedNpcSummaries == null || result.EvictedNpcSummaries.Count == 0);
@@ -298,18 +298,18 @@ public class TransientEvictionRuleTests : IClassFixture<RavenDBFixture>
             CampaignName = "party-present-test"
         };
 
-        await session.StoreAsync(loc);
-        await session.StoreAsync(transient);
-        await session.StoreAsync(pc);
+        await session.StoreAsync(loc, TestContext.Current.CancellationToken);
+        await session.StoreAsync(transient, TestContext.Current.CancellationToken);
+        await session.StoreAsync(pc, TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true,
             indexes: ["Character/Search"]);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var rule = new TransientEvictionRule(NullLogger<TransientEvictionRule>.Instance);
         var time = new CampaignTime { TotalDaysElapsed = 3 };
         var ctx = new SimulationContext(time, new List<Rumor>(), new List<Character>(), session, 2, "party-present-test");
 
-        var result = await rule.ApplyAsync(ctx);
+        var result = await rule.ApplyAsync(ctx, TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain(result.Deltas, d => d is ActivityChange ac && ac.CharacterId == transient.Id);
         Assert.True(result.EvictedNpcSummaries == null || result.EvictedNpcSummaries.Count == 0);

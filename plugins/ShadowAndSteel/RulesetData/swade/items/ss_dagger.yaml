@@ -1,0 +1,16 @@
+# Shadow & Steel: fantasy-tier fighting knife (original homebrew seed data; SWADE has no core items in this repo).
+name: ss_dagger
+system: swade
+category: Weapon
+tags: [fantasy, melee, thrown]
+description: Short fighting knife for close work and quiet throws. Damage Strength + d4. Thrown at Close range.
+properties:
+  damage: Str+d4
+  damageType: piercing
+  weight: 1
+  costGp: 25
+  range: Close
+  era: fantasy
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

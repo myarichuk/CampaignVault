@@ -55,9 +55,7 @@ public class ContentSafetyTests
         var handler = new CharacterUpdateHandler(new CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator());
         var context = ChangeContextTestHelper.Create(session: session);
 
-        var result = await handler.ApplyAsync(
-            new CharacterUpdate { CharacterId = "chars/pip", LifeStage = LifeStage.Adult, AppearanceOverride = "after" },
-            context);
+        var result = await handler.ApplyAsync(new CharacterUpdate { CharacterId = "chars/pip", LifeStage = LifeStage.Adult, AppearanceOverride = "after" }, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("cannot be changed", result.Message);
@@ -73,9 +71,7 @@ public class ContentSafetyTests
         session.LoadAsync<Character>("chars/mara", Arg.Any<CancellationToken>()).Returns(character);
         var handler = new CharacterUpdateHandler(new CampaignDocumentKeys(), BootstrapTestHelper.CreateOrchestrator());
 
-        var result = await handler.ApplyAsync(
-            new CharacterUpdate { CharacterId = "chars/mara", LifeStage = LifeStage.Adult },
-            ChangeContextTestHelper.Create(session: session));
+        var result = await handler.ApplyAsync(new CharacterUpdate { CharacterId = "chars/mara", LifeStage = LifeStage.Adult }, ChangeContextTestHelper.Create(session: session), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(LifeStage.Adult, character.LifeStage);
@@ -155,9 +151,7 @@ public class ContentSafetyTests
             campaignName: "test",
             config: new CampaignConfig { Id = "campaigns/test/config", EnabledModeIds = ["gated"] });
 
-        var result = await handler.ApplyAsync(
-            new ModeTransitionChange { ModeId = "gated", Action = "enter", LocationId = "locations/a", ParticipantIds = ["chars/pip", "chars/ghost"] },
-            context);
+        var result = await handler.ApplyAsync(new ModeTransitionChange { ModeId = "gated", Action = "enter", LocationId = "locations/a", ParticipantIds = ["chars/pip", "chars/ghost"] }, context, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("not an adult", result.Message);
@@ -187,7 +181,7 @@ public class ContentSafetyTests
             config: new CampaignConfig { Id = "campaigns/test/config", EnabledModeIds = ["gated"] },
             activeModes: [encounter]);
 
-        var result = await handler.ApplyAsync(new ModeTransitionChange { ModeId = "gated", Action = "turn" }, context);
+        var result = await handler.ApplyAsync(new ModeTransitionChange { ModeId = "gated", Action = "turn" }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal("chars/a", encounter.ActiveTurnId);
@@ -220,7 +214,7 @@ public class ContentSafetyTests
             config: new CampaignConfig { Id = "campaigns/test/config", EnabledModeIds = ["gated"] },
             activeModes: [encounter]);
 
-        var result = await handler.ApplyAsync(new ModeTransitionChange { ModeId = "gated", Action = "turn" }, context);
+        var result = await handler.ApplyAsync(new ModeTransitionChange { ModeId = "gated", Action = "turn" }, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.False(encounter.IsActive);
@@ -246,13 +240,11 @@ public class ContentSafetyTests
             var config = new CampaignConfig { Id = "campaigns/test/config" };
             var context = ChangeContextTestHelper.Create(campaignName: "test", config: config);
 
-            var result = await handler.ApplyAsync(
-                new CampaignUpdateChange
+            var result = await handler.ApplyAsync(new CampaignUpdateChange
                 {
                     EnabledModeIds = ["crafting"],
                     SystemOptions = new Dictionary<string, string> { ["flavor"] = "x", ["CONTENTLIMIT"] = "none" }
-                },
-                context);
+                }, context, TestContext.Current.CancellationToken);
 
             Assert.False(result.Success);
             Assert.Contains("playerRequest", result.Message);
@@ -280,7 +272,7 @@ public class ContentSafetyTests
             var context = ChangeContextTestHelper.Create(campaignName: "test", config: new CampaignConfig { Id = "campaigns/test/config" });
             context.Batch = [update, new HpChange { CharacterId = "chars/a", Delta = -1 }];
 
-            var result = await handler.ApplyAsync(update, context);
+            var result = await handler.ApplyAsync(update, context, TestContext.Current.CancellationToken);
 
             Assert.False(result.Success);
             Assert.Contains("own commit", result.Message);

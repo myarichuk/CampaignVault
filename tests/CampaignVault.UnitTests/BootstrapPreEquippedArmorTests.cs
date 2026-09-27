@@ -43,8 +43,8 @@ public class BootstrapPreEquippedArmorTests : IClassFixture<RavenDBFixture>
             Properties = new Dictionary<string, object> { ["acBonus"] = "3", ["armorType"] = "medium" },
         };
 
-        await session.StoreAsync(armor);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(armor, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var orchestrator = BootstrapTestHelper.CreateOrchestrator();
         var report = await orchestrator.ApplyCreationAsync(new BootstrapContext
@@ -52,7 +52,7 @@ public class BootstrapPreEquippedArmorTests : IClassFixture<RavenDBFixture>
             Character = character,
             ActiveSystem = RulesetSystem.Dnd5e,
             Session = session,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
         // 10 + min(dex mod 2, medium cap 2) + acBonus 3 = 15
@@ -87,8 +87,8 @@ public class BootstrapPreEquippedArmorTests : IClassFixture<RavenDBFixture>
             Properties = new Dictionary<string, object> { ["acBonus"] = "4" },
         };
 
-        await session.StoreAsync(armor);
-        await session.SaveChangesAsync();
+        await session.StoreAsync(armor, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var orchestrator = BootstrapTestHelper.CreateOrchestrator();
         await orchestrator.ApplyCreationAsync(new BootstrapContext
@@ -96,7 +96,7 @@ public class BootstrapPreEquippedArmorTests : IClassFixture<RavenDBFixture>
             Character = character,
             ActiveSystem = RulesetSystem.Pathfinder2e,
             Session = session,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var stats = Assert.IsType<Pf2eExtension>(character.SystemStats);
         // 10 + dexMod(2) + (level 1 + trained 2) + acBonus 4 = 19
@@ -121,7 +121,7 @@ public class BootstrapPreEquippedArmorTests : IClassFixture<RavenDBFixture>
             Character = character,
             ActiveSystem = RulesetSystem.Dnd5e,
             Session = session,
-        });
+        }, TestContext.Current.CancellationToken);
 
         var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
         Assert.Equal(12, stats.ArmorClass);

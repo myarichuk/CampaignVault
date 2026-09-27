@@ -46,16 +46,16 @@ public class EvictionIntegrationTests : IClassFixture<RavenDBFixture>
         await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, campaign), location);
         await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, campaign), character);
         await repo.SaveTimeAsync(_fixture.CreateCampaignSession(session, campaign), new CampaignTime { TotalDaysElapsed = 1 });
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Advance time enough to trigger eviction (TransientEvictionRule checks if location was visited
         // recently; with LastVisitedDay=1 and advancing to day 3+, the NPC should be evicted).
         await repo.AdvanceWorldAsync(session, 3, 12, campaign);
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Reload location and assert RecentlyDeparted is populated.
-        var reloadedLocation = await session.LoadAsync<Location>(locId);
+        var reloadedLocation = await session.LoadAsync<Location>(locId, TestContext.Current.CancellationToken);
         Assert.NotNull(reloadedLocation);
         Assert.NotEmpty(reloadedLocation.RecentlyDeparted);
         var departed = Assert.Single(reloadedLocation.RecentlyDeparted);
@@ -71,7 +71,7 @@ public class EvictionIntegrationTests : IClassFixture<RavenDBFixture>
         Assert.Equal(locId, departureEvent.RelatedEntityId);
 
         // Verify character doc has departedAtDay and departedFromLocationId set.
-        var reloadedCharacter = await session.LoadAsync<Character>(charId);
+        var reloadedCharacter = await session.LoadAsync<Character>(charId, TestContext.Current.CancellationToken);
         Assert.NotNull(reloadedCharacter.DepartedAtDay);
         Assert.Equal(locId, reloadedCharacter.DepartedFromLocationId);
     }

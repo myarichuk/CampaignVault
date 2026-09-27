@@ -81,7 +81,7 @@ public class Dnd5eSpellResolutionTests
             },
         };
 
-        var output = await resolver.ResolveAsync(CreateContext(caster, target), action);
+        var output = await resolver.ResolveAsync(CreateContext(caster, target), action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
         var hp = Assert.Single(output.Mutations.OfType<HpChange>());
@@ -123,7 +123,7 @@ public class Dnd5eSpellResolutionTests
             },
         };
 
-        var output = await resolver.ResolveAsync(CreateContext(caster), action);
+        var output = await resolver.ResolveAsync(CreateContext(caster), action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
         Assert.Empty(output.Mutations);
@@ -175,7 +175,7 @@ public class Dnd5eSpellResolutionTests
             Parameters = new Dictionary<string, string> { ["damageDice"] = "1d10" },
         };
 
-        var output = await resolver.ResolveAsync(CreateContext(caster, target), action);
+        var output = await resolver.ResolveAsync(CreateContext(caster, target), action, TestContext.Current.CancellationToken);
 
         await mockRoll.Received().RollAsync(
             Arg.Is<RollRequest>(r => r.Tag == "attack" && r.Bonus == 8),

@@ -1,0 +1,12 @@
+# Shadow & Steel: small dueling shield (original homebrew stats, not an SRD entry).
+name: ss_buckler
+system: dnd5e
+category: Armor
+tags: [shield, light]
+description: A small fist-gripped shield for duelists. +1 AC when wielded in the off hand.
+properties:
+  acBonus: 1
+  weight: 2
+  costGp: 5
+equipZones: [OffHand]
+equipLayer: Held

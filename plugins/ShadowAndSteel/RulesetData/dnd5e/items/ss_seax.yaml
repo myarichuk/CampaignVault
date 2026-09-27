@@ -1,0 +1,14 @@
+# Shadow & Steel: single-edged Germanic sidearm (original homebrew stats, not an SRD entry).
+name: ss_seax
+system: dnd5e
+category: Weapon
+tags: [simple, melee, light, finesse]
+description: A sturdy single-edged knife-sword carried as both tool and sidearm. Deals 1d6 slashing damage.
+properties:
+  damage: 1d6
+  damageType: slashing
+  weight: 2
+  costGp: 10
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

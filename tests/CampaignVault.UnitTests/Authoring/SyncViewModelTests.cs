@@ -49,11 +49,11 @@ public sealed class SyncViewModelTests : IDisposable
         await WriteAndCommitAsync(GrogMarkdown("Base."));
         await AdvanceSyncedToHeadAsync();
         SetupFetchMock(GrogJson("Base."));
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
 
         await WriteAndCommitAsync(GrogMarkdown("Local edit."));
         SetupFetchMock(GrogJson("Vault edit."));
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
 
         await syncViewModel.RefreshPlansCommand.ExecuteAsync(null);
         syncViewModel.SelectedPlan = syncViewModel.SyncPlans[0];
@@ -64,7 +64,7 @@ public sealed class SyncViewModelTests : IDisposable
 
         await syncViewModel.ResolveMergedCommand.ExecuteAsync(null);
 
-        var content = await File.ReadAllTextAsync(Path.Combine(_tempDirectory, "characters", "grog.md"));
+        var content = await File.ReadAllTextAsync(Path.Combine(_tempDirectory, "characters", "grog.md"), TestContext.Current.CancellationToken);
         Assert.Contains("Merged by hand.", content);
     }
 

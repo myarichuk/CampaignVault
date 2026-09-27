@@ -1,0 +1,12 @@
+# Shadow & Steel: pouch of 20 sling bullets (original homebrew; no ORC text copied).
+name: ss_sling_bullets_20
+system: pf2e
+category: Consumable
+tags: [ammunition, adventuring-gear]
+description: Pouch of 20 cast sling bullets. One bullet per attack; hits harder than field stones.
+properties:
+  bulk: 0.5
+  costGp: 0.05
+  uses: 20
+  chargeUnit: bullets
+  ammoFor: sling

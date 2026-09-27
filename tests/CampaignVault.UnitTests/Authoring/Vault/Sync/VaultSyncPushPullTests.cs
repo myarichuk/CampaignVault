@@ -36,13 +36,13 @@ public sealed class VaultSyncPushPullTests : IDisposable
         await CreateVaultAsync();
         await WriteAndCommitEntityAsync(GrogMarkdown("Baseline."));
         SetupSyncMocks(GrogJson("Baseline."));
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
         await AdvanceSyncedToHeadAsync();
 
         await WriteAndCommitEntityAsync(GrogMarkdown("Push me."));
         var headBefore = _session.HeadCommitSha;
 
-        await _session.PushAsync();
+        await _session.PushAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(headBefore, _session.SyncedCommitSha);
     }
@@ -53,13 +53,13 @@ public sealed class VaultSyncPushPullTests : IDisposable
         await CreateVaultAsync();
         await WriteAndCommitEntityAsync(GrogMarkdown("Baseline."));
         SetupSyncMocks(GrogJson("Baseline."));
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
         await AdvanceSyncedToHeadAsync();
 
         await WriteAndCommitEntityAsync(GrogMarkdown("Push me."));
         var syncedBefore = _session.SyncedCommitSha;
 
-        await _session.PushAsync(["characters/grog"]);
+        await _session.PushAsync(["characters/grog"], TestContext.Current.CancellationToken);
 
         Assert.Equal(syncedBefore, _session.SyncedCommitSha);
     }
@@ -71,11 +71,11 @@ public sealed class VaultSyncPushPullTests : IDisposable
         await WriteAndCommitEntityAsync(GrogMarkdown("Clean."));
         await AdvanceSyncedToHeadAsync();
         SetupSyncMocks(GrogJson("Clean."));
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
 
         await WriteEntityOnDiskAsync(GrogMarkdown("Dirty edit."));
 
-        var ex = await Assert.ThrowsAsync<VaultException>(() => _session.PushAsync());
+        var ex = await Assert.ThrowsAsync<VaultException>(() => _session.PushAsync(cancellationToken: TestContext.Current.CancellationToken));
         Assert.Contains("clean working tree", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -86,12 +86,12 @@ public sealed class VaultSyncPushPullTests : IDisposable
         await WriteAndCommitEntityAsync(GrogMarkdown("Base."));
         await AdvanceSyncedToHeadAsync();
         SetupSyncMocks(GrogJson("Base."));
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
         await WriteAndCommitEntityAsync(GrogMarkdown("Local change."));
         SetupSyncMocks(GrogJson("Remote change."));
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
 
-        var ex = await Assert.ThrowsAsync<VaultException>(() => _session.PushAsync());
+        var ex = await Assert.ThrowsAsync<VaultException>(() => _session.PushAsync(cancellationToken: TestContext.Current.CancellationToken));
         Assert.Contains("Conflict", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -100,14 +100,14 @@ public sealed class VaultSyncPushPullTests : IDisposable
     {
         await CreateVaultAsync();
         SetupSyncMocks(GrogJson("Pulled from vault."));
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
 
         var otherPath = Path.Combine(_tempDirectory, "characters", "unrelated.md");
         Directory.CreateDirectory(Path.GetDirectoryName(otherPath)!);
-        await File.WriteAllTextAsync(otherPath, "uncommitted local file");
+        await File.WriteAllTextAsync(otherPath, "uncommitted local file", TestContext.Current.CancellationToken);
         await ReopenSessionAsync();
 
-        var ex = await Assert.ThrowsAsync<VaultException>(() => _session.PullAsync());
+        var ex = await Assert.ThrowsAsync<VaultException>(() => _session.PullAsync(cancellationToken: TestContext.Current.CancellationToken));
         Assert.Contains("clean working tree", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -116,13 +116,13 @@ public sealed class VaultSyncPushPullTests : IDisposable
     {
         await CreateVaultAsync();
         SetupSyncMocks(GrogJson("Pulled from vault."));
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
 
-        await _session.PullAsync();
+        await _session.PullAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         var path = Path.Combine(_tempDirectory, "characters", "grog.md");
         Assert.True(File.Exists(path));
-        var content = await File.ReadAllTextAsync(path);
+        var content = await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken);
         Assert.Contains("Pulled from vault.", content);
         Assert.False(string.IsNullOrWhiteSpace(_session.HeadCommitSha));
     }
@@ -133,19 +133,19 @@ public sealed class VaultSyncPushPullTests : IDisposable
         await CreateVaultAsync();
         await WriteAndCommitEntityAsync(GrogMarkdown("Baseline."));
         var borisPath = Path.Combine(_tempDirectory, "characters", "boris.md");
-        await File.WriteAllTextAsync(borisPath, BorisMarkdown("Baseline."));
+        await File.WriteAllTextAsync(borisPath, BorisMarkdown("Baseline."), TestContext.Current.CancellationToken);
         await CommitAllAsync("add boris");
 
         SetupMultiEntitySyncMocks(GrogJson("Baseline."), BorisJson("Baseline."));
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
         await AdvanceSyncedToHeadAsync();
 
-        await File.WriteAllTextAsync(Path.Combine(_tempDirectory, "characters", "grog.md"), GrogMarkdown("Push me."));
-        await File.WriteAllTextAsync(borisPath, BorisMarkdown("Push me too."));
+        await File.WriteAllTextAsync(Path.Combine(_tempDirectory, "characters", "grog.md"), GrogMarkdown("Push me."), TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(borisPath, BorisMarkdown("Push me too."), TestContext.Current.CancellationToken);
         await CommitAllAsync("edit both");
 
         _mockClient.ClearReceivedCalls();
-        await _session.PushAsync();
+        await _session.PushAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         _ = _mockClient.Received(1).GetCampaignEntitiesAsync(
             Arg.Any<GetCampaignEntitiesRequest>(), Arg.Any<Metadata>(), Arg.Any<DateTime?>(), Arg.Any<CancellationToken>());
@@ -158,7 +158,7 @@ public sealed class VaultSyncPushPullTests : IDisposable
         await WriteAndCommitEntityAsync(GrogMarkdown("Delete me."));
         await AdvanceSyncedToHeadAsync();
         SetupSyncMocks(GrogJson("Delete me."));
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
 
         File.Delete(Path.Combine(_tempDirectory, "characters", "grog.md"));
         await CommitAllAsync("remove grog");
@@ -167,7 +167,7 @@ public sealed class VaultSyncPushPullTests : IDisposable
         Assert.Single(pushPlan);
         Assert.Equal(VaultSyncState.DeletedLocally, pushPlan[0].State);
 
-        await _session.PushAsync();
+        await _session.PushAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         _ = _mockClient.Received(1).DeleteCampaignEntityAsync(
             Arg.Is<DeleteCampaignEntityRequest>(r =>
@@ -184,14 +184,14 @@ public sealed class VaultSyncPushPullTests : IDisposable
         await WriteAndCommitEntityAsync(GrogMarkdown("Shared base."));
         await AdvanceSyncedToHeadAsync();
         SetupSyncMocks(GrogJson("Shared base."));
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
         await WriteAndCommitEntityAsync(GrogMarkdown("Local version."));
         SetupSyncMocks(GrogJson("Vault version."));
-        await _session.FetchAsync();
+        await _session.FetchAsync(TestContext.Current.CancellationToken);
 
         await _session.ResolveConflictAsync("characters/grog", ConflictResolution.KeepVault);
 
-        var content = await File.ReadAllTextAsync(Path.Combine(_tempDirectory, "characters", "grog.md"));
+        var content = await File.ReadAllTextAsync(Path.Combine(_tempDirectory, "characters", "grog.md"), TestContext.Current.CancellationToken);
         Assert.Contains("Vault version.", content);
     }
 

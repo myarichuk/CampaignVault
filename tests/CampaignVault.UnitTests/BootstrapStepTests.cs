@@ -33,7 +33,7 @@ public class BootstrapStepTests
             SystemStats = new Dnd5eExtension { Constitution = 14, HitDie = "d10" },
         };
 
-        var result = await step.ApplyAsync(CreateContext(character, RulesetSystem.Dnd5e));
+        var result = await step.ApplyAsync(CreateContext(character, RulesetSystem.Dnd5e), TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal(12, character.MaxHp);
@@ -57,7 +57,7 @@ public class BootstrapStepTests
             },
         };
 
-        await step.ApplyAsync(CreateContext(character, RulesetSystem.Dnd5e));
+        await step.ApplyAsync(CreateContext(character, RulesetSystem.Dnd5e), TestContext.Current.CancellationToken);
 
         Assert.Equal(105, character.MaxHp);
     }
@@ -88,7 +88,7 @@ public class BootstrapStepTests
             SystemStats = new Dnd5eExtension { Dexterity = 16 },
         };
 
-        var result = await step.ApplyAsync(CreateContext(character, RulesetSystem.Dnd5e));
+        var result = await step.ApplyAsync(CreateContext(character, RulesetSystem.Dnd5e), TestContext.Current.CancellationToken);
         var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
 
         Assert.NotNull(result);
@@ -107,7 +107,7 @@ public class BootstrapStepTests
             SystemStats = new Dnd5eExtension(),
         };
 
-        var result = await step.ApplyAsync(CreateContext(character, RulesetSystem.Dnd5e));
+        var result = await step.ApplyAsync(CreateContext(character, RulesetSystem.Dnd5e), TestContext.Current.CancellationToken);
         var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
 
         Assert.NotNull(result);
@@ -127,12 +127,12 @@ public class BootstrapStepTests
         };
         var context = CreateContext(character, RulesetSystem.Dnd5e);
 
-        var createResult = await step.ApplyAsync(context);
+        var createResult = await step.ApplyAsync(context, TestContext.Current.CancellationToken);
         Assert.NotNull(createResult);
         Assert.Contains(createResult!.LlmHints, h => h.Contains("Fighter") && h.Contains("skillModifiers"));
 
         // Level gain shouldn't repeat the hint once proficiencyBonus already exists at the same level.
-        var levelGainResult = await step.ApplyLevelGainAsync(context);
+        var levelGainResult = await step.ApplyLevelGainAsync(context, TestContext.Current.CancellationToken);
         Assert.Null(levelGainResult);
     }
 
@@ -151,7 +151,7 @@ public class BootstrapStepTests
             SystemStats = new Dnd5eExtension { Background = "acolyte", Wisdom = 16 },
         };
 
-        var result = await step.ApplyAsync(CreateContext(character, RulesetSystem.Dnd5e));
+        var result = await step.ApplyAsync(CreateContext(character, RulesetSystem.Dnd5e), TestContext.Current.CancellationToken);
         var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
 
         Assert.NotNull(result);
@@ -175,7 +175,7 @@ public class BootstrapStepTests
             SystemStats = new Dnd5eExtension { Strength = 16, Constitution = 14 },
         };
 
-        var result = await step.ApplyAsync(CreateContext(character, RulesetSystem.Dnd5e));
+        var result = await step.ApplyAsync(CreateContext(character, RulesetSystem.Dnd5e), TestContext.Current.CancellationToken);
         var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
 
         Assert.NotNull(result);
@@ -204,7 +204,7 @@ public class BootstrapStepTests
             },
         };
 
-        await step.ApplyAsync(CreateContext(character, RulesetSystem.Dnd5e));
+        await step.ApplyAsync(CreateContext(character, RulesetSystem.Dnd5e), TestContext.Current.CancellationToken);
         var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
 
         Assert.Equal(99, stats.SkillModifiers["Insight"]);
@@ -224,7 +224,7 @@ public class BootstrapStepTests
             },
         };
 
-        var result = await step.ApplyAsync(CreateContext(character, RulesetSystem.Dnd5e));
+        var result = await step.ApplyAsync(CreateContext(character, RulesetSystem.Dnd5e), TestContext.Current.CancellationToken);
         var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
 
         Assert.NotNull(result);
@@ -246,7 +246,7 @@ public class BootstrapStepTests
             },
         };
 
-        var result = await step.ApplyLevelGainAsync(CreateContext(character, RulesetSystem.Dnd5e));
+        var result = await step.ApplyLevelGainAsync(CreateContext(character, RulesetSystem.Dnd5e), TestContext.Current.CancellationToken);
         var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
 
         Assert.NotNull(result);
@@ -271,7 +271,7 @@ public class BootstrapStepTests
             },
         };
 
-        await step.ApplyAsync(CreateContext(character, RulesetSystem.Pathfinder2e));
+        await step.ApplyAsync(CreateContext(character, RulesetSystem.Pathfinder2e), TestContext.Current.CancellationToken);
 
         Assert.Equal(32, character.MaxHp);
     }
@@ -287,7 +287,7 @@ public class BootstrapStepTests
             SystemStats = new Pf2eExtension { Level = 3, DexterityMod = 3, WisdomMod = 2 },
         };
 
-        var result = await profStep.ApplyAsync(CreateContext(character, RulesetSystem.Pathfinder2e));
+        var result = await profStep.ApplyAsync(CreateContext(character, RulesetSystem.Pathfinder2e), TestContext.Current.CancellationToken);
         var stats = Assert.IsType<Pf2eExtension>(character.SystemStats);
 
         Assert.NotNull(result);
@@ -310,7 +310,7 @@ public class BootstrapStepTests
             SystemStats = new Pf2eExtension { DexterityMod = 3 },
         };
 
-        var result = await step.ApplyAsync(CreateContext(character, RulesetSystem.Pathfinder2e));
+        var result = await step.ApplyAsync(CreateContext(character, RulesetSystem.Pathfinder2e), TestContext.Current.CancellationToken);
         var stats = Assert.IsType<Pf2eExtension>(character.SystemStats);
 
         Assert.NotNull(result);
@@ -334,8 +334,8 @@ public class BootstrapStepTests
         };
         var context = CreateContext(character, RulesetSystem.Pathfinder2e);
 
-        await profStep.ApplyAsync(context);
-        await spellStep.ApplyAsync(context);
+        await profStep.ApplyAsync(context, TestContext.Current.CancellationToken);
+        await spellStep.ApplyAsync(context, TestContext.Current.CancellationToken);
         var stats = Assert.IsType<Pf2eExtension>(character.SystemStats);
 
         Assert.Equal(expectedRank, stats.SpellcastingProficiency);
@@ -362,8 +362,8 @@ public class BootstrapStepTests
         };
         var context = CreateContext(character, RulesetSystem.Pathfinder2e);
 
-        await profStep.ApplyAsync(context);
-        await spellStep.ApplyAsync(context);
+        await profStep.ApplyAsync(context, TestContext.Current.CancellationToken);
+        await spellStep.ApplyAsync(context, TestContext.Current.CancellationToken);
         var stats = Assert.IsType<Pf2eExtension>(character.SystemStats);
 
         Assert.Equal(Pf2eProficiencyRank.Legendary, stats.SpellcastingProficiency);

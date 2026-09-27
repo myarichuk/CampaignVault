@@ -1,0 +1,16 @@
+# Shadow & Steel: tall deployable shield (original homebrew stats; no ORC text copied).
+# NOTE: the cover effect is prose-only and resolves narratively / by GM arbitration.
+name: ss_pavise
+system: pf2e
+category: Armor
+tags: [shield]
+description: Tall shield planted as portable cover for missile lines. +2 AC when raised. Hardness 3, HP 12.
+properties:
+  acBonus: 2
+  hardness: 3
+  hp: 12
+  bulk: 2
+  costGp: 10
+  specialMechanic: "Can be planted as stationary cover for one crouching shooter (narrative/GM-arbitrated; not computed by the engine)."
+equipZones: [OffHand]
+equipLayer: Held

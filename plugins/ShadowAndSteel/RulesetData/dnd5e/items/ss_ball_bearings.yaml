@@ -1,0 +1,11 @@
+# Shadow & Steel: polished spheres for slippery floors (original homebrew, not an SRD entry).
+name: ss_ball_bearings
+system: dnd5e
+category: Tool
+tags: [rogue, trap, adventuring-gear]
+description: A pouch of polished iron spheres that turns flagstones treacherous underfoot. One pouch covers a small room's doorway.
+properties:
+  weight: 2
+  costGp: 1
+  uses: 1
+  specialMechanic: "Creatures rushing across the scattered bearings risk slipping prone (narrative/GM-arbitrated; not computed by the engine)."

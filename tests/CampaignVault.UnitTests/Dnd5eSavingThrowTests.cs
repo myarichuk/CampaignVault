@@ -63,7 +63,7 @@ public class Dnd5eSavingThrowTests
             Parameters = new Dictionary<string, string> { { "dc", "15" }, { "save", "Dexterity" } }
         };
 
-        await resolver.ResolveAsync(context, action);
+        await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         // Verify that the roll request had a bonus of 5
         await mockRollService.Received(1)
@@ -113,7 +113,7 @@ public class Dnd5eSavingThrowTests
             Parameters = new Dictionary<string, string> { { "dc", "15" }, { "save", "Dexterity" } }
         };
 
-        await resolver.ResolveAsync(context, action);
+        await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         // Verify that the roll request had a bonus of 2
         Assert.Equal(2, bonusPassed);
@@ -162,7 +162,7 @@ public class Dnd5eSavingThrowTests
             Parameters = new Dictionary<string, string> { { "dc", "15" }, { "save", "Dexterity" } }
         };
 
-        await resolver.ResolveAsync(context, action);
+        await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         // Verify that the roll request had a bonus of 2, not 4 (double-counted)
         Assert.Equal(2, bonusPassed);

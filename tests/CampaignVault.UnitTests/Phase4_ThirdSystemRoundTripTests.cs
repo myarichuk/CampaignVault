@@ -47,14 +47,14 @@ public class Phase4_ThirdSystemRoundTripTests : IClassFixture<RavenDBFixture>
                 CreatedAt = DateTime.UtcNow
             };
 
-            await session.StoreAsync(campaign);
-            await session.SaveChangesAsync();
+            await session.StoreAsync(campaign, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Reload in a new session (forces deserialization from DB)
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            var reloaded = await session.LoadAsync<Campaign>(keys.Meta(campaignName));
+            var reloaded = await session.LoadAsync<Campaign>(keys.Meta(campaignName), TestContext.Current.CancellationToken);
 
             // Assert: system should remain "swade", not coerced to "dnd5e"
             Assert.NotNull(reloaded);
@@ -79,14 +79,14 @@ public class Phase4_ThirdSystemRoundTripTests : IClassFixture<RavenDBFixture>
                 SystemOptions = []
             };
 
-            await session.StoreAsync(config);
-            await session.SaveChangesAsync();
+            await session.StoreAsync(config, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Reload in a new session (forces deserialization from DB)
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            var reloaded = await session.LoadAsync<CampaignConfig>(keys.Config(campaignName));
+            var reloaded = await session.LoadAsync<CampaignConfig>(keys.Config(campaignName), TestContext.Current.CancellationToken);
 
             // Assert: system should remain "swade"
             Assert.NotNull(reloaded);
@@ -114,14 +114,14 @@ public class Phase4_ThirdSystemRoundTripTests : IClassFixture<RavenDBFixture>
                 }
             };
 
-            await session.StoreAsync(character);
-            await session.SaveChangesAsync();
+            await session.StoreAsync(character, TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // Reload in a new session (forces polymorphic deserialization)
         using (var session = _fixture.Store.OpenAsyncSession())
         {
-            var reloaded = await session.LoadAsync<Character>(characterId);
+            var reloaded = await session.LoadAsync<Character>(characterId, TestContext.Current.CancellationToken);
 
             // Assert: SystemStats should maintain its type (SystemExtension for unknown systems)
             // and preserve the custom values — should not be coerced to Dnd5eExtension

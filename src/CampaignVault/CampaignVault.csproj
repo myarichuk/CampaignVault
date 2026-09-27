@@ -60,6 +60,7 @@
     <!-- Plugin references: build DLLs but don't reference them in host assembly -->
     <ProjectReference Include="..\..\plugins\CraftingMode\CraftingMode.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\plugins\MedievalWeapons\MedievalWeapons.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\plugins\ShadowAndSteel\ShadowAndSteel.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <!-- Copy plugin DLLs and static files to bin/Plugins folder after build -->
@@ -89,6 +90,16 @@
     <Copy SourceFiles="@(MedievalWeaponsDll)" DestinationFolder="$(PluginsOutputDir)\MedievalWeapons" SkipUnchangedFiles="false" />
     <Copy SourceFiles="@(MedievalWeaponsManifest)" DestinationFolder="$(PluginsOutputDir)\MedievalWeapons" SkipUnchangedFiles="false" />
     <Copy SourceFiles="@(MedievalWeaponsRulesetData)" DestinationFolder="$(PluginsOutputDir)\MedievalWeapons\RulesetData\%(RecursiveDir)" SkipUnchangedFiles="false" />
+
+    <!-- Copy ShadowAndSteel plugin -->
+    <ItemGroup>
+      <ShadowAndSteelDll Include="..\..\plugins\ShadowAndSteel\bin\$(Configuration)\net10.0\ShadowAndSteel.dll" />
+      <ShadowAndSteelManifest Include="..\..\plugins\ShadowAndSteel\plugin.json" />
+      <ShadowAndSteelRulesetData Include="..\..\plugins\ShadowAndSteel\RulesetData\**\*.yaml" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ShadowAndSteelDll)" DestinationFolder="$(PluginsOutputDir)\ShadowAndSteel" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="@(ShadowAndSteelManifest)" DestinationFolder="$(PluginsOutputDir)\ShadowAndSteel" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="@(ShadowAndSteelRulesetData)" DestinationFolder="$(PluginsOutputDir)\ShadowAndSteel\RulesetData\%(RecursiveDir)" SkipUnchangedFiles="false" />
 
     <Message Text="Plugins copied successfully" Importance="High" />
   </Target>

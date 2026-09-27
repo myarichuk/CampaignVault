@@ -25,12 +25,12 @@ public class UpsertSurfaceCoverageTests : IClassFixture<RavenDBFixture>
 
         var faction = await repository.UpsertFactionAsync(_fixture.CreateCampaignSession(session, "test-camp"),
             new FactionUpsertRequest { Id = "factions/thieves", Name = "Thieves Guild" });
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("Thieves Guild", faction.Name);
 
         using var verifySession = _fixture.Store.OpenAsyncSession();
-        var reloaded = await verifySession.LoadAsync<Faction>("factions/thieves");
+        var reloaded = await verifySession.LoadAsync<Faction>("factions/thieves", TestContext.Current.CancellationToken);
         Assert.NotNull(reloaded);
         Assert.Equal("Thieves Guild", reloaded.Name);
     }
@@ -43,12 +43,12 @@ public class UpsertSurfaceCoverageTests : IClassFixture<RavenDBFixture>
 
         var quest = await repository.UpsertQuestAsync(_fixture.CreateCampaignSession(session, "test-camp"),
             new QuestUpsertRequest { Id = "quests/find-ring", Title = "Find the Ring" });
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("Find the Ring", quest.Title);
 
         using var verifySession = _fixture.Store.OpenAsyncSession();
-        var reloaded = await verifySession.LoadAsync<Quest>("quests/find-ring");
+        var reloaded = await verifySession.LoadAsync<Quest>("quests/find-ring", TestContext.Current.CancellationToken);
         Assert.NotNull(reloaded);
         Assert.Equal("Find the Ring", reloaded.Title);
     }
@@ -66,12 +66,12 @@ public class UpsertSurfaceCoverageTests : IClassFixture<RavenDBFixture>
                 Subject = "Dragon sighting",
                 CurrentText = "A dragon was seen over the mountains."
             }, "test-camp");
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("Dragon sighting", rumor.Subject);
 
         using var verifySession = _fixture.Store.OpenAsyncSession();
-        var reloaded = await verifySession.LoadAsync<Rumor>("rumors/dragon-sighting");
+        var reloaded = await verifySession.LoadAsync<Rumor>("rumors/dragon-sighting", TestContext.Current.CancellationToken);
         Assert.NotNull(reloaded);
         Assert.Equal("Dragon sighting", reloaded.Subject);
     }
@@ -91,7 +91,7 @@ public class UpsertSurfaceCoverageTests : IClassFixture<RavenDBFixture>
                 Level = 1
             }, "test-camp");
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         using var verifySession = _fixture.Store.OpenAsyncSession();
         var spells = await repository.GetCustomSpellsForSystemAsync(verifySession, RulesetSystem.Dnd5e, "test-camp");
@@ -113,7 +113,7 @@ public class UpsertSurfaceCoverageTests : IClassFixture<RavenDBFixture>
                 System = RulesetSystem.Dnd5e
             }, "test-camp");
         session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(5), throwOnTimeout: true);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         using var verifySession = _fixture.Store.OpenAsyncSession();
         var feats = await repository.GetCustomFeatsForSystemAsync(verifySession, RulesetSystem.Dnd5e, "test-camp");
@@ -135,13 +135,13 @@ public class UpsertSurfaceCoverageTests : IClassFixture<RavenDBFixture>
                 Description = "A crypt nobody visits anymore.",
                 IsArchived = true
             });
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         using var verifySession = _fixture.Store.OpenAsyncSession();
         var results = await repository.UnifiedSearchAsync(verifySession, "ZzArchivedCryptUnique", "test-camp");
         Assert.DoesNotContain(results, r => r is SearchMatch { EntityType: "location", Match: LocationSearchSummary loc } && loc.Id == "locations/forgotten-crypt");
 
-        var reloaded = await verifySession.LoadAsync<Location>("locations/forgotten-crypt");
+        var reloaded = await verifySession.LoadAsync<Location>("locations/forgotten-crypt", TestContext.Current.CancellationToken);
         Assert.NotNull(reloaded);
         Assert.True(reloaded.IsArchived);
     }
@@ -155,8 +155,8 @@ public class UpsertSurfaceCoverageTests : IClassFixture<RavenDBFixture>
         await session.StoreAsync(new Location
         {
             Id = "locations/scene-test-room", Name = "Scene Test Room", CampaignName = "test-camp"
-        });
-        await session.SaveChangesAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await repository.UpsertItemAsync(_fixture.CreateCampaignSession(session, "test-camp"),
             new ItemUpsertRequest
@@ -167,13 +167,13 @@ public class UpsertSurfaceCoverageTests : IClassFixture<RavenDBFixture>
                 HolderId = "locations/scene-test-room",
                 IsArchived = true
             });
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         using var verifySession = _fixture.Store.OpenAsyncSession();
         var scene = await repository.GetSceneAsync(_fixture.CreateCampaignSession(verifySession, "test-camp"), "locations/scene-test-room");
         Assert.DoesNotContain(scene.VisibleItems, i => i.Id == "items/forgotten-coin");
 
-        var reloaded = await verifySession.LoadAsync<Item>("items/forgotten-coin");
+        var reloaded = await verifySession.LoadAsync<Item>("items/forgotten-coin", TestContext.Current.CancellationToken);
         Assert.NotNull(reloaded);
         Assert.True(reloaded.IsArchived);
     }

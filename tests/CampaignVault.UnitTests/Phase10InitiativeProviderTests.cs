@@ -406,10 +406,10 @@ public class Phase10InitiativeProviderTests : IClassFixture<RavenDBFixture>
     {
         const string campaign = "provider-integration";
         using var session = _fixture.Store.OpenAsyncSession();
-        await session.StoreAsync(new Campaign { Id = _keys.Meta(campaign), Name = campaign, DisplayName = campaign });
-        await session.StoreAsync(new CampaignConfig { Id = _keys.Config(campaign) });
-        await session.StoreAsync(new CampaignTime { Id = _keys.StateTime(campaign), TotalDaysElapsed = 10 });
-        await session.StoreAsync(new Character { Id = "chars/barliman", Name = "Barliman", CampaignName = campaign });
+        await session.StoreAsync(new Campaign { Id = _keys.Meta(campaign), Name = campaign, DisplayName = campaign }, TestContext.Current.CancellationToken);
+        await session.StoreAsync(new CampaignConfig { Id = _keys.Config(campaign) }, TestContext.Current.CancellationToken);
+        await session.StoreAsync(new CampaignTime { Id = _keys.StateTime(campaign), TotalDaysElapsed = 10 }, TestContext.Current.CancellationToken);
+        await session.StoreAsync(new Character { Id = "chars/barliman", Name = "Barliman", CampaignName = campaign }, TestContext.Current.CancellationToken);
         await session.StoreAsync(new Event
         {
             Id = "events/gift",
@@ -419,16 +419,16 @@ public class Phase10InitiativeProviderTests : IClassFixture<RavenDBFixture>
             Involved = ["chars/barliman", "chars/pc1"],
             EmotionalBeat = "gift_received",
             RelatedEntityId = "items/necklace"
-        });
-        await session.SaveChangesAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         session.Advanced.WaitForIndexesAfterSaveChanges(
             timeout: TimeSpan.FromSeconds(10),
             throwOnTimeout: true,
             indexes: ["Event/Search"]);
 
         var repo = CreateRepo();
-        var npc = await session.LoadAsync<Character>("chars/barliman");
-        var giftEvent = await session.LoadAsync<Event>("events/gift");
+        var npc = await session.LoadAsync<Character>("chars/barliman", TestContext.Current.CancellationToken);
+        var giftEvent = await session.LoadAsync<Event>("events/gift", TestContext.Current.CancellationToken);
         Assert.NotNull(giftEvent);
 
         var enrichment = await repo.EnrichNpcInitiativeAsync(
@@ -447,26 +447,26 @@ public class Phase10InitiativeProviderTests : IClassFixture<RavenDBFixture>
     {
         const string campaign = "provider-suppression";
         using var session = _fixture.Store.OpenAsyncSession();
-        await session.StoreAsync(new Campaign { Id = _keys.Meta(campaign), Name = campaign, DisplayName = campaign });
-        await session.StoreAsync(new CampaignConfig { Id = _keys.Config(campaign) });
-        await session.StoreAsync(new CampaignTime { Id = _keys.StateTime(campaign), TotalDaysElapsed = 10 });
+        await session.StoreAsync(new Campaign { Id = _keys.Meta(campaign), Name = campaign, DisplayName = campaign }, TestContext.Current.CancellationToken);
+        await session.StoreAsync(new CampaignConfig { Id = _keys.Config(campaign) }, TestContext.Current.CancellationToken);
+        await session.StoreAsync(new CampaignTime { Id = _keys.StateTime(campaign), TotalDaysElapsed = 10 }, TestContext.Current.CancellationToken);
         await session.StoreAsync(new Character
         {
             Id = "chars/barliman",
             Name = "Barliman",
             CampaignName = campaign,
             Social = new SocialProfile { Relationships = new Dictionary<string, int> { ["chars/pc1"] = 85 } }
-        });
-        await session.StoreAsync(new Character { Id = "chars/pc1", Name = "PC", CampaignName = campaign, CurrentLocationId = "locs/inn" });
-        await session.SaveChangesAsync();
+        }, TestContext.Current.CancellationToken);
+        await session.StoreAsync(new Character { Id = "chars/pc1", Name = "PC", CampaignName = campaign, CurrentLocationId = "locs/inn" }, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var repo = CreateRepo();
-        var npc = await session.LoadAsync<Character>("chars/barliman");
-        var pc = await session.LoadAsync<Character>("chars/pc1");
+        var npc = await session.LoadAsync<Character>("chars/barliman", TestContext.Current.CancellationToken);
+        var pc = await session.LoadAsync<Character>("chars/pc1", TestContext.Current.CancellationToken);
 
         var first = await repo.EnrichNpcInitiativeAsync(
             session, npc!, campaign, "get_npc_context", true, presentEntities: [npc!, pc!]);
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var second = await repo.EnrichNpcInitiativeAsync(
             session, npc!, campaign, "get_npc_context", true, presentEntities: [npc!, pc!]);

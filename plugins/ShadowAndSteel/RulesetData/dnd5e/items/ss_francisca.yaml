@@ -1,0 +1,15 @@
+# Shadow & Steel: small Frankish throwing axe (original homebrew stats, not an SRD entry).
+name: ss_francisca
+system: dnd5e
+category: Weapon
+tags: [simple, melee, thrown, light]
+description: A light throwing axe with a distinctive arched blade. Deals 1d6 slashing damage. Thrown at Close range.
+properties:
+  damage: 1d6
+  damageType: slashing
+  weight: 2
+  costGp: 10
+  range: Close
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

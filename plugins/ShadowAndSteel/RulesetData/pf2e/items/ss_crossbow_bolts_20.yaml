@@ -1,0 +1,12 @@
+# Shadow & Steel: bundle of 20 crossbow bolts (original homebrew; no ORC text copied).
+name: ss_crossbow_bolts_20
+system: pf2e
+category: Consumable
+tags: [ammunition, adventuring-gear]
+description: Bundle of 20 short quarrels for hand and full crossbows. One bolt per attack.
+properties:
+  bulk: 0.1
+  costGp: 0.1
+  uses: 20
+  chargeUnit: bolts
+  ammoFor: crossbow, hand_crossbow
