@@ -245,11 +245,11 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     /// caster's actual level or spell-slot tier, so an LLM caller guessing the wrong scaling tier
     /// (e.g. "3d10" — the level 11-16 tier for Fire Bolt — sent by a level 1 caster) rolled and
     /// applied real, unvalidated damage with a narrative that reads as entirely correct
-    /// ("Attack 27 vs AC 12"). Now backed by dnd5eapi.co's real per-spell data (CONTENT_GAPS_PLAN.md
-    /// Step 3) instead of a 4-entry hardcoded cantrip table. Soft warning only, consistent with
+    /// ("Attack 27 vs AC 12"). Now backed by dnd5eapi.co's real per-spell data instead of a
+    /// 4-entry hardcoded cantrip table. Soft warning only, consistent with
     /// SpellSlotValidator's CantripWarning — damage still applies as sent, since a homebrew/plugin
     /// spell or an intentional reflavor has no SpellDefinition to check against, and this must not
-    /// block real play. dnd5e only (pf2e spell damage is prose-only on AoN — see Step 2 findings).
+    /// block real play. dnd5e only (pf2e spell damage is prose-only on AoN, not structured).
     /// Leveled (spell-slot-scaling) spells can't be pinned to an exact tier here: the resolver has
     /// no reliable signal for which slot level the caller spent (that's tracked by a separate
     /// ResourceChange, not this RulesetAction), so those are checked against "matches any known

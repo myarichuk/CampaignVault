@@ -259,7 +259,7 @@ public class Dnd5eRulesetResolverTests
         // applied it silently, with a narrative that reads as entirely correct. Damage still applies
         // as sent (soft warning only, matching SpellSlotValidator's CantripWarning pattern) - this
         // test locks in that the warning fires and damage is unaffected. Backed by the real
-        // fire_bolt.yaml SpellDefinition (CONTENT_GAPS_PLAN.md Step 3), not a hardcoded table.
+        // fire_bolt.yaml SpellDefinition, not a hardcoded table.
         var rollService = new FakeRollService();
         rollService.NextRolls.Enqueue(new RollOutcome { Result = 27, HasCritical = false, HasComplication = false, Summary = "Rolled 27" });
         rollService.NextRolls.Enqueue(new RollOutcome { Result = 20, Summary = "Rolled 20" });

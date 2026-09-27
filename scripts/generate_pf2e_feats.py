@@ -4,6 +4,8 @@
 Mirrors generate_spells.py's pf2e sourcing: pulls directly from the official
 Archives of Nethys Elasticsearch endpoint, filtered to Remastered core rulebooks
 and common rarity, matching LICENSING.md's stated scope.
+
+Requires network access to elasticsearch.aonprd.com.
 """
 
 from __future__ import annotations

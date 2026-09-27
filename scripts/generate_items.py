@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generate dnd5e weapon/armor ItemDefinition YAML from SRD 5.1 (www.dnd5eapi.co).
 
-Only the two structurally-verified categories from CONTENT_GAPS_PLAN.md Step 1/4
-are pulled: equipment-categories/weapon and equipment-categories/armor. Both category
+Only two categories are pulled: equipment-categories/weapon and
+equipment-categories/armor. Both category
 listings also contain magic-item entries (Vorpal Sword, Armor +1, Dragon Scale Mail,
 ...) whose `url` points at /api/2014/magic-items/... instead of /api/2014/equipment/...
 those carry no clean SRD stat block (bonuses vary per item) and are filtered out by
@@ -20,6 +20,8 @@ never had, which means today's core longsword cannot actually be equipped via
 item_equip. Regenerating it is a fix, not a regression; the flavor description line is
 replaced with the same generated factual description every other item gets, for
 consistency across the 50 generated files.
+
+Requires network access to www.dnd5eapi.co.
 """
 
 from __future__ import annotations
@@ -207,8 +209,8 @@ def load_armor(entry: dict) -> tuple[str, dict]:
     base = ac.get("base", 0)
 
     # Shield's armor_class.base (2) is already a flat AC bonus, not a "10 + dex" total
-    # target AC like body armor -- confirmed live (CONTENT_GAPS_PLAN.md Step 1 only
-    # checked body armor). Applying the body-armor "base - 10" formula to a shield
+    # target AC like body armor -- confirmed live by generating and reading actual
+    # shield output. Applying the body-armor "base - 10" formula to a shield
     # would produce acBonus = -8, which is wrong. Body armor's base *is* the "10 +
     # dex + acBonus" target AC at 0 effective dex, so acBonus = base - 10 there.
     ac_bonus = base if category == "Shield" else base - 10

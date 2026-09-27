@@ -30,8 +30,8 @@ public record SpellDefinition : RulesetTemplate
     public bool? MaterialConsumed { get; init; }
 
     /// <summary>
-    /// dnd5e only (see CONTENT_GAPS_PLAN.md Step 2 — AoN's pf2e spell documents carry no structured
-    /// damage fields, only prose). Damage for a scaling leveled spell, keyed by spell-slot level
+    /// dnd5e only (AoN's pf2e spell documents carry no structured damage fields, only prose —
+    /// pf2e spell damage validation is out of scope). Damage for a scaling leveled spell, keyed by spell-slot level
     /// (e.g. Fireball: {3: "8d6", 4: "9d6", ...}). dnd5eapi.co keys every leveled damage spell this
     /// way, even non-scaling ones like Magic Missile — there is no separate flat-dice shape to model.
     /// </summary>

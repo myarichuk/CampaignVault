@@ -25,8 +25,8 @@ run manually, then commit the resulting YAML like any other source file.
   pre-Remaster books) without re-checking `LICENSING.md`'s scope rationale;
   dropping it silently pulls in non-ORC content (confirmed live: an unscoped
   `category:spell` query for "Fireball" returns the pre-Remaster Core
-  Rulebook version, not the Player Core one — see
-  `CONTENT_GAPS_PLAN.md` Step 2 findings for the reproduction).
+  Rulebook version, not the Player Core one — it carries a `remaster_id`
+  field pointing at the actual remastered document instead).
 
 ## `generate_spells.py`
 
@@ -91,8 +91,11 @@ Regenerates pf2e weapon/armor/shield items into `RulesetData/pf2e/items/` from
 three separate AoN document categories: `category: "weapon"`, `category:
 "armor"`, **and** `category: "shield"` — pf2e shields are their own AoN
 category, not an `armor_category` subtype like dnd5e's `armor_category:
-"Shield"` (see `CONTENT_GAPS_PLAN.md` Step 5 findings for how that was found).
-Scoped to `rarity: "common"`, same as `generate_pf2e_feats.py` — this drops
+"Shield"`. Found by noticing the 4 real base shields (Buckler/Wooden/Steel/
+Tower, each with their own `ac`/`hardness`/`hp`) are absent from both
+`category: "armor"` (13 hits, all body armor) and `category: "equipment"`'s
+Shields subcategory (precious-material variants only, no base stats of
+their own). Scoped to `rarity: "common"`, same as `generate_pf2e_feats.py` — this drops
 ancestry-specific Uncommon weapons (Dwarven Waraxe, Gnome Hooked Hammer, ...)
 without needing separate ancestry-aware filtering.
 
@@ -118,4 +121,3 @@ generated as ordinary `MainHand` weapons since this engine has no "attached
 to another equipped item" concept — harmless for attack resolution, but
 `item_equip`-ing one while a real weapon is already in `MainHand` will
 report a conflict that doesn't match pf2e's actual "costs no hand" rule.
-See `CONTENT_GAPS_PLAN.md` Step 5 findings.

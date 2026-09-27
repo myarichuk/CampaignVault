@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Generate spell YAML from SRD sources (dnd5eapi + Archives of Nethys)."""
+"""Generate spell YAML from SRD sources (dnd5eapi + Archives of Nethys).
+
+Requires network access to both www.dnd5eapi.co and elasticsearch.aonprd.com.
+"""
 
 from __future__ import annotations
 
@@ -123,10 +126,10 @@ def parse_gp_cost(text: str) -> float | None:
 
 
 def parse_dnd5e_mechanics(detail: dict) -> dict:
-    """Pull damage/save/heal/AoE off the already-fetched dnd5eapi.co spell detail JSON
-    (CONTENT_GAPS_PLAN.md Step 1: confirmed live — damage is always keyed by slot level for
-    leveled spells, even non-scaling ones like Magic Missile, or by character level for cantrips;
-    there's no separate flat-dice shape)."""
+    """Pull damage/save/heal/AoE off the already-fetched dnd5eapi.co spell detail JSON.
+    Confirmed live: damage is always keyed by slot level for leveled spells, even
+    non-scaling ones like Magic Missile, or by character level for cantrips; there's
+    no separate flat-dice shape."""
     result: dict = {}
 
     damage_entries = detail.get("damage") or []

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate pf2e weapon/armor/shield ItemDefinition YAML from Archives of Nethys
-(Player Core / Player Core 2, ORC-licensed). See CONTENT_GAPS_PLAN.md Step 5.
+(Player Core / Player Core 2, ORC-licensed).
 
 Mirrors generate_pf2e_feats.py's AoN sourcing and scope filter (category term +
 primary_source.keyword in [Player Core, Player Core 2] + rarity: common). Unlike
@@ -17,15 +17,17 @@ lookup table:
   - No versatile-damage concept... except there actually is one: the `Two-Hand`
     trait (e.g. Bastard Sword: base 1d8 one-handed, "Two-Hand 1d12" wielded in two)
     behaves exactly like dnd5e's Versatile and is captured the same way, as
-    `damageVersatile`. This corrects CONTENT_GAPS_PLAN.md Step 5's own assumption
+    `damageVersatile`. This corrects an earlier assumption in this project's history
     that pf2e has no such mechanic -- confirmed live, not assumed.
   - Shields are their OWN AoN document category ("shield"), not a subtype of
-    "armor" like dnd5e's armor_category:"Shield" -- CONTENT_GAPS_PLAN.md Step 2
+    "armor" like dnd5e's armor_category:"Shield" -- earlier work on this pipeline
     never queried it since it only checked weapon/armor. Found live, by noticing
     the 4 real base shields (Buckler/Wooden/Steel/Tower) are absent from both the
     "armor" category (13 hits, all body armor, none named Buckler/Shield) and the
     "equipment" category's Shields subcategory (which holds precious-material
     variants and specific magic shields with no base AC/hardness/HP of their own).
+
+Requires network access to elasticsearch.aonprd.com.
 """
 
 from __future__ import annotations
