@@ -34,6 +34,7 @@ CampaignVault bundles game reference content from two systems:
 - **Reference**: https://paizo.com/orclicense, https://2e.aonprd.com
 - **Attribution**: Paizo Inc., https://paizo.com
 - **Restrictions**: Content is limited to Remastered core rules and ORC-licensed material — no Golarion setting-specific content, proprietary Paizo sourcebooks, or licensed properties
+- **Why `Player Core`/`Player Core 2` specifically**: these two books are the ones Paizo rewrote during the 2023 Remaster specifically to strip Golarion-specific Product Identity (deity names, nation names, setting lore) out of core mechanics, so the books could be released cleanly under ORC. Restricting the generator's query to these two `primary_source` values (plus `rarity: common`) isn't an arbitrary content filter — it's what keeps this project inside Paizo's own declared-open scope. Pulling from any other AoN-indexed sourcebook (Lost Omens, adventure paths, non-Remastered legacy books) would reintroduce Golarion-specific Product Identity that this scope is designed to exclude.
 
 ## Important Deployment Note: RavenDB License
 

@@ -24,6 +24,11 @@ PF2E_HEADER = (
 )
 
 # Archives of Nethys public search endpoint (official Paizo-run Remastered database).
+# Player Core / Player Core 2 are the two books Paizo rewrote during the 2023
+# Remaster specifically to strip Golarion-specific Product Identity out of core
+# mechanics so they could be released under ORC. Don't widen this to other AoN
+# sourcebooks (Lost Omens, adventure paths, legacy pre-Remaster books) without
+# re-checking LICENSING.md's scope rationale.
 AON_SEARCH_URL = "https://elasticsearch.aonprd.com/aon/_search"
 AON_REMASTER_SOURCES = ["Player Core", "Player Core 2"]
 
