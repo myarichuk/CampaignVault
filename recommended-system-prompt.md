@@ -1,6 +1,6 @@
 # Recommended System Prompt for Campaign Vault MCP
 
-**If your client supports Skills, use the skill-based prompts via your IDE/Claude Code** (`dnd-exploration`, `dnd-narration`, `dnd-bundling`, `dnd-combat`, etc.—loaded on demand, richer). This file is the **fallback for clients with no skill mechanism** (bare API loops, Grok Web — see `recommended-system-prompt.opencode.md` for the opencode variant with plugin enforcement).
+**If your client supports Skills, also enable them** (`dnd-exploration`, `dnd-narration`, `dnd-bundling`, `dnd-combat`, etc.—loaded on demand, richer than anything below). This file is written to stand on its own regardless: a bare API loop has no skill mechanism at all, and Grok Web's dynamic skill loading isn't confirmed to trigger every session or every beat the way Claude Code/opencode's does — so the floors that matter (narration, bundling discipline) are kept inline here even when skills are also available, as a backstop rather than something skills make redundant. See `recommended-system-prompt.opencode.md` for the opencode variant, which leans harder on skills loading reliably since its plugin's mechanical enforcement covers what prose alone can't.
 
 Fill in `<slug>`, the PC roster and `<Dnd5e|Pf2e>` first. Assumes an already-seeded campaign on the **`/play` connector** (e.g. `http://localhost:5275/play`); for a new one, connect `/build` and run `start_campaign_onboarding`, then `world_build` after finalize. `/` serves every tool and is for installers, not for the model.
 
