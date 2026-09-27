@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: A prayer wheel and holy water.
 materialConsumed: false
+healAtSlotLevel:
+  7: 4d8 + 15

@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: A hemispherical piece of clear crystal and a matching hemispherical piece of gum arabic.
 materialConsumed: false
+saveType: dex
+saveSuccess: none

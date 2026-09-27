@@ -12,14 +12,17 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 {
     private readonly IRollService _rollService;
     private readonly ICharacterBootstrapPipeline _bootstrap;
+    private readonly SpellDefinitionProvider? _spellDefinitionProvider;
 
     public Dnd5eRulesetResolver(
         IRollService rollService,
         RaceDefinitionProvider? raceProvider = null,
         ClassDefinitionProvider? classProvider = null,
-        BackgroundDefinitionProvider? backgroundProvider = null)
+        BackgroundDefinitionProvider? backgroundProvider = null,
+        SpellDefinitionProvider? spellDefinitionProvider = null)
     {
         _rollService = rollService ?? throw new ArgumentNullException(nameof(rollService));
+        _spellDefinitionProvider = spellDefinitionProvider;
         var hpStep = new Dnd5eDeriveHitPointsStep(_rollService);
         var profStep = new Dnd5eDeriveProficiencyStep(classProvider, backgroundProvider);
         var passiveStep = new Dnd5eDerivePassivePerceptionStep();
@@ -212,58 +215,103 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             Delta = -finalDamage
         });
 
-        var cantripWarning = BuildCantripDamageWarning(action, damageDice, actorStats.Level);
+        var damageWarning = BuildSpellDamageWarning(action, damageDice, actorStats.Level);
 
-        return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage. (Attack {attackRoll.Result} vs AC {ac}).{critMsg}{cantripWarning}");
+        return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage. (Attack {attackRoll.Result} vs AC {ac}).{critMsg}{damageWarning}");
     }
 
     /// <summary>
-    /// Nothing in the engine validates ruleset_action.parameters.damageDice against the caster's actual
-    /// level — no SpellDefinition YAML carries damage dice (fire_bolt.yaml has none), so an LLM caller
-    /// guessing the wrong cantrip-scaling tier (e.g. "3d10" — the level 11-16 tier — for a level 1
-    /// caster) rolls and applies real, unvalidated damage with a narrative that reads as entirely
-    /// correct ("Attack 27 vs AC 12"). Soft warning only, consistent with SpellSlotValidator's
-    /// CantripWarning: known SRD attack-roll cantrips only (not full damage-dice validation, which
-    /// would need to special-case homebrew/plugin spells this table can't know about).
+    /// Ability abbreviation → full name, as dnd5eapi.co's spell "dc.dc_type.index" carries it (e.g.
+    /// "dex"), for comparing against the caller's ruleset_action.parameters.save (e.g. "Dexterity").
     /// </summary>
-    private static readonly Dictionary<string, string> KnownAttackCantripDamageDie = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, string> AbilityAbbreviations = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["Fire Bolt"] = "d10",
-        ["Ray of Frost"] = "d8",
-        ["Chill Touch"] = "d8",
-        ["Poison Spray"] = "d12",
+        ["str"] = "Strength",
+        ["dex"] = "Dexterity",
+        ["con"] = "Constitution",
+        ["int"] = "Intelligence",
+        ["wis"] = "Wisdom",
+        ["cha"] = "Charisma",
     };
 
-    private static int ExpectedCantripDiceCount(int casterLevel) => casterLevel switch
-    {
-        >= 17 => 4,
-        >= 11 => 3,
-        >= 5 => 2,
-        _ => 1
-    };
+    private static string NormalizeSpellSlug(string name) =>
+        name.Trim().ToLowerInvariant().Replace(' ', '_').Replace('-', '_');
 
-    private static string BuildCantripDamageWarning(RulesetAction action, string damageDice, int? casterLevel)
+    private static string NormalizeDice(string dice) =>
+        RegularExpressions.Regex.Replace(dice.Trim(), @"\s+", "");
+
+    /// <summary>
+    /// Nothing in the engine used to validate ruleset_action.parameters.damageDice against the
+    /// caster's actual level or spell-slot tier, so an LLM caller guessing the wrong scaling tier
+    /// (e.g. "3d10" — the level 11-16 tier for Fire Bolt — sent by a level 1 caster) rolled and
+    /// applied real, unvalidated damage with a narrative that reads as entirely correct
+    /// ("Attack 27 vs AC 12"). Now backed by dnd5eapi.co's real per-spell data (CONTENT_GAPS_PLAN.md
+    /// Step 3) instead of a 4-entry hardcoded cantrip table. Soft warning only, consistent with
+    /// SpellSlotValidator's CantripWarning — damage still applies as sent, since a homebrew/plugin
+    /// spell or an intentional reflavor has no SpellDefinition to check against, and this must not
+    /// block real play. dnd5e only (pf2e spell damage is prose-only on AoN — see Step 2 findings).
+    /// Leveled (spell-slot-scaling) spells can't be pinned to an exact tier here: the resolver has
+    /// no reliable signal for which slot level the caller spent (that's tracked by a separate
+    /// ResourceChange, not this RulesetAction), so those are checked against "matches any known
+    /// tier" rather than "matches the caster's specific level" the way cantrips are.
+    /// </summary>
+    private string BuildSpellDamageWarning(RulesetAction action, string damageDice, int? casterLevel)
     {
-        if (action.ActionType != RulesetActionType.Spell
-            || !KnownAttackCantripDamageDie.TryGetValue(action.ActionName, out var expectedDie))
+        if (action.ActionType != RulesetActionType.Spell || _spellDefinitionProvider == null)
         {
             return "";
         }
 
-        var match = RegularExpressions.Regex.Match(
-            damageDice.Trim(), @"^(\d+)d(\d+)", RegularExpressions.RegexOptions.IgnoreCase);
-        if (!match.Success || !int.TryParse(match.Groups[1].Value, out var diceCount))
+        var slug = NormalizeSpellSlug(action.ActionName);
+        if (!_spellDefinitionProvider.TryGet(System, slug, out var spell) || spell == null)
         {
             return "";
         }
 
-        var actualDie = "d" + match.Groups[2].Value;
-        var expectedCount = ExpectedCantripDiceCount(casterLevel ?? 1);
+        var normalizedDice = NormalizeDice(damageDice);
 
-        if (!string.Equals(actualDie, expectedDie, StringComparison.OrdinalIgnoreCase) || diceCount != expectedCount)
+        if ((spell.Level ?? -1) == 0 && spell.DamageAtCharacterLevel is { Count: > 0 } byCharacterLevel)
         {
-            return $" [WARNING] '{action.ActionName}' at caster level {casterLevel ?? 1} should scale to " +
-                   $"{expectedCount}{expectedDie}, not {damageDice} — damage was applied as sent, but check the cantrip-scaling tier.";
+            var tier = byCharacterLevel.Keys.Where(l => l <= (casterLevel ?? 1)).DefaultIfEmpty(byCharacterLevel.Keys.Min()).Max();
+            var expected = byCharacterLevel[tier];
+            if (!string.Equals(NormalizeDice(expected), normalizedDice, StringComparison.OrdinalIgnoreCase))
+            {
+                return $" [WARNING] '{action.ActionName}' at caster level {casterLevel ?? 1} should deal " +
+                       $"{expected}, not {damageDice} — damage was applied as sent, but check the cantrip-scaling tier.";
+            }
+        }
+        else if (spell.DamageAtSlotLevel is { Count: > 0 } bySlotLevel)
+        {
+            if (!bySlotLevel.Values.Any(v => string.Equals(NormalizeDice(v), normalizedDice, StringComparison.OrdinalIgnoreCase)))
+            {
+                var known = string.Join(", ", bySlotLevel.OrderBy(kv => kv.Key).Select(kv => $"slot {kv.Key}: {kv.Value}"));
+                return $" [WARNING] '{action.ActionName}' damageDice '{damageDice}' doesn't match any known spell-slot tier ({known}) " +
+                       "— damage was applied as sent, but check the slot level cast.";
+            }
+        }
+
+        return "";
+    }
+
+    /// <summary>dnd5e only, mirrors BuildSpellDamageWarning's soft-warning approach for the saving-throw ability.</summary>
+    private string BuildSpellSaveTypeWarning(RulesetAction action, string saveName)
+    {
+        if (action.ActionType != RulesetActionType.Spell || _spellDefinitionProvider == null)
+        {
+            return "";
+        }
+
+        var slug = NormalizeSpellSlug(action.ActionName);
+        if (!_spellDefinitionProvider.TryGet(System, slug, out var spell) || string.IsNullOrEmpty(spell?.SaveType))
+        {
+            return "";
+        }
+
+        var expectedAbility = AbilityAbbreviations.GetValueOrDefault(spell.SaveType.Trim(), spell.SaveType);
+        if (!string.Equals(expectedAbility, saveName, StringComparison.OrdinalIgnoreCase))
+        {
+            return $" [WARNING] '{action.ActionName}' should use a {expectedAbility} save, not {saveName} " +
+                   "— save was resolved as sent, but check the saving-throw ability.";
         }
 
         return "";
@@ -481,7 +529,12 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
                 + (damage > 0 ? $" — {damage} damage." : "."));
         }
 
-        return ResolverResult.Ok(string.Join(" | ", narratives));
+        var saveTypeWarning = BuildSpellSaveTypeWarning(action, saveName);
+        var damageWarning = action.Parameters.TryGetValue("damageDice", out var saveDamageDice)
+            ? BuildSpellDamageWarning(action, saveDamageDice, actorStats.Level)
+            : "";
+
+        return ResolverResult.Ok(string.Join(" | ", narratives) + saveTypeWarning + damageWarning);
     }
 
     protected override async Task<ResolverResult> ResolveSpellUtilityAsync(

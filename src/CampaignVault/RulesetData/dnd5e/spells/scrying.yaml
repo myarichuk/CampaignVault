@@ -11,3 +11,5 @@ material: true
 materialText: A focus worth at least 1,000 gp, such as a crystal ball, a silver mirror, or a font filled with holy water.
 materialCost: 1000.0
 materialConsumed: false
+saveType: wis
+saveSuccess: none

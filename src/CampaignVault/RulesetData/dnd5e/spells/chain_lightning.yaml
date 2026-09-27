@@ -10,3 +10,8 @@ somatic: true
 material: true
 materialText: A bit of fur; a piece of amber, glass, or a crystal rod; and three silver pins.
 materialConsumed: false
+damageType: lightning
+damageAtSlotLevel:
+  6: 10d8
+saveType: dex
+saveSuccess: half

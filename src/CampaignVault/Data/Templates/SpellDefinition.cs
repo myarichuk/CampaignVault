@@ -29,6 +29,35 @@ public record SpellDefinition : RulesetTemplate
     /// <summary>Whether the material component is consumed on cast.</summary>
     public bool? MaterialConsumed { get; init; }
 
+    /// <summary>
+    /// dnd5e only (see CONTENT_GAPS_PLAN.md Step 2 — AoN's pf2e spell documents carry no structured
+    /// damage fields, only prose). Damage for a scaling leveled spell, keyed by spell-slot level
+    /// (e.g. Fireball: {3: "8d6", 4: "9d6", ...}). dnd5eapi.co keys every leveled damage spell this
+    /// way, even non-scaling ones like Magic Missile — there is no separate flat-dice shape to model.
+    /// </summary>
+    public Dictionary<int, string>? DamageAtSlotLevel { get; init; }
+
+    /// <summary>dnd5e only. Damage for a scaling cantrip, keyed by character level (e.g. Fire Bolt: {1: "1d10", 5: "2d10", 11: "3d10", 17: "4d10"}).</summary>
+    public Dictionary<int, string>? DamageAtCharacterLevel { get; init; }
+
+    /// <summary>dnd5e only. Damage type index (e.g. "fire"), paired with DamageAtSlotLevel/DamageAtCharacterLevel.</summary>
+    public string? DamageType { get; init; }
+
+    /// <summary>dnd5e only. Ability abbreviation the target saves with (e.g. "dex").</summary>
+    public string? SaveType { get; init; }
+
+    /// <summary>dnd5e only. What a successful save does (e.g. "half", "none").</summary>
+    public string? SaveSuccess { get; init; }
+
+    /// <summary>dnd5e only. Healing for a scaling spell, keyed by spell-slot level (e.g. Cure Wounds: {1: "1d8 + MOD", 2: "2d8 + MOD", ...}).</summary>
+    public Dictionary<int, string>? HealAtSlotLevel { get; init; }
+
+    /// <summary>dnd5e only. Area-of-effect shape (e.g. "sphere", "cone").</summary>
+    public string? AreaOfEffectType { get; init; }
+
+    /// <summary>dnd5e only. Area-of-effect size in feet.</summary>
+    public int? AreaOfEffectSize { get; init; }
+
     public static SpellDefinition Merge(SpellDefinition child, SpellDefinition parent) =>
         child with
         {
@@ -44,5 +73,13 @@ public record SpellDefinition : RulesetTemplate
             MaterialText = child.MaterialText ?? parent.MaterialText,
             MaterialCost = child.MaterialCost ?? parent.MaterialCost,
             MaterialConsumed = child.MaterialConsumed ?? parent.MaterialConsumed,
+            DamageAtSlotLevel = child.DamageAtSlotLevel ?? parent.DamageAtSlotLevel,
+            DamageAtCharacterLevel = child.DamageAtCharacterLevel ?? parent.DamageAtCharacterLevel,
+            DamageType = child.DamageType ?? parent.DamageType,
+            SaveType = child.SaveType ?? parent.SaveType,
+            SaveSuccess = child.SaveSuccess ?? parent.SaveSuccess,
+            HealAtSlotLevel = child.HealAtSlotLevel ?? parent.HealAtSlotLevel,
+            AreaOfEffectType = child.AreaOfEffectType ?? parent.AreaOfEffectType,
+            AreaOfEffectSize = child.AreaOfEffectSize ?? parent.AreaOfEffectSize,
         };
 }

@@ -9,3 +9,7 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+saveType: cha
+saveSuccess: none
+areaOfEffectType: sphere
+areaOfEffectSize: 20

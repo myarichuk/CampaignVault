@@ -9,3 +9,11 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+damageType: poison
+damageAtCharacterLevel:
+  1: 1d12
+  5: 2d12
+  11: 3d12
+  17: 4d12
+saveType: con
+saveSuccess: none

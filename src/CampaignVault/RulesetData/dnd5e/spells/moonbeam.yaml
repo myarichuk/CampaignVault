@@ -10,3 +10,17 @@ somatic: true
 material: true
 materialText: Several seeds of any moonseed plant and a piece of opalescent feldspar.
 materialConsumed: false
+damageType: radiant
+damageAtSlotLevel:
+  2: 2d10
+  3: 3d10
+  4: 4d10
+  5: 5d10
+  6: 6d10
+  7: 7d10
+  8: 8d10
+  9: 9d10
+saveType: con
+saveSuccess: half
+areaOfEffectType: cylinder
+areaOfEffectSize: 5

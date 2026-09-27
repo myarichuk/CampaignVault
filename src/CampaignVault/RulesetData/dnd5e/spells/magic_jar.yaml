@@ -11,3 +11,5 @@ material: true
 materialText: A gem, crystal, reliquary, or some other ornamental container worth at least 500 gp.
 materialCost: 500.0
 materialConsumed: false
+saveType: cha
+saveSuccess: other

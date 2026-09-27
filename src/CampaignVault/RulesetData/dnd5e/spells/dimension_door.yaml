@@ -9,3 +9,6 @@ verbal: true
 somatic: false
 material: false
 materialConsumed: false
+damageType: force
+damageAtSlotLevel:
+  4: 4d6

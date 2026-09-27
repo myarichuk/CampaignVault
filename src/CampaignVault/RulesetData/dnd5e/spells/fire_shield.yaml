@@ -10,3 +10,8 @@ somatic: true
 material: true
 materialText: A little phosphorus or a firefly.
 materialConsumed: false
+damageType: fire
+damageAtSlotLevel:
+  4: 2d8
+areaOfEffectType: sphere
+areaOfEffectSize: 5

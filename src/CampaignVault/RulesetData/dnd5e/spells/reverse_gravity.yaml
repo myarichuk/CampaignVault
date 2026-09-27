@@ -10,3 +10,7 @@ somatic: true
 material: true
 materialText: A lodestone and iron filings.
 materialConsumed: false
+saveType: dex
+saveSuccess: other
+areaOfEffectType: cylinder
+areaOfEffectSize: 50

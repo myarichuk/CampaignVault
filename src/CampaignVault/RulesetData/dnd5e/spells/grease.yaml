@@ -10,3 +10,7 @@ somatic: true
 material: true
 materialText: A bit of pork rind or butter.
 materialConsumed: false
+saveType: dex
+saveSuccess: none
+areaOfEffectType: cube
+areaOfEffectSize: 10

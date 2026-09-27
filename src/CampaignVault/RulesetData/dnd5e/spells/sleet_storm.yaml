@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: A pinch of dust and a few drops of water.
 materialConsumed: false
+areaOfEffectType: cylinder
+areaOfEffectSize: 40

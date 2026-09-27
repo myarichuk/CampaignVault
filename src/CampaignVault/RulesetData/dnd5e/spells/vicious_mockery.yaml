@@ -9,3 +9,11 @@ verbal: true
 somatic: false
 material: false
 materialConsumed: false
+damageType: psychic
+damageAtCharacterLevel:
+  1: 1d4
+  5: 2d4
+  11: 3d4
+  17: 4d4
+saveType: wis
+saveSuccess: none

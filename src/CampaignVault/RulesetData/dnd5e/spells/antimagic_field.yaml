@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: A pinch of powdered iron or iron filings.
 materialConsumed: false
+areaOfEffectType: sphere
+areaOfEffectSize: 10

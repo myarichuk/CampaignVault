@@ -10,3 +10,7 @@ somatic: true
 material: true
 materialText: A pinch of fine sand, rose petals, or a cricket.
 materialConsumed: false
+damageAtSlotLevel:
+  1: 5d8
+areaOfEffectType: sphere
+areaOfEffectSize: 20

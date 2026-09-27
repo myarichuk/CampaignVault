@@ -11,3 +11,7 @@ material: true
 materialText: Holy water or powdered silver and iron worth at least 100 gp, which the spell consumes.
 materialCost: 100.0
 materialConsumed: true
+saveType: cha
+saveSuccess: other
+areaOfEffectType: cylinder
+areaOfEffectSize: 10

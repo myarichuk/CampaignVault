@@ -9,3 +9,8 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+damageType: psychic
+damageAtSlotLevel:
+  4: 4d10
+saveType: wis
+saveSuccess: none

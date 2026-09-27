@@ -11,3 +11,5 @@ material: true
 materialText: "A tiny reliquary worth at least 1,000gp containing a sacred relic, such as a scrap of cloth from a saint's robe or a piece of parchment from a religious text."
 materialCost: 1000.0
 materialConsumed: false
+areaOfEffectType: sphere
+areaOfEffectSize: 30

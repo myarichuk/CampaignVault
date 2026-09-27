@@ -9,3 +9,14 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+damageType: radiant
+damageAtSlotLevel:
+  1: 4d6
+  2: 5d6
+  3: 6d6
+  4: 7d6
+  5: 8d6
+  6: 9d6
+  7: 10d6
+  8: 11d6
+  9: 12d6

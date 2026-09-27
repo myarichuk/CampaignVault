@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: A morsel of food.
 materialConsumed: false
+saveType: wis
+saveSuccess: none

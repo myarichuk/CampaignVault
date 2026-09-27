@@ -10,3 +10,5 @@ somatic: false
 material: true
 materialText: A firefly or phosphorescent moss.
 materialConsumed: false
+saveType: dex
+saveSuccess: none

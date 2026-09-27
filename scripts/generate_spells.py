@@ -77,6 +77,22 @@ def write_spell(path: Path, header: str, body: dict) -> None:
         lines.append(f"materialCost: {body['materialCost']}")
     if body.get("materialConsumed") is not None:
         lines.append(f"materialConsumed: {'true' if body['materialConsumed'] else 'false'}")
+    if body.get("damageType"):
+        lines.append(f"damageType: {yaml_quote(body['damageType'])}")
+    for key in ("damageAtSlotLevel", "damageAtCharacterLevel", "healAtSlotLevel"):
+        table = body.get(key)
+        if table:
+            lines.append(f"{key}:")
+            for level in sorted(table):
+                lines.append(f"  {level}: {yaml_quote(table[level])}")
+    if body.get("saveType"):
+        lines.append(f"saveType: {yaml_quote(body['saveType'])}")
+    if body.get("saveSuccess"):
+        lines.append(f"saveSuccess: {yaml_quote(body['saveSuccess'])}")
+    if body.get("areaOfEffectType"):
+        lines.append(f"areaOfEffectType: {yaml_quote(body['areaOfEffectType'])}")
+    if body.get("areaOfEffectSize") is not None:
+        lines.append(f"areaOfEffectSize: {body['areaOfEffectSize']}")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -106,6 +122,48 @@ def parse_gp_cost(text: str) -> float | None:
         return None
 
 
+def parse_dnd5e_mechanics(detail: dict) -> dict:
+    """Pull damage/save/heal/AoE off the already-fetched dnd5eapi.co spell detail JSON
+    (CONTENT_GAPS_PLAN.md Step 1: confirmed live — damage is always keyed by slot level for
+    leveled spells, even non-scaling ones like Magic Missile, or by character level for cantrips;
+    there's no separate flat-dice shape)."""
+    result: dict = {}
+
+    damage_entries = detail.get("damage") or []
+    if damage_entries:
+        entry = damage_entries[0]
+        damage_type = (entry.get("damage_type") or {}).get("index")
+        if damage_type:
+            result["damageType"] = damage_type
+        by_slot = entry.get("damage_at_slot_level")
+        if by_slot:
+            result["damageAtSlotLevel"] = {int(k): v for k, v in by_slot.items()}
+        by_char = entry.get("damage_at_character_level")
+        if by_char:
+            result["damageAtCharacterLevel"] = {int(k): v for k, v in by_char.items()}
+
+    dc = detail.get("dc")
+    if dc:
+        save_type = (dc.get("dc_type") or {}).get("index")
+        if save_type:
+            result["saveType"] = save_type
+        if dc.get("dc_success"):
+            result["saveSuccess"] = dc["dc_success"]
+
+    heal_by_slot = detail.get("heal_at_slot_level")
+    if heal_by_slot:
+        result["healAtSlotLevel"] = {int(k): v for k, v in heal_by_slot.items()}
+
+    aoe = detail.get("area_of_effect")
+    if aoe:
+        if aoe.get("type"):
+            result["areaOfEffectType"] = aoe["type"]
+        if aoe.get("size") is not None:
+            result["areaOfEffectSize"] = aoe["size"]
+
+    return result
+
+
 def generate_dnd5e() -> int:
     index = fetch_json("https://www.dnd5eapi.co/api/spells")
     spells = index["results"]
@@ -130,6 +188,7 @@ def generate_dnd5e() -> int:
             "materialText": material_text,
             "materialCost": parse_gp_cost(material_text) if material_text else None,
             "materialConsumed": bool(material_text and "consum" in material_text.lower()),
+            **parse_dnd5e_mechanics(detail),
         }
 
     generated: dict[str, dict] = {}

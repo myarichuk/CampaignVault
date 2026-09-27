@@ -10,3 +10,15 @@ somatic: true
 material: true
 materialText: A piece of iron and a flame.
 materialConsumed: false
+damageType: fire
+damageAtSlotLevel:
+  2: 2d8
+  3: 3d8
+  4: 4d8
+  5: 5d8
+  6: 6d8
+  7: 7d8
+  8: 8d8
+  9: 9d8
+saveType: con
+saveSuccess: other

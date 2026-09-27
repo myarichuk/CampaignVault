@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: Holy water or powdered silver and iron.
 materialConsumed: false
+saveType: cha
+saveSuccess: other

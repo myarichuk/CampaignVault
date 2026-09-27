@@ -11,3 +11,5 @@ material: true
 materialText: A jewel worth at least 1,000 gp, which the spell consumes.
 materialCost: 1000.0
 materialConsumed: true
+saveType: cha
+saveSuccess: none

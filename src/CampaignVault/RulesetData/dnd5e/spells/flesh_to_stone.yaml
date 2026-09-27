@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: A pinch of lime, water, and earth.
 materialConsumed: false
+saveType: con
+saveSuccess: none

@@ -9,3 +9,10 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+damageType: thunder
+damageAtSlotLevel:
+  9: 2d6
+saveType: con
+saveSuccess: none
+areaOfEffectType: sphere
+areaOfEffectSize: 360

@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: Either a lump of alum soaked in vinegar for the antipathy effect or a drop of honey for the sympathy effect.
 materialConsumed: false
+areaOfEffectType: cube
+areaOfEffectSize: 200

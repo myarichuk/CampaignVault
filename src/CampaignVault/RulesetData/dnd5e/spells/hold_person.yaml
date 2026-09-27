@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: A small, straight piece of iron.
 materialConsumed: false
+saveType: wis
+saveSuccess: none

@@ -9,3 +9,14 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+damageType: poison
+damageAtSlotLevel:
+  5: 5d8
+  6: 6d8
+  7: 7d8
+  8: 8d8
+  9: 9d8
+saveType: con
+saveSuccess: half
+areaOfEffectType: sphere
+areaOfEffectSize: 20

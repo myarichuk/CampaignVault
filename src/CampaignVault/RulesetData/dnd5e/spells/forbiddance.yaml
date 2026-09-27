@@ -11,3 +11,5 @@ material: true
 materialText: A sprinkling of holy water, rare incense, and powdered ruby worth at least 1,000 gp.
 materialCost: 1000.0
 materialConsumed: false
+areaOfEffectType: cube
+areaOfEffectSize: 40000

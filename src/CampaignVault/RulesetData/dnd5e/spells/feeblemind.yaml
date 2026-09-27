@@ -10,3 +10,8 @@ somatic: true
 material: true
 materialText: A handful of clay, crystal, glass, or mineral spheres.
 materialConsumed: false
+damageType: psychic
+damageAtSlotLevel:
+  8: 4d6
+saveType: int
+saveSuccess: other

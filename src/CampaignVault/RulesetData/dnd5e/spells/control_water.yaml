@@ -10,3 +10,10 @@ somatic: true
 material: true
 materialText: A drop of water and a pinch of dust.
 materialConsumed: false
+damageType: bludgeoning
+damageAtSlotLevel:
+  4: 2d8
+saveType: str
+saveSuccess: half
+areaOfEffectType: cube
+areaOfEffectSize: 100

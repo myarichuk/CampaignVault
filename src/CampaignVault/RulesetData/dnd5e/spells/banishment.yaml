@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: An item distasteful to the target.
 materialConsumed: false
+saveType: cha
+saveSuccess: none

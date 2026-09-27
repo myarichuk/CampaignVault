@@ -10,3 +10,12 @@ somatic: true
 material: true
 materialText: A tiny ball of bat guano and sulfur.
 materialConsumed: false
+damageType: fire
+damageAtSlotLevel:
+  7: 12d6
+  8: 13d6
+  9: 14d6
+saveType: dex
+saveSuccess: half
+areaOfEffectType: sphere
+areaOfEffectSize: 20

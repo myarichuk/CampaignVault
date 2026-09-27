@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: A glowing stick of incense or a crystal vial filled with phosphorescent material.
 materialConsumed: false
+saveType: wis
+saveSuccess: none

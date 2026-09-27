@@ -9,3 +9,10 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+damageType: slashing
+damageAtSlotLevel:
+  6: 6d10
+saveType: dex
+saveSuccess: half
+areaOfEffectType: line
+areaOfEffectSize: 100

@@ -10,3 +10,13 @@ somatic: true
 material: true
 materialText: "Powdered rhubarb leaf and an adder's stomach."
 materialConsumed: false
+damageType: acid
+damageAtSlotLevel:
+  2: 4d4
+  3: 5d4
+  4: 6d4
+  5: 7d4
+  6: 8d4
+  7: 9d4
+  8: 10d4
+  9: 11d4

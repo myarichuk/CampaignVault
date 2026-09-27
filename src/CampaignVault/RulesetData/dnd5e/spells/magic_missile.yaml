@@ -9,3 +9,14 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+damageType: force
+damageAtSlotLevel:
+  1: 3d4 + 3
+  2: 4d4 + 4
+  3: 5d4 + 5
+  4: 6d4 + 6
+  5: 7d4 + 7
+  6: 8d4 + 8
+  7: 9d4 + 9
+  8: 10d4 + 10
+  9: 11d4 + 11

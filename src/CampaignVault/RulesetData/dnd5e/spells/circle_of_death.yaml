@@ -11,3 +11,13 @@ material: true
 materialText: The powder of a crushed black pearl worth at least 500 gp.
 materialCost: 500.0
 materialConsumed: false
+damageType: necrotic
+damageAtSlotLevel:
+  6: 8d6
+  7: 10d6
+  8: 12d6
+  9: 14d6
+saveType: con
+saveSuccess: half
+areaOfEffectType: sphere
+areaOfEffectSize: 60

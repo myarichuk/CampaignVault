@@ -9,3 +9,13 @@ verbal: true
 somatic: false
 material: false
 materialConsumed: false
+healAtSlotLevel:
+  1: 1d4 + MOD
+  2: 2d4 + MOD
+  3: 3d4 + MOD
+  4: 4d4 + MOD
+  5: 5d4 + MOD
+  6: 6d4 + MOD
+  7: 7d4 + MOD
+  8: 8d4 + MOD
+  9: 9d4 + MOD

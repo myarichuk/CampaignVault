@@ -10,3 +10,7 @@ somatic: true
 material: true
 materialText: Three walnut shells.
 materialConsumed: false
+saveType: wis
+saveSuccess: none
+areaOfEffectType: sphere
+areaOfEffectSize: 10

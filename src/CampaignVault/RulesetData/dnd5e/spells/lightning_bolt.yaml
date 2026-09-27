@@ -10,3 +10,16 @@ somatic: true
 material: true
 materialText: A bit of fur and a rod of amber, crystal, or glass.
 materialConsumed: false
+damageType: lightning
+damageAtSlotLevel:
+  3: 8d6
+  4: 9d6
+  5: 10d6
+  6: 11d6
+  7: 12d6
+  8: 13d6
+  9: 14d6
+saveType: dex
+saveSuccess: half
+areaOfEffectType: line
+areaOfEffectSize: 100

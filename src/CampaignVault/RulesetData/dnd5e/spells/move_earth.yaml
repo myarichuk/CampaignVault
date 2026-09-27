@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: An iron blade and a small bag containing a mixture of soils--clay, loam, and sand.
 materialConsumed: false
+areaOfEffectType: cone
+areaOfEffectSize: 40

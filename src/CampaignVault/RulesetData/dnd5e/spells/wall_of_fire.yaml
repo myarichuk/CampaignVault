@@ -10,3 +10,10 @@ somatic: true
 material: true
 materialText: A small piece of phosphorus.
 materialConsumed: false
+damageType: fire
+damageAtSlotLevel:
+  4: 5d8
+saveType: dex
+saveSuccess: half
+areaOfEffectType: line
+areaOfEffectSize: 60

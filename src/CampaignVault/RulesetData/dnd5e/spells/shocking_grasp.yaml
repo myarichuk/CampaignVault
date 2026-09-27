@@ -9,3 +9,9 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+damageType: lightning
+damageAtCharacterLevel:
+  1: 1d8
+  5: 2d8
+  11: 3d8
+  17: 4d8

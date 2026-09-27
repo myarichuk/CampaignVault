@@ -10,3 +10,9 @@ somatic: true
 material: true
 materialText: Leaf of sumac.
 materialConsumed: false
+damageType: fire
+damageAtSlotLevel:
+  2: 3d6
+  4: 4d6
+  6: 5d6
+  8: 6d6

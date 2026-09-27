@@ -10,3 +10,5 @@ somatic: true
 material: true
 materialText: A pinch of dirt, a piece of rock, and a lump of clay.
 materialConsumed: false
+areaOfEffectType: sphere
+areaOfEffectSize: 100
