@@ -303,7 +303,7 @@ hand, not before.
 - Usage/setup instructions for all three generator scripts now live in
   `scripts/README.md`.
 
-## Step 5 — pf2e items: new content — ✅ unblocked, Step 2 confirmed usable weapon/armor schema
+## Step 5 — pf2e items: new content — ✅ DONE (2026-09-27)
 
 Likely needs its own
 translation table for damage dice, weapon groups/traits, and
@@ -318,6 +318,99 @@ melee/ranged + versatile vocabulary Step 4 establishes. Don't reuse Step
 4's lookup table verbatim; decide a pf2e-appropriate tag set (and keep it
 consistent with whatever name-alias matching `WeaponParameterResolver`
 ends up doing for pf2e weapons) before generating.
+
+**Findings (live-queried against `elasticsearch.aonprd.com`, `scripts/generate_pf2e_items.py`):**
+- **AC math is fundamentally simpler for pf2e than the dnd5e translation in Step
+  4, not just different.** A pf2e weapon/armor/shield's own `ac` field IS already
+  the flat AC-bonus contribution (`ArmorClass = 10 + effectiveDex + proficiency +
+  acBonus`) — there's no dnd5e-style "10 + dex" total-AC-at-zero-dex shape to
+  subtract 10 from, for body armor *or* shields. `acBonus = ac`, unconditionally,
+  no special-casing needed (contrast Step 4, where dnd5e Shield needed a
+  special case specifically because body armor *isn't* a flat bonus there).
+- `dex_cap` is an explicit numeric field on pf2e armor, present only when capped
+  (confirmed: absent — not null, the key is missing — on Unarmored's placeholder
+  entry and would be absent on any hypothetical uncapped armor; present as `0` on
+  Full Plate, a real zero distinct from absent). Written straight to
+  `Properties["dexCap"]`, which is exactly the "PF2e style" numeric convention
+  `ArmorParameterResolver.cs`'s own comment reserves that key for — the dnd5e-only
+  `armorType` fallback key is never written by this script.
+- **Correction to this plan's own "no versatile-damage concept" assumption**:
+  pf2e *does* have one — the `Two-Hand` trait (e.g. Bastard Sword: `1d8` one-handed
+  base, `trait_raw: "Two-Hand 1d12"` for wielding it in both hands) behaves exactly
+  like dnd5e's Versatile and is captured the same way (`damageVersatile`,
+  `equipZones: [MainHand]`, `twoHanded: false` — relying on
+  `EquipSlotRules.GetEffectiveZones`'s implicit-OffHand expansion only when
+  actually wielded two-handed, same mechanism Step 4 uses). This was caught live,
+  not assumed, by grepping the full 83-weapon `trait_raw` vocabulary for
+  numeric-suffixed traits before writing the generator.
+- **Shields are their own AoN document category (`category: "shield"`), not a
+  subtype of `armor`** like dnd5e's `armor_category: "Shield"` — this plan's own
+  Step 2 never surfaced it because Step 2 only ever queried `category: "weapon"`
+  and `category: "armor"`. Found by noticing the 4 real base shields
+  (Buckler/Wooden/Steel/Tower Shield, with their own `ac`/`hardness`/`hp` fields)
+  are absent from both `category: "armor"` (13 hits, all body armor) and
+  `category: "equipment"`'s `item_category: "Shields"` bucket (which holds only
+  precious-material variants and specific magic shields with no base stats of
+  their own — deferring to a base shield document this script wouldn't otherwise
+  have found). `generate_pf2e_items.py` queries all three categories.
+- AoN's `trait` field (already stripped of numeric/qualifier suffixes, e.g.
+  `"Thrown 10 ft."` → `"Thrown"`, `"Versatile S"` → `"Versatile"`, `"Two-Hand
+  1d12"` → `"Two-Hand"`) is used directly for `Tags`, and `trait_raw` (the
+  unstripped form) only for regex-extracting the two numeric values that matter
+  mechanically (`Thrown N ft.` for range-banding, `Two-Hand NdM` for
+  `damageVersatile`) — confirmed this split exists and is reliable across the
+  full 83-weapon trait vocabulary before relying on it, avoiding the free-prose
+  regex fragility this session already eliminated from the feats generator.
+- Scoped to `rarity: common` (same filter `generate_pf2e_feats.py` already uses,
+  not previously applied to weapons/armor) — this is load-bearing, not
+  decorative: it naturally drops the 24 Uncommon weapons (mostly ancestry-specific
+  weapons like Dwarven Waraxe/Gnome Hooked Hammer, which need an ancestry feat to
+  use without penalty) without needing separate ancestry-aware filtering logic.
+  All 13 armors and all 4 shields happened to already be common.
+- Excluded `weapon_category: "Unarmed"` (Fist — not carried gear, always
+  innately available, no price/bulk) and `weapon_category: "Ammunition"` (Arrows/
+  Bolts/Sling Bullets/Blowgun Darts — consumable ammo stacks, not held weapons),
+  by the same "out of scope" reasoning Step 4 used implicitly for dnd5e ammo
+  (`generate_items.py` never queried dnd5eapi.co's ammunition equipment category
+  either). Also excluded "Alchemical Bomb", a generic weapon-group placeholder
+  entry (`damage: "Varies"`, no `damage_die` key at all) for the whole alchemical-
+  bombs family — real bombs are separate Equipment/Consumable documents elsewhere.
+  Filtered by the presence of `damage_die`, not by name.
+- **Known modeling gap, left as-is rather than silently patched over**: three
+  weapon-group-`"Shield"` entries (Shield Bash, Shield Boss, Shield Spikes) let a
+  character strike with a shield *already* worn in `OffHand` — they cost no
+  separate hand in real pf2e rules, and Shield Boss/Spikes additionally carry an
+  `Attached` trait (`trait_raw: "Attached to Shield"`) meaning they're a
+  permanent modification to the shield object, not a separately-drawn weapon.
+  This engine has no "attached to another equipped item" equip concept (`
+  ItemDefinition.RequiresEquippedTags` exists but its enforcement wasn't
+  traced/verified as part of this content-generation task, so wiring it here
+  would be guessing, not fixing). They're generated as ordinary `equipZones:
+  [MainHand]` weapons like any other — harmless for attack resolution
+  (`WeaponParameterResolver.GetHeldWeaponsAsync` matches on `HolderId` +
+  `CoreCategory` only, not on equip-zone occupancy), but calling `item_equip` on
+  one while a real weapon already occupies MainHand will (correctly, per today's
+  `EquipSlotRules` zone-conflict semantics) report a conflict that doesn't match
+  the pf2e fluff of "costs no hand." Flagging this explicitly rather than leaving
+  it to be discovered as a confusing bug later.
+- 69 items generated: 53 weapons, 12 armor (13 pf2e armor documents minus the
+  "Unarmored" placeholder, which — like dnd5e's Shield acBonus catch in Step 4 —
+  was only caught by checking for entries lacking a `price` key: it's `ac: 0`,
+  literally no armor, not real equipment), 4 shields.
+- `RulesetData/pf2e/items/` didn't exist before this script (confirmed: `ls`
+  404s) — unlike Step 4's dnd5e `items/` directory, there's no hand-authored
+  content to preserve, so `generate_pf2e_items.py` fully wipes and rebuilds the
+  directory every run, same convention as `generate_spells.py`/
+  `generate_pf2e_feats.py` rather than Step 4's non-destructive slug-scoped
+  approach.
+- `Properties` key vocabulary deliberately diverges from Step 4's dnd5e
+  convention where pf2e's own source semantics differ — `bulk` (not `weight`,
+  pf2e's Bulk is an abstracted carry-capacity unit, not pounds) and `strength`
+  (not `strMinimum`) are named after pf2e's own field names rather than reusing
+  dnd5e's, since `ItemDefinition.Properties` is an open per-`System` bag with no
+  cross-ruleset key-sharing requirement.
+- Usage/setup instructions added to `scripts/README.md` alongside the other two
+  generators.
 
 ## Step 6 — Docs
 
@@ -342,6 +435,7 @@ ends up doing for pf2e weapons) before generating.
 4. ~~Step 4 (dnd5e items)~~ — done 2026-09-27. `scripts/generate_items.py`
    (37 weapons + 13 armor/shields), `scripts/README.md` written for all
    three generators.
-5. Step 5 (pf2e items) — new script + regenerate + hand-verify. Not started.
+5. ~~Step 5 (pf2e items)~~ — done 2026-09-27. `scripts/generate_pf2e_items.py`
+   (53 weapons + 12 armor + 4 shields, 69 total), `scripts/README.md` updated.
 6. Step 6 (docs cleanup) — last, once the data's actually in. Not started.
 7. Delete this file.
