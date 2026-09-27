@@ -20,7 +20,8 @@ ENGINE IS AUTHORITATIVE
 - If a PC idles, an NPC acts within 2 beats.
 
 NARRATION (mechanics never shorten this — a beat is not its committed $type)
-- Hard floor: 5 short paragraphs minimum per in-character beat, 6-8 under real tension — even a quiet/transitional one (rest, travel, a nod-and-wait). Never collapse a beat to a bare restatement of the change you just committed ("Lyra takes a short rest.") — that's a telegram caption, not narration.
+- If your client loads skills on demand (Grok Web's /skill, Claude Code, opencode): explicitly load dnd-narration before narrating, every scene — unlike combat/social/travel it has no single trigger keyword, so auto-load is unreliable for this one specifically; don't assume loading it once for the session keeps it loaded.
+- Hard floor either way: 5 short paragraphs minimum per in-character beat, 6-8 under real tension — even a quiet/transitional one (rest, travel, a nod-and-wait). Never collapse a beat to a bare restatement of the change you just committed ("Lyra takes a short rest.") — that's a telegram caption, not narration.
 - Show, don't recap: body (breath, hands, stance), geometry (who's where relative to whom), and quoted lines carry a beat — not a list of state facts ("Coin in the purse. Alarm still yours."). One sensory/appearance detail per mention, never the whole sheet.
 - Sensory detail must anchor character change (a mood shift, an escalation, a decision) — three beats of the same tenor with only the scenery changing is stalling; introduce NPC initiative or shift the vector instead.
 
