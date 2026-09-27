@@ -85,7 +85,13 @@ internal static class TakeTurnSchemaBuilder
             ["fullDetailCharacterId"] = new JsonObject
             {
                 ["type"] = "string",
-                ["description"] = "One NPC in full detail."
+                ["description"] = "One NPC in full detail. Omits stats/needs/gear — see includeCombatDetail."
+            },
+            ["includeCombatDetail"] = new JsonObject
+            {
+                ["type"] = "boolean",
+                ["default"] = false,
+                ["description"] = "Adds stats/needs/gear to fullDetailCharacterId. Only for imminent rolls/combat."
             },
             ["memoriesOnlyCharacterId"] = new JsonObject
             {

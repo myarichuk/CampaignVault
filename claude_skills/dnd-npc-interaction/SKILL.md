@@ -11,7 +11,7 @@ You are running NPCs: their psychology drives their decisions, not your narrativ
 
 ## Read Context First
 
-Before narrating any NPC action, read their card: `cards[]` in `take_turn` carries traits, wants, fears, stance, notes, gear and key memories once per session (the scene roster only lists id/name/activity/mood). Topical memories, tier changes and pressing needs arrive as `context[]` lines on the beat that needs them. A card you no longer have (compaction) or want fresh: `get_entity` chars/ id (or bundle `fullDetailCharacterId`): Motivation, Ideology, Pride/Paranoia, Trust/Suspicion/Loyalty/Fear, Needs (incl. custom drives), Schedule, Memory, `TurnIntent` (advisory). If memory/psychology may be stale (gap, resume), add `memoriesOnlyCharacterId` (cheapest) or `fullDetailCharacterId` — never assume multi-beat-old memory is current.
+Before narrating any NPC action, read their card: `cards[]` in `take_turn` carries traits, wants, fears, stance, notes, gear and key memories once per session (the scene roster only lists id/name/activity/mood). Topical memories, tier changes and pressing needs arrive as `context[]` lines on the beat that needs them. A card you no longer have (compaction) or want fresh: `get_entity` chars/ id (or bundle `fullDetailCharacterId`): Motivation, Ideology, Pride/Paranoia, Trust/Suspicion/Loyalty/Fear, Schedule, Memory, `TurnIntent` (advisory). If memory/psychology may be stale (gap, resume), add `memoriesOnlyCharacterId` (cheapest) or `fullDetailCharacterId` — never assume multi-beat-old memory is current. `fullDetailCharacterId` omits SystemStats/Needs/gear by default — that's the mechanical slice for a roll or combat, not for voicing someone. Add `includeCombatDetail: true` on the same call once a check lands on this NPC or a fight starts, not before.
 
 ## NPC Voice
 
@@ -78,7 +78,7 @@ Promoted transient (`character_update` + `keepAlive: true`) earns a plot thread 
 
 ## Checklist (NPC tier — commit mechanics: `dnd-world-change`; resolution: `dnd-social`)
 
-- [ ] Did I fetch the NPC's full detail (`get_entity` chars/ id) first?
+- [ ] Did I fetch the NPC's full detail (`get_entity` chars/ id) first? Combat/rolls against them → did I add `includeCombatDetail: true`?
 - [ ] Is the NPC voice distinct (diction, pace, rhythm)?
 - [ ] Did they show self-interest (not automatic helpfulness)?
 - [ ] Did they learn something? → `knowledge_update`
