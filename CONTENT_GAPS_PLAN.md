@@ -208,7 +208,7 @@ hand, not before.
   exercises `damage_at_slot_level`, e.g. Burning Hands scales by slot? check
   live data since SRD 5.1's scaling spells are a smaller set than full 5e).
 
-## Step 4 — dnd5e equipment: new `scripts/generate_items.py`
+## Step 4 — dnd5e equipment: new `scripts/generate_items.py` — ✅ DONE (2026-09-27)
 
 - Mirror `generate_spells.py`'s shape: fetch
   `/api/equipment-categories/{weapon,armor}`, then each `/api/equipment/{index}`.
@@ -244,6 +244,64 @@ hand, not before.
     stops resolving for generated weapons.
 - Regenerate, then hand-verify a handful (longsword should regenerate
   byte-similar to today's hand-written file; that's the sanity check).
+
+**Findings (live-queried against `www.dnd5eapi.co`):**
+- Both `equipment-categories/{weapon,armor}` listings interleave magic items
+  (Vorpal Sword, Armor +1, Dragon Scale Mail, ...) whose `url` points at
+  `/api/2014/magic-items/...` instead of `/api/2014/equipment/...` — 30 of 67
+  weapon-category entries, 29 of 42 armor-category entries. These carry no
+  fixed SRD stat block (bonuses vary per named item) and were filtered out
+  by checking the entry's own `url` prefix, not by guessing at names. Yields
+  37 mundane weapons + 13 mundane armor/shields — matches the plan's own
+  pessimistic branch never triggering (same shape as Step 2's weapon/armor
+  finding).
+- Confirmed `two_handed_damage` (not `2h_damage`, per the Step 1 correction)
+  and that it's only meaningful alongside the `versatile` property — some
+  weapons carry no `properties` array element for it at all.
+- **Shield is armor_category `"Shield"`, not `Light`/`Medium`/`Heavy`, and its
+  `armor_class.base` (2) is already a flat AC bonus, not a "10 + dex" target
+  AC** like body armor. Applying the plan's own `acBonus = base - 10` formula
+  to a shield gives `acBonus = -8`, which is wrong — Shield is special-cased
+  to `acBonus = base` directly. This wasn't visible from Step 1's
+  body-armor-only sample and was only caught by generating and reading the
+  actual shield output.
+- `dexCap` (plan's Step 4 wording) turned out unnecessary for dnd5e: every
+  Medium armor has `max_bonus: 2` and every Light/Heavy has none, which is
+  *exactly* what `ArmorParameterResolver`'s existing `armorType` fallback
+  (medium→cap 2, heavy→cap 0, else uncapped) already encodes. Writing a
+  redundant numeric `dexCap` would just duplicate logic the resolver already
+  has; that property is reserved for pf2e's own numeric convention (Step 5).
+- `EquipZones`/`twoHanded` were **not** modeled after the MedievalWeapons
+  plugin's own convention (which gives even one-handed weapons
+  `equipZones: [MainHand, OffHand]`, fully occupying both hand slots and
+  making sword-and-shield or dual-wielding impossible for any plugin
+  weapon) — that reads as a plugin-authoring inconsistency, not a pattern to
+  propagate. Generated weapons instead use `equipZones: [MainHand]` +
+  `twoHanded` driven directly by the SRD `two-handed` property, relying on
+  `EquipSlotRules.GetEffectiveZones`'s own documented implicit-OffHand
+  expansion for genuinely two-handed weapons — this is what actually lets a
+  versatile weapon (e.g. generated `longsword.yaml`) be worn with a shield.
+- The 5ft-reach "Touch"/mid-range "Close"/... `SpatialDistanceBand` banding
+  for thrown/ranged weapons has no source-provided mapping to feet; picked
+  break points (≤5/≤30/≤80/≤150/else) so real SRD weapons land where the
+  existing hand-authored convention already expects (e.g. thrown daggers at
+  throw-normal 20ft → `Close`, matching `medieval_hand_axe.yaml`'s
+  `range: Close # Throwable`). Standard melee weapons get no `range` key at
+  all, same as the pre-existing `longsword.yaml` — `RangeValidationHelper`
+  is permissive when absent, so omitting it isn't a gating gap.
+- `RulesetData/dnd5e/items/` is a mixed hand-authored/generated directory
+  (`climbers_kit.yaml` is a Tool, never touched — Tool isn't a weapon/armor
+  category SRD exposes), so unlike `generate_spells.py`/
+  `generate_pf2e_feats.py`, `generate_items.py` does **not** wipe the
+  directory first; it only overwrites the specific slugs it generates.
+  `longsword.yaml` is one of those slugs (SRD has a weapon of the same
+  name) and gets regenerated — its mechanical stats came out
+  byte-identical, plus it gains equip metadata (`equipZones`/`equipLayer`/
+  `twoHanded`) the hand-authored version never had, meaning today's core
+  longsword currently *can't* be equipped via `item_equip`. Regenerating it
+  is a fix, not a regression.
+- Usage/setup instructions for all three generator scripts now live in
+  `scripts/README.md`.
 
 ## Step 5 — pf2e items: new content — ✅ unblocked, Step 2 confirmed usable weapon/armor schema
 
@@ -281,7 +339,9 @@ ends up doing for pf2e weapons) before generating.
    would need the same regex fragility this session removed from feats).
 3. ~~Step 3 (dnd5e spells)~~ — done 2026-09-27. Model + script + validator +
    tests, commit f9247db.
-4. Step 4 (dnd5e items) — new script + regenerate + hand-verify. Not started.
+4. ~~Step 4 (dnd5e items)~~ — done 2026-09-27. `scripts/generate_items.py`
+   (37 weapons + 13 armor/shields), `scripts/README.md` written for all
+   three generators.
 5. Step 5 (pf2e items) — new script + regenerate + hand-verify. Not started.
 6. Step 6 (docs cleanup) — last, once the data's actually in. Not started.
 7. Delete this file.
