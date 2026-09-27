@@ -286,15 +286,25 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName)
     {
-        var hasChanges = request?.Changes is { Length: > 0 };
+        if (request is null)
+        {
+            return Task.FromResult(new ToolResult<TurnResult>(
+                false,
+                Error: ToolErrors.InvalidArgument,
+                Summary: "TakeTurnRequest is required. Pass changes[] + narrative, or at least one refresh parameter (includeParty, includeWorldState, extraCharacterIds, extraLocationIds, fullDetailCharacterId, fullDetailLocationId, memoriesOnlyCharacterId, forceFullReseed)."));
+        }
 
-        if (hasChanges && request!.MinutesElapsed is > 0)
+        NormalizeTurnRequest(request);
+
+        var hasChanges = request.Changes is { Length: > 0 };
+
+        if (hasChanges && request.MinutesElapsed is > 0)
         {
             ApplyMinutesElapsedFallback(request);
         }
 
         // Validate that this isn't an empty call with no purpose
-        if (!hasChanges && request != null)
+        if (!hasChanges)
         {
             var hasRefreshParams = request.IncludeWorldState || request.IncludeParty ||
                                    (request.ExtraCharacterIds?.Length > 0) ||
@@ -315,7 +325,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
 
         if (hasChanges)
         {
-            var precheckFailure = ValidateChanges(request!);
+            var precheckFailure = ValidateChanges(request);
             if (precheckFailure != null)
             {
                 return precheckFailure;
@@ -621,6 +631,40 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
     // P2-10(b): the old ComputePartyFingerprintAsync name was retired in favor of
     // ComputePartyLocationHpFingerprintAsync so the symbol says what the narrow hash covers.
 
+    /// <summary>Minimal scene for guidance: just the anchored location + active combat, so
+    /// <see cref="Contributors.CombatStartedGuidanceContributor"/> can fire on round 1.
+    /// Null when no combat is active (or the location won't anchor) — same as before.
+    /// CombatStartedGuidanceContributor is the only guidance contributor that reads
+    /// Scene, so a roster/rumor-free SceneView changes nothing else. Never throws:
+    /// guidance collection already treats failures as skip.</summary>
+    private async Task<SceneView?> LoadGuidanceSceneAsync(TurnContext ctx)
+    {
+        try
+        {
+            var encounter = await _repository.GetActiveCombatAsync(new CampaignSession(ctx.Session, ctx.Campaign));
+            if (encounter is not { IsActive: true } || string.IsNullOrWhiteSpace(encounter.LocationId))
+            {
+                return null;
+            }
+
+            var location = await ctx.Session.LoadAsync<Location>(encounter.LocationId);
+            if (location is null)
+            {
+                return null;
+            }
+
+            return new SceneView
+            {
+                Location = LocationDetailView.From(location, ctx.Config),
+                ActiveCombat = CombatEncounterView.From(encounter),
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     /// <summary>
     /// Collect guidance hints into the dedicated <see cref="TurnResult.GuidanceHints"/> field (own
     /// budget via CampaignConfig.MaxGuidanceHintsPerResponse/MaxGuidanceCharsPerResponse/
@@ -706,16 +750,15 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                 Time: campaignTime,
                 Config: ctx.Config,
                 Session: ctx.Session,
-                Scene: null, // Scene details not needed for character-scoped guidance
+                Scene: await LoadGuidanceSceneAsync(ctx),
                 PartyCharacterIds: surfacedIds.ToList().AsReadOnly(),
                 PartyPresent: true,
                 AppliedChanges: ctx.AppliedChanges);
 
-            // Both scopes: Scene-only with a null Scene would never fire any contributor
-            // (CombatStarted needs Scene.ActiveCombat; World contributors would never run),
-            // leaving GuidanceHints permanently empty. World-scope hints are still
-            // character-relevant via PartyCharacterIds; Scene contributors without a Scene
-            // safely return empty.
+            // Both scopes: the Scene carries the active combat (round 1 fires the
+            // combat-started hint); World-scope hints stay character-relevant via
+            // PartyCharacterIds, and Scene contributors without a Scene safely
+            // return empty.
             var hints = await _guidanceOrchestrator.CollectAsync(
                 PressureScope.Both,
                 pressureContext,
@@ -916,6 +959,39 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
         {
             target.MinutesElapsed = request.MinutesElapsed;
         }
+    }
+
+    /// <summary>Trims free-text and ID refresh params so whitespace-only values read as absent
+    /// downstream (IsNullOrEmpty/IsNullOrWhiteSpace checks) instead of triggering fetches for " ".
+    /// Runs before validation, so a whitespace narrative is still rejected by ValidateChanges.</summary>
+    private static void NormalizeTurnRequest(TakeTurnRequest request)
+    {
+        request.Narrative = request.Narrative?.Trim();
+        request.FullDetailCharacterId = NormalizeId(request.FullDetailCharacterId);
+        request.FullDetailLocationId = NormalizeId(request.FullDetailLocationId);
+        request.MemoriesOnlyCharacterId = NormalizeId(request.MemoriesOnlyCharacterId);
+        request.PartyLocationId = NormalizeId(request.PartyLocationId);
+        request.ClientPartyFingerprint = NormalizeId(request.ClientPartyFingerprint);
+        request.ExtraCharacterIds = NormalizeIds(request.ExtraCharacterIds);
+        request.ExtraLocationIds = NormalizeIds(request.ExtraLocationIds);
+    }
+
+    private static string? NormalizeId(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string[]? NormalizeIds(string[]? values)
+    {
+        if (values is not { Length: > 0 })
+        {
+            return values;
+        }
+
+        var cleaned = values
+            .Where(v => !string.IsNullOrWhiteSpace(v))
+            .Select(v => v.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        return cleaned.Length == 0 ? null : cleaned;
     }
 
     /// <summary>Static request validation that needs no session. Returns null when the request is valid.</summary>
@@ -1236,8 +1312,9 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
     }
 
     /// <summary>Appends commit-hygiene reminders (missing narrative event, missing PoI detail, likely-missed
-    /// physical-state commit) without discarding earlier reminders.</summary>
-    private static void ComposeReminders(WorldChange[] changes, TurnResult result)
+    /// physical-state commit) without discarding earlier reminders.
+    /// Internal for the F3 regression test (a lone skill check must stay quiet).</summary>
+    internal static void ComposeReminders(WorldChange[] changes, TurnResult result)
     {
         // A ruleset_action alone (a skill check, an attack roll) is fine without an event; the
         // narrative already logs the beat. Only raw HP/status edits lose their why.
@@ -2537,7 +2614,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             ctx.Result.FullNpcContext = new NpcContextView
             {
                 Character = CharacterDetailView.From(npc),
-                RecentInteractions = npcEvents.Select(EventSummaryView.From).ToList(),
+                RecentInteractions = npcEvents.Take(EventSummaryView.NpcContextCap).Select(EventSummaryView.ForNpcContext).ToList(),
                 BehavioralSummary = behavioralSummary,
                 KnownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>(),
                 Equipped = equipped,

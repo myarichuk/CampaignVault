@@ -495,6 +495,26 @@ public record ResourcePoolTemplate : RulesetTemplate
     [JsonPropertyName("startsAt")]
     public string? StartsAt { get; set; }
 
+    /// <summary>Valid <c>startsAt</c> values: omitted (default, max), <c>max</c>, <c>zero</c>
+    /// (case-insensitive, surrounding whitespace ignored). Anything else throws.</summary>
+    public static string? NormalizeStartsAt(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var normalized = value.Trim().ToLowerInvariant();
+        if (normalized is "zero" or "max")
+        {
+            return normalized;
+        }
+
+        throw new ArgumentException(
+            $"Invalid startsAt '{value}'. Use 'zero' (a meter that fills up) or 'max' (the default), or omit it.",
+            nameof(value));
+    }
+
     /// <summary>
     /// Merge two templates: child fields win; parent fills gaps.
     /// Used by RulesetTemplateResolver during YAML inheritance resolution.
@@ -514,7 +534,7 @@ public record ResourcePoolTemplate : RulesetTemplate
                 : parent.ApplicableClasses,
             FeatGrantedOnly = child.FeatGrantedOnly ?? parent.FeatGrantedOnly,
             OwnerManaged = child.OwnerManaged ?? parent.OwnerManaged,
-            StartsAt = child.StartsAt ?? parent.StartsAt,
+            StartsAt = NormalizeStartsAt(child.StartsAt ?? parent.StartsAt),
         };
 
         if (parent.LevelToMaxMap?.Count > 0)

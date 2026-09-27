@@ -438,6 +438,22 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     {
         if (!action.Parameters.ContainsKey("dc"))
         {
+            // F1: a targeted spell with no mechanics (e.g. Fire Bolt with targetIds and no
+            // parameters) used to resolve as a utility no-op — no roll, but the action was
+            // still consumed. Fail with a fix hint instead of silently doing nothing.
+            // Only when Utility was inferred: an explicit resolution=utility opts out
+            // (e.g. a buff whose status the caller commits separately in the same batch).
+            if (action.TargetIds.Count > 0
+                && !action.Parameters.ContainsKey("resolution")
+                && !action.Parameters.ContainsKey("spellResolution"))
+            {
+                return ResolverResult.Fail("InvalidParameter",
+                    $"Error: {action.ActionName} targets {action.TargetIds.Count} character(s) but supplies no spell mechanics, " +
+                    "so there is nothing to resolve. Fix: pass the spell's mechanics explicitly — damageDice plus " +
+                    "toHitBonus (or resolution=attack) for an attack roll like Fire Bolt, save + dc (plus damageDice) " +
+                    "for a saving-throw spell, or resolution=utility for a genuine non-damaging effect (which needs no targets).");
+            }
+
             return ResolverResult.Ok(
                 $"{action.ActionName}: Utility spell cast outside combat. Narrate scouting, communication, or ward effects; commit status or knowledge_update if the scene changes.");
         }

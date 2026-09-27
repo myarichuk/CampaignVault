@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using CampaignVault.Models;
 using CampaignVault.Services;
@@ -293,5 +294,27 @@ public class ResourcePoolInitializerTests
     public void ToSlug_ReturnsCanonicalSlug(string system, string expected)
     {
         Assert.Equal(expected, system.ToSlug());
+    }
+
+    [Fact]
+    public void InitializePools_InvalidStartsAt_ThrowsNamingThePool()
+    {
+        var character = new Character
+        {
+            Id = "chars/pc1",
+            ClassLevel = "Human Fighter 3",
+            SystemStats = new Dnd5eExtension { Level = 3 }
+        };
+        var config = new CampaignConfig
+        {
+            ResourcePoolSchemas = new Dictionary<string, ResourcePoolTemplate>
+            {
+                ["bad_meter"] = new ResourcePoolTemplate { DefaultMax = 5, StartsAt = "half" },
+            },
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            _sut.InitializePools(character, RulesetSystem.Dnd5e, config));
+        Assert.Contains("bad_meter", ex.Message);
     }
 }

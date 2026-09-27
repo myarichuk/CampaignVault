@@ -223,12 +223,16 @@ public sealed class RulesetActionHandler(
                 $"[SpellcastingBlocked] {character.Name} cannot supply the Material component for {action.ActionName}.");
         }
 
-        // Soft fallback: an untagged homebrew/narrative condition is active alongside a
-        // component-requiring spell. The engine can't judge it, so it flags rather than ignores.
+        // Soft fallback: an untagged homebrew/narrative condition whose NAME reads like it
+        // could restrain casting (bound hands, a gag, "cannot speak") is active alongside a
+        // component-requiring spell. The engine can't judge it, so it flags rather than
+        // ignores. F2: purely narrative buffs (Mage Armor, Bless) no longer warn on every
+        // cast — only names that plausibly interfere with Verbal/Somatic components do.
         if (components.Verbal || components.Somatic || components.Material)
         {
             var untaggedHomebrew = statusEffects.FirstOrDefault(e =>
                 e.ConditionName == null
+                && LooksLikeComponentBlocker(e.Name)
                 && !e.StatModifiers.Keys.Any(k => k is CastingComponentGate.BlocksVerbal or CastingComponentGate.BlocksSomatic
                     or CastingComponentGate.BlocksMaterial or CastingComponentGate.BlocksAllActions
                     or CastingComponentGate.WaivesVerbal or CastingComponentGate.WaivesSomatic or CastingComponentGate.WaivesMaterial));
@@ -244,6 +248,29 @@ public sealed class RulesetActionHandler(
 
         return null;
     }
+
+    /// <summary>F2: does this untagged narrative condition's name read like it could
+    /// interfere with spell components (gagged mouth, bound hands, "cannot speak")?
+    /// Purely narrative buffs (Mage Armor, Bless, Brave) return false, so casting with
+    /// them active stays quiet.</summary>
+    internal static bool LooksLikeComponentBlocker(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        return ComponentBlockerNameFragments.Any(
+            fragment => name.Contains(fragment, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static readonly string[] ComponentBlockerNameFragments =
+    [
+        "silenc", "gag", "mute",
+        "bound", "bind", "tied", "restrain", "manacl", "shackl",
+        "paralyz", "petrifi", "stun", "unconscious", "incapacitat",
+        "cannot", "can't", "unable", "prevent", "block",
+    ];
 
     public bool ExtractInvolvedEntities(
         WorldChange change,

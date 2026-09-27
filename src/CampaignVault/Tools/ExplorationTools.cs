@@ -220,7 +220,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
             var context = new NpcContextView
             {
                 Character = CharacterDetailView.From(npc),
-                RecentInteractions = npcEvents.Select(EventSummaryView.From).ToList(),
+                RecentInteractions = npcEvents.Take(EventSummaryView.NpcContextCap).Select(EventSummaryView.ForNpcContext).ToList(),
                 BehavioralSummary = behavioralSummary,
                 KnownNeeds = knownNeeds,
                 NeedDescriptors = mergedDescriptors,

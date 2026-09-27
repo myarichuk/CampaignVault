@@ -530,6 +530,25 @@ public record EventSummaryView(
         ev.DayLogged,
         ev.Importance,
         ev.EmotionalBeat);
+
+    /// <summary>How many recent interactions ride on an NPC context view (Round 4 item 7:
+    /// 10 full events ran 3.7–4.2k chars). The fetch budget stays wider for the
+    /// behavioral summary; only the wire projection is capped.</summary>
+    internal const int NpcContextCap = 5;
+
+    /// <summary>NPC-context form: the interaction is already scoped to this NPC, so the
+    /// involved list repeats nothing actionable, and default Important importance is
+    /// noise (same convention as <see cref="ForScene"/>). The full event stays
+    /// fetchable via recall_history.</summary>
+    public static EventSummaryView ForNpcContext(Event ev) => new(
+        ev.Id,
+        ev.Summary,
+        ev.Category,
+        [],
+        ev.LocationId,
+        ev.DayLogged,
+        ev.Importance == MemoryImportance.Important ? null : ev.Importance,
+        ev.EmotionalBeat);
 }
 
 public record SceneClimateSummary(

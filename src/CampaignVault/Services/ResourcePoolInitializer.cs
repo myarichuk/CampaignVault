@@ -150,14 +150,14 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
         if (template.OwnerManaged == true)
         {
             // The owner sets Max/Current (e.g. a meter derived from other stats); create once, never rebuild.
-            desiredPools[poolName] = existing ?? BuildPool(template, Math.Max(0, maxValue), null);
+            desiredPools[poolName] = existing ?? BuildPool(poolName, template, Math.Max(0, maxValue), null);
             return true;
         }
 
         if (maxValue <= 0)
             return false;
 
-        desiredPools[poolName] = BuildPool(template, maxValue, existing);
+        desiredPools[poolName] = BuildPool(poolName, template, maxValue, existing);
         return true;
     }
 
@@ -235,15 +235,26 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
         return true;
     }
 
-    private static ResourcePool BuildPool(ResourcePoolTemplate template, int maxValue, ResourcePool? existing)
+    private static ResourcePool BuildPool(string poolName, ResourcePoolTemplate template, int maxValue, ResourcePool? existing)
     {
         var recovery = template.Recovery ?? RecoveryType.LongRest;
+        string? startsAt;
+        try
+        {
+            startsAt = ResourcePoolTemplate.NormalizeStartsAt(template.StartsAt);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new InvalidOperationException(
+                $"Invalid startsAt '{template.StartsAt}' for resource pool '{poolName}'. " +
+                "Use 'zero' (a meter that fills up) or 'max' (the default), or omit it.", ex);
+        }
 
         if (existing == null)
         {
             return new ResourcePool
             {
-                Current = string.Equals(template.StartsAt, "zero", StringComparison.OrdinalIgnoreCase) ? 0 : maxValue,
+                Current = startsAt == "zero" ? 0 : maxValue,
                 Max = maxValue,
                 Recovery = recovery,
                 LastRecoveredDay = 0
