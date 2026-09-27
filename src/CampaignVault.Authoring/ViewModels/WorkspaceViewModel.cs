@@ -17,7 +17,7 @@ namespace CampaignVault.Authoring.ViewModels;
 public partial class ExplorerNodeViewModel : ObservableObject
 {
     [ObservableProperty] private string _title = string.Empty;
-    public ObservableCollection<ExplorerNodeViewModel> Children { get; } = new();
+    public ObservableCollection<ExplorerNodeViewModel> Children { get; } = [];
 }
 
 public partial class CategoryNodeViewModel : ExplorerNodeViewModel
@@ -70,7 +70,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     private CancellationTokenSource? _debounceSource;
     private FileSystemWatcher? _watcher;
 
-    [ObservableProperty] private ObservableCollection<ExplorerNodeViewModel> _categories = new();
+    [ObservableProperty] private ObservableCollection<ExplorerNodeViewModel> _categories = [];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedEntity))]

@@ -24,7 +24,7 @@ public partial class SourceControlViewModel : ObservableObject
 
     [ObservableProperty] private string _statusMessage = "Open a vault to view git status.";
 
-    [ObservableProperty] private ObservableCollection<string> _changedPaths = new();
+    [ObservableProperty] private ObservableCollection<string> _changedPaths = [];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanCommit))]

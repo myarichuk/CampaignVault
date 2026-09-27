@@ -18,7 +18,7 @@ internal static class ContextTurnReads
         }
 
         var loaded = await turn.Session.LoadAsync<Character>(ids, ct);
-        return loaded.Values.Where(c => c != null).ToList()!;
+        return [.. loaded.Values.Where(c => c != null)]!;
     }
 
     public static bool IsSkillCheck(WorldChange change, params string[] skills) =>
@@ -64,7 +64,7 @@ internal sealed class MemoryRecallContextContributor : IContextContributor
             }
         }
 
-        return matches.OrderByDescending(m => m.Score).Take(MaxPerTurn).Select(m => m.Item).ToList();
+        return [.. matches.OrderByDescending(m => m.Score).Take(MaxPerTurn).Select(m => m.Item)];
     }
 }
 
@@ -116,14 +116,16 @@ internal sealed class PressingNeedContextContributor : IContextContributor
         }
 
         var characters = await turn.Session.LoadAsync<Character>(ids, ct);
-        return characters.Values
-            .Where(c => c is { IsPc: false })
-            .SelectMany(c => (c!.Needs?.ActiveNeeds ?? [])
-                .Where(kv => kv.Value >= NpcCardFactory.PressingNeedThreshold)
-                .Select(kv => new ContextItem($"need:{c.Id}:{kv.Key}",
-                    $"{c.Name}: {kv.Key} {Math.Round(kv.Value)} (pressing)", 40)))
-            .Take(MaxLines)
-            .ToList();
+        return
+        [
+            .. characters.Values
+                .Where(c => c is { IsPc: false })
+                .SelectMany(c => (c!.Needs?.ActiveNeeds ?? [])
+                    .Where(kv => kv.Value >= NpcCardFactory.PressingNeedThreshold)
+                    .Select(kv => new ContextItem($"need:{c.Id}:{kv.Key}",
+                        $"{c.Name}: {kv.Key} {Math.Round(kv.Value)} (pressing)", 40)))
+                .Take(MaxLines)
+        ];
     }
 }
 
@@ -303,6 +305,6 @@ internal sealed class QuestLinkContextContributor : IContextContributor
             }
         }
 
-        return items.Take(MaxLines).ToList();
+        return [.. items.Take(MaxLines)];
     }
 }

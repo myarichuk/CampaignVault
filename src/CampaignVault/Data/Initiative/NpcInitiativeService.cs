@@ -11,7 +11,7 @@ public sealed class NpcInitiativeService(
     IInitiativeSuppressionStore suppressionStore,
     ILogger<NpcInitiativeService>? logger = null) : INpcInitiativeService
 {
-    private readonly IReadOnlyList<INpcInitiativeSignalProvider> _providers = providers.ToList();
+    private readonly IReadOnlyList<INpcInitiativeSignalProvider> _providers = [.. providers];
     private readonly ILogger<NpcInitiativeService> _logger = logger ?? NullLogger<NpcInitiativeService>.Instance;
 
     public NpcInitiativeEnrichment Enrich(NpcInitiativeContext ctx, Campaign campaign)

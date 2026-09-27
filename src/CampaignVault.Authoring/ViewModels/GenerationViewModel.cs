@@ -16,7 +16,7 @@ public partial class GenerationViewModel : ObservableObject, IDisposable
     private readonly SettingsViewModel _settingsViewModel;
 
     public IReadOnlyList<string> EntityTypes { get; } =
-        VaultPaths.EntityFolders.Select(f => f.EntityType).ToList();
+        [.. VaultPaths.EntityFolders.Select(f => f.EntityType)];
 
     [ObservableProperty] private string _userPrompt = string.Empty;
 
@@ -142,14 +142,13 @@ public partial class GenerationViewModel : ObservableObject, IDisposable
             using (client)
             using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
             {
-                var response = await client.GetResponseAsync(new[]
-                {
+                var response = await client.GetResponseAsync([
                     new ChatMessage(ChatRole.System,
                         $"You are a TTRPG campaign writer. Generate a campaign entity markdown file with YAML frontmatter. " +
                         $"Generate a {SelectedEntityType} entity. " +
                         $"The output MUST start with '---' and end with the markdown body. Do NOT wrap it in code block ticks (```). Just output the raw content."),
                     new ChatMessage(ChatRole.User, UserPrompt)
-                }, new ChatOptions
+                ], new ChatOptions
                 {
                     ModelId = string.IsNullOrEmpty(model) ? "default" : model
                 }, cts.Token);

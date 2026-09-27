@@ -106,6 +106,6 @@ public static class PluginTraitsUpgradeRunner
                 prefix, prefix);
         }
 
-        return orphaned.ToList();
+        return [.. orphaned];
     }
 }

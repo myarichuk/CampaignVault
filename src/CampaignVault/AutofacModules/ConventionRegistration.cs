@@ -39,7 +39,7 @@ internal static class ConventionRegistration
 
     public static void Register(ContainerBuilder builder, Assembly assembly, string rulesetDataDirectory)
     {
-        Register(builder, new[] { assembly }, rulesetDataDirectory);
+        Register(builder, [assembly], rulesetDataDirectory);
     }
 
     public static void Register(ContainerBuilder builder, IReadOnlyList<Assembly> assemblies, string rulesetDataDirectory)
@@ -59,7 +59,7 @@ internal static class ConventionRegistration
 
     private static void RegisterMarkerCollections(ContainerBuilder builder, Assembly assembly)
     {
-        RegisterMarkerCollections(builder, new[] { assembly });
+        RegisterMarkerCollections(builder, [assembly]);
     }
 
     private static void RegisterMarkerCollections(ContainerBuilder builder, IReadOnlyList<Assembly> assemblies)
@@ -287,8 +287,9 @@ internal static class ConventionRegistration
     }
 
     private static Type[] GetCampaignVaultServiceInterfaces(Type type) =>
-        type.GetInterfaces()
+    [
+        .. type.GetInterfaces()
             .Where(i => i.Namespace?.StartsWith("CampaignVault", StringComparison.Ordinal) == true
                         && i.Name.StartsWith('I'))
-            .ToArray();
+    ];
 }

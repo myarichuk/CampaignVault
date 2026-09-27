@@ -193,7 +193,7 @@ public class LocationUpdateHandler : IWorldChangeHandler
             const int maxDeparted = 10;
             if (loc.RecentlyDeparted.Count > maxDeparted)
             {
-                loc.RecentlyDeparted = loc.RecentlyDeparted.Take(maxDeparted).ToList();
+                loc.RecentlyDeparted = [.. loc.RecentlyDeparted.Take(maxDeparted)];
             }
         }
 

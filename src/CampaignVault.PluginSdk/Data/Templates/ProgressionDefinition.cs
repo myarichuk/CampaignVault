@@ -73,13 +73,14 @@ public record LevelDefinition
 
     /// <summary>Flattened choices from every feature at this level, tagged with their choice key and a prompt.</summary>
     public List<LevelUpChoiceDefinition> Choices =>
-        Features
+    [
+        .. Features
             .SelectMany(f => f.Choices.Select(kv => kv.Value with
             {
                 Key = kv.Key,
                 Prompt = kv.Value.Prompt ?? f.Name,
             }))
-            .ToList();
+    ];
 }
 
 /// <summary>
@@ -102,9 +103,11 @@ public record ProgressionDefinition : RulesetTemplate
         {
             System = !string.IsNullOrEmpty(child.System) ? child.System : parent.System,
             ClassName = !string.IsNullOrEmpty(child.ClassName) ? child.ClassName : parent.ClassName,
-            Aliases = child.Aliases
-                .Union(parent.Aliases, StringComparer.OrdinalIgnoreCase)
-                .ToList(),
+            Aliases =
+            [
+                .. child.Aliases
+                    .Union(parent.Aliases, StringComparer.OrdinalIgnoreCase)
+            ],
             HitDie = child.HitDie ?? parent.HitDie,
             CasterType = child.CasterType ?? parent.CasterType,
             Description = child.Description ?? parent.Description,

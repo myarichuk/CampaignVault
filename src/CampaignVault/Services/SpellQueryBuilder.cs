@@ -126,7 +126,7 @@ public static class SpellQueryBuilder
             System = system.ToSlug(),
             Class = className,
             FilterLevel = level,
-            Spells = page.Spells.Select(toSummary).ToList(),
+            Spells = [.. page.Spells.Select(toSummary)],
             Pagination = new SpellListPaginationView
             {
                 TotalCount = page.TotalCount,

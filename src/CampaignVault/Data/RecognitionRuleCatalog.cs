@@ -19,15 +19,24 @@ public static class RecognitionRuleCatalog
     /// </summary>
     public static readonly IReadOnlyDictionary<string, IReadOnlyList<string>> SkillTagMap = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
     {
-        ["Survival"] = new[] { "track", "trail", "scar", "wild", "overgrown", "animal", "creature", "den", "lair", "poacher", "hunter", "snare", "trap", "wilderness" },
-        ["Nature"] = new[] { "plant", "animal", "creature", "wild", "overgrown", "natural", "forest", "tree", "herb", "feral", "beast", "ecology", "seasonal" },
-        ["Perception"] = new[] { "hidden", "concealed", "notice", "see", "watch", "guard", "trap", "alarm", "tripwire", "lookout", "patrol", "sentry" },
-        ["Insight"] = new[] { "emotion", "mood", "fear", "anger", "joy", "deception", "lie", "truth", "reaction", "tell", "secret", "heart" },
-        ["History"] = new[] { "ancient", "ruin", "old", "crumble", "weathered", "monument", "inscription", "historical", "artifact", "relic", "tomb", "grave" },
-        ["Arcana"] = new[] { "arcane", "magic", "spell", "rune", "mystical", "enchant", "sigil", "aura", "ward", "glyph", "portal", "crystal", "essence" },
-        ["Religion"] = new[] { "shrine", "altar", "sacred", "holy", "divine", "temple", "idol", "prayer", "ritual", "cult", "faith", "blessing", "curse" },
-        ["Stealth"] = new[] { "shadow", "dark", "hidden", "conceal", "sneak", "approach", "foothold", "blind", "corner", "escape", "passage", "route" },
-        ["Investigation"] = new[] { "clue", "evidence", "trace", "sign", "mark", "scar", "detail", "examine", "inspect", "blood", "broken", "damage" },
+        ["Survival"] = ["track", "trail", "scar", "wild", "overgrown", "animal", "creature", "den", "lair", "poacher", "hunter", "snare", "trap", "wilderness"
+        ],
+        ["Nature"] = ["plant", "animal", "creature", "wild", "overgrown", "natural", "forest", "tree", "herb", "feral", "beast", "ecology", "seasonal"
+        ],
+        ["Perception"] = ["hidden", "concealed", "notice", "see", "watch", "guard", "trap", "alarm", "tripwire", "lookout", "patrol", "sentry"
+        ],
+        ["Insight"] = ["emotion", "mood", "fear", "anger", "joy", "deception", "lie", "truth", "reaction", "tell", "secret", "heart"
+        ],
+        ["History"] = ["ancient", "ruin", "old", "crumble", "weathered", "monument", "inscription", "historical", "artifact", "relic", "tomb", "grave"
+        ],
+        ["Arcana"] = ["arcane", "magic", "spell", "rune", "mystical", "enchant", "sigil", "aura", "ward", "glyph", "portal", "crystal", "essence"
+        ],
+        ["Religion"] = ["shrine", "altar", "sacred", "holy", "divine", "temple", "idol", "prayer", "ritual", "cult", "faith", "blessing", "curse"
+        ],
+        ["Stealth"] = ["shadow", "dark", "hidden", "conceal", "sneak", "approach", "foothold", "blind", "corner", "escape", "passage", "route"
+        ],
+        ["Investigation"] = ["clue", "evidence", "trace", "sign", "mark", "scar", "detail", "examine", "inspect", "blood", "broken", "damage"
+        ],
     };
 
     /// <summary>
@@ -36,20 +45,20 @@ public static class RecognitionRuleCatalog
     /// </summary>
     public static readonly IReadOnlyDictionary<string, IReadOnlyList<string>> BackgroundSkillBoosts = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
     {
-        ["ranger"] = new[] { "Survival", "Nature", "Perception" },
-        ["outlander"] = new[] { "Survival", "Nature" },
-        ["hunter"] = new[] { "Survival", "Perception" },
-        ["scout"] = new[] { "Survival", "Perception" },
-        ["soldier"] = new[] { "Perception", "Investigation" },
-        ["sailor"] = new[] { "Perception", "Survival" },
-        ["scholar"] = new[] { "History", "Arcana", "Religion" },
-        ["acolyte"] = new[] { "Religion", "Insight" },
-        ["sage"] = new[] { "Arcana", "History", "Investigation" },
-        ["rogue"] = new[] { "Stealth", "Investigation", "Perception" },
-        ["criminal"] = new[] { "Stealth", "Investigation", "Perception" },
-        ["folk hero"] = new[] { "Survival", "Perception" },
-        ["noble"] = new[] { "History", "Insight" },
-        ["courtier"] = new[] { "Insight", "History" },
+        ["ranger"] = ["Survival", "Nature", "Perception"],
+        ["outlander"] = ["Survival", "Nature"],
+        ["hunter"] = ["Survival", "Perception"],
+        ["scout"] = ["Survival", "Perception"],
+        ["soldier"] = ["Perception", "Investigation"],
+        ["sailor"] = ["Perception", "Survival"],
+        ["scholar"] = ["History", "Arcana", "Religion"],
+        ["acolyte"] = ["Religion", "Insight"],
+        ["sage"] = ["Arcana", "History", "Investigation"],
+        ["rogue"] = ["Stealth", "Investigation", "Perception"],
+        ["criminal"] = ["Stealth", "Investigation", "Perception"],
+        ["folk hero"] = ["Survival", "Perception"],
+        ["noble"] = ["History", "Insight"],
+        ["courtier"] = ["Insight", "History"],
     };
 
     /// <summary>

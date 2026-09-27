@@ -31,7 +31,7 @@ public sealed class SceneNpcMerger
             npcMap[npc.Id] = npc;
         }
 
-        return npcMap.Values.ToList();
+        return [.. npcMap.Values];
     }
 
     private static bool IsVisibleInCampaign(string? entityCampaignName, string effectiveCampaign) =>

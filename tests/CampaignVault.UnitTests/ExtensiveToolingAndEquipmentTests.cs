@@ -255,19 +255,19 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
 
         // Equip base layer
         var result1 = await tools.Commit(
-            new[] { new ItemEquip { CharacterId = charId, ItemId = baseLayerId } },
+            [new ItemEquip { CharacterId = charId, ItemId = baseLayerId }],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(result1.Success, result1.Summary);
 
         // Equip armor layer - should not conflict with base
         var result2 = await tools.Commit(
-            new[] { new ItemEquip { CharacterId = charId, ItemId = armorLayerId } },
+            [new ItemEquip { CharacterId = charId, ItemId = armorLayerId }],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(result2.Success, result2.Summary);
 
         // Equip outer layer - should not conflict with base or armor
         var result3 = await tools.Commit(
-            new[] { new ItemEquip { CharacterId = charId, ItemId = outerLayerId } },
+            [new ItemEquip { CharacterId = charId, ItemId = outerLayerId }],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(result3.Success, result3.Summary);
 
@@ -329,20 +329,20 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
 
         // Equip first sword
         var equip1 = await tools.Commit(
-            new[] { new ItemEquip { CharacterId = charId, ItemId = sword1Id } },
+            [new ItemEquip { CharacterId = charId, ItemId = sword1Id }],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(equip1.Success);
 
         // Try to equip second sword without replaceConflicts - should fail
         var equip2NoReplace = await tools.Commit(
-            new[] { new ItemEquip { CharacterId = charId, ItemId = sword2Id } },
+            [new ItemEquip { CharacterId = charId, ItemId = sword2Id }],
             campaignName: campaign, narrative: "test narrative");
         Assert.False(equip2NoReplace.Success);
         Assert.Contains("slot conflict", equip2NoReplace.Summary);
 
         // Equip second sword WITH replaceConflicts - should succeed
         var equip2WithReplace = await tools.Commit(
-            new[] { new ItemEquip { CharacterId = charId, ItemId = sword2Id, ReplaceConflicts = true } },
+            [new ItemEquip { CharacterId = charId, ItemId = sword2Id, ReplaceConflicts = true }],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(equip2WithReplace.Success, equip2WithReplace.Summary);
 
@@ -399,7 +399,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 EquipLayer = EquipLayers.Armor,
                 StackGroup = "pauldron-left",
                 CoreCategory = ItemCategories.Armor,
-                RequiresEquippedTags = new List<string> { "chest-armor" }
+                RequiresEquippedTags = ["chest-armor"]
             };
             chest.Tags.Add("chest-armor");
             await session.StoreAsync(pauldronLeft);
@@ -413,7 +413,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 EquipLayer = EquipLayers.Armor,
                 StackGroup = "pauldron-right",
                 CoreCategory = ItemCategories.Armor,
-                RequiresEquippedTags = new List<string> { "chest-armor" }
+                RequiresEquippedTags = ["chest-armor"]
             };
             await session.StoreAsync(pauldronRight);
             await session.SaveChangesAsync();
@@ -432,19 +432,19 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
 
         // Equip chest plate first
         var equipChest = await tools.Commit(
-            new[] { new ItemEquip { CharacterId = charId, ItemId = chestId } },
+            [new ItemEquip { CharacterId = charId, ItemId = chestId }],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(equipChest.Success, equipChest.Summary);
 
         // Equip left pauldron
         var equipLeft = await tools.Commit(
-            new[] { new ItemEquip { CharacterId = charId, ItemId = pauldronLeftId } },
+            [new ItemEquip { CharacterId = charId, ItemId = pauldronLeftId }],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(equipLeft.Success, equipLeft.Summary);
 
         // Equip right pauldron - should coexist with left (different StackGroups)
         var equipRight = await tools.Commit(
-            new[] { new ItemEquip { CharacterId = charId, ItemId = pauldronRightId } },
+            [new ItemEquip { CharacterId = charId, ItemId = pauldronRightId }],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(equipRight.Success, equipRight.Summary);
     }
@@ -479,7 +479,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 EquipZones = [EquipZones.Torso],
                 EquipLayer = EquipLayers.Outer,
                 CoreCategory = ItemCategories.Clothing,
-                IncompatibleWithEquippedTags = new List<string> { "wielded-weapon" }
+                IncompatibleWithEquippedTags = ["wielded-weapon"]
             };
             await session.StoreAsync(robe);
 
@@ -492,7 +492,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                 EquipZones = [EquipZones.MainHand],
                 EquipLayer = EquipLayers.Held,
                 CoreCategory = ItemCategories.Weapon,
-                Tags = new List<string> { "wielded-weapon" }
+                Tags = ["wielded-weapon"]
             };
             await session.StoreAsync(sword);
 
@@ -502,13 +502,13 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
         // Equip sword first (the incompatibility is declared on the robe, so it's only checked
         // when the robe itself is the item being equipped)
         var equipSword = await tools.Commit(
-            new[] { new ItemEquip { CharacterId = charId, ItemId = swordId } },
+            [new ItemEquip { CharacterId = charId, ItemId = swordId }],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(equipSword.Success, equipSword.Summary);
 
         // Try to equip robe - should fail due to incompatibility with the equipped sword
         var equipRobe = await tools.Commit(
-            new[] { new ItemEquip { CharacterId = charId, ItemId = robeId } },
+            [new ItemEquip { CharacterId = charId, ItemId = robeId }],
             campaignName: campaign, narrative: "test narrative");
         Assert.False(equipRobe.Success);
         Assert.Contains("incompatible", equipRobe.Summary, StringComparison.OrdinalIgnoreCase);
@@ -568,17 +568,16 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
 
         // Equip old boots first
         var equipOld = await tools.Commit(
-            new[] { new ItemEquip { CharacterId = charId, ItemId = oldBootsId } },
+            [new ItemEquip { CharacterId = charId, ItemId = oldBootsId }],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(equipOld.Success, equipOld.Summary);
 
         // In a single batch: unequip old, then equip new
         var batchSwap = await tools.Commit(
-            new WorldChange[]
-            {
+            [
                 new ItemUnequip { CharacterId = charId, ItemId = oldBootsId },
                 new ItemEquip { CharacterId = charId, ItemId = newBootsId }
-            },
+            ],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(batchSwap.Success, batchSwap.Summary);
 
@@ -605,8 +604,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
         await tools.CreateCampaign(campaign, RulesetSystem.Dnd5e);
 
         var createFighter = await tools.Commit(
-            new[]
-            {
+            [
                 new CharacterCreate
                 {
                     CharacterId = charId,
@@ -618,7 +616,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
                         Dexterity = 16 // +3 modifier
                     }
                 }
-            },
+            ],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(createFighter.Success, createFighter.Summary);
 
@@ -664,7 +662,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
 
         // Equip leather armor: AC = 10 + 2 (armor) + 3 (dex) = 15
         await tools.Commit(
-            new[] { new ItemEquip { CharacterId = charId, ItemId = leatherArmorId } },
+            [new ItemEquip { CharacterId = charId, ItemId = leatherArmorId }],
             campaignName: campaign, narrative: "test narrative");
 
         var charWithArmor = await GetCharacter(charId, campaign);
@@ -673,7 +671,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
 
         // Equip shield: AC = 15 + 2 = 17
         await tools.Commit(
-            new[] { new ItemEquip { CharacterId = charId, ItemId = shieldId } },
+            [new ItemEquip { CharacterId = charId, ItemId = shieldId }],
             campaignName: campaign, narrative: "test narrative");
 
         var charWithShield = await GetCharacter(charId, campaign);
@@ -731,7 +729,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
 
         // Equip winter coat: warmth = 5
         await tools.Commit(
-            new[] { new ItemEquip { CharacterId = charId, ItemId = winterCoatId } },
+            [new ItemEquip { CharacterId = charId, ItemId = winterCoatId }],
             campaignName: campaign, narrative: "test narrative");
 
         var charWithCoat = await GetCharacter(charId, campaign);
@@ -740,7 +738,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
 
         // Equip fur cloak: warmth = 5 + 7 = 12 (cumulative on different zones)
         var equipFurs = await tools.Commit(
-            new[] { new ItemEquip { CharacterId = charId, ItemId = fursId } },
+            [new ItemEquip { CharacterId = charId, ItemId = fursId }],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(equipFurs.Success, equipFurs.Summary);
 
@@ -861,12 +859,12 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
 
         // Equip Elara
         var equipArmor = await tools.Commit(
-            new[] { new ItemEquip { CharacterId = elaraId, ItemId = elaraArmorId } },
+            [new ItemEquip { CharacterId = elaraId, ItemId = elaraArmorId }],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(equipArmor.Success, equipArmor.Summary);
 
         var equipSword = await tools.Commit(
-            new[] { new ItemEquip { CharacterId = elaraId, ItemId = elaraSwordId } },
+            [new ItemEquip { CharacterId = elaraId, ItemId = elaraSwordId }],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(equipSword.Success, equipSword.Summary);
 
@@ -881,10 +879,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
 
         // Round 1: Elara acts
         var round1_elara = await tools.Commit(
-            new[]
-            {
+            [
                 new HpChange { CharacterId = goblin1Id, Delta = -5 } // Elara attacks goblin 1
-            },
+            ],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(round1_elara.Success, round1_elara.Summary);
 
@@ -894,10 +891,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
 
         // Round 1: Goblin 1 acts (at 2 HP)
         var round1_gob1 = await tools.Commit(
-            new[]
-            {
+            [
                 new HpChange { CharacterId = elaraId, Delta = -2 } // Goblin 1 attacks
-            },
+            ],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(round1_gob1.Success, round1_gob1.Summary);
 
@@ -907,10 +903,9 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
 
         // Round 1: Goblin 2 acts
         var round1_gob2 = await tools.Commit(
-            new[]
-            {
+            [
                 new HpChange { CharacterId = elaraId, Delta = -1 } // Goblin 2 attacks
-            },
+            ],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(round1_gob2.Success, round1_gob2.Summary);
 
@@ -929,7 +924,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
         Assert.True(nextTurn3.Success);
 
         var killGoblin1 = await tools.Commit(
-            new[] { new HpChange { CharacterId = goblin1Id, Delta = -2 } },
+            [new HpChange { CharacterId = goblin1Id, Delta = -2 }],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(killGoblin1.Success);
 
@@ -943,7 +938,7 @@ public class ExtensiveToolingAndEquipmentTests : IClassFixture<RavenDBFixture>
 
         // Goblin 2 attacks
         var gob2Attack = await tools.Commit(
-            new[] { new HpChange { CharacterId = elaraId, Delta = -3 } },
+            [new HpChange { CharacterId = elaraId, Delta = -3 }],
             campaignName: campaign, narrative: "test narrative");
         Assert.True(gob2Attack.Success);
 

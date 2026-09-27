@@ -21,9 +21,11 @@ internal static class ToolCatalog
         }
 
         var normalized = category.Trim();
-        return all
-            .Where(e => e.Category.Equals(normalized, StringComparison.OrdinalIgnoreCase))
-            .ToList();
+        return
+        [
+            .. all
+                .Where(e => e.Category.Equals(normalized, StringComparison.OrdinalIgnoreCase))
+        ];
     }
 
     /// <summary>
@@ -55,25 +57,27 @@ internal static class ToolCatalog
 
     private static IReadOnlyList<ToolCatalogEntry> BuildEntries()
     {
-        return Assembly.GetExecutingAssembly()
-            .GetTypes()
-            .Where(t => t.GetCustomAttribute<McpServerToolTypeAttribute>() != null)
-            .SelectMany(t => t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly))
-            .Where(m => m.GetCustomAttribute<McpServerToolAttribute>() != null)
-            .Select(m =>
-            {
-                var description = m.GetCustomAttribute<DescriptionAttribute>()?.Description ?? "";
-                var category = m.GetCustomAttribute<ToolCategoryAttribute>()?.Category ?? "Other";
-                return new ToolCatalogEntry
+        return
+        [
+            .. Assembly.GetExecutingAssembly()
+                .GetTypes()
+                .Where(t => t.GetCustomAttribute<McpServerToolTypeAttribute>() != null)
+                .SelectMany(t => t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly))
+                .Where(m => m.GetCustomAttribute<McpServerToolAttribute>() != null)
+                .Select(m =>
                 {
-                    Name = ToSnakeCase(m.Name),
-                    Category = category,
-                    Description = Summarize(description),
-                };
-            })
-            .OrderBy(e => e.Category, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+                    var description = m.GetCustomAttribute<DescriptionAttribute>()?.Description ?? "";
+                    var category = m.GetCustomAttribute<ToolCategoryAttribute>()?.Category ?? "Other";
+                    return new ToolCatalogEntry
+                    {
+                        Name = ToSnakeCase(m.Name),
+                        Category = category,
+                        Description = Summarize(description),
+                    };
+                })
+                .OrderBy(e => e.Category, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
+        ];
     }
 
     private static string Summarize(string description)

@@ -14,5 +14,5 @@ public sealed record SimulationResult(
 )
 {
     // Back-compat property: extract text from all narratives (both persistent and ephemeral)
-    public IReadOnlyList<string> NarrativeEvents => Narratives.Select(n => n.Text).ToList();
+    public IReadOnlyList<string> NarrativeEvents => [.. Narratives.Select(n => n.Text)];
 }

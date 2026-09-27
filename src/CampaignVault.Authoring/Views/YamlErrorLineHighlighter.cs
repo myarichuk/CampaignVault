@@ -12,10 +12,10 @@ namespace CampaignVault.Authoring.Views;
 /// </summary>
 public sealed class YamlErrorLineHighlighter : DocumentColorizingTransformer
 {
-    private IReadOnlyList<YamlDiagnostic> _diagnostics = Array.Empty<YamlDiagnostic>();
+    private IReadOnlyList<YamlDiagnostic> _diagnostics = [];
 
     public void SetDiagnostics(IReadOnlyList<YamlDiagnostic> diagnostics) =>
-        _diagnostics = diagnostics ?? Array.Empty<YamlDiagnostic>();
+        _diagnostics = diagnostics ?? [];
 
     protected override void ColorizeLine(DocumentLine line)
     {

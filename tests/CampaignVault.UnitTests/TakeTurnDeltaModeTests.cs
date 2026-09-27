@@ -375,7 +375,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
     {
         var slug = NewSlug("ambient");
         var repo = _fixture.CreateRepository(
-            engineOverride: new DefaultSimulationEngine(new ISimulationRule[] { new NeedsAccumulationRule() }),
+            engineOverride: new DefaultSimulationEngine([new NeedsAccumulationRule()]),
             overrides: b => b.RegisterInstance(new EncounterResolver(() => 1.0)).As<EncounterResolver>());
         var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
         await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
@@ -401,10 +401,9 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
 
         using var actSession = _fixture.Store.OpenAsyncSession();
         var actCs = _fixture.CreateCampaignSession(actSession, slug);
-        var commitResult = await repo.StageChangesAsync(actCs, new WorldChange[]
-        {
+        var commitResult = await repo.StageChangesAsync(actCs, [
             new RestChange { CharacterId = charId, LocationId = locId, IntendedHours = 30, SecurityModifier = 0 }
-        });
+        ]);
         await actSession.SaveChangesAsync();
 
         Assert.True(commitResult.Success, string.Join("; ", commitResult.Summary));
@@ -428,7 +427,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
     {
         var slug = NewSlug("ambient-involved");
         var repo = _fixture.CreateRepository(
-            engineOverride: new DefaultSimulationEngine(new ISimulationRule[] { new NeedsAccumulationRule() }),
+            engineOverride: new DefaultSimulationEngine([new NeedsAccumulationRule()]),
             overrides: b => b.RegisterInstance(new EncounterResolver(() => 1.0)).As<EncounterResolver>());
         var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
         await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
@@ -469,10 +468,9 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
 
         using var actSession = _fixture.Store.OpenAsyncSession();
         var actCs = _fixture.CreateCampaignSession(actSession, slug);
-        var commitResult = await repo.StageChangesAsync(actCs, new WorldChange[]
-        {
+        var commitResult = await repo.StageChangesAsync(actCs, [
             new RestChange { CharacterId = charId, LocationId = innId, IntendedHours = 30, SecurityModifier = 0 }
-        });
+        ]);
         await actSession.SaveChangesAsync();
 
         Assert.True(commitResult.Success, string.Join("; ", commitResult.Summary));
@@ -2324,7 +2322,7 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         var cursor = await repo.GetTurnCursorAsync(_fixture.CreateCampaignSession(checkSession, slug));
         Assert.NotNull(cursor);
         var recorded = Assert.Contains(locId, cursor!.SurfacedPresentNpcIdsByLocationId);
-        Assert.Equal(new[] { npc1, npc2, npc3 }, recorded.OrderBy(x => x, StringComparer.Ordinal));
+        Assert.Equal([npc1, npc2, npc3], recorded.OrderBy(x => x, StringComparer.Ordinal));
     }
 
     /// <summary>

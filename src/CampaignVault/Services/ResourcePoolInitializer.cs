@@ -166,11 +166,12 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
         {
             RulesetSystem.Dnd5e when stats is Dnd5eExtension dnd => dnd.Feats,
             RulesetSystem.Pathfinder2e when stats is Pf2eExtension pf2 =>
-                pf2.AncestryFeats
-                    .Concat(pf2.ClassFeats)
-                    .Concat(pf2.SkillFeats)
-                    .Concat(pf2.GeneralFeats)
-                    .ToList(),
+            [
+                .. pf2.AncestryFeats,
+                .. pf2.ClassFeats,
+                .. pf2.SkillFeats,
+                .. pf2.GeneralFeats
+            ],
             _ => [],
         };
 

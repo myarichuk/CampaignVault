@@ -32,7 +32,7 @@ internal static class HiddenContent
             .Where(x => x.HolderId == locationId)
             .Take(64)
             .ToListAsync(ct);
-        top = top.Where(i => !i.IsArchived).ToList();
+        top = [.. top.Where(i => !i.IsArchived)];
         if (top.Count == 0)
         {
             return top;
@@ -44,7 +44,7 @@ internal static class HiddenContent
             .Where(x => x.HolderId.In(topIds))
             .Take(128)
             .ToListAsync(ct);
-        return top.Concat(nested.Where(i => !i.IsArchived)).ToList();
+        return [.. top, .. nested.Where(i => !i.IsArchived)];
     }
 
     /// <summary>Reveals every secret at <paramref name="locationId"/> whose DC <paramref name="score"/> meets and

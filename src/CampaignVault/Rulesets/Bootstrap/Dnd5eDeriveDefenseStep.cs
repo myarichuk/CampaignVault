@@ -58,6 +58,6 @@ public sealed class Dnd5eDeriveDefenseStep : IBootstrapStep
             .Take(50)
             .ToListAsync(ct);
 
-        return held.Where(i => i.IsEquipped).ToList();
+        return [.. held.Where(i => i.IsEquipped)];
     }
 }

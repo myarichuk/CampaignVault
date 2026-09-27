@@ -26,7 +26,7 @@ public class InteractionModesTests
         public ModeEncounter CreateEncounter(string locationId, IReadOnlyList<string> participantIds) => new()
         {
             LocationId = locationId,
-            Participants = participantIds.Select(id => new ModeParticipantState { CharacterId = id }).ToList()
+            Participants = [.. participantIds.Select(id => new ModeParticipantState { CharacterId = id })]
         };
 
         public IReadOnlyDictionary<string, int> GetTurnActionBudget(Character participant) =>
@@ -204,7 +204,7 @@ public class InteractionModesTests
         ModeId = modeId,
         LocationId = "locations/pool",
         IsActive = true,
-        Participants = participantIds.Select(id => new ModeParticipantState { CharacterId = id }).ToList()
+        Participants = [.. participantIds.Select(id => new ModeParticipantState { CharacterId = id })]
     };
 
     private static async Task<(ChangeHandlerResult Result, ChangeContext Context)> EnterWhileActive(

@@ -78,13 +78,15 @@ public static class ConditionExpiryEvaluator
         if (character.SystemStats?.StatusEffects == null || character.SystemStats.StatusEffects.Count == 0)
             return [];
 
-        return character.SystemStats.StatusEffects
-            .Where(e =>
-            {
-                var def = TryResolve(provider, character.SystemStats, e.ConditionName);
-                return ShouldExpireOnLongRest(e, def) && !(def?.IsStacking ?? false);
-            })
-            .ToList();
+        return
+        [
+            .. character.SystemStats.StatusEffects
+                .Where(e =>
+                {
+                    var def = TryResolve(provider, character.SystemStats, e.ConditionName);
+                    return ShouldExpireOnLongRest(e, def) && !(def?.IsStacking ?? false);
+                })
+        ];
     }
 
     /// <summary>
@@ -98,13 +100,15 @@ public static class ConditionExpiryEvaluator
         if (character.SystemStats?.StatusEffects == null || character.SystemStats.StatusEffects.Count == 0)
             return [];
 
-        return character.SystemStats.StatusEffects
-            .Where(e =>
-            {
-                var def = TryResolve(provider, character.SystemStats, e.ConditionName);
-                return ShouldExpireOnLongRest(e, def) && (def?.IsStacking ?? false);
-            })
-            .ToList();
+        return
+        [
+            .. character.SystemStats.StatusEffects
+                .Where(e =>
+                {
+                    var def = TryResolve(provider, character.SystemStats, e.ConditionName);
+                    return ShouldExpireOnLongRest(e, def) && (def?.IsStacking ?? false);
+                })
+        ];
     }
 
     /// <summary>
@@ -130,11 +134,13 @@ public static class ConditionExpiryEvaluator
         if (daysPassed <= 0 || character.SystemStats?.StatusEffects == null)
             return [];
 
-        return character.SystemStats.StatusEffects
-            .Where(e => ShouldExpireAtDawn(
-                e,
-                TryResolve(provider, character.SystemStats, e.ConditionName),
-                daysPassed))
-            .ToList();
+        return
+        [
+            .. character.SystemStats.StatusEffects
+                .Where(e => ShouldExpireAtDawn(
+                    e,
+                    TryResolve(provider, character.SystemStats, e.ConditionName),
+                    daysPassed))
+        ];
     }
 }

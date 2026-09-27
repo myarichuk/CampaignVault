@@ -99,8 +99,10 @@ public class ToolSchemaBudgetTests
     }
 
     private static string[] RequiredOf(JsonDocument doc, string def) =>
-        doc.RootElement.GetProperty("$defs").GetProperty(def).GetProperty("required")
-            .EnumerateArray().Select(x => x.GetString()!).ToArray();
+    [
+        .. doc.RootElement.GetProperty("$defs").GetProperty(def).GetProperty("required")
+            .EnumerateArray().Select(x => x.GetString()!)
+    ];
 
     [Fact]
     public void FullSchema_RequiredArrays_OnlyListRealRequirements()

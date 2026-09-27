@@ -94,9 +94,11 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
 
             // Query associated plot threads
             var associatedThreads = await _repository.GetPlotThreadsReferencingEntityAsync(session, locationId, effective);
-            scene.AssociatedPlotThreads = associatedThreads
-                .Select(t => new PlotThreadMinimal(t.Id, t.Title, t.State, t.TensionLevel))
-                .ToList();
+            scene.AssociatedPlotThreads =
+            [
+                .. associatedThreads
+                    .Select(t => new PlotThreadMinimal(t.Id, t.Title, t.State, t.TensionLevel))
+            ];
 
             var stuckChar = scene.PresentNPCs?.FirstOrDefault(c => c.CurrentActivity != null && c.CurrentActivity.Contains("interrupted en route", StringComparison.OrdinalIgnoreCase));
             scene.SuggestedCommitExamples = SuggestedCommitExampleBuilder.Build(
@@ -125,7 +127,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
             // and the recognition-hint/faction-reputation lookups above need them there. But they're
             // not really NPCs, and their full state already travels via Party/PartyDelta elsewhere on
             // the wire — strip them from the roster right before it goes out.
-            scene.PresentNPCs = scene.PresentNPCs.Where(n => !n.IsPc).ToList();
+            scene.PresentNPCs = [.. scene.PresentNPCs.Where(n => !n.IsPc)];
 
             return new ToolResult<SceneView>(true, scene, summary,
                 WorldPressure: finalPressures.Length > 0 ? finalPressures : null);
@@ -220,14 +222,15 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
             var context = new NpcContextView
             {
                 Character = CharacterDetailView.From(npc),
-                RecentInteractions = npcEvents.Take(EventSummaryView.NpcContextCap).Select(EventSummaryView.ForNpcContext).ToList(),
+                RecentInteractions =
+                    [.. npcEvents.Take(EventSummaryView.NpcContextCap).Select(EventSummaryView.ForNpcContext)],
                 BehavioralSummary = behavioralSummary,
                 KnownNeeds = knownNeeds,
                 NeedDescriptors = mergedDescriptors,
                 BehavioralTension = enrichment.BehavioralTension,
                 TensionComponents = enrichment.TensionComponents,
-                ActiveInitiatives = enrichment.ActiveInitiatives.ToList(),
-                RelevantMemories = enrichment.RelevantMemories.ToList(),
+                ActiveInitiatives = [.. enrichment.ActiveInitiatives],
+                RelevantMemories = [.. enrichment.RelevantMemories],
                 Equipped = equipped,
                 Carried = carried,
                 TurnIntent = enrichment.TurnIntent,

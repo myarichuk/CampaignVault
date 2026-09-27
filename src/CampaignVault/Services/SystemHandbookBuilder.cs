@@ -71,7 +71,7 @@ public static class SystemHandbookBuilder
         var creatures = new CreatureHandbookSummary
         {
             TotalCount = creatureList.Count,
-            ExampleNames = creatureList.Take(5).Select(c => c.Name).ToList(),
+            ExampleNames = [.. creatureList.Take(5).Select(c => c.Name)],
             Hint = "Use query_creatures for the full paginated list (SRD + campaign homebrew merged).",
         };
 

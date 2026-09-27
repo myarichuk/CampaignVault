@@ -33,10 +33,12 @@ public sealed class VaultCatalog
             }
         }
 
-        return entities
-            .OrderBy(e => e.EntityType, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(e => e.RelativePath, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return
+        [
+            .. entities
+                .OrderBy(e => e.EntityType, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(e => e.RelativePath, StringComparer.OrdinalIgnoreCase)
+        ];
     }
 
     private VaultEntity ReadEntity(string relativePath, string entityType, string absolutePath)

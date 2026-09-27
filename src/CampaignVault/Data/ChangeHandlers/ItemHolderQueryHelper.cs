@@ -30,16 +30,18 @@ internal static class ItemHolderQueryHelper
             }
         }
 
-        return result.Values.ToList();
+        return [.. result.Values];
     }
 
     public static async Task<List<Item>> GetEquippedItemsAsync(
         IChangeContext context, string holderId, string? excludeItemId = null, CancellationToken ct = default)
     {
         var held = await GetHeldItemsAsync(context, holderId, ct);
-        return held
-            .Where(i => i.IsEquipped)
-            .Where(i => excludeItemId == null || !i.Id.Equals(excludeItemId, StringComparison.OrdinalIgnoreCase))
-            .ToList();
+        return
+        [
+            .. held
+                .Where(i => i.IsEquipped)
+                .Where(i => excludeItemId == null || !i.Id.Equals(excludeItemId, StringComparison.OrdinalIgnoreCase))
+        ];
     }
 }

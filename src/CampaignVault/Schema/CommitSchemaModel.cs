@@ -99,7 +99,7 @@ internal static class CommitSchemaModel
                 IReadOnlyList<string>? enumValues = null;
                 if (pi.PropertyType.IsEnum)
                 {
-                    enumValues = Enum.GetNames(pi.PropertyType).ToList();
+                    enumValues = [.. Enum.GetNames(pi.PropertyType)];
                 }
 
                 var requiredHint = pi.GetCustomAttribute<CommitRequiredHintAttribute>()?.Hint;

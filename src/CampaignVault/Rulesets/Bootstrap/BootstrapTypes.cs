@@ -40,7 +40,7 @@ public sealed class BootstrapReport
 {
     public IReadOnlyList<BootstrapStepResult> Steps { get; init; } = [];
     public IReadOnlyList<string> Messages =>
-        Steps.Select(s => s.Message).Where(m => !string.IsNullOrWhiteSpace(m)).Cast<string>().ToList();
+        [.. Steps.Select(s => s.Message).Where(m => !string.IsNullOrWhiteSpace(m)).Cast<string>()];
     public IReadOnlyList<string> LlmHints =>
-        Steps.SelectMany(s => s.LlmHints).Where(h => !string.IsNullOrWhiteSpace(h)).ToList();
+        [.. Steps.SelectMany(s => s.LlmHints).Where(h => !string.IsNullOrWhiteSpace(h))];
 }

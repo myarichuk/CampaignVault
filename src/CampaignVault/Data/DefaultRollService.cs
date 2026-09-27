@@ -34,7 +34,7 @@ public sealed class DefaultRollService : IRollService
         IEnumerable<RollRequest> requests,
         CancellationToken ct = default)
     {
-        IReadOnlyList<RollOutcome> results = requests.Select(Evaluate).ToList();
+        IReadOnlyList<RollOutcome> results = [.. requests.Select(Evaluate)];
         return Task.FromResult(results);
     }
 
@@ -200,9 +200,11 @@ public sealed class DefaultRollService : IRollService
             return [0]; // flat-only expression (no dice)
         }
 
-        return Enumerable.Range(0, count)
-            .Select(_ => _rng.Next(1, sides + 1))
-            .ToList();
+        return
+        [
+            .. Enumerable.Range(0, count)
+                .Select(_ => _rng.Next(1, sides + 1))
+        ];
     }
 
     private static (int Count, int Sides, int FlatMod) ParseExpression(string expr)

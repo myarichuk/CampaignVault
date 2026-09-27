@@ -26,7 +26,7 @@ public sealed record RuleResult(
         IReadOnlyList<string>? evictedEntityIds = null,
         IReadOnlyList<EvictedNpcSummary>? evictedNpcSummaries = null)
         : this(
-            legacyNarratives.Select(n => new RuleNarrative(n, Persist: true)).ToList(),
+            [.. legacyNarratives.Select(n => new RuleNarrative(n, Persist: true))],
             deltas,
             evictedEntityIds,
             evictedNpcSummaries)
@@ -34,5 +34,5 @@ public sealed record RuleResult(
     }
 
     // Convenience property: extract text from all narratives (regardless of Persist flag)
-    public IReadOnlyList<string> NarrativeEvents => Narratives.Select(n => n.Text).ToList();
+    public IReadOnlyList<string> NarrativeEvents => [.. Narratives.Select(n => n.Text)];
 }

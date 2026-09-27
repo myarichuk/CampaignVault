@@ -163,7 +163,7 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
             }
 
             // Sort by highest initiative first
-            combatants = combatants.OrderByDescending(c => c.Initiative).ToList();
+            combatants = [.. combatants.OrderByDescending(c => c.Initiative)];
 
             var encounter = existing ?? new CombatEncounter { Id = combatId };
             encounter.LocationId = locationId;

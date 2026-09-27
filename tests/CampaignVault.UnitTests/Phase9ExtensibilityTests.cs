@@ -97,8 +97,11 @@ public class Phase9ExtensibilityTests : IClassFixture<RavenDBFixture>
         Assert.Empty(pressures);
 
         var strictConfig = new CampaignConfig { RumorAgingPressureDays = 5 };
-        pressures = (await contributor.EvaluateAsync(new PressureContext("config-test", time, strictConfig, session,
-            ActiveRumors: [rumor]))).ToList();
+        pressures =
+        [
+            .. await contributor.EvaluateAsync(new PressureContext("config-test", time, strictConfig, session,
+                ActiveRumors: [rumor]))
+        ];
         Assert.Single(pressures);
         Assert.Contains("Old Gossip", pressures[0].Text);
     }

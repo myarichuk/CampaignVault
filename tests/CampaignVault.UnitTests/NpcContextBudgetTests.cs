@@ -28,7 +28,7 @@ public class NpcContextBudgetTests(ITestOutputHelper output)
     };
 
     private static List<EventSummaryView> Project(IEnumerable<Event> events) =>
-        events.Take(EventSummaryView.NpcContextCap).Select(EventSummaryView.ForNpcContext).ToList();
+        [.. events.Take(EventSummaryView.NpcContextCap).Select(EventSummaryView.ForNpcContext)];
 
     [Fact]
     public void Projection_IsCappedAtFive()

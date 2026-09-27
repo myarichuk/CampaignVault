@@ -502,12 +502,12 @@ public sealed class WorldChangeDispatcher(
             Success = overallSuccess,
             ChangesProcessed = changes.Length,
             Summary = overallSuccess ? summary : DropSucceededLines(summary, succeededMessageRanges),
-            InvolvedEntities = context.InvolvedEntities.ToList(),
-            EntityCollisions = context.EntityCollisions.ToList(),
-            CommittedIds = context.CommittedIds.ToList(),
+            InvolvedEntities = [.. context.InvolvedEntities],
+            EntityCollisions = [.. context.EntityCollisions],
+            CommittedIds = [.. context.CommittedIds],
             PhysicalStateNudges = physicalStateNudges,
-            PluginFaults = context.PluginFaults.ToList(),
-            ReactionChanges = overallSuccess ? context.ReactionChanges.ToList() : []
+            PluginFaults = [.. context.PluginFaults],
+            ReactionChanges = overallSuccess ? [.. context.ReactionChanges] : []
         };
     }
 
@@ -579,9 +579,9 @@ public sealed class WorldChangeDispatcher(
         {
             Success = success,
             Summary = summary,
-            InvolvedEntities = context.InvolvedEntities.ToList(),
-            PluginFaults = context.PluginFaults.ToList(),
-            ReactionChanges = success ? context.ReactionChanges.ToList() : []
+            InvolvedEntities = [.. context.InvolvedEntities],
+            PluginFaults = [.. context.PluginFaults],
+            ReactionChanges = success ? [.. context.ReactionChanges] : []
         };
     }
 

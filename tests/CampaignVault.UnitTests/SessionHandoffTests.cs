@@ -117,7 +117,8 @@ public class SessionHandoffTests : IClassFixture<RavenDBFixture>
         {
             StorySoFar = new string('s', SessionHandoffRules.StorySoFarMax + 100),
             LastSession = "Fine.",
-            OpenThreads = Enumerable.Range(1, SessionHandoffRules.OpenThreadsMaxCount + 1).Select(i => $"thread {i}").ToList(),
+            OpenThreads =
+                [.. Enumerable.Range(1, SessionHandoffRules.OpenThreadsMaxCount + 1).Select(i => $"thread {i}")],
         };
         var rejected = await session.EndSession(slug, tooLong);
 
@@ -298,7 +299,8 @@ public class SessionHandoffTests : IClassFixture<RavenDBFixture>
             await AddMemoriesAsync(pcB.Id, sessionNumber, count: 5);
 
             var handoff = SampleHandoff(npcIds[0]);
-            handoff.NpcsInPlay = npcIds.Select(id => new NpcStance { Id = id, Stance = "watching the party closely" }).ToList();
+            handoff.NpcsInPlay =
+                [.. npcIds.Select(id => new NpcStance { Id = id, Stance = "watching the party closely" })];
             handoff.LastSession = $"Session {sessionNumber}: " + new string('x', 400);
             Assert.True((await session.EndSession(slug, handoff)).Success);
         }

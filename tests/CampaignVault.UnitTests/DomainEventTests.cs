@@ -549,7 +549,8 @@ public class DomainEventTests
             .Returns(ci => new ModeEncounter
             {
                 LocationId = ci.ArgAt<string>(0),
-                Participants = ci.ArgAt<IReadOnlyList<string>>(1).Select(id => new ModeParticipantState { CharacterId = id }).ToList()
+                Participants =
+                    [.. ci.ArgAt<IReadOnlyList<string>>(1).Select(id => new ModeParticipantState { CharacterId = id })]
             });
         mode.StateMachine.Returns(stateMachine);
         var selector = new InteractionModeSelector([mode]);

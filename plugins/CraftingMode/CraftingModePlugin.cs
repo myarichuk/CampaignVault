@@ -23,12 +23,15 @@ file sealed class CraftingStateMachine : IModeStateMachine
             ModeId = "crafting",
             IsActive = true,
             Round = 1,
-            Participants = participantIds.Select(id => new ModeParticipantState
-            {
-                CharacterId = id,
-                ActionBudget = new Dictionary<string, int> { ["action"] = 1 },
-                State = new Dictionary<string, object> { ["stage"] = "prepare" }
-            }).ToList(),
+            Participants =
+            [
+                .. participantIds.Select(id => new ModeParticipantState
+                {
+                    CharacterId = id,
+                    ActionBudget = new Dictionary<string, int> { ["action"] = 1 },
+                    State = new Dictionary<string, object> { ["stage"] = "prepare" }
+                })
+            ],
             ActiveTurnId = participantIds.FirstOrDefault()
         };
 

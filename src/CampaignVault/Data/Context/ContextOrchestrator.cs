@@ -26,7 +26,7 @@ public sealed class ContextTurn : IContextTurn
     public required IReadOnlyList<WorldChange> AppliedChanges { get; init; }
     public required IReadOnlyList<string> InvolvedEntityIds { get; init; }
     public required IReadOnlyList<Character> Party { get; init; }
-    public IReadOnlyList<string> PartyCharacterIds => Party.Select(p => p.Id).ToList();
+    public IReadOnlyList<string> PartyCharacterIds => [.. Party.Select(p => p.Id)];
     public string? PartyLocationId { get; init; }
     public CampaignTime? Time { get; init; }
 

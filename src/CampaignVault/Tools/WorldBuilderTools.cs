@@ -451,7 +451,7 @@ This is the only tool that creates a new location. During play, use commit's loc
         var merged = await _repository.UpsertPlotThreadAsync(new CampaignSession(s, effective), plotThread);
         var refs = (plotThread.InvolvedEntityIds ?? [])
             .Select((id, i) => ($"involvedEntityIds[{i}]", (string?)id));
-        var warning = await WarnDanglingReferencesAsync(s, refs.ToArray());
+        var warning = await WarnDanglingReferencesAsync(s, [.. refs]);
         var summary = $"PlotThread upserted (campaign context: {effective}).{warning}";
         return new ToolResult<PlotThreadDetailView>(true, PlotThreadDetailView.From(merged), summary);
     }
@@ -473,7 +473,7 @@ This is the only tool that creates a new location. During play, use commit's loc
         var refs = (worldEvent.InvolvedEntityIds ?? [])
             .Select((id, i) => ($"involvedEntityIds[{i}]", (string?)id))
             .Concat([("actorId", worldEvent.ActorId)]);
-        var warning = await WarnDanglingReferencesAsync(s, refs.ToArray());
+        var warning = await WarnDanglingReferencesAsync(s, [.. refs]);
         var summary = $"WorldEvent upserted (campaign context: {effective}).{warning}";
         return new ToolResult<WorldEventDetailView>(true, WorldEventDetailView.From(merged), summary);
     }
@@ -530,7 +530,7 @@ This is the only tool that creates a new location. During play, use commit's loc
         var refs = (faction.TerritoryLocationIds ?? [])
             .Select((id, i) => ($"territoryLocationIds[{i}]", (string?)id))
             .Concat((faction.KnownLeaderIds ?? []).Select((id, i) => ($"knownLeaderIds[{i}]", (string?)id)));
-        var warning = await WarnDanglingReferencesAsync(s, refs.ToArray());
+        var warning = await WarnDanglingReferencesAsync(s, [.. refs]);
         var seedHint = wasNew ? EntitySeedingAdvisor.GenerateWorldEventSeedingHint(merged, effective) : null;
         var summary = $"Faction upserted (campaign context: {effective}).{warning}{seedHint}";
         return new ToolResult<Faction>(true, merged, summary);
@@ -553,7 +553,7 @@ This is the only tool that creates a new location. During play, use commit's loc
         var refs = new List<(string, string?)> { ("giverId", quest.GiverId) }
             .Concat((quest.RelatedLocationIds ?? []).Select((id, i) => ($"relatedLocationIds[{i}]", (string?)id)))
             .Concat((quest.RelatedFactionIds ?? []).Select((id, i) => ($"relatedFactionIds[{i}]", (string?)id)));
-        var warning = await WarnDanglingReferencesAsync(s, refs.ToArray());
+        var warning = await WarnDanglingReferencesAsync(s, [.. refs]);
         var summary = $"Quest upserted (campaign context: {effective}).{warning}";
         return new ToolResult<QuestDetailView>(true, QuestDetailView.From(merged), summary);
     }

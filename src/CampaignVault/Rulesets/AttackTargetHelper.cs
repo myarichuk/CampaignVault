@@ -20,7 +20,7 @@ internal static class AttackTargetHelper
             .ToList();
 
         var attackCount = ResolveAttackCount(action, distinctTargets.Count);
-        return distinctTargets.Take(attackCount).ToList();
+        return [.. distinctTargets.Take(attackCount)];
     }
 
     public static int ResolveAttackCount(RulesetAction action, int listedTargetCount)

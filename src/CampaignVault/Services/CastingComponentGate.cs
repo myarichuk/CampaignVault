@@ -105,7 +105,7 @@ public static class CastingComponentGate
         string waiver,
         string? campaignName)
     {
-        var names = knownFeatNames as ICollection<string> ?? knownFeatNames.ToList();
+        var names = knownFeatNames as ICollection<string> ?? [.. knownFeatNames];
         if (names.Count == 0)
         {
             return false;

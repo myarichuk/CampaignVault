@@ -123,9 +123,12 @@ public class PluginHostHooksTests(RavenDBFixture fixture) : IClassFixture<RavenD
     {
         public ModeEncounter CreateEncounter(string locationId, IReadOnlyList<string> participantIds) => new()
         {
-            Participants = participantIds
-                .Select(id => new ModeParticipantState { CharacterId = id, ActionBudget = new() { ["action"] = 1 } })
-                .ToList(),
+            Participants =
+            [
+                .. participantIds
+                    .Select(id => new ModeParticipantState
+                        { CharacterId = id, ActionBudget = new() { ["action"] = 1 } })
+            ],
             ActiveTurnId = participantIds.FirstOrDefault()
         };
 
@@ -185,7 +188,7 @@ public class PluginHostHooksTests(RavenDBFixture fixture) : IClassFixture<RavenD
             modeSelector: new InteractionModeSelector([mode]));
 
         var result = await dispatcher.DispatchAsync(
-            session, acts.Cast<WorldChange>().ToArray(), "test",
+            session, [.. acts.Cast<WorldChange>()], "test",
             () => Task.FromResult(new CampaignTime()),
             () => Task.FromResult(new Dictionary<string, string>()),
             _ => Task.CompletedTask);
@@ -229,7 +232,11 @@ public class PluginHostHooksTests(RavenDBFixture fixture) : IClassFixture<RavenD
         try
         {
             var context = ChangeContextTestHelper.Create(campaignName: "test", config: config);
-            context.Batch = Enumerable.Range(0, batchSize).Select(i => i == 0 ? (WorldChange)update : new HpChange { CharacterId = "chars/a" }).ToList();
+            context.Batch =
+            [
+                .. Enumerable.Range(0, batchSize).Select(i =>
+                    i == 0 ? (WorldChange)update : new HpChange { CharacterId = "chars/a" })
+            ];
             return await new CampaignUpdateChangeHandler(new CampaignDocumentKeys()).ApplyAsync(update, context);
         }
         finally

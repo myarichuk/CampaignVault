@@ -8,24 +8,28 @@ public sealed class SceneFactionSummaryFactory
         IEnumerable<Faction> relevantFactions,
         IReadOnlyList<Character> presentNpcs)
     {
-        return relevantFactions.Select(faction =>
-        {
-            int? reputation = null;
-            var playerRepChar = presentNpcs.FirstOrDefault(npc => npc.Social.FactionReputations.ContainsKey(faction.Id));
-            if (playerRepChar != null)
+        return
+        [
+            .. relevantFactions.Select(faction =>
             {
-                reputation = playerRepChar.Social.FactionReputations[faction.Id];
-            }
+                int? reputation = null;
+                var playerRepChar =
+                    presentNpcs.FirstOrDefault(npc => npc.Social.FactionReputations.ContainsKey(faction.Id));
+                if (playerRepChar != null)
+                {
+                    reputation = playerRepChar.Social.FactionReputations[faction.Id];
+                }
 
-            return new FactionPresenceSummary(
-                faction.Id,
-                faction.Name,
-                faction.InfluenceLevel,
-                DetermineLocalStance(faction, relevantFactions),
-                reputation,
-                faction.TerritoryLocationIds.Count,
-                faction.EconomicDemand);
-        }).ToList();
+                return new FactionPresenceSummary(
+                    faction.Id,
+                    faction.Name,
+                    faction.InfluenceLevel,
+                    DetermineLocalStance(faction, relevantFactions),
+                    reputation,
+                    faction.TerritoryLocationIds.Count,
+                    faction.EconomicDemand);
+            })
+        ];
     }
 
     private static FactionStance DetermineLocalStance(Faction faction, IEnumerable<Faction> relevantFactions)

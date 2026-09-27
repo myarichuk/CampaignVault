@@ -12,7 +12,7 @@ public sealed class CharacterBootstrapPipeline : ICharacterBootstrapPipeline
         IEnumerable<IBootstrapStep> steps,
         IEnumerable<ILevelGainStep>? levelGainSteps = null)
     {
-        Steps = steps.ToList();
+        Steps = [.. steps];
         LevelGainSteps = levelGainSteps?.ToList() ?? [];
     }
 

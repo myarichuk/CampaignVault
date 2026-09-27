@@ -105,9 +105,12 @@ public class WorldBuildToolsTests : IClassFixture<RavenDBFixture>
 
         var batch = new WorldBuildBatch
         {
-            Lore = Enumerable.Range(0, 101)
-                .Select(i => new LoreUpsertRequest { Id = $"lore/wb-cap-{i}", Title = $"Entry {i}", Content = "..." })
-                .ToList(),
+            Lore =
+            [
+                .. Enumerable.Range(0, 101)
+                    .Select(i => new LoreUpsertRequest
+                        { Id = $"lore/wb-cap-{i}", Title = $"Entry {i}", Content = "..." })
+            ],
         };
 
         var result = await worldBuilder.WorldBuild(batch, slug);

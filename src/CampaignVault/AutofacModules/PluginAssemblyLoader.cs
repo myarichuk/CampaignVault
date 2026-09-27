@@ -107,9 +107,10 @@ internal static class PluginAssemblyLoader
         string pluginDirectory,
         ILogger? logger = null,
         string? engineVersion = null) =>
-        LoadPluginsFromDirectory(pluginDirectory, logger, engineVersion)
+    [
+        .. LoadPluginsFromDirectory(pluginDirectory, logger, engineVersion)
             .Select(p => p.Assembly)
-            .ToList();
+    ];
 
     private static IEnumerable<string> EnumeratePluginDlls(string pluginDirectory, ILogger? logger)
     {
@@ -142,7 +143,7 @@ internal static class PluginAssemblyLoader
         var roots = new List<string>();
         var configured = manifest?.RulesetDataRoots is { Count: > 0 }
             ? manifest.RulesetDataRoots
-            : new List<string> { "./RulesetData" };
+            : ["./RulesetData"];
 
         foreach (var rel in configured)
         {

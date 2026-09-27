@@ -46,9 +46,11 @@ public sealed class SceneNpcPresenceFactory
                 Location = context.Location,
                 PresentEntities = context.PresentNpcs,
                 RecentEvents = context.RecentSceneEvents,
-                NpcRecentEvents = context.RecentCampaignEvents
-                    .Where(e => e.Involved.Contains(npc.Id))
-                    .ToList(),
+                NpcRecentEvents =
+                [
+                    .. context.RecentCampaignEvents
+                        .Where(e => e.Involved.Contains(npc.Id))
+                ],
                 NpcHeldItems = context.ItemsByHolder.GetValueOrDefault(npc.Id) ?? [],
                 Config = context.Config,
                 CurrentDay = context.Time.TotalDaysElapsed,
@@ -84,8 +86,8 @@ public sealed class SceneNpcPresenceFactory
                 SystemStats: npc.SystemStats,
                 Stats: NpcStatLine.From(npc.SystemStats),
                 BehavioralTension: Math.Round(enrichment.BehavioralTension),
-                ActiveInitiatives: enrichment.ActiveInitiatives.ToList(),
-                RelevantMemories: enrichment.RelevantMemories.Take(2).ToList(),
+                ActiveInitiatives: [.. enrichment.ActiveInitiatives],
+                RelevantMemories: [.. enrichment.RelevantMemories.Take(2)],
                 EquippedItems: equippedItems,
                 CarriedItems: carriedItems,
                 TurnIntent: enrichment.TurnIntent

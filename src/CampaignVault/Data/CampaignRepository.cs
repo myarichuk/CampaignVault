@@ -244,7 +244,7 @@ public class CampaignRepository
                     }
                 }
 
-                result.InvolvedEntities = involvedEntities.ToList();
+                result.InvolvedEntities = [.. involvedEntities];
 
                 // Time-staleness tracking (feeds TimeStalenessPressureContributor): a commit "records
                 // time passage" either by crossing a day boundary or by carrying MinutesElapsed on any
@@ -385,9 +385,11 @@ public class CampaignRepository
         // haven't been positioned by simulation yet (no CurrentLocationId at all); once an NPC has a real
         // CurrentLocationId, that's authoritative — a schedule stop elsewhere in their routine must not
         // keep parking them in presentNPCs at every location their schedule ever mentions, forever.
-        return npcs
-            .Where(n => string.IsNullOrEmpty(n.CurrentLocationId) || targetIds.Contains(n.CurrentLocationId))
-            .ToList();
+        return
+        [
+            .. npcs
+                .Where(n => string.IsNullOrEmpty(n.CurrentLocationId) || targetIds.Contains(n.CurrentLocationId))
+        ];
     }
 
     private async Task<List<Character>> LoadSceneNpcsFromSimulationAsync(IAsyncDocumentSession session,
@@ -398,7 +400,7 @@ public class CampaignRepository
             .WhereIn("CurrentLocationId", targetIds)
             .Take(20)
             .ToListAsync();
-        return npcs.ToList();
+        return [.. npcs];
     }
 
     /// <summary>
@@ -411,10 +413,12 @@ public class CampaignRepository
         var targetIds = GetSceneTargetIds(locationId);
         var npcsFromIndex = await LoadSceneNpcsFromIndexAsync(session, targetIds);
         var npcsFromSimulation = await LoadSceneNpcsFromSimulationAsync(session, targetIds);
-        return npcsFromIndex
-            .Concat(npcsFromSimulation)
-            .DistinctBy(n => n.Id, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return
+        [
+            .. npcsFromIndex
+                .Concat(npcsFromSimulation)
+                .DistinctBy(n => n.Id, StringComparer.OrdinalIgnoreCase)
+        ];
     }
 
     /// <summary>Entity-ID extraction used elsewhere for InvolvedEntities tracking, exposed for callers
@@ -431,16 +435,18 @@ public class CampaignRepository
             .Where(x => x.HolderId == locationId)
             .Customize(x => x.WaitForNonStaleResults())
             .ToListAsync();
-        items = items
-            .Where(i => IsVisibleInCampaign(i.CampaignName, effectiveCampaign) && !i.IsArchived && !i.Hidden)
-            .ToList();
+        items =
+        [
+            .. items
+                .Where(i => IsVisibleInCampaign(i.CampaignName, effectiveCampaign) && !i.IsArchived && !i.Hidden)
+        ];
 
         foreach (var item in items)
         {
             JsonSanitizer.Sanitize(item);
         }
 
-        return items.ToList();
+        return [.. items];
     }
 
     private async Task<List<Event>> LoadSceneEventsAsync(
@@ -472,7 +478,7 @@ public class CampaignRepository
         var q = ApplyEventScalarFilters(session.Query<Event, Event_Search>(), effective, null, locationId, involvedCharacterId);
         var events = await q.Customize(x => x.WaitForNonStaleResults()).OrderByDescending(x => x.Importance).ThenByDescending(x => x.Timestamp).Take(budget).ToListAsync();
         SanitizeEventDetails(events);
-        return events.ToList();
+        return [.. events];
     }
 
     private static IRavenQueryable<Event> ApplyEventScalarFilters(
@@ -515,11 +521,13 @@ public class CampaignRepository
         IEnumerable<Character> npcsFromIndex,
         IEnumerable<Character> npcsFromSimulation)
     {
-        return npcsFromIndex
-            .Concat(npcsFromSimulation)
-            .Select(n => n.Id)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return
+        [
+            .. npcsFromIndex
+                .Concat(npcsFromSimulation)
+                .Select(n => n.Id)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+        ];
     }
 
     public async Task<NpcInitiativeEnrichment> EnrichNpcInitiativeAsync(
@@ -548,10 +556,12 @@ public class CampaignRepository
             session, effective, currentDay);
         if (recentEvents is { Count: > 0 })
         {
-            recentCampaignEvents = recentCampaignEvents
-                .Concat(recentEvents)
-                .DistinctBy(e => e.Id)
-                .ToList();
+            recentCampaignEvents =
+            [
+                .. recentCampaignEvents
+                    .Concat(recentEvents)
+                    .DistinctBy(e => e.Id)
+            ];
         }
 
         var npcItems = await InitiativeQueryHelper.QueryItemsHeldByAsync(session, npc.Id);
@@ -562,9 +572,11 @@ public class CampaignRepository
             Location = location,
             PresentEntities = presentEntities ?? [npc],
             RecentEvents = recentEvents ?? [],
-            NpcRecentEvents = recentCampaignEvents
-                .Where(e => e.Involved.Contains(npc.Id))
-                .ToList(),
+            NpcRecentEvents =
+            [
+                .. recentCampaignEvents
+                    .Where(e => e.Involved.Contains(npc.Id))
+            ],
             NpcHeldItems = npcItems,
             Config = config,
             CurrentDay = currentDay,
@@ -672,10 +684,10 @@ public class CampaignRepository
         return new()
         {
             NewTime = time,
-            SimulatorEvents = simResult.NarrativeEvents.ToList(),
-            WorldPressure = simResult.WorldPressure.ToList(),
-            EvictedNpcIds = simResult.EvictedNpcIds.ToList(),
-            EvictedNpcs = simResult.EvictedNpcSummaries.ToList(),
+            SimulatorEvents = [.. simResult.NarrativeEvents],
+            WorldPressure = [.. simResult.WorldPressure],
+            EvictedNpcIds = [.. simResult.EvictedNpcIds],
+            EvictedNpcs = [.. simResult.EvictedNpcSummaries],
             HoursAdvanced = hours,
             DaysAdvanced = daysDelta
         };
@@ -750,7 +762,7 @@ public class CampaignRepository
         if (deltasToApply.Count > 0)
         {
             _logger.LogDebug("Applying {DeltaCount} simulation deltas", deltasToApply.Count);
-            await StageChangesAsync(new CampaignSession(session, effective), deltasToApply.ToArray());
+            await StageChangesAsync(new CampaignSession(session, effective), [.. deltasToApply]);
         }
 
         return simResult;
@@ -985,11 +997,11 @@ public class CampaignRepository
                 .OrderByDescending(e => e.Timestamp)
                 .Take(Math.Max(0, limit - textResults.Count))
                 .ToList();
-            merged = textResults.Concat(vectorOnly).Take(limit).ToList();
+            merged = [.. textResults.Concat(vectorOnly).Take(limit)];
         }
         else
         {
-            merged = textResults.Take(limit).ToList();
+            merged = [.. textResults.Take(limit)];
         }
 
         return merged;
@@ -1420,8 +1432,7 @@ public class CampaignRepository
         var list = await q.Take(limit).ToListAsync();
         if (!string.IsNullOrEmpty(effective))
         {
-            list = list.Where(l => string.IsNullOrEmpty(l.CampaignName) || l.CampaignName == effective)
-                .ToList(); // loose for lore (may share)
+            list = [.. list.Where(l => string.IsNullOrEmpty(l.CampaignName) || l.CampaignName == effective)]; // loose for lore (may share)
         }
 
         return list;
@@ -1564,8 +1575,7 @@ public class CampaignRepository
 
         if (!string.IsNullOrEmpty(effective))
         {
-            locations = locations.Where(l => string.IsNullOrEmpty(l.CampaignName) || l.CampaignName == effective)
-                .ToList(); // loose for locations (may share)
+            locations = [.. locations.Where(l => string.IsNullOrEmpty(l.CampaignName) || l.CampaignName == effective)]; // loose for locations (may share)
         }
 
         return locations;
@@ -1707,10 +1717,10 @@ public class CampaignRepository
         if (!string.IsNullOrEmpty(effective))
         {
             // strict for rumors (no legacy global cross-camp)
-            list = list.Where(r => r.CampaignName == effective).ToList();
+            list = [.. list.Where(r => r.CampaignName == effective)];
         }
 
-        return list.Where(r => !r.IsArchived).ToList();
+        return [.. list.Where(r => !r.IsArchived)];
     }
 
     /// <summary>
@@ -1850,22 +1860,25 @@ public class CampaignRepository
                 // id/participants from the request are intentionally dropped here: a freshly
                 // created item has no existing details to match by id and no in-fiction moment
                 // to push a participant memory for (see ItemDetailUpsertRequest doc comment).
-                ItemDetails = (item.ItemDetails ?? []).Select(d => new ItemDetail
-                {
-                    Id = "detail-" + Guid.NewGuid(),
-                    Name = d.Name,
-                    Description = d.Description,
-                    Status = d.Status,
-                    Intent = d.Intent,
-                    Hidden = d.Hidden ?? false,
-                    DiscoverDc = d.DiscoverDc,
-                    Origin = d.Origin,
-                    TetheredToId = string.IsNullOrEmpty(d.TetheredToId) ? null : d.TetheredToId,
-                    Participants = [],
-                    CreatedOnDay = currentDay,
-                    UpdatedOnDay = currentDay,
-                    ReviewIntervalDays = d.ReviewIntervalDays,
-                }).ToList(),
+                ItemDetails =
+                [
+                    .. (item.ItemDetails ?? []).Select(d => new ItemDetail
+                    {
+                        Id = "detail-" + Guid.NewGuid(),
+                        Name = d.Name,
+                        Description = d.Description,
+                        Status = d.Status,
+                        Intent = d.Intent,
+                        Hidden = d.Hidden ?? false,
+                        DiscoverDc = d.DiscoverDc,
+                        Origin = d.Origin,
+                        TetheredToId = string.IsNullOrEmpty(d.TetheredToId) ? null : d.TetheredToId,
+                        Participants = [],
+                        CreatedOnDay = currentDay,
+                        UpdatedOnDay = currentDay,
+                        ReviewIntervalDays = d.ReviewIntervalDays,
+                    })
+                ],
             };
             await session.StoreAsync(result);
         }
@@ -2386,8 +2399,8 @@ public class CampaignRepository
             config,
             session,
             ActiveRumors: rumors,
-            RecentEvents: events.ToList(),
-            QuestDeadlines: worldActiveQuests.Select(q => new QuestDeadlineInfo(q.Id, q.Title, q.DeadlineDay)).ToList(),
+            RecentEvents: [.. events],
+            QuestDeadlines: [.. worldActiveQuests.Select(q => new QuestDeadlineInfo(q.Id, q.Title, q.DeadlineDay))],
             PartyCharacterIds: partyCharacterIds,
             RequestedLocationId: partyLocationId,
             PartyPresent: !string.IsNullOrEmpty(partyLocationId));
@@ -3049,8 +3062,8 @@ public class CampaignRepository
                 .Where(i => !i.Hidden)
                 .ToList();
 
-            equipped = heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From).ToList();
-            carried = heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From).ToList();
+            equipped = [.. heldItems.Where(i => i.IsEquipped).Select(ItemSummaryView.From)];
+            carried = [.. heldItems.Where(i => !i.IsEquipped).Select(ItemSummaryView.From)];
         }
 
         var knownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>();
@@ -3093,7 +3106,7 @@ public class CampaignRepository
             Location = scene.Location,
             // PCs ride along internally (recognition hints / faction-reputation lookups need them),
             // but they're not NPCs and their state already travels via Party/PartyDelta.
-            PresentNPCs = scene.PresentNPCs.Where(n => !n.IsPc).ToList(),
+            PresentNPCs = [.. scene.PresentNPCs.Where(n => !n.IsPc)],
             LocalRumors = scene.LocalRumors ?? [],
             NeedDescriptorLegend = scene.NeedDescriptorLegend,
             ActiveCombat = scene.ActiveCombat != null

@@ -106,11 +106,13 @@ internal static class NpcCardFactory
         // memories come when their topic does (MemoryRecallContextContributor), not on sight.
         var memories = (preferredMemories is { Count: > 0 }
                 ? preferredMemories
-                : (psych.Memories ?? []).Values
+                :
+                [
+                    .. (psych.Memories ?? []).Values
                     .Where(m => m.Importance == MemoryImportance.Core || m.Urgency >= MemoryUrgency.High)
                     .OrderByDescending(m => m.Importance)
                     .ThenByDescending(m => m.Salience)
-                    .ToList())
+                ])
             .Take(2)
             .Select(Line)
             .ToList();

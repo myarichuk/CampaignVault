@@ -20,9 +20,9 @@ public partial class HubViewModel : ViewModelBase
 
     public MainWindowViewModel MainViewModel => _mainViewModel;
 
-    [ObservableProperty] private ObservableCollection<CampaignListItem> _recentCampaigns = new();
+    [ObservableProperty] private ObservableCollection<CampaignListItem> _recentCampaigns = [];
 
-    [ObservableProperty] private ObservableCollection<string> _remoteCampaigns = new();
+    [ObservableProperty] private ObservableCollection<string> _remoteCampaigns = [];
 
     [ObservableProperty] private string _statusMessage = "Welcome to CampaignVault Authoring — entities only, no simulation sync.";
 

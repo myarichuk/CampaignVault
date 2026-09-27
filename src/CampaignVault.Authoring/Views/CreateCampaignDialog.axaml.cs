@@ -80,11 +80,13 @@ public partial class CreateCampaignDialog : Window
             Ruleset = item.Tag?.ToString();
 
         var focusText = NarrativeFocusTextBox.Text ?? string.Empty;
-        NarrativeFocus = focusText
-            .Split(',')
-            .Select(s => s.Trim())
-            .Where(s => !string.IsNullOrEmpty(s))
-            .ToList();
+        NarrativeFocus =
+        [
+            .. focusText
+                .Split(',')
+                .Select(s => s.Trim())
+                .Where(s => !string.IsNullOrEmpty(s))
+        ];
 
         Close(true);
     }

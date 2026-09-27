@@ -92,20 +92,23 @@ public sealed class SceneAssembler
                 context.Config,
                 context.FullDescription),
             PresentNPCs = presenceSummaries,
-            LocalRumors = context.Rumors.Select(r => new RumorSummary(r.Id, r.Subject, r.CurrentText, r.State)).ToList(),
+            LocalRumors = [.. context.Rumors.Select(r => new RumorSummary(r.Id, r.Subject, r.CurrentText, r.State))],
             NeedDescriptorLegend = BuildNeedLegend(context.GlobalNeedDescriptors, presenceSummaries),
-            VisibleItems = context.Items.Select(ItemSummaryView.From).ToList(),
+            VisibleItems = [.. context.Items.Select(ItemSummaryView.From)],
             RecentEvents = context.Events,
             // A4: engine travel events restate what the scene already shows (LastKnownTravel keeps the route); cap at 4.
-            RecentEventSummaries = context.Events.Where(e => e.Category != EventCategory.Travel)
-                .Take(4).Select(EventSummaryView.ForScene).ToList(),
+            RecentEventSummaries =
+            [
+                .. context.Events.Where(e => e.Category != EventCategory.Travel)
+                    .Take(4).Select(EventSummaryView.ForScene)
+            ],
             ActiveCombat = NormalizeActiveCombat(context.ActiveCombat, context.Location.Id),
             IsLocationAnchored = true,
-            ActiveQuests = context.ActiveQuests.Select(CampaignRepository.ToActiveQuestSummary).ToList(),
+            ActiveQuests = [.. context.ActiveQuests.Select(CampaignRepository.ToActiveQuestSummary)],
             RelevantFactions = _factionSummaryFactory.Create(context.RelevantFactions, presentNpcs),
             LastKnownTravel = SceneTravelSummaryExtractor.GetLastKnownTravel(context.Events),
             RecognitionHints = recognitionHints.Count > 0 ? recognitionHints : null,
-            ContainerContents = context.ContainerContents.ToList(),
+            ContainerContents = [.. context.ContainerContents],
             SuggestedCommitExamples = [],
             TurnIntentCharacterId = turnIntentHolder?.Id
         };

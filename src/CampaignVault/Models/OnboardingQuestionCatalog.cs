@@ -24,8 +24,9 @@ public static class OnboardingQuestionCatalog
     /// </summary>
     public static List<OnboardingQuestion> GetQuestionSequence()
     {
-        return new List<OnboardingQuestion>
-        {
+        return
+        [
+
             // Q0: Campaign Name
             new OnboardingQuestion
             {
@@ -36,40 +37,49 @@ public static class OnboardingQuestionCatalog
             },
 
             // Q1: System
+
             new OnboardingQuestion
             {
                 Key = System,
                 Text = "Which game system are you using?",
                 AnswerType = OnboardingAnswerType.Enum,
-                EnumOptions = new List<string> { "Dnd5e", "Pathfinder2e", "Narrative" },
-                HelpText = "This determines mechanics, NPC stat generation, and combat rules. It will be locked and cannot be changed later."
+                EnumOptions = ["Dnd5e", "Pathfinder2e", "Narrative"],
+                HelpText =
+                    "This determines mechanics, NPC stat generation, and combat rules. It will be locked and cannot be changed later."
             },
 
             // Q2: Tone & Themes
+
             new OnboardingQuestion
             {
                 Key = Tone,
-                Text = "What's the tone and themes of your campaign? (e.g., 'dark fantasy', 'cozy tavern mysteries', 'space opera')",
+                Text =
+                    "What's the tone and themes of your campaign? (e.g., 'dark fantasy', 'cozy tavern mysteries', 'space opera')",
                 AnswerType = OnboardingAnswerType.Text,
                 HelpText = "This steers the LLM's content generation and how important events should feel."
             },
 
             // Q2b: Starting Era/Year
+
             new OnboardingQuestion
             {
                 Key = StartingEra,
-                Text = "What year, era, or calendar date does your campaign begin in? (e.g., '1492 DR', 'the Age of Dragons, year 20', or say 'present day'/'doesn't matter' for a default fantasy start)",
+                Text =
+                    "What year, era, or calendar date does your campaign begin in? (e.g., '1492 DR', 'the Age of Dragons, year 20', or say 'present day'/'doesn't matter' for a default fantasy start)",
                 AnswerType = OnboardingAnswerType.Text,
-                HelpText = "Sets the campaign's starting in-world date (epoch name and year). Free text — a leading number is parsed as the starting year; the rest is kept as the epoch label."
+                HelpText =
+                    "Sets the campaign's starting in-world date (epoch name and year). Free text — a leading number is parsed as the starting year; the rest is kept as the epoch label."
             },
 
             // Q3: World Setting (Solo vs Party, Existing vs Homebrew)
+
             new OnboardingQuestion
             {
                 Key = WorldSetting,
-                Text = "Are you running a campaign with: (1) a solo player, (2) a party in an existing world (like Forgotten Realms), or (3) a party in a homebrew world?",
+                Text =
+                    "Are you running a campaign with: (1) a solo player, (2) a party in an existing world (like Forgotten Realms), or (3) a party in a homebrew world?",
                 AnswerType = OnboardingAnswerType.Enum,
-                EnumOptions = new List<string> { "solo", "party-existing", "party-homebrew" },
+                EnumOptions = ["solo", "party-existing", "party-homebrew"],
                 HelpText = "This determines party composition questions and world-building depth.",
                 BranchingRules = new Dictionary<string, OnboardingBranchingRule>
                 {
@@ -77,7 +87,7 @@ public static class OnboardingQuestionCatalog
                         "solo", new OnboardingBranchingRule
                         {
                             TriggerValue = "solo",
-                            SkipQuestions = new List<string> { PartyComposition, Factions },
+                            SkipQuestions = [PartyComposition, Factions],
                             JumpToQuestion = SoloCompanions
                         }
                     },
@@ -85,7 +95,7 @@ public static class OnboardingQuestionCatalog
                         "party-existing", new OnboardingBranchingRule
                         {
                             TriggerValue = "party-existing",
-                            SkipQuestions = new List<string> { HomebrewWorldDetails, SoloCompanions },
+                            SkipQuestions = [HomebrewWorldDetails, SoloCompanions],
                             JumpToQuestion = PartyComposition
                         }
                     },
@@ -93,7 +103,7 @@ public static class OnboardingQuestionCatalog
                         "party-homebrew", new OnboardingBranchingRule
                         {
                             TriggerValue = "party-homebrew",
-                            SkipQuestions = new List<string> { PartyComposition, SoloCompanions },
+                            SkipQuestions = [PartyComposition, SoloCompanions],
                             JumpToQuestion = HomebrewWorldDetails
                         }
                     }
@@ -101,6 +111,7 @@ public static class OnboardingQuestionCatalog
             },
 
             // Q4: Party Composition (skipped for solo)
+
             new OnboardingQuestion
             {
                 Key = PartyComposition,
@@ -110,22 +121,24 @@ public static class OnboardingQuestionCatalog
             },
 
             // Q4b: Solo - Offer to generate companions
+
             new OnboardingQuestion
             {
                 Key = SoloCompanions,
                 Text = "Would you like the system to generate companion NPCs for the solo player? (yes/no)",
                 AnswerType = OnboardingAnswerType.Enum,
-                EnumOptions = new List<string> { "yes", "no" },
+                EnumOptions = ["yes", "no"],
                 HelpText = "If yes, you can choose to see them first (with spoilers) or be surprised."
             },
 
             // Q5: Plot Source
+
             new OnboardingQuestion
             {
                 Key = PlotSource,
                 Text = "Do you have a plot idea in mind, or would you like the system to generate one?",
                 AnswerType = OnboardingAnswerType.Enum,
-                EnumOptions = new List<string> { "user-provided", "generated-surprise", "generated-with-direction" },
+                EnumOptions = ["user-provided", "generated-surprise", "generated-with-direction"],
                 HelpText = "Choose 'generated-with-direction' if you want to guide the theme (e.g., 'murder mystery').",
                 BranchingRules = new Dictionary<string, OnboardingBranchingRule>
                 {
@@ -140,42 +153,50 @@ public static class OnboardingQuestionCatalog
             },
 
             // Q5b: Plot Direction (if user wants generated plot with direction)
+
             new OnboardingQuestion
             {
                 Key = PlotDirection,
-                Text = "What direction should the plot take? (e.g., 'murder mystery', 'grand adventure', 'traveling scholars discovering ancient ruins')",
+                Text =
+                    "What direction should the plot take? (e.g., 'murder mystery', 'grand adventure', 'traveling scholars discovering ancient ruins')",
                 AnswerType = OnboardingAnswerType.Text,
                 HelpText = "The system will use this to seed a plot that surprises you."
             },
 
             // Q6: Side Quests & NPC Stories
+
             new OnboardingQuestion
             {
                 Key = SideQuestGeneration,
-                Text = "Should the system pre-generate side quests and NPC stories before session 1, or generate them on-the-fly during play?",
+                Text =
+                    "Should the system pre-generate side quests and NPC stories before session 1, or generate them on-the-fly during play?",
                 AnswerType = OnboardingAnswerType.Enum,
-                EnumOptions = new List<string> { "pre-generate", "on-the-fly" },
+                EnumOptions = ["pre-generate", "on-the-fly"],
                 HelpText = "Pre-generate = faster start, more structure. On-the-fly = more spontaneity."
             },
 
             // Q7: Homebrew World Details (for party-homebrew only)
+
             new OnboardingQuestion
             {
                 Key = HomebrewWorldDetails,
-                Text = "Describe your world's climate, geography, and history. (e.g., 'Temperate forests with mountain kingdoms, established world with 2000-year history, central conflict is a tyranny rising')",
+                Text =
+                    "Describe your world's climate, geography, and history. (e.g., 'Temperate forests with mountain kingdoms, established world with 2000-year history, central conflict is a tyranny rising')",
                 AnswerType = OnboardingAnswerType.Text,
                 HelpText = "Helps ground the world-building in your vision."
             },
 
             // Q8: Factions (minimal for existing world, extensive for homebrew)
+
             new OnboardingQuestion
             {
                 Key = Factions,
-                Text = "What factions or groups should exist in this world? (e.g., 'Thieves' Guild', 'Mage Tower', 'Barbarian Tribes')",
+                Text =
+                    "What factions or groups should exist in this world? (e.g., 'Thieves' Guild', 'Mage Tower', 'Barbarian Tribes')",
                 AnswerType = OnboardingAnswerType.List,
                 HelpText = "The system will create plot threads describing what each faction wants and their conflicts."
             }
-        };
+        ];
     }
 
     /// <summary>

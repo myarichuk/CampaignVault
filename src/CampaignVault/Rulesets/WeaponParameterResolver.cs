@@ -150,7 +150,7 @@ internal static class WeaponParameterResolver
         }
 
         var held = await InitiativeQueryHelper.QueryItemsHeldByAsync(ctx.Session, characterId, ct: ct);
-        return held.Where(i => i.CoreCategory == ItemCategories.Weapon).ToList();
+        return [.. held.Where(i => i.CoreCategory == ItemCategories.Weapon)];
     }
 
     private static bool NameMatches(Item weapon, string actionName)

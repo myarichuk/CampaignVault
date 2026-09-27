@@ -67,9 +67,11 @@ public static class CreatureQueryBuilder
             .ToList();
 
         // Sort by name
-        filtered = filtered
-            .OrderBy(item => GetCreatureName(item.creature), StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        filtered =
+        [
+            .. filtered
+                .OrderBy(item => GetCreatureName(item.creature), StringComparer.OrdinalIgnoreCase)
+        ];
 
         var totalCount = filtered.Count;
         var page = filtered.Skip(offsetClamped).Take(pageLimit).ToList();
@@ -174,7 +176,7 @@ public static class CreatureQueryBuilder
         return new CreatureListResponse
         {
             System = system.ToSlug(),
-            Creatures = page.Creatures.ToList(),
+            Creatures = [.. page.Creatures],
             Pagination = new CreatureListPaginationView
             {
                 TotalCount = page.TotalCount,

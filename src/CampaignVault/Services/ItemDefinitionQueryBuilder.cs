@@ -64,7 +64,7 @@ public static class ItemDefinitionQueryBuilder
         return new ItemDefinitionListResponse
         {
             System = system.ToSlug(),
-            Items = page.Items.Select(ToSummary).ToList(),
+            Items = [.. page.Items.Select(ToSummary)],
             Pagination = new ItemDefinitionListPaginationView
             {
                 TotalCount = page.TotalCount,

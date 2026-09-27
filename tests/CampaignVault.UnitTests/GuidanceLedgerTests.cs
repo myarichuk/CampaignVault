@@ -29,7 +29,7 @@ public class GuidanceLedgerTests : IClassFixture<RavenDBFixture>
         var campaign = "guidance-ledger-" + Guid.NewGuid().ToString("N")[..8];
         var keys = new CampaignDocumentKeys();
         var orchestrator = new GuidanceOrchestrator(
-            [new OneHint()], Array.Empty<IPluginGuidanceContributor>(), keys);
+            [new OneHint()], [], keys);
 
         async Task<int> CollectAsync()
         {

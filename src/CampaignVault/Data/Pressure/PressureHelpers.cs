@@ -58,10 +58,12 @@ internal static class PressureHelpers
             memberItems.AddRange(batch);
         }
 
-        return partyItems.Concat(memberItems)
-            .Where(i => string.IsNullOrEmpty(i.CampaignName) || i.CampaignName == campaignName)
-            .DistinctBy(i => i.Id)
-            .ToList();
+        return
+        [
+            .. partyItems.Concat(memberItems)
+                .Where(i => string.IsNullOrEmpty(i.CampaignName) || i.CampaignName == campaignName)
+                .DistinctBy(i => i.Id)
+        ];
     }
 
     public static async Task<List<Location>> SuggestLocationsAsync(IAsyncDocumentSession session, string nameQuery, string? campaignName = null)

@@ -39,7 +39,7 @@ internal static class ConversationInvolvedResolver
 
                 if (merged.Count > change.Involved.Count)
                 {
-                    change.Involved = merged.ToList();
+                    change.Involved = [.. merged];
                     notes.Add(
                         $"Merged additional participants into Conversation event involved [{string.Join(", ", change.Involved)}] from other changes in the same commit batch.");
                 }
@@ -47,7 +47,7 @@ internal static class ConversationInvolvedResolver
                 continue;
             }
 
-            change.Involved = batchParticipantIds.ToList();
+            change.Involved = [.. batchParticipantIds];
             notes.Add(
                 $"Auto-inferred involved [{string.Join(", ", change.Involved)}] for Conversation event from other changes in the same commit batch. Prefer setting 'involved' explicitly on every Conversation event.");
         }

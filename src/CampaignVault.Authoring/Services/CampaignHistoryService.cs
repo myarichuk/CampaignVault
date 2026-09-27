@@ -8,7 +8,7 @@ namespace CampaignVault.Authoring.Services;
 
 public class CampaignHistory
 {
-    public List<string> RecentPaths { get; set; } = new();
+    public List<string> RecentPaths { get; set; } = [];
 }
 
 public class CampaignHistoryService
@@ -55,7 +55,7 @@ public class CampaignHistoryService
             // Keep only top 10
             if (history.RecentPaths.Count > 10)
             {
-                history.RecentPaths = history.RecentPaths.Take(10).ToList();
+                history.RecentPaths = [.. history.RecentPaths.Take(10)];
             }
 
             Save(history);

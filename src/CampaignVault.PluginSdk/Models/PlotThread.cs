@@ -71,7 +71,7 @@ public class PlotThread : ICampaignScopedEntity, IArchivable
                 }
             }
 
-            return result.ToList();
+            return [.. result];
         }
     }
 

@@ -86,7 +86,10 @@ public class NarrativeRulesetResolver : IRulesetModule, IActionResolution, IComb
         {
             if (success)
             {
-                var targets = action.TargetIds != null && action.TargetIds.Count > 0 ? action.TargetIds : new List<string> { action.CharacterId };
+                var targets = action.TargetIds != null && action.TargetIds.Count > 0 ? action.TargetIds :
+                [
+                    action.CharacterId
+                ];
                 foreach (var targetId in targets)
                 {
                     mutations.Add(new HpChange { CharacterId = targetId, Delta = 1 });

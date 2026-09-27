@@ -79,10 +79,12 @@ public sealed class VaultRemoteCache
         {
             FetchedAt = DateTimeOffset.UtcNow,
             CampaignName = campaignName,
-            Entities = entityEntries
-                .OrderBy(e => e.Type, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(e => e.Id, StringComparer.OrdinalIgnoreCase)
-                .ToList()
+            Entities =
+            [
+                .. entityEntries
+                    .OrderBy(e => e.Type, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(e => e.Id, StringComparer.OrdinalIgnoreCase)
+            ]
         };
 
         var manifestPath = Path.Combine(CacheRootPath, ManifestFileName);

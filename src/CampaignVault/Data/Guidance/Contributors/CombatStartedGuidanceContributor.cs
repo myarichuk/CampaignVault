@@ -18,8 +18,8 @@ internal sealed class CombatStartedGuidanceContributor : IGuidanceContributor
         if (ctx.Scene?.ActiveCombat == null || ctx.Scene.ActiveCombat.Round != 1)
             return [];
 
-        return new[]
-        {
+        return
+        [
             new GuidanceHint(
                 Key: "combat.first-round",
                 Text: "Resolve every action through ruleset_action ($type: 'ruleset_action'), not separate hp/status changes. The engine applies effects automatically.",
@@ -28,6 +28,6 @@ internal sealed class CombatStartedGuidanceContributor : IGuidanceContributor
             {
                 Example = """{"$type": "ruleset_action", "action": "attack", "characterId": "chars/x", "targetId": "chars/y"}"""
             }
-        };
+        ];
     }
 }

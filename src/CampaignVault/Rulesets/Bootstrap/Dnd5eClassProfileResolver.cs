@@ -34,10 +34,12 @@ internal static partial class Dnd5eClassProfileResolver
     {
         if (structured is { Count: > 0 })
         {
-            return structured
-                .Where(e => e.Level > 0 && !string.IsNullOrWhiteSpace(e.Class))
-                .Select(e => new ClassLevelEntry { Class = e.Class.Trim(), Level = e.Level })
-                .ToList();
+            return
+            [
+                .. structured
+                    .Where(e => e.Level > 0 && !string.IsNullOrWhiteSpace(e.Class))
+                    .Select(e => new ClassLevelEntry { Class = e.Class.Trim(), Level = e.Level })
+            ];
         }
 
         if (string.IsNullOrWhiteSpace(classLevel))

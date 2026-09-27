@@ -133,10 +133,12 @@ public sealed class AmbientCrowdPressureContributor : IPressureContributor
             .Take(20)
             .ToListAsync(ct);
 
-        return locations
-            .Where(l => !string.IsNullOrWhiteSpace(l.AmbientCrowd))
-            .OrderByDescending(l => l.LastVisitedDay)
-            .ToList();
+        return
+        [
+            .. locations
+                .Where(l => !string.IsNullOrWhiteSpace(l.AmbientCrowd))
+                .OrderByDescending(l => l.LastVisitedDay)
+        ];
     }
 
     private static string TrimSummary(string summary) =>

@@ -67,6 +67,6 @@ public sealed class Pf2eDeriveDefenseStep : IBootstrapStep
             .Take(50)
             .ToListAsync(ct);
 
-        return held.Where(i => i.IsEquipped).ToList();
+        return [.. held.Where(i => i.IsEquipped)];
     }
 }

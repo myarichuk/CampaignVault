@@ -548,7 +548,7 @@ public partial class MainWindowViewModel : ViewModelBase, IWorkspaceState
 
     [ObservableProperty] private string _parseErrorMessage = string.Empty;
 
-    [ObservableProperty] private IReadOnlyList<YamlDiagnostic> _yamlDiagnostics = Array.Empty<YamlDiagnostic>();
+    [ObservableProperty] private IReadOnlyList<YamlDiagnostic> _yamlDiagnostics = [];
 
     public string PrimaryYamlError => YamlDiagnostics.Count > 0 ? YamlDiagnostics[0].Message : string.Empty;
 

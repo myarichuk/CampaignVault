@@ -41,7 +41,7 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
 
         if (iu.TagsToAdd != null)
         {
-            item.Tags = item.Tags.Union(iu.TagsToAdd).Distinct().ToList();
+            item.Tags = [.. item.Tags.Union(iu.TagsToAdd).Distinct()];
         }
         if (iu.TagsToRemove != null)
         {
@@ -51,7 +51,7 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
 
         if (iu.FeaturesToAdd != null)
         {
-            item.DistinctiveFeatures = item.DistinctiveFeatures.Union(iu.FeaturesToAdd).Distinct().ToList();
+            item.DistinctiveFeatures = [.. item.DistinctiveFeatures.Union(iu.FeaturesToAdd).Distinct()];
         }
         if (iu.FeaturesToRemove != null)
         {

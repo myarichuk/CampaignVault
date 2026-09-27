@@ -194,55 +194,60 @@ public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>
             .OrderByDescending(g => g.Key.Severity)
             .ToList();
 
-        return groups.Select(g =>
-        {
-            var first = g.First();
-            var prefix = first.Severity switch
+        return
+        [
+            .. groups.Select(g =>
             {
-                PressureSeverity.EngineWarning => "ENGINE WARNING",
-                PressureSeverity.NarrativePrompt => "NARRATIVE PROMPT",
-                PressureSeverity.Simulation => "SIMULATION PRESSURE",
-                PressureSeverity.Suggestion => "SUGGESTION",
-                _ => "PRESSURE"
-            };
-
-            var itemsInGroup = g.ToList();
-            string body;
-            if (itemsInGroup.Count == 1)
-            {
-                var item = itemsInGroup[0];
-                // Use abbreviation if present (terse, ~20 chars), else fall back to full text
-                body = AppendEntityId(item.Abbreviation ?? item.Text, item.EntityId);
-            }
-            else
-            {
-                var keyParts = first.GroupingKey.Split(':');
-                var category = keyParts.Length > 1 ? string.Join(" ", keyParts.Skip(1)) : first.GroupingKey;
-                // Full text repeats each item's boilerplate phrase (e.g. 16x "{Name} needs should be
-                // acted upon: thirst (66%).") even though the category is already stated once above —
-                // the single biggest source of chattiness in a batched group. When the contributor gave
-                // us EntityName and the text ends in a bare "(detail)", collapse to "{Name} (detail)".
-                // Anything else (no EntityName, or a trailing clause after the parenthetical) keeps its
-                // full text — never drop information we can't safely reconstruct.
-                var batched = string.Join(", ", itemsInGroup.Select(x =>
+                var first = g.First();
+                var prefix = first.Severity switch
                 {
-                    if (x.EntityName == null) return AppendEntityId(x.Text, x.EntityId);
-                    var match = TrailingQuantifier.Match(x.Text);
-                    return AppendEntityId(
-                        match.Success ? $"{x.EntityName} {match.Value.TrimEnd('.', ' ')}" : x.Text,
-                        x.EntityId);
-                }));
-                body = $"({itemsInGroup.Count} similar issues - {category}): {batched}";
-            }
+                    PressureSeverity.EngineWarning => "ENGINE WARNING",
+                    PressureSeverity.NarrativePrompt => "NARRATIVE PROMPT",
+                    PressureSeverity.Simulation => "SIMULATION PRESSURE",
+                    PressureSeverity.Suggestion => "SUGGESTION",
+                    _ => "PRESSURE"
+                };
 
-            var text = $"{prefix}: {body}";
-            // Append suggested from first in group if present (or could concat but one is enough)
-            var suggested = itemsInGroup.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.SuggestedCommitJson))?.SuggestedCommitJson;
-            if (!string.IsNullOrWhiteSpace(suggested))
-            {
-                text += $"\nSuggested commit:\n{suggested}";
-            }
-            return text;
-        }).ToArray();
+                var itemsInGroup = g.ToList();
+                string body;
+                if (itemsInGroup.Count == 1)
+                {
+                    var item = itemsInGroup[0];
+                    // Use abbreviation if present (terse, ~20 chars), else fall back to full text
+                    body = AppendEntityId(item.Abbreviation ?? item.Text, item.EntityId);
+                }
+                else
+                {
+                    var keyParts = first.GroupingKey.Split(':');
+                    var category = keyParts.Length > 1 ? string.Join(" ", keyParts.Skip(1)) : first.GroupingKey;
+                    // Full text repeats each item's boilerplate phrase (e.g. 16x "{Name} needs should be
+                    // acted upon: thirst (66%).") even though the category is already stated once above —
+                    // the single biggest source of chattiness in a batched group. When the contributor gave
+                    // us EntityName and the text ends in a bare "(detail)", collapse to "{Name} (detail)".
+                    // Anything else (no EntityName, or a trailing clause after the parenthetical) keeps its
+                    // full text — never drop information we can't safely reconstruct.
+                    var batched = string.Join(", ", itemsInGroup.Select(x =>
+                    {
+                        if (x.EntityName == null) return AppendEntityId(x.Text, x.EntityId);
+                        var match = TrailingQuantifier.Match(x.Text);
+                        return AppendEntityId(
+                            match.Success ? $"{x.EntityName} {match.Value.TrimEnd('.', ' ')}" : x.Text,
+                            x.EntityId);
+                    }));
+                    body = $"({itemsInGroup.Count} similar issues - {category}): {batched}";
+                }
+
+                var text = $"{prefix}: {body}";
+                // Append suggested from first in group if present (or could concat but one is enough)
+                var suggested = itemsInGroup.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.SuggestedCommitJson))
+                    ?.SuggestedCommitJson;
+                if (!string.IsNullOrWhiteSpace(suggested))
+                {
+                    text += $"\nSuggested commit:\n{suggested}";
+                }
+
+                return text;
+            })
+        ];
     }
 }

@@ -53,7 +53,7 @@ public record LocationDetailView(
             l.Type,
             l.ParentLocationId,
             // A secret passage stays off the wire until found (T5c); the DM gets it in the first-visit dmOnly line.
-            (l.Exits ?? []).Where(e => !e.Hidden).Select(LocationExitView.From).ToList(),
+            [.. (l.Exits ?? []).Where(e => !e.Hidden).Select(LocationExitView.From)],
             l.AmbientCrowd,
             l.LastVisitedDay,
             l.RecentlyDeparted,

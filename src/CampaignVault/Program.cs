@@ -273,12 +273,12 @@ McpToolTelemetryFilter.LoggerFactory = loggerFactory;
 app.UseCors();
 
 // Bind MCP + HTTP utility endpoints to both HTTP and HTTPS MCP ports.
-// Do not use RequireHost() — Grok Web and other MCP clients often send Host headers
+// Do not use RequireHost() - Grok Web and other MCP clients often send Host headers
 // without a port suffix (e.g. "localhost"), which still 404s with *:port patterns.
 var mcpPorts = new[] { mcpPort };
 if (httpsEnabled)
 {
-    mcpPorts = new[] { mcpPort, mcpHttpsPort };
+    mcpPorts = [mcpPort, mcpHttpsPort];
 }
 
 app.UseMiddleware<McpNormalizationMiddleware>();

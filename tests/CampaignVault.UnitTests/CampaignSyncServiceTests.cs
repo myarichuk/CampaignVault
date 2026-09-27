@@ -26,7 +26,7 @@ public class CampaignSyncServiceTests : IClassFixture<RavenDBFixture>
     private CampaignSyncService CreateService() => new(_store, new CampaignDocumentKeys());
 
     private static ServerCallContext CreateContext() => TestServerCallContext.Create(
-        method: "test", host: "test", deadline: DateTime.UtcNow.AddMinutes(1), requestHeaders: new Metadata(),
+        method: "test", host: "test", deadline: DateTime.UtcNow.AddMinutes(1), requestHeaders: [],
         cancellationToken: CancellationToken.None, peer: "test", authContext: null, contextPropagationToken: null,
         writeHeadersFunc: _ => Task.CompletedTask, writeOptionsGetter: () => new WriteOptions(),
         writeOptionsSetter: _ => { });

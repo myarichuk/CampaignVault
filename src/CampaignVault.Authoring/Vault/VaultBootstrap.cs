@@ -39,7 +39,7 @@ public sealed class VaultBootstrap
             Ruleset = ruleset,
             CreatedAt = DateTimeOffset.UtcNow,
             DisplayName = displayName,
-            NarrativeFocus = narrativeFocus ?? new List<string>()
+            NarrativeFocus = narrativeFocus ?? []
         };
 
         await _metadataService.SaveMetadataAsync(vaultPath, metadata);

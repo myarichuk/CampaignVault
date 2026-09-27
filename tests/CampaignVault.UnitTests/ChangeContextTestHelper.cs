@@ -54,7 +54,7 @@ internal static class ChangeContextTestHelper
             () => Task.FromResult(new CampaignTime()),
             () => Task.FromResult(new Dictionary<string, string>()),
             _ => Task.CompletedTask,
-            summary ?? new List<string>(),
+            summary ?? [],
             dispatcher,
             activeCombat,
             activeMode,

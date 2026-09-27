@@ -23,16 +23,18 @@ public sealed class DefaultRelevantMemorySelector : IRelevantMemorySelector
         var locationName = ctx.Location?.Name;
         var locationId = ctx.Location?.Id;
 
-        return psych.Memories.Values
-            .Select(memory =>
-            {
-                memory.ApplyMigrationDefaultsIfNeeded();
-                return (Memory: memory, Score: ScoreMemory(memory, ctx, presentIds, locationName, locationId));
-            })
-            .OrderByDescending(x => x.Score)
-            .Take(maxCount)
-            .Select(x => x.Memory)
-            .ToList();
+        return
+        [
+            .. psych.Memories.Values
+                .Select(memory =>
+                {
+                    memory.ApplyMigrationDefaultsIfNeeded();
+                    return (Memory: memory, Score: ScoreMemory(memory, ctx, presentIds, locationName, locationId));
+                })
+                .OrderByDescending(x => x.Score)
+                .Take(maxCount)
+                .Select(x => x.Memory)
+        ];
     }
 
     private static double ScoreMemory(

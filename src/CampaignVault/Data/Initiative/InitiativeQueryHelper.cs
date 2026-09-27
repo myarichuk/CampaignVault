@@ -23,7 +23,7 @@ internal static class InitiativeQueryHelper
         }
 
         var events = await query.Take(limit).ToListAsync(ct);
-        return events.Where(e => e.DayLogged >= minDay).ToList();
+        return [.. events.Where(e => e.DayLogged >= minDay)];
     }
 
     public static async Task<List<Item>> QueryItemsHeldByAsync(

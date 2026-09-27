@@ -154,7 +154,7 @@ public sealed class VaultSyncEngine
         var pushPlan = GetPushPlan();
         var items = filter == null
             ? pushPlan
-            : pushPlan.Where(p => filter.Contains(p.EntityId)).ToList();
+            : [.. pushPlan.Where(p => filter.Contains(p.EntityId))];
 
         if (items.Count == 0)
             return;
@@ -298,7 +298,7 @@ public sealed class VaultSyncEngine
 
         var items = filter == null
             ? pullPlan
-            : pullPlan.Where(p => filter.Contains(p.EntityId)).ToList();
+            : [.. pullPlan.Where(p => filter.Contains(p.EntityId))];
 
         if (items.Count == 0)
             return;
@@ -437,24 +437,28 @@ public sealed class VaultSyncEngine
             included.Add(plan.EntityId);
         }
 
-        return pushPlans
-            .OrderBy(p => p.EntityType, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(p => p.EntityId, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return
+        [
+            .. pushPlans
+                .OrderBy(p => p.EntityType, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(p => p.EntityId, StringComparer.OrdinalIgnoreCase)
+        ];
     }
 
     public IReadOnlyList<VaultEntitySyncPlan> GetEntitySyncPlans() => EvaluateAllPlans();
 
     public IReadOnlyList<VaultEntitySyncPlan> GetPullPlan()
     {
-        return EvaluateAllPlans()
-            .Where(p => p.State is VaultSyncState.BehindVault
-                or VaultSyncState.RemoteOnly
-                or VaultSyncState.Conflict
-                or VaultSyncState.DeletedRemotely)
-            .OrderBy(p => p.EntityType, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(p => p.EntityId, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return
+        [
+            .. EvaluateAllPlans()
+                .Where(p => p.State is VaultSyncState.BehindVault
+                    or VaultSyncState.RemoteOnly
+                    or VaultSyncState.Conflict
+                    or VaultSyncState.DeletedRemotely)
+                .OrderBy(p => p.EntityType, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(p => p.EntityId, StringComparer.OrdinalIgnoreCase)
+        ];
     }
 
     private IReadOnlyList<VaultEntitySyncPlan> EvaluateAllPlans()

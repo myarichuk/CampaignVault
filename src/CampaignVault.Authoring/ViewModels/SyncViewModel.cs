@@ -48,7 +48,7 @@ public partial class SyncViewModel : ObservableObject
 
     [ObservableProperty] private string _lastSyncTime = "Never";
 
-    [ObservableProperty] private ObservableCollection<VaultSyncPlanItem> _syncPlans = new();
+    [ObservableProperty] private ObservableCollection<VaultSyncPlanItem> _syncPlans = [];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanPushSelected))]
@@ -56,7 +56,7 @@ public partial class SyncViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsConflictSelected))]
     private VaultSyncPlanItem? _selectedPlan;
 
-    [ObservableProperty] private ObservableCollection<string> _availableCampaigns = new();
+    [ObservableProperty] private ObservableCollection<string> _availableCampaigns = [];
 
     [ObservableProperty] private int _aheadCount;
 

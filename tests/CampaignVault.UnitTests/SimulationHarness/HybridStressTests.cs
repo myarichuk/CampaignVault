@@ -79,7 +79,7 @@ public class HybridStressTests : IClassFixture<RavenDBFixture>
                 Reason = "Random fuzz interaction"
             });
 
-            var resolveResult = await tools.Commit(changes.ToArray(), $"Fuzz cycle {iteration}");
+            var resolveResult = await tools.Commit([.. changes], $"Fuzz cycle {iteration}");
             Assert.True(resolveResult.Success);
 
             // 2. Random Time Passage (Downtime phase simulate)

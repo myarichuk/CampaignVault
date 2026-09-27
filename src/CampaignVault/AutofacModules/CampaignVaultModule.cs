@@ -60,17 +60,21 @@ public class CampaignVaultModule : Autofac.Module
                 }
             }
 
-            PluginDataRoots.Additional = plugins
-                .SelectMany(p => p.RulesetDataRoots)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            PluginDataRoots.Additional =
+            [
+                .. plugins
+                    .SelectMany(p => p.RulesetDataRoots)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+            ];
 
-            PluginDataRoots.DeclaredCampaignOptions = plugins
-                .SelectMany(p => p.CampaignOptions)
-                .Where(o => !string.IsNullOrWhiteSpace(o.Key))
-                .GroupBy(o => o.Key, StringComparer.OrdinalIgnoreCase)
-                .Select(g => g.Last())
-                .ToList();
+            PluginDataRoots.DeclaredCampaignOptions =
+            [
+                .. plugins
+                    .SelectMany(p => p.CampaignOptions)
+                    .Where(o => !string.IsNullOrWhiteSpace(o.Key))
+                    .GroupBy(o => o.Key, StringComparer.OrdinalIgnoreCase)
+                    .Select(g => g.Last())
+            ];
 
             PluginDataRoots.PlayerOnlyModeIds = plugins
                 .SelectMany(p => p.Manifest?.PlayerOnlyModeIds ?? [])
@@ -80,11 +84,13 @@ public class CampaignVaultModule : Autofac.Module
             // Trait-key prefixes ("<pluginId>." or "<modeId>.") a loaded plugin can claim — read at
             // startup by PluginTraitsUpgradeRunner.WarnOnOrphanedTraitPrefixesAsync to flag prefixes
             // in the data that no loaded plugin owns anymore.
-            PluginTraitsClaims.Claimed = plugins
-                .SelectMany(p => (p.Manifest?.ModeIds ?? []).Append(p.Manifest?.Id ?? ""))
-                .Where(id => !string.IsNullOrWhiteSpace(id))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            PluginTraitsClaims.Claimed =
+            [
+                .. plugins
+                    .SelectMany(p => (p.Manifest?.ModeIds ?? []).Append(p.Manifest?.Id ?? ""))
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+            ];
 
             // Wire/schema half of plugin WorldChange $types (dispatch already works via FindHandler fallback).
             WorldChangeTypeRegistry.Instance.RegisterPluginAssemblies(pluginAssemblies);

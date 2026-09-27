@@ -34,7 +34,7 @@ internal static class SimulationQueryHelper
             .Not.WhereExists(x => x.CampaignName)
             .ToListAsync(ct);
 
-        return indexed.Concat(shareable).DistinctBy(c => c.Id).ToList();
+        return [.. indexed.Concat(shareable).DistinctBy(c => c.Id)];
     }
 
     public static async Task<List<Rumor>> QueryActiveRumorsAsync(
@@ -52,10 +52,12 @@ internal static class SimulationQueryHelper
             return rumors;
         }
 
-        return rumors
-            .Where(r => string.IsNullOrEmpty(r.CampaignName)
-                || string.Equals(r.CampaignName, campaignName, StringComparison.OrdinalIgnoreCase))
-            .ToList();
+        return
+        [
+            .. rumors
+                .Where(r => string.IsNullOrEmpty(r.CampaignName)
+                            || string.Equals(r.CampaignName, campaignName, StringComparison.OrdinalIgnoreCase))
+        ];
     }
 
     public static async Task<List<Faction>> QueryCampaignFactionsAsync(
@@ -72,10 +74,12 @@ internal static class SimulationQueryHelper
             return factions;
         }
 
-        return factions
-            .Where(f => string.IsNullOrEmpty(f.CampaignName)
-                || string.Equals(f.CampaignName, campaignName, StringComparison.OrdinalIgnoreCase))
-            .ToList();
+        return
+        [
+            .. factions
+                .Where(f => string.IsNullOrEmpty(f.CampaignName)
+                            || string.Equals(f.CampaignName, campaignName, StringComparison.OrdinalIgnoreCase))
+        ];
     }
 
     public static async Task<List<Quest>> QueryActiveQuestsAsync(
@@ -93,10 +97,12 @@ internal static class SimulationQueryHelper
             return quests;
         }
 
-        return quests
-            .Where(q => string.IsNullOrEmpty(q.CampaignName)
-                || string.Equals(q.CampaignName, campaignName, StringComparison.OrdinalIgnoreCase))
-            .ToList();
+        return
+        [
+            .. quests
+                .Where(q => string.IsNullOrEmpty(q.CampaignName)
+                            || string.Equals(q.CampaignName, campaignName, StringComparison.OrdinalIgnoreCase))
+        ];
     }
 
     public static async Task<List<Character>> QueryEvictableTransientCharactersAsync(
@@ -155,7 +161,7 @@ internal static class SimulationQueryHelper
             .Take(limit)
             .ToListAsync(ct);
 
-        return indexed.Concat(shareable).DistinctBy(c => c.Id).Take(limit).ToList();
+        return [.. indexed.Concat(shareable).DistinctBy(c => c.Id).Take(limit)];
     }
 
     public static async Task<HashSet<string>> QueryPartyLocationIdsAsync(
@@ -220,13 +226,13 @@ internal static class SimulationQueryHelper
         var threads = (await query.ToListAsync(ct)).Where(t => !t.IsArchived).ToList();
 
         if (string.IsNullOrWhiteSpace(campaignName))
-            return StripSemanticVectors(threads).ToList();
+            return [.. StripSemanticVectors(threads)];
 
         var result = threads
             .Where(t => string.IsNullOrEmpty(t.CampaignName)
                 || string.Equals(t.CampaignName, campaignName, StringComparison.OrdinalIgnoreCase))
             .ToList();
-        return StripSemanticVectors(result).ToList();
+        return [.. StripSemanticVectors(result)];
     }
 
     public static async Task<List<WorldEvent>> QueryPendingWorldEventsAsync(
@@ -242,13 +248,13 @@ internal static class SimulationQueryHelper
         var events = (await query.ToListAsync(ct)).Where(e => !e.IsArchived).ToList();
 
         if (string.IsNullOrWhiteSpace(campaignName))
-            return StripSemanticVectors(events).ToList();
+            return [.. StripSemanticVectors(events)];
 
         var result = events
             .Where(e => string.IsNullOrEmpty(e.CampaignName)
                 || string.Equals(e.CampaignName, campaignName, StringComparison.OrdinalIgnoreCase))
             .ToList();
-        return StripSemanticVectors(result).ToList();
+        return [.. StripSemanticVectors(result)];
     }
 
     private static IEnumerable<T> StripSemanticVectors<T>(IEnumerable<T> entities) where T : class, IHasSemanticVector

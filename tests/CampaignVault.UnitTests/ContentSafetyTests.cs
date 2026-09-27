@@ -86,7 +86,7 @@ public class ContentSafetyTests
         public ModeEncounter CreateEncounter(string locationId, IReadOnlyList<string> participantIds) => new()
         {
             LocationId = locationId,
-            Participants = participantIds.Select(id => new ModeParticipantState { CharacterId = id }).ToList(),
+            Participants = [.. participantIds.Select(id => new ModeParticipantState { CharacterId = id })],
             ActiveTurnId = participantIds.FirstOrDefault(),
             Round = 1
         };

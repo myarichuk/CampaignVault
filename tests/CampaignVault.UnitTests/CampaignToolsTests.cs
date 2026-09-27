@@ -1297,7 +1297,7 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         var request = new TakeTurnRequest
         {
             Changes = null,
-            ExtraCharacterIds = charIds.ToArray()
+            ExtraCharacterIds = [.. charIds]
         };
 
         var result = await tools.TakeTurn(request);

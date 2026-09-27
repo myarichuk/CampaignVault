@@ -112,9 +112,11 @@ public class ItemDefinitionProvider : IRulesetYamlProvider
             items = items.Where(i => i.Tags.Any(t => string.Equals(t, tag, StringComparison.OrdinalIgnoreCase)));
         }
 
-        return items
-            .OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return
+        [
+            .. items
+                .OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase)
+        ];
     }
 
     /// <summary>
@@ -124,11 +126,12 @@ public class ItemDefinitionProvider : IRulesetYamlProvider
     /// exact-match tag filter.
     /// </summary>
     public IReadOnlyList<string> GetDistinctTags(string system) =>
-        GetItemsForSystem(system).Values
+    [
+        .. GetItemsForSystem(system).Values
             .SelectMany(i => i.Tags)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(t => t, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+    ];
 
     public void Reload()
     {

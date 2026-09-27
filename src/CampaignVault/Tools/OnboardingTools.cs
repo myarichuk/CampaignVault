@@ -296,15 +296,18 @@ Example: finalize_campaign_onboarding('dragon-heist')")]
                     NarrativeFocus = narrativeFocus,
                     CollectedAnswers = state.CollectedAnswers,
                     WorldBuildingFlags = state.WorldBuildingFlags,
-                    NextSteps = new List<string>
-                    {
+                    NextSteps =
+                    [
                         "Campaign meta created and system locked.",
                         "Ready for world_build to seed starter entities (locations, NPCs, factions, quests, plot threads).",
                         "After world seeding, start_session can be called to begin session 1.",
-                    }.Concat(startingEraHadNoYearDigit
-                        ? new[] { $"No numeric year found in starting-era answer '{startingEraStr}' — Year defaulted to {campaign.LoreSettings.Year}. There is currently no tool to change it after creation; mention this to the user if a specific year mattered." }
-                        : [])
-                    .ToList(),
+                        .. startingEraHadNoYearDigit
+                            ? new[]
+                            {
+                                $"No numeric year found in starting-era answer '{startingEraStr}' — Year defaulted to {campaign.LoreSettings.Year}. There is currently no tool to change it after creation; mention this to the user if a specific year mattered."
+                            }
+                            : []
+                    ],
                     Summary = $"Onboarding finalized for '{campaignNameFromAnswer}'. Use world_build to populate the world with starter entities."
                 },
                 $"Onboarding finalized for '{campaignNameFromAnswer}'.");

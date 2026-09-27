@@ -66,7 +66,7 @@ public class EntityIntegrityPressureTests : IClassFixture<RavenDBFixture>
                     ["cellar"] = new MemoryNode { Topic = null!, Details = "Dark and damp." },
                 },
             },
-            VisualTags = new List<string> { null! },
+            VisualTags = [null!],
             CurrentLocationId = $"locations/{slug}-missing",
         });
         await session.SaveChangesAsync();
@@ -135,7 +135,7 @@ public class EntityIntegrityPressureTests : IClassFixture<RavenDBFixture>
             Social = null!,
             Needs = null!,
             SystemStats = null!,
-            VisualTags = new List<string> { null!, "muddy" },
+            VisualTags = [null!, "muddy"],
             CurrentLocationId = locId,
         });
         await session.StoreAsync(new Character

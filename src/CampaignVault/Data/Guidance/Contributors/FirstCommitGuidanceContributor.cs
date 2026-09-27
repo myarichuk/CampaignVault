@@ -30,8 +30,8 @@ internal sealed class FirstCommitGuidanceContributor : IGuidanceContributor
         // For now, return the hint. In full implementation, would check for Event documents.
         // This requires QueryAsync which introduces async complexity; simplified for Phase 3.
 
-        return new[]
-        {
+        return
+        [
             new GuidanceHint(
                 Key: "quickstart.first-commit",
                 Text: "Use narrative-focused changes (event, mood, relationship) to establish the world and party dynamics. Avoid combat mechanics until a scene explicitly features combat.",
@@ -40,6 +40,6 @@ internal sealed class FirstCommitGuidanceContributor : IGuidanceContributor
             {
                 Example = """{"$type": "event", "text": "Tavern keeper greets the party.", "minutesElapsed": 5}"""
             }
-        };
+        ];
     }
 }

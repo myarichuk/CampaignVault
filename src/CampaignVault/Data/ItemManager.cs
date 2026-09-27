@@ -111,22 +111,25 @@ internal sealed class ItemManager : IItemManager
                 Hidden = item.Hidden ?? false,
                 DiscoverDc = item.DiscoverDc,
                 Hazard = item.Hazard,
-                ItemDetails = (item.ItemDetails ?? []).Select(d => new ItemDetail
-                {
-                    Id = "detail-" + Guid.NewGuid(),
-                    Name = d.Name,
-                    Description = d.Description,
-                    Status = d.Status,
-                    Intent = d.Intent,
-                    Hidden = d.Hidden ?? false,
-                    DiscoverDc = d.DiscoverDc,
-                    Origin = d.Origin,
-                    TetheredToId = string.IsNullOrEmpty(d.TetheredToId) ? null : d.TetheredToId,
-                    Participants = [],
-                    CreatedOnDay = currentDay,
-                    UpdatedOnDay = currentDay,
-                    ReviewIntervalDays = d.ReviewIntervalDays,
-                }).ToList(),
+                ItemDetails =
+                [
+                    .. (item.ItemDetails ?? []).Select(d => new ItemDetail
+                    {
+                        Id = "detail-" + Guid.NewGuid(),
+                        Name = d.Name,
+                        Description = d.Description,
+                        Status = d.Status,
+                        Intent = d.Intent,
+                        Hidden = d.Hidden ?? false,
+                        DiscoverDc = d.DiscoverDc,
+                        Origin = d.Origin,
+                        TetheredToId = string.IsNullOrEmpty(d.TetheredToId) ? null : d.TetheredToId,
+                        Participants = [],
+                        CreatedOnDay = currentDay,
+                        UpdatedOnDay = currentDay,
+                        ReviewIntervalDays = d.ReviewIntervalDays,
+                    })
+                ],
             };
             await session.StoreAsync(result);
         }

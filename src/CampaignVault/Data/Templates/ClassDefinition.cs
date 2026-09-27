@@ -20,9 +20,11 @@ public record ClassDefinition : RulesetTemplate
             Pools = child.Pools.Count > 0 ? child.Pools : parent.Pools,
             SavingThrows = child.SavingThrows.Count > 0 ? child.SavingThrows : parent.SavingThrows,
             // Aliases: union so subclasses inherit parent aliases automatically
-            Aliases = child.Aliases
-                .Union(parent.Aliases, StringComparer.OrdinalIgnoreCase)
-                .ToList(),
+            Aliases =
+            [
+                .. child.Aliases
+                    .Union(parent.Aliases, StringComparer.OrdinalIgnoreCase)
+            ],
         };
 }
 

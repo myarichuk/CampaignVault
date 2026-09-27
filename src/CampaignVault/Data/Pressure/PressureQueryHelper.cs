@@ -46,7 +46,7 @@ internal static class PressureQueryHelper
             .Take(limit)
             .ToListAsync(ct);
 
-        return simulation.Concat(commits).ToList();
+        return [.. simulation, .. commits];
     }
 
     public static async Task<List<Character>> QueryCombatantCharactersAsync(
@@ -64,11 +64,13 @@ internal static class PressureQueryHelper
             .Take(limit)
             .ToListAsync(ct);
 
-        return indexed.Concat(shareable)
-            .Where(c => c.KeepAlive || c.MaxHp > 0 || c.IsPc || c.IsPartyCompanion)
-            .DistinctBy(c => c.Id)
-            .Take(limit)
-            .ToList();
+        return
+        [
+            .. indexed.Concat(shareable)
+                .Where(c => c.KeepAlive || c.MaxHp > 0 || c.IsPc || c.IsPartyCompanion)
+                .DistinctBy(c => c.Id)
+                .Take(limit)
+        ];
     }
 
     public static async Task<List<Character>> QueryKeepAliveCharactersAsync(
@@ -89,7 +91,7 @@ internal static class PressureQueryHelper
             .Take(limit)
             .ToListAsync(ct);
 
-        return indexed.Concat(shareable).DistinctBy(c => c.Id).Take(limit).ToList();
+        return [.. indexed.Concat(shareable).DistinctBy(c => c.Id).Take(limit)];
     }
 
     public static async Task<List<Character>> QueryTransientCharactersAsync(
@@ -122,7 +124,7 @@ internal static class PressureQueryHelper
             .Take(limit)
             .ToListAsync(ct);
 
-        return indexed.Concat(shareable).DistinctBy(c => c.Id).Take(limit).ToList();
+        return [.. indexed.Concat(shareable).DistinctBy(c => c.Id).Take(limit)];
     }
 
     public static async Task<List<Character>> QueryPartyAtLocationAsync(
@@ -214,8 +216,10 @@ internal static class PressureQueryHelper
             .Take(20)
             .ToListAsync(ct);
 
-        return fromIndexPresent.Concat(fromSimulation)
-            .DistinctBy(n => n.Id, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return
+        [
+            .. fromIndexPresent.Concat(fromSimulation)
+                .DistinctBy(n => n.Id, StringComparer.OrdinalIgnoreCase)
+        ];
     }
 }

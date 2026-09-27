@@ -21,10 +21,11 @@ internal static class WorldStateScopeResolver
     internal static List<string> GetRelevantFactionIds(
         IReadOnlyDictionary<string, int> partyFactionReputations,
         int reputationThreshold = RelevantReputationThreshold) =>
-        partyFactionReputations
+    [
+        .. partyFactionReputations
             .Where(kv => Math.Abs(kv.Value) >= reputationThreshold)
             .Select(kv => kv.Key)
-            .ToList();
+    ];
 
     /// <summary>
     /// Aggregates FactionReputations across all party characters (PCs and party companions).

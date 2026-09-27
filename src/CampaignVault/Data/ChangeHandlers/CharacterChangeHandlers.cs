@@ -530,7 +530,7 @@ public class CharacterUpdateHandler : IWorldChangeHandler
 
         if (cu.TagsToAdd != null)
         {
-            character.VisualTags = character.VisualTags.Union(cu.TagsToAdd).Distinct().ToList();
+            character.VisualTags = [.. character.VisualTags.Union(cu.TagsToAdd).Distinct()];
         }
 
         if (cu.TagsToRemove != null)
@@ -541,7 +541,7 @@ public class CharacterUpdateHandler : IWorldChangeHandler
 
         if (cu.FeaturesToAdd != null)
         {
-            character.DistinctiveFeatures = character.DistinctiveFeatures.Union(cu.FeaturesToAdd).Distinct().ToList();
+            character.DistinctiveFeatures = [.. character.DistinctiveFeatures.Union(cu.FeaturesToAdd).Distinct()];
         }
 
         if (cu.FeaturesToRemove != null)

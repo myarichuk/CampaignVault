@@ -79,11 +79,15 @@ public partial class MutationTools
             foreach (var scene in presentScenes)
             {
                 var trimmed = scene.Trimmed;
-                scene.Set(scene.Get().Select(n => n.IsPc ? n : RosterEntry(n,
-                    // The hook note stands in for a card not yet sent; a card in this response carries the notes.
-                    withNote: !ctx.Cursor.DeliveredCardHashes.ContainsKey(n.Id),
-                    keepChanges: trimmed && !cardedIds.Contains(n.Id),
-                    keepInitiative: trimmed)).ToList());
+                scene.Set([
+                    .. scene.Get().Select(n => n.IsPc
+                        ? n
+                        : RosterEntry(n,
+                            // The hook note stands in for a card not yet sent; a card in this response carries the notes.
+                            withNote: !ctx.Cursor.DeliveredCardHashes.ContainsKey(n.Id),
+                            keepChanges: trimmed && !cardedIds.Contains(n.Id),
+                            keepInitiative: trimmed))
+                ]);
             }
 
             FilterNpcEcho(ctx, party.Where(p => p.IsPc).Select(p => p.Id).ToHashSet(StringComparer.OrdinalIgnoreCase), cardedIds);
@@ -116,7 +120,7 @@ public partial class MutationTools
                     InvolvedEntityIds = ctx.InvolvedEntityIds,
                     Party = party,
                     PartyLocationId = party.FirstOrDefault(p => p.IsPc)?.CurrentLocationId ?? party.FirstOrDefault()?.CurrentLocationId,
-                    PresentNpcIds = presentNpcs.Select(n => n.Id).ToList(),
+                    PresentNpcIds = [.. presentNpcs.Select(n => n.Id)],
                     NarrativeVector = ctx.NarrativeVector,
                     RelationshipBaselines = ctx.RelationshipBaselines,
                     MemoryLinesInCards = memoryLinesInCards
@@ -215,7 +219,7 @@ public partial class MutationTools
         foreach (var npc in npcs)
         {
             var card = NpcCardFactory.Build(npc, party,
-                held.Where(i => i.HolderId.Equals(npc.Id, StringComparison.OrdinalIgnoreCase)).ToList(),
+                [.. held.Where(i => i.HolderId.Equals(npc.Id, StringComparison.OrdinalIgnoreCase))],
                 MemoriesForThisBeat(ctx, npc),
                 modeParticipants);
             var hash = card.StableHash();

@@ -115,7 +115,7 @@ public static class EventConsequenceRegistry
                 ["$type"] = "location_update",
                 ["locationId"] = locationId,
                 ["newState"] = newState,
-                ["tagsToAdd"] = new JsonArray(tags.Select(t => JsonValue.Create(t)).ToArray())
+                ["tagsToAdd"] = new JsonArray([.. tags.Select(t => JsonValue.Create(t))])
             }
         };
         return arr.ToJsonString();

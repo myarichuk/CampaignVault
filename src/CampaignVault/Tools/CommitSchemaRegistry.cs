@@ -24,7 +24,8 @@ internal static class CommitSchemaRegistry
     /// Engine-only verbs and mode-scoped plugin verbs are omitted; the latter stay resolvable via type=.
     /// </summary>
     public static IReadOnlyList<CommitTypeSchema> GetIndex() =>
-        CommitSchemaModel.Variants
+    [
+        .. CommitSchemaModel.Variants
             .Where(v => !v.IsEngineOnly && v.ModeId is null)
             .Select(v => new CommitTypeSchema(
                 v.Discriminator,
@@ -32,7 +33,7 @@ internal static class CommitSchemaRegistry
                 // (the index doesn't compute side effects, so a constant false was wrong as well as noise).
                 v.Category == "Uncategorized" ? null : v.Category,
                 ClipSummary(v.Summary), [], [], null, [], []))
-            .ToList();
+    ];
 
     internal static string ClipSummary(string summary)
     {
@@ -54,27 +55,29 @@ internal static class CommitSchemaRegistry
         // Filter by type if specified
         if (!string.IsNullOrWhiteSpace(type))
         {
-            variants = variants.Where(v => v.Discriminator == type).ToList();
+            variants = [.. variants.Where(v => v.Discriminator == type)];
         }
 
         // Filter by category if specified
         if (!string.IsNullOrWhiteSpace(category))
         {
-            variants = variants.Where(v => v.Category.Equals(category.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
+            variants = [.. variants.Where(v => v.Category.Equals(category.Trim(), StringComparison.OrdinalIgnoreCase))];
         }
 
-        return variants
-            .Select(v => new CommitTypeSchema(
-                v.Discriminator,
-                v.Category,
-                v.Summary,
-                v.Fields.Where(f => f.IsRequired).Select(f => f.JsonName).ToArray(),
-                v.Fields.Where(f => !f.IsRequired).Select(f => f.JsonName).ToArray(),
-                v.SideEffects.Count > 0,
-                v.SideEffects.ToArray(),
-                v.CoCommitHints.ToArray(),
-                v.Example
-            ))
-            .ToList();
+        return
+        [
+            .. variants
+                .Select(v => new CommitTypeSchema(
+                    v.Discriminator,
+                    v.Category,
+                    v.Summary,
+                    [.. v.Fields.Where(f => f.IsRequired).Select(f => f.JsonName)],
+                    [.. v.Fields.Where(f => !f.IsRequired).Select(f => f.JsonName)],
+                    v.SideEffects.Count > 0,
+                    [.. v.SideEffects],
+                    [.. v.CoCommitHints],
+                    v.Example
+                ))
+        ];
     }
 }

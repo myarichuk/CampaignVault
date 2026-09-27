@@ -27,8 +27,8 @@ public sealed class EngagementRelationChangeHandler : IWorldChangeHandler
 
         actor.SystemStats ??= new SystemExtension();
         target.SystemStats ??= new SystemExtension();
-        actor.SystemStats.EngagementRelations ??= new List<EngagementRelation>();
-        target.SystemStats.EngagementRelations ??= new List<EngagementRelation>();
+        actor.SystemStats.EngagementRelations ??= [];
+        target.SystemStats.EngagementRelations ??= [];
 
         if (EngagementRelationHelpers.IsClearRequest(src.Verb))
         {

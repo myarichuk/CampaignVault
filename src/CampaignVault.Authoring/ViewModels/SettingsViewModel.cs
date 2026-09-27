@@ -50,7 +50,7 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty] private string _saveStatusMessage = string.Empty;
 
-    public ObservableCollection<string> LlmProviders { get; } = new() { "None", "Ollama", "OpenAI", "Gemini" };
+    public ObservableCollection<string> LlmProviders { get; } = ["None", "Ollama", "OpenAI", "Gemini"];
 
     private Avalonia.Threading.DispatcherTimer? _autoConnectTimer;
 

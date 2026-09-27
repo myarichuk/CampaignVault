@@ -103,10 +103,12 @@ public class SpellDefinitionProvider : IRulesetYamlProvider
             spells = spells.Where(s => (s.Level ?? 0) == level.Value);
         }
 
-        return spells
-            .OrderBy(s => s.Level ?? 0)
-            .ThenBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return
+        [
+            .. spells
+                .OrderBy(s => s.Level ?? 0)
+                .ThenBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+        ];
     }
 
     public static bool SpellMatchesClass(

@@ -415,18 +415,24 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
                 return new ToolResult<PendingLevelUpChoicesResponse>(true, response, response.Summary);
             }
 
-            response.Features = levelDef.Features.Select(f =>
-                string.IsNullOrWhiteSpace(f.Description) ? f.Name : $"{f.Name}: {f.Description}").ToList();
+            response.Features =
+            [
+                .. levelDef.Features.Select(f =>
+                    string.IsNullOrWhiteSpace(f.Description) ? f.Name : $"{f.Name}: {f.Description}")
+            ];
 
-            response.Choices = levelDef.Choices.Select(c => new PendingLevelUpChoice
-            {
-                Key = c.Key,
-                Prompt = c.Prompt,
-                Type = c.Type,
-                Required = c.Required,
-                Options = c.Options,
-                AbilityOptions = c.AbilityOptions,
-            }).ToList();
+            response.Choices =
+            [
+                .. levelDef.Choices.Select(c => new PendingLevelUpChoice
+                {
+                    Key = c.Key,
+                    Prompt = c.Prompt,
+                    Type = c.Type,
+                    Required = c.Required,
+                    Options = c.Options,
+                    AbilityOptions = c.AbilityOptions,
+                })
+            ];
 
             if (system == RulesetSystem.Pathfinder2e
                 && (levelDef.ClassFeats is > 0 || levelDef.SkillFeats is > 0 || levelDef.GeneralFeats is > 0
@@ -531,7 +537,7 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
                 ? "No item tags found for this system yet — verify the system's items pack is loaded, or this is a fresh homebrew system."
                 : $"{tags.Count} distinct tag(s) in use across item templates for '{config.ActiveSystem}'.";
 
-            return new ToolResult<List<string>>(true, tags.ToList(), hint);
+            return new ToolResult<List<string>>(true, [.. tags], hint);
         }, saveChanges: false);
     }
 

@@ -140,10 +140,12 @@ public sealed class VaultGitRepository : IDisposable
 
         return new GitWorkingTreeStatus(
             IsDirty: status.IsDirty,
-            ModifiedPaths: status.Modified.Select(i => i.FilePath).OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList(),
-            AddedPaths: status.Added.Select(i => i.FilePath).OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList(),
-            RemovedPaths: status.Removed.Select(i => i.FilePath).OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList(),
-            UntrackedPaths: status.Untracked.Select(i => i.FilePath).OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList()
+            ModifiedPaths:
+            [.. status.Modified.Select(i => i.FilePath).OrderBy(p => p, StringComparer.OrdinalIgnoreCase)],
+            AddedPaths: [.. status.Added.Select(i => i.FilePath).OrderBy(p => p, StringComparer.OrdinalIgnoreCase)],
+            RemovedPaths: [.. status.Removed.Select(i => i.FilePath).OrderBy(p => p, StringComparer.OrdinalIgnoreCase)],
+            UntrackedPaths:
+            [.. status.Untracked.Select(i => i.FilePath).OrderBy(p => p, StringComparer.OrdinalIgnoreCase)]
         );
     }
 
@@ -174,9 +176,11 @@ public sealed class VaultGitRepository : IDisposable
         if (commit == null)
             return [];
 
-        return EnumerateEntityBlobPaths(commit.Tree)
-            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return
+        [
+            .. EnumerateEntityBlobPaths(commit.Tree)
+                .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+        ];
     }
 
     private static IEnumerable<string> EnumerateEntityBlobPaths(Tree tree, string prefix = "")
@@ -211,12 +215,14 @@ public sealed class VaultGitRepository : IDisposable
             return [];
 
         var changes = _repository!.Diff.Compare<TreeChanges>(fromCommit.Tree, toCommit.Tree);
-        return changes
-            .Select(c => c.Status == ChangeKind.Deleted ? c.OldPath : c.Path)
-            .Where(p => !string.IsNullOrWhiteSpace(p) && VaultPaths.IsEntityRelativePath(p))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return
+        [
+            .. changes
+                .Select(c => c.Status == ChangeKind.Deleted ? c.OldPath : c.Path)
+                .Where(p => !string.IsNullOrWhiteSpace(p) && VaultPaths.IsEntityRelativePath(p))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+        ];
     }
 
     public void Dispose()

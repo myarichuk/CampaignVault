@@ -1048,7 +1048,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
         result.NarrativeReminder = commitResult.NarrativeReminder;
         result.PhysicalStateNudges = commitResult.PhysicalStateNudges is { Count: > 0 } nudges ? nudges : null;
         // Plugin faults need no field of their own: each one is already a "PLUGIN FAULT ..." line in Summary.
-        ctx.AppliedChanges = changes.Concat(commitResult.ReactionChanges).Concat(commitResult.AmbientDeltas).ToList();
+        ctx.AppliedChanges = [.. changes, .. commitResult.ReactionChanges, .. commitResult.AmbientDeltas];
         ctx.AmbientChanges = commitResult.AmbientDeltas;
         ctx.AmbientNarrativeSummaries = commitResult.AmbientNarrativeSummaries;
         ApplyInitiativeNudges(ctx);
@@ -1067,7 +1067,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             // those; location-scoped queries already fall back to Involved too (see
             // CampaignRepository's location-filtered event queries), so splitting locations into
             // RelatedLocationIds bought nothing but an extra field to keep in sync.
-            Involved = commitResult.InvolvedEntities.Where(id => !string.IsNullOrEmpty(id)).ToList(),
+            Involved = [.. commitResult.InvolvedEntities.Where(id => !string.IsNullOrEmpty(id))],
             DayLogged = (int)commitTime.TotalDaysElapsed,
             Details = ExtractEventDetails(changes),
             RelatedEntityId = ExtractPrimaryActor(commitResult.InvolvedEntities)
@@ -1488,7 +1488,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                         Weight: 1.0);
                     enrichment = enrichment with
                     {
-                        ActiveInitiatives = new[] { nudgeCandidate }.Concat(enrichment.ActiveInitiatives ?? []).ToList(),
+                        ActiveInitiatives = [nudgeCandidate, .. enrichment.ActiveInitiatives ?? []],
                         TurnIntent = new TurnIntentSignal("npc", nudgeReason, MemoryUrgency.High)
                     };
                 }
@@ -1602,7 +1602,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             .Select(m => new CompressedMemory(m.Topic, Truncate(m.Details ?? string.Empty, 140)))
             .ToList();
 
-        ctx.Cursor.SurfacedCompressedMemoryTopicsByEntityId[npcId] = memories.Select(MemorySuppressionKey).ToList();
+        ctx.Cursor.SurfacedCompressedMemoryTopicsByEntityId[npcId] = [.. memories.Select(MemorySuppressionKey)];
         return result;
     }
 
@@ -1822,7 +1822,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
 
         if (ctx.Request?.LeanMode == true)
         {
-            movers = movers.Take(2).ToList();
+            movers = [.. movers.Take(2)];
         }
 
         if (!ctx.Cursor.SurfacedNeedValuesByEntityId.TryGetValue(characterId, out var toUpdate))
@@ -1921,7 +1921,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             return rumors;
         }
 
-        var rumorList = rumors as IReadOnlyCollection<RumorSummary> ?? rumors.ToList();
+        var rumorList = rumors as IReadOnlyCollection<RumorSummary> ?? [.. rumors];
         if (rumorList.Count == 0)
         {
             return rumorList;
@@ -2195,11 +2195,14 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             // — and those alone shouldn't force a refetch every beat a character talks/rests/checks
             // something in a location nobody entered/left. The client already has the scene from the last
             // full reseed or a prior delta that changed it, same rationale as ApplyLocationDeltaTrim below.
-            scenesToFetch = scenesToFetch
-                .Where(id => explicitSceneCandidates.Contains(id)
-                    || departureSceneIds.Contains(id)
-                    || ctx.AppliedChanges.Any(c => AffectsLocationDetail(c, id) || AffectsScenePresence(c, id)))
-                .ToList();
+            scenesToFetch =
+            [
+                .. scenesToFetch
+                    .Where(id => explicitSceneCandidates.Contains(id)
+                                 || departureSceneIds.Contains(id)
+                                 || ctx.AppliedChanges.Any(c =>
+                                     AffectsLocationDetail(c, id) || AffectsScenePresence(c, id)))
+            ];
         }
 
         if (scenesToFetch.Count > 0)
@@ -2217,21 +2220,23 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                             ? new HashSet<string>(priorIds, StringComparer.OrdinalIgnoreCase)
                             : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                        summary.PresentNPCs = summary.PresentNPCs
-                            .Select(npc =>
-                            {
-                                var trimmed = ApplyDeltaTrim(ctx, npc, out var fullyUnchanged);
-                                return fullyUnchanged && priorPresentIds.Contains(trimmed.Id)
-                                    ? StubPresence(trimmed)
-                                    : trimmed;
-                            })
-                            .ToList();
+                        summary.PresentNPCs =
+                        [
+                            .. summary.PresentNPCs
+                                .Select(npc =>
+                                {
+                                    var trimmed = ApplyDeltaTrim(ctx, npc, out var fullyUnchanged);
+                                    return fullyUnchanged && priorPresentIds.Contains(trimmed.Id)
+                                        ? StubPresence(trimmed)
+                                        : trimmed;
+                                })
+                        ];
 
                         var currentIds = new HashSet<string>(summary.PresentNPCs.Select(n => n.Id), StringComparer.OrdinalIgnoreCase);
                         var rosterChanges = new HashSet<string>(currentIds, StringComparer.OrdinalIgnoreCase);
                         rosterChanges.SymmetricExceptWith(priorPresentIds);
                         ctx.RosterChangesByLocationId[locationId] = rosterChanges;
-                        ctx.Cursor.SurfacedPresentNpcIdsByLocationId[locationId] = currentIds.ToList();
+                        ctx.Cursor.SurfacedPresentNpcIdsByLocationId[locationId] = [.. currentIds];
                         if (ShouldStripUnchangedLocationDetail(ctx, locationId))
                         {
                             summary.Location = ApplyLocationDeltaTrim(summary.Location);
@@ -2437,10 +2442,12 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                 // Baseline the pressure marker on the rich items (grouping+entity+signature — stable
                 // across the ToDisplayStrings batching that collapses N items into one rendered line).
                 // An empty set is still a reading the next identical poll suppresses against.
-                ctx.Cursor.LastSurfacedPressureKeys = (worldState.WorldPressureItems?.ToList() ?? [])
+                ctx.Cursor.LastSurfacedPressureKeys =
+                [
+                    .. (worldState.WorldPressureItems?.ToList() ?? [])
                     .Select(p => PressureItemKey(p))
                     .OrderBy(k => k, StringComparer.Ordinal)
-                    .ToList();
+                ];
             }
             else
             {
@@ -2460,10 +2467,10 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                     Time = timeShifted ? worldState.Time : null,
                     PressureUnchanged = !pressureChanged,
                     WorldPressure = pressureToSend,
-                    RumorChanges = ctx.AppliedChanges.OfType<RumorEvolves>().ToList(),
-                    QuestChanges = ctx.AppliedChanges.OfType<QuestProgress>().ToList(),
-                    FactionReputationChanges = ctx.AppliedChanges.OfType<FactionReputationChange>().ToList(),
-                    FactionStateChanges = ctx.AppliedChanges.OfType<FactionStateChange>().ToList(),
+                    RumorChanges = [.. ctx.AppliedChanges.OfType<RumorEvolves>()],
+                    QuestChanges = [.. ctx.AppliedChanges.OfType<QuestProgress>()],
+                    FactionReputationChanges = [.. ctx.AppliedChanges.OfType<FactionReputationChange>()],
+                    FactionStateChanges = [.. ctx.AppliedChanges.OfType<FactionStateChange>()],
                     NewEvents = newEvents.Count > 0 ? newEvents : null
                 };
 
@@ -2477,10 +2484,12 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
 
                 if (pressureChanged)
                 {
-                    ctx.Cursor.LastSurfacedPressureKeys = (worldState.WorldPressureItems?.ToList() ?? [])
+                    ctx.Cursor.LastSurfacedPressureKeys =
+                    [
+                        .. (worldState.WorldPressureItems?.ToList() ?? [])
                         .Select(p => PressureItemKey(p))
                         .OrderBy(k => k, StringComparer.Ordinal)
-                        .ToList();
+                    ];
                 }
             }
         }
@@ -2614,7 +2623,8 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             ctx.Result.FullNpcContext = new NpcContextView
             {
                 Character = CharacterDetailView.From(npc),
-                RecentInteractions = npcEvents.Take(EventSummaryView.NpcContextCap).Select(EventSummaryView.ForNpcContext).ToList(),
+                RecentInteractions =
+                    [.. npcEvents.Take(EventSummaryView.NpcContextCap).Select(EventSummaryView.ForNpcContext)],
                 BehavioralSummary = behavioralSummary,
                 KnownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>(),
                 Equipped = equipped,
@@ -2720,16 +2730,18 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                     ctx.Campaign, time, config, ctx.Session, Scene: scene, RequestedLocationId: locationId, PartyPresent: true));
                 if (scenePressure.Count > 0)
                 {
-                    scene.ScenePressure = PressureManager.ToDisplayStrings(scenePressure).ToList();
+                    scene.ScenePressure = [.. PressureManager.ToDisplayStrings(scenePressure)];
                 }
 
                 // PCs ride along internally (recognition hints / faction-reputation lookups need
                 // them), but they're not NPCs and their state already travels via Party/PartyDelta.
-                scene.PresentNPCs = scene.PresentNPCs.Where(n => !n.IsPc).ToList();
+                scene.PresentNPCs = [.. scene.PresentNPCs.Where(n => !n.IsPc)];
                 var threads = await _repository.GetPlotThreadsReferencingEntityAsync(ctx.Session, locationId, ctx.Campaign);
-                scene.AssociatedPlotThreads = threads
-                    .Select(t => new PlotThreadMinimal(t.Id, t.Title, t.State, t.TensionLevel))
-                    .ToList();
+                scene.AssociatedPlotThreads =
+                [
+                    .. threads
+                        .Select(t => new PlotThreadMinimal(t.Id, t.Title, t.State, t.TensionLevel))
+                ];
                 ctx.Result.FullScene = scene;
             }
             else
@@ -2858,7 +2870,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
 
         if (suggestions.Count > 0)
         {
-            result.QuerySuggestions = suggestions.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            result.QuerySuggestions = [.. suggestions.Distinct(StringComparer.OrdinalIgnoreCase)];
         }
     }
 
@@ -2984,16 +2996,17 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
 
             foreach (var scene in result.Scenes ?? [])
             {
-                scene.PresentNPCs = scene.PresentNPCs.Select(n => MergeInitiative(n, dropped)).ToList();
+                scene.PresentNPCs = [.. scene.PresentNPCs.Select(n => MergeInitiative(n, dropped))];
             }
 
             if (result.FullScene != null)
             {
-                result.FullScene.PresentNPCs = result.FullScene.PresentNPCs.Select(n => MergeInitiative(n, dropped)).ToList();
+                result.FullScene.PresentNPCs =
+                    [.. result.FullScene.PresentNPCs.Select(n => MergeInitiative(n, dropped))];
             }
         }
 
-        result.Npcs = npcs.Except(toDrop).ToList();
+        result.Npcs = [.. npcs.Except(toDrop)];
     }
 
     /// <summary>
@@ -3021,14 +3034,16 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
 
         foreach (var scene in result.Scenes ?? [])
         {
-            scene.LocalRumors = scene.LocalRumors.Where(r => !worldRumorIds.Contains(r.Id)).ToList();
+            scene.LocalRumors = [.. scene.LocalRumors.Where(r => !worldRumorIds.Contains(r.Id))];
         }
 
         if (result.FullScene != null)
         {
-            result.FullScene.LocalRumors = result.FullScene.LocalRumors
-                .Where(r => !worldRumorIds.Contains(r.Id))
-                .ToList();
+            result.FullScene.LocalRumors =
+            [
+                .. result.FullScene.LocalRumors
+                    .Where(r => !worldRumorIds.Contains(r.Id))
+            ];
         }
     }
 

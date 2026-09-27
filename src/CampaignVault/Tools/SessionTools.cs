@@ -153,11 +153,14 @@ public class SessionTools : CampaignToolBase, IMcpServerTool
                 .ToListAsync();
             var itemsByHolder = heldItems.ToLookup(i => i.HolderId, StringComparer.OrdinalIgnoreCase);
 
-            view.Party = party
-                .OrderByDescending(m => m.IsPc)
-                .ThenBy(m => m.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(m => PartySessionView.From(m, itemsByHolder[m.Id].OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase).ToList()))
-                .ToList();
+            view.Party =
+            [
+                .. party
+                    .OrderByDescending(m => m.IsPc)
+                    .ThenBy(m => m.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(m => PartySessionView.From(m,
+                        [.. itemsByHolder[m.Id].OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase)]))
+            ];
 
             view.PartyFingerprint = PartyFingerprint.Compute(party);
             await PrimeTurnCursorAsync(session, effective, view.PartyFingerprint);
@@ -304,13 +307,16 @@ public class SessionTools : CampaignToolBase, IMcpServerTool
             .Take(1024)
             .ToListAsync();
 
-        return unknown.Select(id =>
-        {
-            var close = SuggestCharacters(id, candidates);
-            return close.Count > 0
-                ? $"npcsInPlay id '{id}' is not a character in this campaign; did you mean {string.Join(", ", close)}?"
-                : $"npcsInPlay id '{id}' is not a character in this campaign; use search_world to find the right id, or leave it out.";
-        }).ToList();
+        return
+        [
+            .. unknown.Select(id =>
+            {
+                var close = SuggestCharacters(id, candidates);
+                return close.Count > 0
+                    ? $"npcsInPlay id '{id}' is not a character in this campaign; did you mean {string.Join(", ", close)}?"
+                    : $"npcsInPlay id '{id}' is not a character in this campaign; use search_world to find the right id, or leave it out.";
+            })
+        ];
     }
 
     internal sealed class CharacterIdName
@@ -327,22 +333,26 @@ public class SessionTools : CampaignToolBase, IMcpServerTool
             return [];
         }
 
-        return candidates
-            .Select(c => (c, Score: Tokens(c.Id[(c.Id.LastIndexOf('/') + 1)..]).Concat(Tokens(c.Name)).Distinct()
-                .Count(t => wanted.Any(w => t.StartsWith(w, StringComparison.Ordinal) || w.StartsWith(t, StringComparison.Ordinal)))))
-            .Where(x => x.Score > 0)
-            .OrderByDescending(x => x.Score)
-            .ThenBy(x => x.c.Id, StringComparer.Ordinal)
-            .Take(MaxNpcSuggestions)
-            .Select(x => $"{x.c.Id} ({x.c.Name})")
-            .ToList();
+        return
+        [
+            .. candidates
+                .Select(c => (c, Score: Tokens(c.Id[(c.Id.LastIndexOf('/') + 1)..]).Concat(Tokens(c.Name)).Distinct()
+                    .Count(t => wanted.Any(w =>
+                        t.StartsWith(w, StringComparison.Ordinal) || w.StartsWith(t, StringComparison.Ordinal)))))
+                .Where(x => x.Score > 0)
+                .OrderByDescending(x => x.Score)
+                .ThenBy(x => x.c.Id, StringComparer.Ordinal)
+                .Take(MaxNpcSuggestions)
+                .Select(x => $"{x.c.Id} ({x.c.Name})")
+        ];
     }
 
     private static List<string> Tokens(string text) =>
-        text.ToLowerInvariant()
+    [
+        .. text.ToLowerInvariant()
             .Split(['-', '_', ' ', '/', '.', '\''], StringSplitOptions.RemoveEmptyEntries)
             .Where(t => t.Length >= 3)
-            .ToList();
+    ];
 
     private static int HandoffLength(SessionHandoff h) =>
         (h.StorySoFar?.Length ?? 0) + (h.LastSession?.Length ?? 0) + (h.PartyIntent?.Length ?? 0) + (h.Tone?.Length ?? 0)
