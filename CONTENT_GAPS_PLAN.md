@@ -62,7 +62,7 @@ kind=items` is nearly empty:
   unverified — confirmed by `git log --all --grep` and reading both existing
   scripts, neither references equipment/weapon/armor AoN fields anywhere.
 
-## Step 1 — Verify dnd5eapi.co equipment schema (cheap, do first)
+## Step 1 — Verify dnd5eapi.co equipment schema (cheap, do first) — ✅ DONE (2026-09-27)
 
 ```bash
 curl -s https://www.dnd5eapi.co/api/equipment/longsword | python3 -m json.tool
@@ -72,12 +72,31 @@ curl -s https://www.dnd5eapi.co/api/equipment-categories/armor | python3 -m json
 curl -s "https://www.dnd5eapi.co/api/spells/fireball" | python3 -m json.tool   # confirm damage/dc shape
 curl -s "https://www.dnd5eapi.co/api/spells/fire-bolt" | python3 -m json.tool # confirm cantrip shape
 ```
-Confirm field names match what's assumed above (`damage.damage_dice`,
-`2h_damage`, `armor_class.base`/`dex_bonus`/`max_bonus`, `str_minimum`,
-`stealth_disadvantage`, `armor_category`). Expect this to match — flag
-anything that doesn't before writing code against it.
 
-## Step 2 — Verify AoN schema for pf2e items (must-do, not optional)
+**Findings (live-queried, not assumed):**
+- The API now serves versioned routes under `/api/2014/...`; the unversioned
+  paths above 301-redirect. `curl -s` doesn't follow redirects (hence empty
+  bodies on the first pass — re-ran with `-L`), but this is a non-issue for
+  the actual generator: `generate_spells.py`'s `fetch_json()` uses
+  `urllib.request.urlopen`, which follows redirects by default, and every
+  `url` field the API returns in list responses is already `/api/2014/`-
+  prefixed. No code change needed here.
+- **Correction to this plan's own assumption**: the two-handed-damage field
+  is named `two_handed_damage`, not `2h_damage` as written above in Step 4.
+  Use the real name when Step 4 is implemented.
+- Everything else matched: `damage.damage_dice`, `damage.damage_type.index`,
+  `armor_class.base`, `armor_class.dex_bonus` (bool), `armor_class.max_bonus`
+  (present only on Medium armor in the sample — absent on Light because
+  uncapped, absent on Heavy because `dex_bonus: false` makes it moot),
+  `str_minimum`, `stealth_disadvantage`, `armor_category`, `weapon_range`.
+- Spell schema confirmed structured exactly as assumed: `damage[].damage_type`
+  + `damage[].damage_at_slot_level` (leveled, e.g. Fireball: `{"3":"8d6",
+  "4":"9d6",...}`) or `damage[].damage_at_character_level` (cantrips, e.g.
+  Fire Bolt: `{"1":"1d10","5":"2d10","11":"3d10","17":"4d10"}`), `dc.dc_type`
+  + `dc.dc_success`, `area_of_effect.type`/`.size`. Step 3 can proceed as
+  written for dnd5e.
+
+## Step 2 — Verify AoN schema for pf2e items (must-do, not optional) — ✅ DONE (2026-09-27)
 
 This is the actual unknown. Both existing pf2e scripts only ever query
 `category: "spell"` or `category: "feat"`. Nobody in this repo's history has
@@ -112,13 +131,55 @@ If `category` isn't `weapon`/`armor` (e.g. it's `equipment` with a subtype
 field instead), or the query returns zero hits, adjust before proceeding —
 don't guess a second value and move on.
 
+**Findings (live-queried against `elasticsearch.aonprd.com`, scoped to
+`primary_source.keyword: ["Player Core", "Player Core 2"]`):**
+- `category: "weapon"` and `category: "armor"` both exist and return real,
+  structured hits (83 weapons, 13 armors in Player Core/PC2 alone) — the
+  plan's pessimistic branch ("adjust before proceeding") doesn't apply.
+- **Weapon fields**: `damage` (combined string, e.g. `"1d8 P"` — not
+  pre-split), `damage_die` (int), `damage_type` (list, usually one entry),
+  `weapon_category` (`Simple`/`Martial`/`Unarmed`/`Advanced`), `weapon_group`,
+  `weapon_type` (`Melee`/`Ranged`), `trait` (list — Agile/Finesse/Thrown/
+  Versatile S etc.), `hands`, `bulk`, `price` (int, copper-ish base unit —
+  confirm denomination before use), `level`. Ranged-only: `range` (int, feet)
+  and `reload` (int, absent on non-reload weapons like thrown Darts).
+  `deity`/`deity_markdown` (favored-weapon lists) are large and irrelevant —
+  exclude via `_source` filtering per CLAUDE.md's query-layer-filtering rule,
+  don't fetch-then-discard.
+- **Armor fields**: `ac` (int bonus, not `armor_class.base` — different shape
+  than dnd5e), `armor_category` (`Unarmored`/`Light`/`Medium`/`Heavy`),
+  `dex_cap` (int, **absent** — not null, the key is missing entirely — when
+  uncapped, e.g. Unarmored), `check_penalty` (int, negative, absent when 0),
+  `speed_penalty` (string like `"-5 ft."`, absent when none — not numeric),
+  `strength` (int, str requirement, `0` is a real value distinct from
+  absent), `bulk`, `price`, `armor_group`, `trait`.
+- **Critical finding — pf2e spell damage is NOT structured.** Unlike dnd5e,
+  AoN spell documents have no `damage_dice`/`damage_type`/`dc` fields at all.
+  Damage only exists inside prose: Fireball's `text`/`markdown` says
+  "dealing 6d6 fire damage" and "Heightened (+1) The damage increases by
+  2d6." Extracting that reliably means regex/parsing over free text — the
+  exact failure mode (`PREREQ_RE`) this session just spent its whole budget
+  eliminating from the feats generator. Per that same reasoning, **pf2e
+  spell damage validation stays out of scope for Step 3** rather than
+  reintroducing prose-regex fragility one file over. dnd5e spell damage
+  (Step 3) is unaffected and should proceed as planned since dnd5eapi.co's
+  damage fields are genuinely structured (see Step 1 findings).
+- **Confirms the scope filter is load-bearing, not decorative**: querying
+  `category: "spell"` + `match: "Fireball"` with no `primary_source` filter
+  returns the pre-Remaster `"Core Rulebook"` Fireball (`spell-119`), not the
+  Player Core one — it carries a `remaster_id: ["spell-1530"]` field pointing
+  at the actual remastered doc. `generate_spells.py`'s existing
+  `primary_source.keyword: ["Player Core", "Player Core 2"]` filter is what
+  keeps this pipeline off legacy (non-ORC) content; Step 4/5 work must keep
+  the same filter on every AoN query, not just spells/feats.
+
 **If AoN's spell documents don't carry structured damage** (plausible —
 Paizo/AoN spell text is often prose-first): pf2e spell damage validation may
 need to stay out of scope, or need regex extraction from `text`/`description`
 (fragile, lower confidence) — decide once Step 2's actual response is in
 hand, not before.
 
-## Step 3 — Extend `SpellDefinition` + `generate_spells.py` (dnd5e first)
+## Step 3 — Extend `SpellDefinition` + `generate_spells.py` (dnd5e only — pf2e out of scope, see Step 2 findings)
 
 - Add fields to `SpellDefinition.cs`: `DamageDice` (string, plain for
   non-scaling spells), `DamageAtSlotLevel`/`DamageAtCharacterLevel`
@@ -184,9 +245,9 @@ hand, not before.
 - Regenerate, then hand-verify a handful (longsword should regenerate
   byte-similar to today's hand-written file; that's the sanity check).
 
-## Step 5 — pf2e items: new content, blocked on Step 2
+## Step 5 — pf2e items: new content — ✅ unblocked, Step 2 confirmed usable weapon/armor schema
 
-Only after Step 2 confirms real field names. Likely needs its own
+Likely needs its own
 translation table for damage dice, weapon groups/traits, and
 armor AC/dex-cap/check-penalty/speed-penalty fields — pf2e's model
 (proficiency-based, dex-cap-by-armor-category, no versatile-damage concept)
@@ -212,13 +273,14 @@ ends up doing for pf2e weapons) before generating.
 - `CLAUDE.md`/generator script docstrings: note the two source APIs and
   that regeneration requires network access to both hosts.
 
-## Order of execution (next session)
+## Order of execution
 
-1. Step 1 (dnd5e schema check) — quick, do immediately.
-2. Step 2 (AoN schema check) — quick, do immediately, **before** writing
-   any pf2e code.
-3. Step 3 (dnd5e spells) — model + script + validator + tests.
-4. Step 4 (dnd5e items) — new script + regenerate + hand-verify.
-5. Step 5 (pf2e items) — only if Step 2 came back usable.
-6. Step 6 (docs cleanup) — last, once the data's actually in.
+1. ~~Step 1 (dnd5e schema check)~~ — done 2026-09-27.
+2. ~~Step 2 (AoN schema check)~~ — done 2026-09-27. Items unblocked; pf2e
+   spell damage validation is now explicitly out of scope (prose-only,
+   would need the same regex fragility this session removed from feats).
+3. Step 3 (dnd5e spells) — model + script + validator + tests. Not started.
+4. Step 4 (dnd5e items) — new script + regenerate + hand-verify. Not started.
+5. Step 5 (pf2e items) — new script + regenerate + hand-verify. Not started.
+6. Step 6 (docs cleanup) — last, once the data's actually in. Not started.
 7. Delete this file.
