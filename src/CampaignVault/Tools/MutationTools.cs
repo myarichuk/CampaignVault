@@ -748,7 +748,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             var pressureContext = new PressureContext(
                 CampaignName: ctx.Campaign,
                 Time: campaignTime,
-                Config: ctx.Config,
+                Config: ctx.Config ?? await _repository.GetCampaignConfigAsync(new CampaignSession(ctx.Session, ctx.Campaign)),
                 Session: ctx.Session,
                 Scene: await LoadGuidanceSceneAsync(ctx),
                 PartyCharacterIds: surfacedIds.ToList().AsReadOnly(),

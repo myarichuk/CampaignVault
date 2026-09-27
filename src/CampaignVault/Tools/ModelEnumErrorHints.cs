@@ -275,6 +275,7 @@ internal static partial class ModelEnumErrorHints
             ("EventCategory", "Narrative" or "narrative" or "Roleplay" or "roleplay") => nameof(EventCategory
                 .Conversation),
             ("EventCategory", "Scene" or "scene") => nameof(EventCategory.Interaction),
+            ("EventCategory", "Exploration" or "exploration") => nameof(EventCategory.Discovery),
             ("RumorState", "Active" or "active") => nameof(RumorState.Nascent),
             ("RulesetActionType", "Meta" or "meta") => nameof(RulesetActionType.SkillCheck),
             _ => null,

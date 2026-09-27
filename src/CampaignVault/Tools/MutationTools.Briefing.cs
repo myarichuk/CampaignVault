@@ -423,7 +423,7 @@ public partial class MutationTools
 
             if (npc.Initiative != null && (carded || full))
             {
-                npc.Initiative = npc.Initiative with { RelevantMemories = null };
+                npc.Initiative = npc.Initiative with { RelevantMemories = [] };
             }
 
             if (npc.CurrentMood != null || npc.CurrentActivity != null || npc.CurrentAppearance != null

@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace CampaignVault.IntegrationTests;
 
@@ -7,7 +8,10 @@ public sealed class DockerFactAttribute : FactAttribute
     private static readonly string? DockerSkipReason = GetDockerSkipReason();
     private const string CAMPAIGNVAULT_IMAGE = "campaignvault:latest";
 
-    public DockerFactAttribute()
+    public DockerFactAttribute(
+        [CallerFilePath] string? sourceFilePath = null,
+        [CallerLineNumber] int sourceLineNumber = -1)
+        : base(sourceFilePath, sourceLineNumber)
     {
         if (DockerSkipReason is not null)
         {

@@ -370,6 +370,14 @@ public class SessionTools : CampaignToolBase, IMcpServerTool
             ? $"Resumed open session {view.SessionNumber} for campaign '{effective}' ({view.Party.Count} party member(s))."
             : $"Session {view.SessionNumber} started for campaign '{effective}' ({view.Party.Count} party member(s)).";
 
+        if (view.Resumed && view.Title is { } requestedTitle
+            && System.Text.RegularExpressions.Regex.Match(requestedTitle, @"\d+") is { Success: true } numberMatch
+            && int.TryParse(numberMatch.Value, out var impliedNumber)
+            && impliedNumber != view.SessionNumber)
+        {
+            summary += $" NOTE: title '{requestedTitle}' implies session {impliedNumber}, but this resumes the still-open session {view.SessionNumber} (its previous end_session likely used checkpoint:true, or end_session was never called) — the title is cosmetic and does not change the number.";
+        }
+
         var priorSessions = sessionLog.Sessions.Any(s => s.Number < view.SessionNumber);
         if (view.Handoff == null && priorSessions)
         {

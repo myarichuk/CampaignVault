@@ -95,6 +95,10 @@ Narrate the sensory outcome from the roll result—don't invent what they find. 
 
 Treacherous travel (fog, storm, a night marsh): put it in the travel change's `hazard`. On out-of-town legs it gives a rare chance that a companion loses the party; the engine reports `SEPARATED:` with where they are, so play the reunion rather than assuming it.
 
+## Logging an `event` During Exploration
+
+`event.category` is a closed enum — there is **no `Exploration` value**, despite this skill's name. For an exploration/travel/discovery beat, pick the category that matches what actually happened: `Arrival` (reaching a new location), `Discovery` (found something via a check or search), `Travel` (a journey completed/interrupted), `SceneInterrupt` (an encounter broke in), `Conversation`, `Combat`, `Timeskip`, or `SceneCommit` (closing out a scene). A single invalid category rejects the **entire** `take_turn` batch — nothing in it persists — so guessing costs the whole turn, not just the event.
+
 ## Encounter Resolution
 
 Travel can trigger random encounters. Engine resolves and returns encounter NPC/creature. You narrate the scene and run the interaction (combat, negotiation, flight).

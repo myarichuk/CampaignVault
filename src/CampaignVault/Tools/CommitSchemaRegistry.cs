@@ -71,8 +71,8 @@ internal static class CommitSchemaRegistry
                     v.Discriminator,
                     v.Category,
                     v.Summary,
-                    [.. v.Fields.Where(f => f.IsRequired).Select(f => f.JsonName)],
-                    [.. v.Fields.Where(f => !f.IsRequired).Select(f => f.JsonName)],
+                    [.. v.Fields.Where(f => f.IsRequired).Select(FormatField)],
+                    [.. v.Fields.Where(f => !f.IsRequired).Select(FormatField)],
                     v.SideEffects.Count > 0,
                     [.. v.SideEffects],
                     [.. v.CoCommitHints],
@@ -80,4 +80,11 @@ internal static class CommitSchemaRegistry
                 ))
         ];
     }
+
+    // Enum-typed fields (e.g. event.category) carry their valid values inline, since the caller most
+    // likely to hit this lookup is the one that just got a bad-enum rejection and needs the real list.
+    private static string FormatField(CommitFieldModel field) =>
+        field.EnumValues is { Count: > 0 }
+            ? $"{field.JsonName} ({string.Join("|", field.EnumValues)})"
+            : field.JsonName;
 }
