@@ -822,61 +822,73 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
         return DiceMechanic.Standard;
     }
 
+    /// <summary>Every roll goes through this; plugins add providers to it. Resolvers built without the container get core's own.</summary>
+    protected RollModifierPipeline Pipeline { get; set; } = RollModifierPipeline.BuiltIn;
+
     /// <summary>
-    /// Folds all active status modifiers matching the given tag into a base value.
-    /// Also considers systemic values like Fatigue if applicable.
+    /// Folds the status-effect modifiers matching the legacy tags into a base value. Kept for callers without a context; the
+    /// pipeline (<see cref="FoldAsync"/>) is the way for anything that also wants providers or advantage.
     /// </summary>
     protected int ApplyAllModifiers(TStats stats, int baseValue, params string[] modifierTags)
     {
-        var bonus = 0f;
-        if (stats.StatusEffects != null)
+        var first = modifierTags.Length > 0 ? modifierTags[0] : "";
+        var subject = modifierTags.Length > 1 ? modifierTags[1] : null;
+        var kind = first switch
         {
-            foreach (var effect in stats.StatusEffects)
-            {
-                if (effect.StatModifiers == null) continue;
+            "AC" or "Defense" => RollKinds.ArmorClass,
+            "AttackRoll" => RollKinds.Attack,
+            "DamageRoll" => RollKinds.Damage,
+            "SkillCheck" => RollKinds.Check,
+            "SavingThrow" => RollKinds.Save,
+            "Initiative" => RollKinds.Initiative,
+            "Speed" => RollKinds.Speed,
+            _ => RollKinds.Attack,
+        };
+        return baseValue + StatusEffectModifierProvider.Sum(stats.StatusEffects, kind, subject);
+    }
 
-                var appliedAllRolls = false;
-                var appliedAllChecks = false;
-                var appliedAllSaves = false;
+    /// <summary>
+    /// Runs a roll through the modifier pipeline: status effects, willpower and every plugin provider. Returns the final bonus,
+    /// the net advantage (the caller's explicit mechanic counts as one source) and the reasons to show the player.
+    /// <paramref name="tags"/> say what the roll is against (charm, fear...); the action's <c>saveTags</c> parameter adds to them.
+    /// </summary>
+    protected async Task<RollFold> FoldAsync(
+        IChangeContext context,
+        Character actor,
+        string kind,
+        string? subject,
+        int baseBonus,
+        RulesetAction? action = null,
+        DiceMechanic explicitMechanic = DiceMechanic.Standard,
+        Character? other = null,
+        IEnumerable<string>? tags = null)
+    {
+        IReadOnlyDictionary<string, string> options = new Dictionary<string, string>();
+        if (context.GetSystemOptionsAsync is { } load)
+            options = await load().ConfigureAwait(false);
 
-                foreach (var tag in modifierTags)
-                {
-                    if (effect.StatModifiers.TryGetValue(tag, out var directMod))
-                    {
-                        bonus += directMod;
-                    }
+        var allTags = new List<string>(tags ?? []);
+        if (action is not null && action.Parameters.TryGetValue("saveTags", out var raw))
+            allTags.AddRange(raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        // A Wisdom, Intelligence or Charisma save is a mental one unless it says otherwise.
+        if (kind == RollKinds.Save && StatusEffectModifierProvider.Normalize(subject) is "wisdom" or "wis" or "intelligence" or "int" or "charisma" or "cha")
+            allTags.Add("mental");
 
-                    if (tag != "AC" && tag != "Defense")
-                    {
-                        if (!appliedAllRolls && effect.StatModifiers.TryGetValue("AllRolls", out var allRollsMod))
-                        {
-                            bonus += allRollsMod;
-                            appliedAllRolls = true;
-                        }
-
-                        var lowerTag = tag.ToLowerInvariant();
-                        if (lowerTag.Contains("check") || lowerTag.Contains("skill"))
-                        {
-                            if (!appliedAllChecks && effect.StatModifiers.TryGetValue("AllChecks", out var allChecksMod))
-                            {
-                                bonus += allChecksMod;
-                                appliedAllChecks = true;
-                            }
-                        }
-
-                        if (lowerTag.Contains("save") || lowerTag.Contains("saving"))
-                        {
-                            if (!appliedAllSaves && effect.StatModifiers.TryGetValue("AllSaves", out var allSavesMod))
-                            {
-                                bonus += allSavesMod;
-                                appliedAllSaves = true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return baseValue + (int)Math.Floor(bonus);
+        var query = new RollQuery(kind, subject, allTags, actor, other, System, options);
+        var explicitAdvantage = explicitMechanic switch
+        {
+            DiceMechanic.Advantage => AdvantageEffect.Advantage,
+            DiceMechanic.Disadvantage => AdvantageEffect.Disadvantage,
+            _ => AdvantageEffect.None,
+        };
+        var resolved = Pipeline.Resolve(query, baseBonus, explicitAdvantage);
+        var mechanic = resolved.Advantage switch
+        {
+            AdvantageEffect.Advantage => DiceMechanic.Advantage,
+            AdvantageEffect.Disadvantage => DiceMechanic.Disadvantage,
+            _ => explicitMechanic is DiceMechanic.Advantage or DiceMechanic.Disadvantage ? DiceMechanic.Standard : explicitMechanic,
+        };
+        return new RollFold(resolved.Bonus, mechanic, resolved.Notes);
     }
 
     public virtual IReadOnlyDictionary<string, int> GetTurnActionBudget(Character character)
@@ -919,4 +931,11 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
     }
 
     public virtual bool EnforcesRange => true;
+}
+
+/// <summary>A roll's final bonus and dice mechanic after the modifier pipeline, with the reasons to show.</summary>
+public sealed record RollFold(int Bonus, DiceMechanic Mechanic, IReadOnlyList<string> Notes)
+{
+    /// <summary>" [Willpower 20: −2 vs fear; …]" or empty.</summary>
+    public string Suffix => Notes.Count == 0 ? "" : $" [{string.Join("; ", Notes)}]";
 }

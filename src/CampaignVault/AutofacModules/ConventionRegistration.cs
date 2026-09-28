@@ -79,6 +79,8 @@ internal static class ConventionRegistration
             RegisterCollection<IRulesetModule>(builder, assembly);
             RegisterCollection<IInteractionMode>(builder, assembly);
             RegisterCollection<IWorldChangeObserver>(builder, assembly);
+            RegisterCollection<IWorldTimeObserver>(builder, assembly);
+            RegisterCollection<IRollModifierProvider>(builder, assembly);
         }
 
         // Register tools explicitly to ensure dependency order: ExplorationTools before DeepDiveTools
@@ -162,6 +164,8 @@ internal static class ConventionRegistration
 
     private static void RegisterApplicationCore(ContainerBuilder builder)
     {
+        builder.RegisterType<CampaignVault.Rulesets.RollModifierPipeline>().AsSelf().InstancePerLifetimeScope();
+
         // Bridges to the real ASP.NET Core logging pipeline (ILoggerFactory, populated into this
         // container from IServiceCollection) instead of NullLogger — every ILogger<T> resolved
         // through Autofac must reach the configured Console provider, or LogError calls throughout

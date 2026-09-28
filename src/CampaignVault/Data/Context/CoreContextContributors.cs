@@ -308,3 +308,60 @@ internal sealed class QuestLinkContextContributor : IContextContributor
         return [.. items.Take(MaxLines)];
     }
 }
+
+/// <summary>
+/// Chases and flights: when anyone present moves at other than their normal speed (hobbled, chained, burdened, hasted), one
+/// line gives everybody's movement so "I run for it" has an answer. Re-delivered only when the set of speeds changes.
+/// </summary>
+internal sealed class SpeedContextContributor(RollModifierPipeline pipeline) : IContextContributor
+{
+    private const int MaxNamed = 8;
+
+    public async Task<IEnumerable<ContextItem>> ContributeAsync(ContextTurn turn, CancellationToken ct = default)
+    {
+        var ids = turn.PresentNpcIds
+            .Concat(turn.InvolvedEntityIds.Where(id => id.StartsWith(CanonicalId.Characters, StringComparison.OrdinalIgnoreCase)))
+            .Concat(turn.Party.Select(p => p.Id))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (ids.Count < 2)
+        {
+            return [];
+        }
+
+        var loaded = await turn.Session.LoadAsync<Character>(ids, ct);
+        var options = turn.Config.SystemOptions ?? [];
+        var rows = new List<(string Id, string Name, int Now, int Normal, bool Off)>();
+        foreach (var id in ids)
+        {
+            var c = loaded.GetValueOrDefault(id) ?? turn.Party.FirstOrDefault(p => string.Equals(p.Id, id, StringComparison.OrdinalIgnoreCase));
+            if (c is null || SpeedRules.Base(c.SystemStats) is not { } normal)
+            {
+                continue;
+            }
+
+            var now = pipeline.Speed(c, options, turn.Config.ActiveSystem);
+            // Armour is an ordinary, permanent state; only something temporary (a status, a plugin's rule) is news.
+            var off = pipeline.Speed(c, options, turn.Config.ActiveSystem, includeArmor: false) != normal;
+            rows.Add((c.Id, c.Name, now, normal, off));
+        }
+
+        // Only worth a line when somebody is off their normal pace; otherwise the sheets say it all.
+        if (!rows.Any(r => r.Off))
+        {
+            return [];
+        }
+
+        var key = "speed:" + string.Join(",", rows.OrderBy(r => r.Id, StringComparer.OrdinalIgnoreCase).Select(r => $"{r.Id}={r.Now}"));
+        var line = string.Join("; ", rows
+            .OrderBy(r => !r.Off).ThenBy(r => r.Name)
+            .Take(MaxNamed)
+            .Select(r => r.Now == r.Normal ? $"{r.Name} {r.Now} ft" : $"{r.Name} {r.Now} ft ({r.Normal} normally)"));
+        return
+        [
+            new ContextItem(key,
+                $"Speeds now: {line}. In a chase or flight the faster one gets away or catches up; equal speed is a contested check.",
+                35)
+        ];
+    }
+}

@@ -83,6 +83,12 @@ public record SpellDefinition : RulesetTemplate
     /// <summary>dnd5e only. Ability abbreviation the target saves with (e.g. "dex").</summary>
     public string? SaveType { get; init; }
 
+    /// <summary>
+    /// What a save against this spell is against, for roll modifiers: charm, fear, compulsion, mental, poison... Willpower steadies
+    /// or breaks a character against charm, fear, compulsion and mental effects (see <c>WillpowerModifierProvider</c>).
+    /// </summary>
+    public List<string> Tags { get; init; } = [];
+
     /// <summary>dnd5e only. What a successful save does (e.g. "half", "none").</summary>
     public string? SaveSuccess { get; init; }
 
@@ -164,6 +170,7 @@ public record SpellDefinition : RulesetTemplate
             DamageAtCharacterLevel = child.DamageAtCharacterLevel ?? parent.DamageAtCharacterLevel,
             DamageType = child.DamageType ?? parent.DamageType,
             SaveType = child.SaveType ?? parent.SaveType,
+            Tags = child.Tags.Count > 0 ? child.Tags : parent.Tags,
             SaveSuccess = child.SaveSuccess ?? parent.SaveSuccess,
             HealAtSlotLevel = child.HealAtSlotLevel ?? parent.HealAtSlotLevel,
             AreaOfEffectType = child.AreaOfEffectType ?? parent.AreaOfEffectType,

@@ -56,6 +56,13 @@ public interface IChangeContext
     /// </summary>
     void Publish(string topic, object? data = null);
 
+    /// <summary>
+    /// Runs a roll through the host's modifier pipeline (status effects, willpower, every plugin <see cref="IRollModifierProvider"/>)
+    /// so a plugin that rolls for itself honours what the character is carrying. Default (test contexts, old hosts): unchanged.
+    /// </summary>
+    RollResolution ResolveRollModifiers(RollQuery query, int baseBonus, AdvantageEffect explicitAdvantage = AdvantageEffect.None) =>
+        RollResolution.Unchanged(baseBonus, explicitAdvantage);
+
     void RecordMessage(string message);
     void RecordPhysicalStateNudge(string message);
     void RecordFailure();

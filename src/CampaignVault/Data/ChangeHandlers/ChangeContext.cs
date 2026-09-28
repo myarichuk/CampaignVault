@@ -42,6 +42,12 @@ public sealed class ChangeContext : IChangeContext
     /// </summary>
     internal Dictionary<string, bool> BatchStatusOrigins { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Spans of time that passed in this batch (travel, rest), noted by their handlers for the time hook.</summary>
+    internal List<TimeAdvancedChange> TimeNotes { get; } = [];
+
+    /// <summary>&gt; 0 while time observers run, so what they dispatch never re-triggers the hook.</summary>
+    internal int TimeHookDepth { get; set; }
+
     public void Publish(string topic, object? data = null)
     {
         if (!CoreEvents.IsOwnedBy(topic, EventSource))
@@ -287,6 +293,9 @@ public sealed class ChangeContext : IChangeContext
     /// <summary>
     /// Records a message that will appear in CommitResult.Summary.
     /// </summary>
+    public RollResolution ResolveRollModifiers(RollQuery query, int baseBonus, AdvantageEffect explicitAdvantage = AdvantageEffect.None) =>
+        Dispatcher.RollModifiers.Resolve(query, baseBonus, explicitAdvantage);
+
     public void RecordMessage(string message)
     {
         if (!string.IsNullOrWhiteSpace(message))

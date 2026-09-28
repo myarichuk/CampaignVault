@@ -1,3 +1,4 @@
+using CampaignVault.Plugins;
 using CampaignVault.Models;
 using Raven.Client.Documents.Session;
 
@@ -102,6 +103,8 @@ internal sealed class ContextOrchestrator(
 
         foreach (var plugin in pluginContributors)
         {
+            if (!PluginSystems.AppliesTo(plugin, turn.Config?.ActiveSystem))
+                continue;
             var source = plugin.GetType().Assembly.GetName().Name ?? plugin.GetType().Name;
             try
             {

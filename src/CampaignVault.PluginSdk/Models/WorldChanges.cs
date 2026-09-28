@@ -54,6 +54,10 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(CampaignUpdateChange), "campaign_update")]
 [JsonDerivedType(typeof(WorldEventStatusChange), "world_event_status")]
 [JsonDerivedType(typeof(AmbientEncounterCheck), "ambient_encounter_check")]
+[JsonDerivedType(typeof(TimeAdvancedChange), "time_advanced")]
+[JsonDerivedType(typeof(ApplyEffectChange), "apply_effect")]
+[JsonDerivedType(typeof(TetherChange), "tether")]
+[JsonDerivedType(typeof(SoilChange), "soil")]
 [JsonDerivedType(typeof(XpGrantChange), "xp_grant")]
 [JsonDerivedType(typeof(NpcInitiativeNudge), "npc_initiative_nudge")]
 [JsonDerivedType(typeof(ModeTransitionChange), "mode_transition")]
@@ -234,6 +238,146 @@ public class StatusChange : WorldChange
         "Prefer the 'effect' field for all new usage.")]
     [JsonPropertyName("status")]
     public string Status { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Link a subject to an anchor (0.10.0): a horse to a hitching post, a torch to a wall hoop, a captive to a rope held by a
+/// rider. While tethered the subject cannot travel unless the anchor (or its holder) goes along. <c>strain</c> rolls a
+/// check against the break DC. The engine also ends a tether whose anchor is gone or whose holder is incapacitated.
+/// </summary>
+[CommitCategory("World")]
+[Description("Tether a subject to an anchor (attach), release it (detach), or let the subject strain against it (strain: a d20 check vs breakDc).")]
+public class TetherChange : WorldChange
+{
+    [Description("attach, detach or strain.")]
+    [JsonPropertyName("action")]
+    public string Action { get; set; } = "attach";
+
+    [Description("ID of the character (or mount) that is tied.")]
+    [JsonPropertyName("subjectId")]
+    public string SubjectId { get; set; } = null!;
+
+    [Description("What it is tied to: a character ID, an item ID, or 'fixture:<name>' for scenery (a post, a hoop). Detach without anchorId releases every tether on the subject.")]
+    [JsonPropertyName("anchorId")]
+    public string? AnchorId { get; set; }
+
+    [Description("Check total needed to break free. Default 15.")]
+    [JsonPropertyName("breakDc")]
+    public int? BreakDc { get; set; }
+
+    [Description("How far the subject can move from the anchor, in feet. Omit for held tight.")]
+    [JsonPropertyName("slackFeet")]
+    public int? SlackFeet { get; set; }
+
+    [Description("Character holding the anchor end, if any. Their incapacitation releases the tether.")]
+    [JsonPropertyName("holderId")]
+    public string? HolderId { get; set; }
+
+    [Description("What it is (lead rope, hitching post, frog tie).")]
+    [JsonPropertyName("label")]
+    public string? Label { get; set; }
+
+    [Description("strain: the subject's modifier to the check (e.g. Athletics or Strength).")]
+    [JsonPropertyName("checkBonus")]
+    public int? CheckBonus { get; set; }
+
+    [Description("strain: a natural d20 result when the caller already rolled it; omit to let the engine roll.")]
+    [JsonPropertyName("d20")]
+    public int? D20 { get; set; }
+}
+
+/// <summary>
+/// Filth tracking: dust, blood, mud... on a character, an item, or a location (its walls and floor via <c>fixture</c>).
+/// One verb covers apply, worsen, wash and clear. The engine never soils anything by itself (like utility statuses,
+/// fiction is committed by the DM): after a fight or a muddy road, commit <c>soil</c> in the same batch. Each change
+/// publishes <c>core.soiled.v1</c> so plugins can react (scent, infection, cleaning rituals).
+/// </summary>
+[CommitCategory("World")]
+[Description("Soil or clean a character, item or location (dust, blood, mud...; +1 adds/worsens up to 3, -1 washes; clear:true removes). The engine never soils anything itself: after a fight or a muddy road, commit this in the same batch.")]
+public class SoilChange : WorldChange
+{
+    [Description("Character, item or location ID that gets dirty (or clean).")]
+    [JsonPropertyName("targetId")]
+    public string TargetId { get; set; } = null!;
+
+    [Description("Open string: blood, mud, dust, soot, grime, slime... (any other word works; plugins may namespace, e.g. 'myplugin.ichor'). Required unless clear:true (then omitted = every kind).")]
+    [JsonPropertyName("kind")]
+    public string? Kind { get; set; }
+
+    [Description("Signed severity change, default +1: adds or worsens (max 3 = heavy). Negative washes; a mark that reaches 0 disappears. Ignored with clear.")]
+    [JsonPropertyName("amount")]
+    public int Amount { get; set; } = 1;
+
+    [Description("Where on the target: boots, hem of cloak, left cheek, blade. Omit for the target generally. When washing or clearing, omit to match every spot.")]
+    [JsonPropertyName("spot")]
+    public string? Spot { get; set; }
+
+    [Description("Locations only: the scenery that is dirty (north wall, floor). Omit for the place generally.")]
+    [JsonPropertyName("fixture")]
+    public string? Fixture { get; set; }
+
+    [Description("true removes every matching mark (kind/spot/fixture filters; none = all dirt on the target).")]
+    [JsonPropertyName("clear")]
+    public bool? Clear { get; set; }
+
+    [Description("Optional short remark (from the ogre, river silt).")]
+    [JsonPropertyName("note")]
+    public string? Note { get; set; }
+}
+
+/// <summary>
+/// A guardrailed buff or debuff (0.10.0): the DM says what happened and how big it is; the engine clamps magnitude and
+/// duration to the tier, requires an expiry, and never stacks two effects with the same key. Use it for the small stuff
+/// the fiction throws up (a stag at dusk lifts the mood, a sprained ankle) and, as <c>persistent</c>, for curses and auras
+/// that need a named source and a way out. Anything outside the tiers is still a plain <c>status</c>.
+/// </summary>
+[CommitCategory("Combat")]
+[Description("Apply a clamped, expiring, non-stacking buff or debuff. tier light (±1, ≤1h), moderate (±2, ≤8h), serious (±3, ≤24h, needs recoveryHint), persistent (curses/auras: needs imposedBy and removal).")]
+public class ApplyEffectChange : WorldChange
+{
+    [Description("ID of the character receiving the effect.")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = null!;
+
+    [Description("Unique per character: reapplying the same key refreshes instead of stacking (e.g. 'mood', 'sprained-ankle', 'curse-of-x').")]
+    [JsonPropertyName("key")]
+    public string Key { get; set; } = null!;
+
+    [Description("Display name (e.g. 'Uplifted by the stag', 'Sprained ankle').")]
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = null!;
+
+    [Description("buff or debuff. Buff modifiers must be positive, debuff modifiers negative.")]
+    [JsonPropertyName("valence")]
+    public string Valence { get; set; } = null!;
+
+    [Description("light, moderate, serious or persistent. Sets the largest modifier and longest duration the engine will keep.")]
+    [JsonPropertyName("tier")]
+    public string Tier { get; set; } = null!;
+
+    [Description("Up to 2 modifiers from: AllChecks, AllSaves, AttackRoll, AllRolls, Initiative, Speed (feet, moderate+), or a skill (Athletics, Perception, Stealth, Persuasion, ...).")]
+    [JsonPropertyName("modifiers")]
+    public Dictionary<string, float> Modifiers { get; set; } = [];
+
+    [Description("How long it lasts, in hours. Required unless tier is persistent; clamped to the tier's maximum.")]
+    [JsonPropertyName("durationHours")]
+    public double? DurationHours { get; set; }
+
+    [Description("How it ends early (rest, treatment, a save). Required for serious.")]
+    [JsonPropertyName("recoveryHint")]
+    public string? RecoveryHint { get; set; }
+
+    [Description("Persistent only: who or what imposes it (a curse's caster, a slaad, an item id).")]
+    [JsonPropertyName("imposedBy")]
+    public string? ImposedBy { get; set; }
+
+    [Description("Persistent only: what ends it (remove curse, killing the slaad, the item removed).")]
+    [JsonPropertyName("removal")]
+    public string? Removal { get; set; }
+
+    [Description("Optional: Injury, Buff, Environmental, Curse, Mood. Defaults from valence and tier.")]
+    [JsonPropertyName("category")]
+    public string? Category { get; set; }
 }
 
 /// <summary>Remove a named status/condition from a character (case-insensitive match). Removes all matching entries.</summary>
@@ -1642,6 +1786,38 @@ public class AmbientEncounterCheck : WorldChange
 }
 
 /// <summary>
+/// Simulation-internal: delivers a span of elapsed time to <c>IWorldTimeObserver</c>s (SDK 0.10.0). Staged by the
+/// engine after the simulation tick of any commit or skip that advanced the clock; the handler splits it into buckets.
+/// </summary>
+[Description("Simulation-internal: tells time observers that time passed. Not for LLM use.")]
+[EngineOnly]
+public class TimeAdvancedChange : WorldChange
+{
+    [JsonPropertyName("source")]
+    public string Source { get; set; } = "activity";
+
+    [JsonPropertyName("hours")]
+    public double Hours { get; set; }
+
+    /// <summary>Step size the span is split into.</summary>
+    [JsonPropertyName("bucketHours")]
+    public double BucketHours { get; set; } = 6;
+
+    /// <summary>Campaign hours elapsed after the whole span.</summary>
+    [JsonPropertyName("totalHoursAfter")]
+    public double TotalHoursAfter { get; set; }
+
+    [JsonPropertyName("characterIds")]
+    public List<string> CharacterIds { get; set; } = [];
+
+    [JsonPropertyName("locationId")]
+    public string? LocationId { get; set; }
+
+    [JsonPropertyName("terrain")]
+    public string? Terrain { get; set; }
+}
+
+/// <summary>
 /// Transitions a WorldEvent's status or stamps LastTriggeredDay for recurring events.
 /// Can be emitted by WorldEventRule during simulation or committed by the DM for freeform narrative resolutions.
 /// </summary>
@@ -1679,7 +1855,7 @@ public class ModeTransitionChange : WorldChange
     [JsonPropertyName("modeId")]
     public string ModeId { get; set; } = null!;
 
-    [Description("'enter' starts a new ModeEncounter at locationId with participantIds; 'turn' advances the active one to the next participant's turn (ending it if the mode says it is complete); 'exit' ends it.")]
+    [Description("'enter' starts a new ModeEncounter at locationId with participantIds; 'turn' advances the active one to the next participant's turn (ending it if the mode says it is complete); 'exit' ends it; 'join' adds participantIds to the running one (they act from the next round); 'leave' removes them and it continues.")]
     [JsonPropertyName("action")]
     public string Action { get; set; } = "enter";
 
@@ -1687,7 +1863,7 @@ public class ModeTransitionChange : WorldChange
     [JsonPropertyName("locationId")]
     public string? LocationId { get; set; }
 
-    [Description("Character IDs participating in the mode encounter. Required for 'enter'.")]
+    [Description("Character IDs participating in the mode encounter. Required for 'enter', 'join' and 'leave'.")]
     [JsonPropertyName("participantIds")]
     public List<string> ParticipantIds { get; set; } = [];
 }

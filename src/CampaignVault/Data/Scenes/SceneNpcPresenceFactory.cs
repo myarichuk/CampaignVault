@@ -90,7 +90,8 @@ public sealed class SceneNpcPresenceFactory
                 RelevantMemories: [.. enrichment.RelevantMemories.Take(2)],
                 EquippedItems: equippedItems,
                 CarriedItems: carriedItems,
-                TurnIntent: enrichment.TurnIntent
+                TurnIntent: enrichment.TurnIntent,
+                Soil: SoilHelpers.Summarize(npc.Dirt)
             ));
         }
 

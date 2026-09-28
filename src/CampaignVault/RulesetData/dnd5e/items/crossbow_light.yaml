@@ -10,6 +10,7 @@ properties:
   weight: 5
   costGp: 25
   range: Near
+  ammoType: bolt
 equipZones: [MainHand]
 equipLayer: Held
 twoHanded: true

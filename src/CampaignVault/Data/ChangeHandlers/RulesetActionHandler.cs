@@ -82,9 +82,20 @@ public sealed class RulesetActionHandler(
 
         // Merge weapon-derived defaults (including "range") before range validation runs,
         // so weapon-based range enforcement (the documented, primary path) actually has data to check.
+        AmmoResolver.AmmoPlan? ammoPlan = null;
         if (action.ActionType == RulesetActionType.Attack)
         {
+            var callerSetCount = AttackTargetHelper.HasExplicitCount(action);
             await WeaponParameterResolver.ApplyHeldWeaponDefaultsAsync(action, ctx, ct);
+
+            // Ranged weapons that declare an ammoType fire real rounds: fire mode, ammo lookup, clamp to what is left.
+            var (ammoFailure, plan) = await AmmoResolver.PrepareAsync(action, ctx, callerSetCount, ct);
+            if (ammoFailure is { } failed)
+            {
+                return failed;
+            }
+
+            ammoPlan = plan;
         }
 
         // Pre-check: range/AoE validation (only if the ruleset enforces it)
@@ -128,6 +139,12 @@ public sealed class RulesetActionHandler(
         }
 
         var narrative = output.Result.Narrative;
+        if (ammoPlan is not null)
+        {
+            var report = AmmoResolver.Spend(ammoPlan);
+            narrative = string.IsNullOrWhiteSpace(narrative) ? report : narrative + " " + report;
+        }
+
         foreach (var line in await ResolveSecretsAsync(action, output.Result, ctx, ct))
         {
             narrative = string.IsNullOrWhiteSpace(narrative) ? line : narrative + " " + line;
@@ -196,11 +213,10 @@ public sealed class RulesetActionHandler(
         var statusEffects = character.SystemStats.StatusEffects;
 
         // Hard block: standard incapacitation prevents any action, independent of spell data.
-        var blocker = statusEffects.FirstOrDefault(e => CastingComponentGate.HardBlockConditions.Contains(e.Name));
-        if (blocker != null)
+        if (ActionBlock.IsBlocked(character, out var blocker))
         {
             return ChangeHandlerResult.Failure(
-                $"[SpellcastingBlocked] {character.Name} is {blocker.Name} and cannot cast spells.");
+                $"[SpellcastingBlocked] {character.Name} is {blocker!.Name} and cannot cast spells.");
         }
 
         if (!RulesetSystemResolver.TryFromStats(character.SystemStats, out var system) || string.IsNullOrWhiteSpace(action.ActionName))

@@ -126,6 +126,18 @@ public class CampaignRepository
             ev => LogEventAsync(session, ev, effective));
     }
 
+    /// <summary>Characters a batch names as doing something, for a time span with no travel/rest to say who lived it.</summary>
+    private static List<string> OnScreenIds(IEnumerable<WorldChange> changes) =>
+        changes.SelectMany(c => c switch
+            {
+                StatusChange sc => [sc.CharacterId],
+                ActivityChange ac => [ac.CharacterId],
+                _ => Array.Empty<string>()
+            })
+            .Where(id => !string.IsNullOrEmpty(id))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
     public async Task<CommitResult> StageChangesAsync(CampaignSession campaignSession, WorldChange[]? changes, string? partyLocationId = null)
     {
         changes ??= [];
@@ -187,10 +199,24 @@ public class CampaignRepository
                     .Select(id => id!)
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+                // Travel/rest noted their own spans; anything else that advanced the clock (a long ordinary beat)
+                // is one "activity" span, so plugin time observers never miss time that passed.
+                var timeSpans = result.TimeAdvances.Count > 0
+                    ? result.TimeAdvances
+                    : [new TimeAdvancedChange
+                    {
+                        Source = "activity",
+                        Hours = elapsedDays * 24,
+                        TotalHoursAfter = time.TotalDaysElapsed * 24.0 + time.Hour,
+                        CharacterIds = OnScreenIds(changes),
+                        LocationId = partyLocationId
+                    }];
+
                 var ambientResult = await RunSimulationTickAsync(
                     session, effective, time, elapsedDays,
                     handledOwnEncounterCheck ? null : partyLocationId,
-                    tirednessExemptIds.Count > 0 ? tirednessExemptIds : null);
+                    tirednessExemptIds.Count > 0 ? tirednessExemptIds : null,
+                    timeSpans);
                 if (ambientResult.Deltas.Count > 0)
                 {
                     // Deliberately NOT merged into result.InvolvedEntities: this tick applies ambient
@@ -206,6 +232,7 @@ public class CampaignRepository
                     result.AmbientDeltas.AddRange(ambientResult.Deltas);
                 }
 
+                result.Summary.AddRange(ambientResult.TimeMessages);
                 result.AmbientNarrativeSummaries.AddRange(
                     ambientResult.Narratives.Where(n => n.Persist).Select(n => n.Text));
             }
@@ -655,7 +682,20 @@ public class CampaignRepository
 
         await session.StoreAsync(time);
 
-        var simResult = await RunSimulationTickAsync(session, effective, time, daysPassedForSim, partyLocationId);
+        var party = await session.Query<Character, Character_Search>()
+            .Where(c => c.CampaignName == effective && (c.IsPc || c.IsPartyCompanion))
+            .Customize(x => x.WaitForNonStaleResults())
+            .Select(c => c.Id)
+            .ToListAsync();
+        var skip = new TimeAdvancedChange
+        {
+            Source = "advance_world",
+            Hours = daysPassedForSim * 24,
+            TotalHoursAfter = time.TotalDaysElapsed * 24.0 + time.Hour,
+            CharacterIds = party,
+            LocationId = partyLocationId
+        };
+        var simResult = await RunSimulationTickAsync(session, effective, time, daysPassedForSim, partyLocationId, null, [skip]);
 
         // 4d: Cap PressureCooldowns dictionary size (e.g. 500 entries), evicting oldest-surfaced entries beyond the cap
         var campaignDoc = await session.LoadAsync<Campaign>(_keys.Meta(effective));
@@ -684,7 +724,7 @@ public class CampaignRepository
         return new()
         {
             NewTime = time,
-            SimulatorEvents = [.. simResult.NarrativeEvents],
+            SimulatorEvents = [.. simResult.NarrativeEvents, .. simResult.TimeMessages],
             WorldPressure = [.. simResult.WorldPressure],
             EvictedNpcIds = [.. simResult.EvictedNpcIds],
             EvictedNpcs = [.. simResult.EvictedNpcSummaries],
@@ -706,7 +746,8 @@ public class CampaignRepository
     /// </summary>
     private async Task<SimulationResult> RunSimulationTickAsync(
         IAsyncDocumentSession session, string effective, CampaignTime time, double daysPassed,
-        string? partyLocationId = null, IReadOnlySet<string>? tirednessExemptCharacterIds = null)
+        string? partyLocationId = null, IReadOnlySet<string>? tirednessExemptCharacterIds = null,
+        IReadOnlyList<TimeAdvancedChange>? timeSpans = null)
     {
         // Scoping hardened: entity queries now filter by CampaignName (see code_review.md and plan).
         // For shareables (NPCs/locs) loose filter allows cross-camp if desired; events/rumors strict.
@@ -765,7 +806,17 @@ public class CampaignRepository
             await StageChangesAsync(new CampaignSession(session, effective), [.. deltasToApply]);
         }
 
-        return simResult;
+        // Time hook: plugins see the span after the simulation deltas above have landed. Their messages (a
+        // consequence beat, an effect that wore off) are the point of the hook, so they travel back to the caller.
+        var timeMessages = new List<string>();
+        if (timeSpans is { Count: > 0 })
+        {
+            var hooked = await StageChangesAsync(
+                new CampaignSession(session, effective), [.. timeSpans.Where(t => t.Hours > 0)]);
+            timeMessages.AddRange(hooked.Summary);
+        }
+
+        return simResult with { TimeMessages = timeMessages };
     }
 
     // --- Search & Recall ---
@@ -3084,6 +3135,7 @@ public class CampaignRepository
             CharacterId = npc.Id,
             Name = npc.Name,
             CurrentAppearance = trim.StripAppearance ? null : npc.CurrentAppearance ?? "",
+            Soil = trim.StripAppearance ? null : SoilHelpers.Summarize(npc.Dirt),
             CurrentActivity = npc.CurrentActivity,
             CurrentMood = npc.Psychology?.CurrentMood,
             BehavioralSummary = behavioralSummary,

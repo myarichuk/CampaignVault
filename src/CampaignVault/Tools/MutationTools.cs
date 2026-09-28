@@ -842,6 +842,15 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                     ctx.ItemHolderBaselines[iu.ItemId] = updatedItem?.HolderId;
                     break;
                 }
+
+                // A soiled item's dirt rides on its holder's gear summary, so the holder has to be known.
+                case SoilChange so when so.TargetId?.StartsWith("item", StringComparison.OrdinalIgnoreCase) == true &&
+                                        !ctx.ItemHolderBaselines.ContainsKey(so.TargetId):
+                {
+                    var soiledItem = await ctx.Session.LoadAsync<Item>(so.TargetId);
+                    ctx.ItemHolderBaselines[so.TargetId] = soiledItem?.HolderId;
+                    break;
+                }
             }
         }
     }
@@ -1696,6 +1705,9 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                 eq.Equals(holder, characterId),
             ItemEquip ie => eq.Equals(ie.CharacterId, characterId),
             ItemUnequip iu => eq.Equals(iu.CharacterId, characterId),
+            // A held item's dirt rides on its ItemSummaryView (same holder-snapshot match as ItemUpdate).
+            SoilChange so => !string.IsNullOrWhiteSpace(so.TargetId) &&
+                ctx.ItemHolderBaselines.TryGetValue(so.TargetId, out var soiledHolder) && eq.Equals(soiledHolder, characterId),
             // HP and resource pools aren't on the wire stat line (AC, level, attributes, traits) and don't
             // move gear; the commit summary already reports them. Statuses can modify AC, so they count.
             StatusChange sc => eq.Equals(sc.CharacterId, characterId),
@@ -1743,6 +1755,8 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             HpChange hp => eq.Equals(hp.CharacterId, characterId),
             StatusChange sc => eq.Equals(sc.CharacterId, characterId),
             StatusRemove sr => eq.Equals(sr.CharacterId, characterId),
+            // Dirt is part of how a character looks right now (bloodied, muddy boots).
+            SoilChange so => eq.Equals(so.TargetId, characterId),
             _ => false
         };
     }
@@ -1869,6 +1883,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
         return change switch
         {
             LocationUpdate lu => eq.Equals(lu.LocationId, locationId),
+            SoilChange so => eq.Equals(so.TargetId, locationId),
             // ActivityChangeHandler never writes to the Location document — it only moves the
             // *character* (CurrentLocationId). Materializing PoI state always goes through a
             // dedicated LocationUpdate (handled above), so an activity move alone never triggers a
@@ -1996,7 +2011,9 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
         CurrentState = null,
         VisualTags = [],
         DistinctiveFeatures = [],
-        ClimateZone = null
+        ClimateZone = null,
+        Soil = null,
+        Dirt = null
     };
 
     /// <summary>
@@ -2054,6 +2071,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             CurrentAppearance = trim.StripAppearance ? null : npc.CurrentAppearance,
             VisualTags = trim.StripAppearance ? null : npc.VisualTags,
             DistinctiveFeatures = trim.StripAppearance ? null : npc.DistinctiveFeatures,
+            Soil = trim.StripAppearance ? null : npc.Soil,
             BehavioralSummary = trim.SkipBehavioralSummary ? null : npc.BehavioralSummary,
             KnownNeeds = knownNeeds,
             NeedDescriptors = needDescriptors,
@@ -2662,7 +2680,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
 
             ctx.Result.FullNpcContext = new NpcContextView
             {
-                Character = CharacterDetailView.From(npc, includeCombatDetail),
+                Character = CharacterDetailView.From(npc, includeCombatDetail, includeDirtDetail: true),
                 RecentInteractions =
                     [.. npcEvents.Take(EventSummaryView.NpcContextCap).Select(EventSummaryView.ForNpcContext)],
                 BehavioralSummary = behavioralSummary,

@@ -10,6 +10,7 @@ properties:
   weight: 3
   costGp: 75
   range: Close
+  ammoType: bolt
 equipZones: [MainHand]
 equipLayer: Held
 twoHanded: false

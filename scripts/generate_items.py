@@ -35,6 +35,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ITEMS_DIR = ROOT / "src/CampaignVault/RulesetData/dnd5e/items"
+OVERLAY_PATH = ROOT / "scripts" / "item_overlay.yaml"
+
+# SRD ammunition bundles the overlay's ammoType values point at: api index -> (ammoType, weapons it fits).
+# Rounds live in the item's charges (`uses`/`chargeUnit`), which is what AmmoResolver spends.
+AMMO = {
+    "arrow": ("arrow", ["shortbow", "longbow"], "arrows"),
+    "crossbow-bolt": ("bolt", ["crossbow_light", "crossbow_heavy", "crossbow_hand"], "bolts"),
+    "sling-bullet": ("bullet", ["sling"], "bullets"),
+    "blowgun-needle": ("needle", ["blowgun"], "needles"),
+}
 
 HEADER = "# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0\n"
 
@@ -140,6 +150,50 @@ def weapon_description(detail: dict, damage_dice: str | None, damage_type: str |
     return " ".join(parts)
 
 
+def load_overlay() -> dict[str, dict[str, str]]:
+    """Parse scripts/item_overlay.yaml: top-level `slug:` then indented `key: value` lines, `#` comments."""
+    overlay: dict[str, dict[str, str]] = {}
+    if not OVERLAY_PATH.exists():
+        return overlay
+    slug = None
+    for raw in OVERLAY_PATH.read_text(encoding="utf-8").splitlines():
+        line = raw.split("#", 1)[0].rstrip()
+        if not line.strip():
+            continue
+        if not line.startswith(" "):
+            slug = line.rstrip(":").strip()
+            overlay[slug] = {}
+        elif slug is not None and ":" in line:
+            key, value = line.split(":", 1)
+            overlay[slug][key.strip()] = value.strip()
+        else:
+            raise SystemExit(f"item_overlay.yaml: cannot parse line {raw!r}")
+    return overlay
+
+
+def load_ammo(index: str) -> tuple[str, dict]:
+    detail = fetch_json(f"{DND5E_API}/api/2014/equipment/{index}")
+    ammo_type, weapons, unit = AMMO[index]
+    rounds = detail.get("quantity") or 20
+    props: dict[str, object] = {}
+    if detail.get("weight") is not None:
+        props["weight"] = detail["weight"]
+    cost_gp = cost_to_gp(detail.get("cost"))
+    if cost_gp is not None:
+        props["costGp"] = cost_gp
+    props.update({"uses": rounds, "chargeUnit": unit, "ammoType": ammo_type, "ammoFor": ", ".join(weapons)})
+    slug = f"{kebab_to_snake(index)}s_{rounds}"
+    return slug, {
+        "name": slug,
+        "system": "dnd5e",
+        "category": "Consumable",
+        "tags": ["ammunition", "adventuring-gear"],
+        "description": f"{detail['name']} bundle of {rounds}, for {', '.join(w.replace('_', ' ') for w in weapons)}. "
+                       f"One round per shot; rounds are tracked in the item's charges.",
+        "properties": props,
+    }
+
+
 def load_weapon(entry: dict) -> tuple[str, dict]:
     detail = fetch_json(DND5E_API + entry["url"])
     slug = kebab_to_snake(detail["index"])
@@ -167,6 +221,8 @@ def load_weapon(entry: dict) -> tuple[str, dict]:
     range_band = weapon_range_band(detail)
     if range_band:
         props["range"] = range_band
+
+    props.update(load_overlay().get(slug, {}))
 
     tags = sorted({detail["weapon_category"].lower(), detail["weapon_range"].lower(), *properties})
 
@@ -267,9 +323,10 @@ def write_item(path: Path, body: dict) -> None:
             lines.append(f"  {key}: {'true' if value else 'false'}")
         else:
             lines.append(f"  {key}: {value}")
-    zones = ", ".join(body["equipZones"])
-    lines.append(f"equipZones: [{zones}]")
-    lines.append(f"equipLayer: {body['equipLayer']}")
+    if "equipZones" in body:
+        zones = ", ".join(body["equipZones"])
+        lines.append(f"equipZones: [{zones}]")
+        lines.append(f"equipLayer: {body['equipLayer']}")
     if "twoHanded" in body:
         lines.append(f"twoHanded: {'true' if body['twoHanded'] else 'false'}")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -294,6 +351,14 @@ def generate() -> int:
             generated[slug] = body
         for slug, body in pool.map(load_armor, armor_entries):
             generated[slug] = body
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        for slug, body in pool.map(load_ammo, AMMO):
+            generated[slug] = body
+
+    unused = set(load_overlay()) - set(generated)
+    if unused:
+        raise SystemExit(f"item_overlay.yaml names items the SRD did not produce: {sorted(unused)}")
 
     for slug in sorted(generated):
         write_item(ITEMS_DIR / f"{slug}.yaml", generated[slug])

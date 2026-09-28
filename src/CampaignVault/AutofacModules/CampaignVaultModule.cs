@@ -76,6 +76,8 @@ public class CampaignVaultModule : Autofac.Module
                     .Select(g => g.Last())
             ];
 
+            PluginSystems.Set(plugins.Select(p => (p.Assembly, (IReadOnlyList<string>?)p.Manifest?.Systems)));
+
             PluginDataRoots.PlayerOnlyModeIds = plugins
                 .SelectMany(p => p.Manifest?.PlayerOnlyModeIds ?? [])
                 .Where(id => !string.IsNullOrWhiteSpace(id))

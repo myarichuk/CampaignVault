@@ -24,6 +24,24 @@ internal static class AttackTargetHelper
     }
 
     /// <summary>
+    /// The target of each individual attack of a weapon attack. Fewer shots than targets hits the first N; more shots
+    /// than targets (a burst at one target, a machine gun across a horde) fans out round-robin, one attack per shot.
+    /// Saves and other one-roll-per-target actions keep <see cref="SelectTargets"/>.
+    /// </summary>
+    public static IReadOnlyList<string> SelectAttackInstances(RulesetAction action)
+    {
+        var distinctTargets = action.TargetIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return DistributeInstances(distinctTargets, ResolveAttackCount(action, distinctTargets.Count));
+    }
+
+    /// <summary>True when the caller (not a weapon default) named the attack count.</summary>
+    public static bool HasExplicitCount(RulesetAction action) =>
+        TryGetIntParameter(action.Parameters, out var n, "attackCount", "shots", "rateOfFire", "attacks") && n > 0;
+
+    /// <summary>
     /// Distributes N independently-resolved damage instances (Magic Missile darts, Scorching Ray
     /// rays) across the listed targets, round-robin: 3 targets + 3 instances → 1 each, 1 target +
     /// 3 instances → all 3 at that target, 2 targets + 3 instances → a 2/1 split. Unlike

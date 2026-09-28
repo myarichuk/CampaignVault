@@ -10,6 +10,7 @@ properties:
   weight: 1
   costGp: 10
   range: Close
+  ammoType: needle
 equipZones: [MainHand]
 equipLayer: Held
 twoHanded: false

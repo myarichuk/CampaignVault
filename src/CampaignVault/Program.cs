@@ -219,7 +219,7 @@ var mcpServerBuilder = builder.Services.AddMcpServer(options =>
     options.ServerInfo = new Implementation
     {
         Name = "CampaignVault",
-        Version = "0.7.0"
+        Version = "0.11.0"
     };
 });
 

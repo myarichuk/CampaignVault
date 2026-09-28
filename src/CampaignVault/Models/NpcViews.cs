@@ -40,13 +40,21 @@ public record CharacterDetailView(
     PsychologyProfile Psychology,
     SocialProfile Social,
     NeedsProfile? Needs,
-    SystemExtension? SystemStats)
+    SystemExtension? SystemStats,
+    /// <summary>Movement right now (feet, armour and status effects folded in), e.g. "10 ft (30 normally: Hobbled)". With combat detail only.</summary>
+    string? Speed = null,
+    /// <summary>Compact dirt line ("muddy boots, heavily bloodied"); null when clean. Replaced by <see cref="Dirt"/> in full detail.</summary>
+    string? Soil = null,
+    /// <summary>Full dirt marks, only where the caller asked for full detail (get_entity, fullDetailCharacterId).</summary>
+    List<DirtMark>? Dirt = null)
 {
     /// <param name="includeCombatDetail">Whether to include Needs/SystemStats — the mechanical slice a
     /// DM only needs once a roll or combat is actually in play. Default true for every caller except
     /// take_turn's fullDetailCharacterId, which passes the request's own includeCombatDetail flag so a
     /// first-contact NPC doesn't drag full ability scores/saves/needs onto the wire for a doorway glance.</param>
-    public static CharacterDetailView From(Character c, bool includeCombatDetail = true) => new(
+    /// <param name="includeDirtDetail">Full <see cref="Dirt"/> marks instead of the compact <see cref="Soil"/> line. Off by
+    /// default so party and scene payloads never grow per dirt entry; get_entity and take_turn's fullDetailCharacterId opt in.</param>
+    public static CharacterDetailView From(Character c, bool includeCombatDetail = true, bool includeDirtDetail = false) => new(
         c.Id,
         c.Name,
         c.ClassLevel,
@@ -67,7 +75,10 @@ public record CharacterDetailView(
         c.Psychology,
         c.Social,
         includeCombatDetail ? c.Needs : null,
-        includeCombatDetail ? c.SystemStats : null);
+        includeCombatDetail ? c.SystemStats : null,
+        includeCombatDetail ? CampaignVault.Rulesets.SpeedRules.Describe(c.SystemStats) : null,
+        includeDirtDetail ? null : SoilHelpers.Summarize(c.Dirt),
+        includeDirtDetail && c.Dirt is { Count: > 0 } ? c.Dirt : null);
 }
 
 public class NpcContextView
@@ -140,6 +151,10 @@ public class NpcSummaryView
     /// turn — the client already has the last-known value from the last full reseed or a prior delta
     /// that did change it. Always populated outside take_turn (e.g. get_npc_summary) and in Full mode.</summary>
     public string? CurrentAppearance { get; set; }
+
+    /// <summary>Compact dirt line ("muddy boots, heavily bloodied"); null when clean. Stripped with the appearance
+    /// fields in take_turn delta mode unless a soil change touched this NPC.</summary>
+    public string? Soil { get; set; }
 
     public string? CurrentActivity { get; set; }
     public string? CurrentMood { get; set; }

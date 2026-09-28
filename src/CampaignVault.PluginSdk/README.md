@@ -20,6 +20,92 @@ CampaignVault install, and restart the host.
 See [PLUGINS.md](https://github.com/myarichuk/CampaignVault/blob/master/PLUGINS.md) in
 the main repository for the full plugin architecture, trust model, and quick-start guide.
 
+## 0.11.0
+
+- **Roll modifiers.** Implement `IRollModifierProvider.Modifiers(RollQuery)` to change what a roll is: a numeric bonus, advantage
+  or disadvantage, and a reason the player reads. Core folds every provider (its own status-effect layer, willpower, and yours)
+  into each attack, damage, AC, check, save, initiative and speed, cancels advantage against disadvantage, and adds each reason to
+  the roll's narrative. Providers are registered by convention, gated by your `systems`, must be pure and synchronous, and are
+  skipped if they throw. `RollQuery` has `Kind` (`RollKinds.*`), the normalized `Subject` (skill or save), `Tags` (what the roll is
+  against: `charm`, `fear`, `compulsion`, `mental`), `Actor`, `Other`, `System` and the campaign's `Options`.
+  Rule: numbers that expire live on a `StatusEffect` (core folds those); providers add situational advantage and tag-specific
+  bonuses. Never stamp an effect and also return the same number.
+- **Plugin rolls.** `IChangeContext.ResolveRollModifiers(query, baseBonus, explicitAdvantage)` runs your own rolls through the same
+  pipeline. It is a default interface member (returns the bonus unchanged), so existing contexts and test doubles keep compiling.
+- **Willpower matters.** Saves tagged `charm`, `fear`, `compulsion` or `mental` (a Wisdom, Intelligence or Charisma save counts as
+  mental) move with `Willpower`: 90+ +1, 60-89 none, 30-59 -1, 10-29 -2, under 10 -3 and disadvantage. The default (75) changes
+  nothing. `SystemExtension.WillpowerDrained` records what was worn down by something recoverable (a negative `attribute willpower`
+  delta, or your own drain); each 4-hour rest step gives back up to 5. A willpower value set outright is a new baseline.
+- **Spell tags.** `SpellDefinition.tags` (charm, fear, compulsion, mental...) and an action's `saveTags` parameter feed `RollQuery.Tags`.
+- **Speed.** `Speed` status modifiers are now real: they slow travel (the group moves at its slowest member's pace, at most 3x, gear
+  excluded), show as `speed` on character and NPC cards, and a context line compares everyone's speed when someone is off their
+  normal pace, so a chase can be adjudicated.
+- **Dirt** (`soil`, `SoilChange`, `IHasDirt.Dirt`): dust, blood, mud... on a character, an item or a location (scenery via
+  `fixture`: `north wall`, `floor`; props are items whose `HolderId` is the location). Each host keeps at most 8 `DirtMark`s
+  (`Kind`, `Severity` 1-3, `Spot`, `Fixture`, `AppliedDay`, `Note`); identity is `(kind, spot, fixture)`, case-insensitive.
+  `amount` +1 adds or worsens, -1 washes (spot and fixture then act as filters), `clear: true` removes every match. Past the
+  cap the least severe, oldest mark fades. The engine never soils anything on its own: the DM commits `soil` in the same
+  batch as the fight or the road. **Kinds are open strings** (`DirtKinds` only suggests `blood`, `mud`, `dust`, `soot`...):
+  invent `ectoplasm`, or `myplugin.ichor` if you want a namespace; unknown kinds just get no engine behavior. To read dirt,
+  use `ctx.Characters/Items/Locations[id].Dirt` (or `SoilHelpers.HasDirt/SeverityOf/Summarize`) from any handler,
+  observer or event handler. To change it, return a `SoilChange` (a follow-up from an `IDomainEventHandler`, or from an
+  observer); there is no need for a new `$type`. Every changed mark publishes `core.soiled.v1` (`targetId`, `kind`,
+  `severity` (0 once gone), `spot`, `fixture`, `action`: `applied`, `worsened`, `cleaned`, `cleared`, `evicted`), which is
+  where scent tracking, infection or cleaning rituals belong. On the wire, lists carry one short `soil` line ("muddy boots,
+  heavily bloodied") or nothing; the full `dirt` array appears only in `get_entity` for characters and items, take_turn's
+  `fullDetailCharacterId`, and a location's `fullDescription` view.
+
+## 0.10.0
+
+- **Time hook.** Implement `IWorldTimeObserver.OnTimeAdvancedAsync(TimeAdvance, IChangeContext, ct)`. It runs after the
+  clock moved, once per bucket (travel 6h, rest 4h, other activity and `advance_world` 6h; a long skip is split into at
+  most 16 coarse steps), oldest first. `TimeAdvance` carries `Source` (`travel`, `rest`, `activity`, `advance_world`),
+  `Hours`, `TotalHoursSoFar`, `CharacterIds`, `LocationId` and `Terrain` (travel: the exit's terrain). Like
+  `IWorldChangeObserver` it cannot fail the commit (exceptions are logged), is gated by your plugin's `systems`, and can only
+  cause effects by dispatching new `WorldChange`s; whatever it dispatches does not re-trigger the hook.
+- **`apply_effect`** (`ApplyEffectChange`): a clamped layer over statuses. `tier` light (±1, ≤1h), moderate (±2, Speed ±10,
+  ≤8h), serious (±3, Speed ±20, ≤24h, needs `recoveryHint`) or `persistent` (curses, auras: needs `imposedBy` and
+  `removal`, never expires). Modifiers are a whitelist (`AllChecks`, `AllSaves`, `AttackRoll`, `AllRolls`, `Initiative`,
+  `Speed`, skills), at most two per effect; a buff must be positive and a debuff negative. `key` is unique per
+  character: reapplying refreshes to the stronger value. Each character keeps at most two non-persistent buffs and two
+  debuffs; a third is reported as not applied. Non-persistent effects need `durationHours` and are swept when their hour
+  passes. `StatusEffect` gained `EffectKey` and `EffectTier`. `EffectTiers` (core) holds the numbers.
+- **Consequence beats** (core, uses the time hook): each step on the road or in camp may signal a `good`, `bad` or `mixed`
+  beat of `light`, `moderate` or `serious` size as a hint in the commit result; the DM invents it and resolves it,
+  usually with `apply_effect`. Campaign options: `consequences` (`off`, `light` (default), `full`),
+  `consequenceCooldownHours` (default 8; bad beats 24), `consequenceMaxPerDay` (default 2). Cooldown and count are kept per
+  character in `SystemStats.Traits` (`consequences.*`). It never spawns creatures.
+- **`tether`** (`TetherChange`, `Character.SystemStats.Tethers`): `attach` a subject to an anchor (character, item, or
+  `fixture:<name>`) with `breakDc`, optional `slackFeet`, `holderId`, `label`; `detach`; `strain` (a d20 check vs the DC).
+  A tethered subject cannot travel unless the anchor or its holder travels in the same batch. A tether ends when its
+  anchor item is archived, its anchor or holder character is gone, or its holder is incapacitated.
+- **Ammunition.** A weapon item with the property `ammoType` fires real rounds: ranged `ruleset_action` attacks find a held
+  item whose `ammoFor` (or `ammoType`) names the weapon's key, name or ammo type (or the explicit `ammoItemId`), spend
+  `attackCount × ammoPerShot` from its charges (or quantity), clamp to what is left, and fail with `[NoAmmo]` when
+  there is none. `fireModes: "single:1, burst:3, auto:10"` plus `mode=burst` sets the count (an explicit `attackCount`
+  wins). A loaded item with `damage`/`damageType` adds that damage as a rider on each hit (dnd5e). Weapons without
+  `ammoType` behave as before.
+- Weapon attacks with an `attackCount` above the number of targets now fan out round-robin (a burst at one target, a
+  machine gun across a horde) instead of being capped at the target count.
+
+## 0.9.0
+
+- `[ActorAction]` on a `WorldChange` marks it as an action its actor takes (`ActorId`, else `CharacterId`). The host
+  refuses it at top level while `ActionBlock.IsBlocked(actor)`: the core conditions `incapacitated`, `paralyzed`,
+  `petrified`, `stunned`, `unconscious`, or any status whose `StatModifiers` carry `ActionBlock.Tag`
+  (`BlocksAllActions`). Verbs without the attribute (saves, recovery, effects aimed at someone) are never blocked,
+  and neither are engine follow-ups. Give every blocking status an exit: `ExpiresAtDay` (compared with
+  `TotalDaysElapsed + Hour / 24.0`; the host stops honouring an expired block even if nothing removed it), or an
+  owner that removes it in and out of encounters. Core `attack`/`spell`/`use item` ruleset actions are gated the same way.
+
+## 0.8.0
+
+- `EngineOnlyAttribute` is public: put it on a `WorldChange` your plugin only emits (for example from an
+  `IDomainEventHandler` reacting to `core.rested.v1`) so it stays out of the model's schema.
+- `plugin.json` `systems` (string list): the `ActiveSystem` values the plugin applies to; empty means all.
+- `IModeStateMachine.TryAddParticipant` / `TryRemoveParticipant` (default implementations) and the
+  `core.mode_joined.v1` / `core.mode_left.v1` events back `mode_transition` `join` / `leave`.
+
 ## Guidance and mode-scoped verbs (0.3.0)
 
 - Implement `IPluginGuidanceContributor` to append a short hint to take_turn responses. It receives a

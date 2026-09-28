@@ -1,8 +1,14 @@
 namespace CampaignVault.Models;
 
-public class Character : ICampaignScopedEntity
+public class Character : ICampaignScopedEntity, IHasDirt
 {
     public string Id { get; set; } = null!;
+
+    /// <summary>
+    /// Filth on this character (dust, blood, mud, ...): see <see cref="DirtMark"/>. Mutated only through the core
+    /// <c>soil</c> verb; plugins read it via <c>IChangeContext</c>.
+    /// </summary>
+    public List<DirtMark> Dirt { get; set; } = [];
 
     [System.Text.Json.Serialization.JsonIgnore]
     public float[]? SemanticVector { get; set; }
@@ -307,6 +313,13 @@ public class SystemExtension
     public float Willpower { get; set; } = 75f;
 
     /// <summary>
+    /// How much willpower has been worn down by things that can be recovered from (captivity, ordeals, imprints), so rest gives
+    /// back only that much and never overrides a value the DM set directly. Whoever lowers willpower for such a reason adds to
+    /// this; core restores from it on rest. See <c>WillpowerRules</c> in the host.
+    /// </summary>
+    public float WillpowerDrained { get; set; }
+
+    /// <summary>
     /// Morale — esprit de corps, fighting spirit, bravery under fire.
     /// Feeds into fear checks, NPC agency, and morale-based saving throws.
     /// </summary>
@@ -396,6 +409,10 @@ public class SystemExtension
     /// </summary>
     [System.Text.Json.Serialization.JsonPropertyName("engagementRelations")]
     public List<EngagementRelation> EngagementRelations { get; set; } = [];
+
+    /// <summary>Links from this character to anchors (0.10.0). See <see cref="Tether"/>.</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("tethers")]
+    public List<Tether> Tethers { get; set; } = [];
 
     /// <summary>Legacy JSON key; read-only alias for <see cref="EngagementRelations"/>.</summary>
     [System.Text.Json.Serialization.JsonPropertyName("spatialRelations")]

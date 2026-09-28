@@ -69,8 +69,13 @@ public sealed class ModeTransitionChangeHandler(
                 return await TurnAsync(mode, ctx, encounterId, ct);
             case "exit":
                 return await ExitAsync(ctx, encounterId, ct);
+            case "join":
+                return await JoinAsync(mode, mt, ctx, encounterId, ct);
+            case "leave":
+                return await LeaveAsync(mode, mt, ctx, encounterId, ct);
             default:
-                return ChangeHandlerResult.Failure($"Unknown mode_transition action '{mt.Action}'. Expected 'enter', 'turn' or 'exit'.");
+                return ChangeHandlerResult.Failure(
+                    $"Unknown mode_transition action '{mt.Action}'. Expected 'enter', 'turn', 'exit', 'join' or 'leave'.");
         }
     }
 
@@ -180,6 +185,124 @@ public sealed class ModeTransitionChangeHandler(
 
         return null;
     }
+
+    /// <summary>Adds characters to the running encounter, under the same claim and mode checks as entry.</summary>
+    private async Task<ChangeHandlerResult> JoinAsync(
+        IInteractionMode mode, ModeTransitionChange mt, ChangeContext ctx, string encounterId, CancellationToken ct)
+    {
+        var ids = mt.ParticipantIds.Where(i => !string.IsNullOrWhiteSpace(i)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (ids.Count == 0)
+        {
+            return ChangeHandlerResult.Failure("participantIds must name at least one character to join.");
+        }
+
+        var existing = await LoadActiveAsync(mode, ctx, encounterId, ct);
+        if (existing is null)
+        {
+            return ChangeHandlerResult.Failure("No active encounter for this mode to join.");
+        }
+
+        var already = ids.Where(id => existing.Participants.Any(p =>
+            string.Equals(p.CharacterId, id, StringComparison.OrdinalIgnoreCase))).ToList();
+        if (already.Count > 0)
+        {
+            return ChangeHandlerResult.Failure($"{string.Join(", ", already)} already in this encounter.");
+        }
+
+        mt.ParticipantIds = ids;
+        var claimConflict = FindExclusiveClaimConflict(mode, mt, ctx);
+        if (claimConflict != null)
+        {
+            return ChangeHandlerResult.Failure(claimConflict);
+        }
+
+        var participants = await LoadParticipantsAsync(ctx, ids, ct);
+        var entryError = mode.ValidateEntry(ids, participants, ctx);
+        if (!string.IsNullOrWhiteSpace(entryError))
+        {
+            return ChangeHandlerResult.Failure(entryError);
+        }
+
+        foreach (var id in ids)
+        {
+            if (!mode.StateMachine.TryAddParticipant(existing, id, out var reason))
+            {
+                return ChangeHandlerResult.Failure(reason ?? $"Could not add '{id}'.");
+            }
+        }
+
+        foreach (var id in ids)
+        {
+            ctx.RecordMessage($"{id} joined '{existing.ModeId}'.");
+            ctx.Publish(CoreEvents.ModeJoined, ParticipantChangeData(existing, id));
+        }
+
+        return ChangeHandlerResult.Ok;
+    }
+
+    /// <summary>Removes characters from the running encounter; the last one out uses <c>exit</c> instead.</summary>
+    private async Task<ChangeHandlerResult> LeaveAsync(
+        IInteractionMode mode, ModeTransitionChange mt, ChangeContext ctx, string encounterId, CancellationToken ct)
+    {
+        var ids = mt.ParticipantIds.Where(i => !string.IsNullOrWhiteSpace(i)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (ids.Count == 0)
+        {
+            return ChangeHandlerResult.Failure("participantIds must name at least one character to leave.");
+        }
+
+        var existing = await LoadActiveAsync(mode, ctx, encounterId, ct);
+        if (existing is null)
+        {
+            return ChangeHandlerResult.Failure("No active encounter for this mode to leave.");
+        }
+
+        var remaining = existing.Participants.Count(p =>
+            !ids.Contains(p.CharacterId, StringComparer.OrdinalIgnoreCase));
+        if (remaining == 0)
+        {
+            return ChangeHandlerResult.Failure("That would empty the encounter; use action 'exit' instead.");
+        }
+
+        var roundBefore = existing.Round;
+        var turnBefore = existing.ActiveTurnId;
+        foreach (var id in ids)
+        {
+            if (!mode.StateMachine.TryRemoveParticipant(existing, id, out var reason))
+            {
+                return ChangeHandlerResult.Failure(reason ?? $"Could not remove '{id}'.");
+            }
+        }
+
+        foreach (var id in ids)
+        {
+            ctx.RecordMessage($"{id} left '{existing.ModeId}'.");
+            ctx.Publish(CoreEvents.ModeLeft, ParticipantChangeData(existing, id));
+        }
+
+        if (!string.Equals(turnBefore, existing.ActiveTurnId, StringComparison.OrdinalIgnoreCase) && existing.ActiveTurnId is not null)
+        {
+            ctx.RecordMessage($"Mode '{existing.ModeId}' round {roundBefore}: {existing.ActiveTurnId}'s turn.");
+        }
+
+        return ChangeHandlerResult.Ok;
+    }
+
+    private static async Task<ModeEncounter?> LoadActiveAsync(
+        IInteractionMode mode, ChangeContext ctx, string encounterId, CancellationToken ct)
+    {
+        var existing = ctx.ActiveModes.TryGetValue(mode.ModeId, out var active)
+            ? active
+            : await ctx.Session.LoadAsync<ModeEncounter>(encounterId, ct);
+        return existing is { IsActive: true } ? existing : null;
+    }
+
+    private static Dictionary<string, object?> ParticipantChangeData(ModeEncounter encounter, string characterId) => new()
+    {
+        [CoreEvents.Fields.ModeId] = encounter.ModeId,
+        [CoreEvents.Fields.EncounterId] = encounter.Id,
+        [CoreEvents.Fields.CharacterId] = characterId,
+        [CoreEvents.Fields.ParticipantIds] = encounter.Participants.Select(p => p.CharacterId).ToList()
+    };
 
     private static async Task<ChangeHandlerResult> TurnAsync(
         IInteractionMode mode, ChangeContext ctx, string encounterId, CancellationToken ct)

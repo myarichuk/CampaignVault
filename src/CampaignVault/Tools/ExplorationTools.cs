@@ -63,13 +63,26 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
         [Description("The unique ID of the location.")] string locationId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
         [Description("Set to true if the party is physically entering or spending time here (prevents cleanup).")] bool partyPresent = false,
-        [Description("Return the location's Description untruncated instead of the default capped copy. Use sparingly — only when you actually need the full text (e.g. after SceneView reports descriptionTruncated=true).")] bool fullDescription = false)
+        [Description("Return the location's Description untruncated instead of the default capped copy. Use sparingly — only when you actually need the full text (e.g. after SceneView reports descriptionTruncated=true).")] bool fullDescription = false,
+        [Description("Return the location's full dirt marks instead of the one-line soil summary. get_entity sets it; scene refreshes keep the summary.")] bool includeDirtDetail = false)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
             var scene = await _repository.GetSceneAsync(new CampaignSession(session, effective), locationId,
                 markVisited: partyPresent, fullDescription: fullDescription);
             var time = await _repository.GetTimeAsync(new CampaignSession(session, effective));
             var config = await _repository.GetCampaignConfigAsync(new CampaignSession(session, effective));
+
+            if (includeDirtDetail && !fullDescription && scene.Location is { } sceneLocation)
+            {
+                // get_entity is the full-detail fetch: swap the one-line summary for the marks themselves.
+                // The document is already tracked by this session, so this costs no extra round trip.
+                var tracked = await session.LoadAsync<Location>(locationId);
+                scene.Location = sceneLocation with
+                {
+                    Soil = null,
+                    Dirt = tracked?.Dirt is { Count: > 0 } marks ? marks : null
+                };
+            }
 
             var zone = await ClimateResolver.ResolveEffectiveZoneAsync(session, scene.Location);
             var ambientTemp = ClimateCycle.GetTemperatureCelsius(zone, time.Hour);
@@ -221,7 +234,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
 
             var context = new NpcContextView
             {
-                Character = CharacterDetailView.From(npc),
+                Character = CharacterDetailView.From(npc, includeDirtDetail: true),
                 RecentInteractions =
                     [.. npcEvents.Take(EventSummaryView.NpcContextCap).Select(EventSummaryView.ForNpcContext)],
                 BehavioralSummary = behavioralSummary,

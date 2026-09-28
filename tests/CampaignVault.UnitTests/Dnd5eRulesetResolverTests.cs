@@ -970,6 +970,79 @@ public class Dnd5eRulesetResolverTests
     }
 
     [Fact]
+    public async Task ResolveAttack_BurstAtOneTarget_ResolvesOneAttackPerShot()
+    {
+        var rollService = new FakeRollService();
+        for (var i = 0; i < 3; i++)
+        {
+            rollService.NextRolls.Enqueue(new RollOutcome { Result = 15, HasCritical = false, HasComplication = false, Summary = "Rolled 15" });
+            rollService.NextRolls.Enqueue(new RollOutcome { Result = 4, Summary = "Rolled 4" });
+        }
+
+        var resolver = new Dnd5eRulesetResolver(rollService);
+        var actor = new Character { Id = "chars/valen", SystemStats = new Dnd5eExtension() };
+        var merc = new Character { Id = "chars/merc", Name = "Merc", SystemStats = new Dnd5eExtension { ArmorClass = 12 } };
+        var action = new RulesetAction
+        {
+            CharacterId = "chars/valen", TargetIds = ["chars/merc"], ActionType = RulesetActionType.Attack, ActionName = "Repeater",
+            Parameters = new Dictionary<string, string> { ["damageDice"] = "1d6", ["attackCount"] = "3" }
+        };
+
+        var output = await resolver.ResolveAsync(CreateContext(actor, merc), action, TestContext.Current.CancellationToken);
+
+        Assert.Equal(3, output.Mutations.Count);
+    }
+
+    [Fact]
+    public async Task ResolveAttack_BurstAcrossAHorde_FansOutRoundRobin()
+    {
+        var rollService = new FakeRollService();
+        for (var i = 0; i < 5; i++)
+        {
+            rollService.NextRolls.Enqueue(new RollOutcome { Result = 15, HasCritical = false, HasComplication = false, Summary = "Rolled 15" });
+            rollService.NextRolls.Enqueue(new RollOutcome { Result = 4, Summary = "Rolled 4" });
+        }
+
+        var resolver = new Dnd5eRulesetResolver(rollService);
+        var actor = new Character { Id = "chars/valen", SystemStats = new Dnd5eExtension() };
+        var m1 = new Character { Id = "chars/m1", Name = "M1", SystemStats = new Dnd5eExtension { ArmorClass = 12 } };
+        var m2 = new Character { Id = "chars/m2", Name = "M2", SystemStats = new Dnd5eExtension { ArmorClass = 12 } };
+        var action = new RulesetAction
+        {
+            CharacterId = "chars/valen", TargetIds = ["chars/m1", "chars/m2"], ActionType = RulesetActionType.Attack, ActionName = "MG",
+            Parameters = new Dictionary<string, string> { ["damageDice"] = "1d6", ["attackCount"] = "5" }
+        };
+
+        var output = await resolver.ResolveAsync(CreateContext(actor, m1, m2), action, TestContext.Current.CancellationToken);
+
+        Assert.Equal(new[] { "chars/m1", "chars/m2", "chars/m1", "chars/m2", "chars/m1" },
+            output.Mutations.OfType<HpChange>().Select(m => m.CharacterId));
+    }
+
+    [Fact]
+    public async Task ResolveAttack_TrickRound_AddsRiderDamageOnHit()
+    {
+        var rollService = new FakeRollService();
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 15, HasCritical = false, HasComplication = false, Summary = "Rolled 15" });
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 4, Summary = "Rolled 4" });
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 3, Summary = "Rolled 3" });
+
+        var resolver = new Dnd5eRulesetResolver(rollService);
+        var actor = new Character { Id = "chars/valen", SystemStats = new Dnd5eExtension() };
+        var merc = new Character { Id = "chars/merc", Name = "Merc", SystemStats = new Dnd5eExtension { ArmorClass = 12 } };
+        var action = new RulesetAction
+        {
+            CharacterId = "chars/valen", TargetIds = ["chars/merc"], ActionType = RulesetActionType.Attack, ActionName = "Shortbow",
+            Parameters = new Dictionary<string, string> { ["damageDice"] = "1d6", ["riderDice"] = "1d6", ["riderType"] = "fire" }
+        };
+
+        var output = await resolver.ResolveAsync(CreateContext(actor, merc), action, TestContext.Current.CancellationToken);
+
+        Assert.Equal([-4, -3], output.Mutations.OfType<HpChange>().Select(m => m.Delta));
+        Assert.Contains("Rider: +3 fire", output.Result.Narrative);
+    }
+
+    [Fact]
     public async Task ResolveAttack_MagicMissile_AutoHitsWithoutAttackRoll()
     {
         // Magic Missile auto-hits: no attack roll is consumed even against unhittable AC, and the

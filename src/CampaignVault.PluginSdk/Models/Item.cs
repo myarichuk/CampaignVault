@@ -1,8 +1,14 @@
 namespace CampaignVault.Models;
 
-public class Item : ICampaignScopedEntity, IArchivable
+public class Item : ICampaignScopedEntity, IHasDirt, IArchivable
 {
     public string Id { get; set; } = null!;
+
+    /// <summary>
+    /// Filth on this item (dust, blood, mud, ...): see <see cref="DirtMark"/>. Mutated only through the core
+    /// <c>soil</c> verb; plugins read it via <c>IChangeContext</c>.
+    /// </summary>
+    public List<DirtMark> Dirt { get; set; } = [];
     
     [System.Text.Json.Serialization.JsonIgnore]
     public float[]? SemanticVector { get; set; }

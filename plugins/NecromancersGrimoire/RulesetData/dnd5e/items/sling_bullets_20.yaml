@@ -1,0 +1,13 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: sling_bullets_20
+system: dnd5e
+category: Consumable
+tags: [ammunition, adventuring-gear]
+description: "Sling bullet bundle of 20, for sling. One round per shot; rounds are tracked in the item's charges."
+properties:
+  weight: 1.5
+  costGp: 0.04
+  uses: 20
+  chargeUnit: bullets
+  ammoType: bullet
+  ammoFor: sling

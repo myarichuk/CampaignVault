@@ -98,7 +98,7 @@ Plugins/
 
 **Adult / optional content:** belongs in separate repos referencing PluginSdk; the main repo ships only neutral samples (e.g. `plugins/CraftingMode`).
 
-**Compatibility:** host engine version is `0.7.0` (`EngineVersion.Current`). Set `minEngineVersion` accordingly.
+**Compatibility:** host engine version is `0.11.0` (`EngineVersion.Current`). Set `minEngineVersion` accordingly.
 
 In-tree reference: `plugins/CraftingMode` (mode id `crafting`, `$type` `crafting_step`).
 
@@ -657,8 +657,33 @@ they never drift apart.
 ✅ Add `IPluginTraitsUpgrader` (migrate your own `SystemExtension.Traits` keys — rename, reshape, or retire — when you change your own trait schema; see [Migrating Your Own Traits Schema](#migrating-your-own-traits-schema) below)
 ✅ Add custom `IWorldChangeHandler` (react to player actions)
 ✅ Add custom `IWorldChangeObserver` (post-commit, non-failing, cross-cutting hooks — e.g. a trauma-triggered "inner voice" reactor that watches every mutation without owning any of them)
+✅ Read and change dirt on characters, items and locations, with plugin-invented kinds (`SoilChange`, `core.soiled.v1`; see [Dirt](#dirt-reading-and-extending-it))
 ✅ Add custom `IMcpServerTool` (new MCP tools)
 ✅ Define a whole new turn-based interaction mode via `IInteractionMode`/`IModeStateMachine` (crafting, astral combat, ...) — see [Type 3: Interaction Mode Plugin](#type-3-interaction-mode-plugin)
+
+### Dirt: Reading and Extending It
+
+Every character, item and location carries `Dirt` (`IHasDirt`), a short list of `DirtMark`s. Kinds are open strings, so a
+plugin can invent one with no host change and no new `$type`:
+
+```csharp
+public sealed class GhostSlime : IDomainEventHandler
+{
+    public IReadOnlyCollection<string> Topics { get; } = [CoreEvents.CharacterDowned];
+
+    public Task<IReadOnlyList<WorldChange>> HandleAsync(DomainEvent e, IChangeContext ctx, CancellationToken ct = default)
+    {
+        if (!e.TryGet<string>(CoreEvents.Fields.CharacterId, out var id) || !ctx.Characters.TryGetValue(id, out var body))
+            return Task.FromResult<IReadOnlyList<WorldChange>>([]);
+        if (body.HasDirt("myplugin.ectoplasm")) // read: any host's Dirt is on the preloaded entity
+            return Task.FromResult<IReadOnlyList<WorldChange>>([]);
+        return Task.FromResult<IReadOnlyList<WorldChange>>([new SoilChange { TargetId = id, Kind = "myplugin.ectoplasm", Spot = "hands" }]);
+    }
+}
+```
+
+Subscribe to `core.soiled.v1` to react to dirt (scent tracking, infection, cleaning rituals). The engine never soils anything
+itself; the DM commits `soil` alongside the fight or journey. See the SDK README (0.11.0) for the fields and caps.
 
 ### What Plugins Cannot Do (Yet)
 
@@ -1050,5 +1075,5 @@ Deferred capabilities (not yet implemented):
 
 ---
 
-**Last updated:** engine 0.7.0 — `IPluginCampaignOptionsUpgrader`, `IContextTurn.Config`/`Time`/`LoadCharacterAsync`, `playerOnlyModeIds`, owner-managed pools, host-enforced mode action slots
-**Plugin API version:** 1.3 (adds `IPluginCampaignOptionsUpgrader` and the 0.7.0 hooks above; 1.2 added `IPluginTraitsUpgrader`; 1.1 added `IInteractionMode`/`IModeStateMachine`/`IWorldChangeObserver`; `IRulesetModule` surface unchanged from 1.0)
+**Last updated:** engine 0.11.0 — `IRollModifierProvider`/`RollQuery`/`RollModifier` (what buffs, conditions, willpower and plugin rules do to rolls; `IChangeContext.ResolveRollModifiers` for plugin rolls), `SystemExtension.WillpowerDrained` and willpower that matters (charm, fear, compulsion and mental saves; rest restores what was drained), `SpellDefinition.tags`, effective speed (`Speed` modifiers now slow travel and show on cards, plus a context line for chases); engine 0.10.0 — `IWorldTimeObserver`/`TimeAdvance` (plugin time hook), `apply_effect` (clamped, expiring, non-stacking buffs/debuffs; `persistent` for curses and auras), the consequence beat (`consequences`, `consequenceCooldownHours`, `consequenceMaxPerDay` options), `tether` (subject → anchor with break DC), ammunition (`ammoType`, `ammoPerShot`, `fireModes`, `mode`), and weapon bursts that fan out round-robin over targets; engine 0.9.0 — `ActorActionAttribute` and `ActionBlock` (the host refuses a marked verb, and core attack/spell/item-use actions, from an actor who is incapacitated, stunned, paralyzed, petrified, unconscious or carries a `BlocksAllActions` status; whoever applies such a status must give it an exit); engine 0.8.0 — public `EngineOnlyAttribute`, `plugin.json` `systems`, `IModeStateMachine.TryAddParticipant`/`TryRemoveParticipant` and `core.mode_joined.v1`/`core.mode_left.v1` (host handling of `mode_transition` join/leave and `systems` lands after the SDK publish); engine 0.7.0 — `IPluginCampaignOptionsUpgrader`, `IContextTurn.Config`/`Time`/`LoadCharacterAsync`, `playerOnlyModeIds`, owner-managed pools, host-enforced mode action slots
+**Plugin API version:** 1.4 (adds the 0.8.0 contracts above; 1.3 added `IPluginCampaignOptionsUpgrader` and the 0.7.0 hooks above; 1.2 added `IPluginTraitsUpgrader`; 1.1 added `IInteractionMode`/`IModeStateMachine`/`IWorldChangeObserver`; `IRulesetModule` surface unchanged from 1.0)

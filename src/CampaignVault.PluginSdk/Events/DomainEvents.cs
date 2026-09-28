@@ -130,6 +130,12 @@ public static class CoreEvents
     /// <summary>A mode encounter ended. Fields: modeId, encounterId, participantIds.</summary>
     public const string ModeExited = "core.mode_exited.v1";
 
+    /// <summary>A participant joined a running mode encounter (<c>mode_transition action=join</c>). Fields: modeId, encounterId, characterId, participantIds (after the join).</summary>
+    public const string ModeJoined = "core.mode_joined.v1";
+
+    /// <summary>A participant left a running mode encounter (<c>mode_transition action=leave</c>) and it continues. Fields: modeId, encounterId, characterId, participantIds (after the leave).</summary>
+    public const string ModeLeft = "core.mode_left.v1";
+
     /// <summary>
     /// A mode encounter advanced to the next participant's turn (<c>mode_transition action=turn</c>). Fields: modeId,
     /// encounterId, characterId (whose turn starts), round, newRound. Not published when the advance completes
@@ -179,6 +185,13 @@ public static class CoreEvents
     public const string CombatEnded = "core.combat_ended.v1";
 
     /// <summary>
+    /// Dirt on a character, item or location changed (<c>soil</c>): one event per mark. Fields: targetId, kind,
+    /// severity (0 once gone), spot, fixture, action (applied, worsened, cleaned, cleared, evicted). Kinds are open
+    /// strings, so plugins filter on the kinds they own; the engine gives none of them special behavior.
+    /// </summary>
+    public const string Soiled = "core.soiled.v1";
+
+    /// <summary>
     /// A plugin's reaction faulted. Fields: pluginId, handler, topic, stage (handler_threw, follow_up_failed,
     /// depth_capped), changeType, message, fixHint, appliedChangeTypes (follow-ups that landed before the
     /// fault), commitKept. Delivered after all other reactions, at depth 0, and only when the turn is saved; a
@@ -189,8 +202,8 @@ public static class CoreEvents
     /// <summary>Every topic core publishes.</summary>
     public static IReadOnlyList<string> All { get; } =
     [
-        ModeEntered, ModeExited, ModeTurnStarted, CharacterDamaged, CharacterDowned, Traveled, Rested, EncounterInterrupted,
-        EventLogged, CombatStarted, CombatTurnStarted, CombatEnded, PluginFaulted
+        ModeEntered, ModeExited, ModeJoined, ModeLeft, ModeTurnStarted, CharacterDamaged, CharacterDowned, Traveled, Rested, EncounterInterrupted,
+        EventLogged, CombatStarted, CombatTurnStarted, CombatEnded, Soiled, PluginFaulted
     ];
 
     public static class Fields
@@ -231,6 +244,12 @@ public static class CoreEvents
         public const string FixHint = "fixHint";
         public const string AppliedChangeTypes = "appliedChangeTypes";
         public const string CommitKept = "commitKept";
+        public const string TargetId = "targetId";
+        public const string Kind = "kind";
+        public const string Severity = "severity";
+        public const string Spot = "spot";
+        public const string Fixture = "fixture";
+        public const string Action = "action";
     }
 
     /// <summary>True when <paramref name="topic"/> sits under <paramref name="source"/>'s own prefix.</summary>

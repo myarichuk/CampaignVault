@@ -25,15 +25,12 @@ namespace CampaignVault.Services;
 public static class CastingComponentGate
 {
     /// <summary>Standard conditions that prevent taking any action at all, in either system.</summary>
-    public static readonly IReadOnlySet<string> HardBlockConditions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-    {
-        "incapacitated", "paralyzed", "petrified", "stunned", "unconscious",
-    };
+    public static readonly IReadOnlySet<string> HardBlockConditions = ActionBlock.Conditions;
 
     public const string BlocksVerbal = "BlocksVerbalComponents";
     public const string BlocksSomatic = "BlocksSomaticComponents";
     public const string BlocksMaterial = "BlocksMaterialComponents";
-    public const string BlocksAllActions = "BlocksAllActions";
+    public const string BlocksAllActions = ActionBlock.Tag;
     public const string WaivesVerbal = "WaivesVerbalComponents";
     public const string WaivesSomatic = "WaivesSomaticComponents";
     public const string WaivesMaterial = "WaivesMaterialComponents";

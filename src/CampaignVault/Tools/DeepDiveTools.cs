@@ -56,7 +56,7 @@ public class DeepDiveTools : CampaignToolBase, IMcpServerTool
 
         if (id.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
         {
-            return Box(await _exploration.GetScene(id, campaignName, partyPresent, fullDescription));
+            return Box(await _exploration.GetScene(id, campaignName, partyPresent, fullDescription, includeDirtDetail: true));
         }
 
         if (id.StartsWith("factions/", StringComparison.OrdinalIgnoreCase))

@@ -30,7 +30,11 @@ public record LocationDetailView(
     ClimateZone? ClimateZone,
     /// <summary>True if Description was cut down to CampaignConfig.LocationDescriptionCharCap (null when
     /// it wasn't). Call get_entity with fullDescription=true for the complete text.</summary>
-    bool? DescriptionTruncated = null)
+    bool? DescriptionTruncated = null,
+    /// <summary>Compact dirt line ("bloody north wall, dusty floor"); null when clean. Replaced by <see cref="Dirt"/> in full detail.</summary>
+    string? Soil = null,
+    /// <summary>Full dirt marks. Only with fullDescription (the location full-detail flag); otherwise see <see cref="Soil"/>.</summary>
+    List<DirtMark>? Dirt = null)
 {
     /// <param name="config">Supplies the char caps; falls back to CampaignConfig's own defaults if null
     /// (e.g. the unanchored-scene stub, whose fixed short text never needs capping anyway).</param>
@@ -64,7 +68,9 @@ public record LocationDetailView(
             l.ControllingFactionId,
             l.DangerModifier == 0 ? null : l.DangerModifier,
             l.ClimateZone,
-            descriptionTruncated ? true : null);
+            descriptionTruncated ? true : null,
+            fullDescription ? null : SoilHelpers.Summarize(l.Dirt),
+            fullDescription && l.Dirt is { Count: > 0 } ? l.Dirt : null);
     }
 }
 
@@ -262,7 +268,9 @@ public record FactionPresenceSummary(
 public record NpcStatLine(
     int? ArmorClass = null,
     int? Level = null,
-    Dictionary<string, float>? Attributes = null)
+    Dictionary<string, float>? Attributes = null,
+    /// <summary>Movement right now, e.g. "10 ft (30 normally: Hobbled)". Chases and flights are settled by comparing these.</summary>
+    string? Speed = null)
 {
     public static NpcStatLine? From(SystemExtension? stats)
     {
@@ -280,7 +288,8 @@ public record NpcStatLine(
             .ToDictionary(kv => kv.Key, kv => kv.Value);
         return new NpcStatLine(
             ac, level,
-            attributes is { Count: > 0 } a ? a : null);
+            attributes is { Count: > 0 } a ? a : null,
+            CampaignVault.Rulesets.SpeedRules.Describe(stats));
     }
 }
 
@@ -359,7 +368,9 @@ public record NpcPresenceSummary(
     /// take_turn (e.g. get_scene), where RelevantMemories carries the full MemoryNode objects.</summary>
     IReadOnlyList<CompressedMemory>? CompressedMemories = null,
     /// <summary>Compact wire projection of SystemStats (the full block stays in-process, see above).</summary>
-    NpcStatLine? Stats = null)
+    NpcStatLine? Stats = null,
+    /// <summary>Compact dirt line ("muddy boots, heavily bloodied"); null when clean. Full marks: get_entity.</summary>
+    string? Soil = null)
 {
     public NpcPresenceSummary() : this(null!, null!, null!, null!, null!, null!) { }
 }
@@ -392,6 +403,8 @@ public class CommitResult
     /// wounds, appearance/tags) — see <see cref="TurnResult.PhysicalStateNudges"/> for why these are
     /// kept separate from <see cref="Summary"/>.</summary>
     public List<string> PhysicalStateNudges { get; set; } = [];
+    /// <summary>Spans of time this commit advanced, for the time hook (see IWorldTimeObserver).</summary>
+    public List<TimeAdvancedChange> TimeAdvances { get; set; } = [];
     /// <summary>Domain-event reactions that broke this commit (see IDomainEventHandler). Isolated faults
     /// leave <see cref="Success"/> true; the turn is kept and the fault is reported.</summary>
     public List<CampaignVault.Data.Events.PluginFault> PluginFaults { get; set; } = [];
@@ -466,7 +479,9 @@ public record ItemSummaryView(
     List<string> DistinctiveFeatures,
     List<string>? VisualTags,
     string? AppearanceNote,
-    List<ItemDetailSummary>? ItemDetails)
+    List<ItemDetailSummary>? ItemDetails,
+    /// <summary>Compact dirt line ("dusty, slightly bloody blade"); null when clean. Full marks: get_entity.</summary>
+    string? Soil = null)
 {
     public static ItemSummaryView From(Item item) => new(
         item.Id,
@@ -484,7 +499,8 @@ public record ItemSummaryView(
         item.DistinctiveFeatures ?? [],
         item.VisualTags,
         item.AppearanceNote,
-        item.ItemDetails.Where(d => !d.IsRetired && !d.Hidden).Select(d => new ItemDetailSummary(d.Id, d.Name, d.Status)).ToList() is { Count: > 0 } details ? details : null
+        item.ItemDetails.Where(d => !d.IsRetired && !d.Hidden).Select(d => new ItemDetailSummary(d.Id, d.Name, d.Status)).ToList() is { Count: > 0 } details ? details : null,
+        SoilHelpers.Summarize(item.Dirt)
     );
 }
 

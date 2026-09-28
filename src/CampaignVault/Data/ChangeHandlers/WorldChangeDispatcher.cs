@@ -38,7 +38,9 @@ public sealed class WorldChangeDispatcher(
     IEnumerable<IDomainEventHandler>? eventHandlers = null,
     PluginEventSources? eventSources = null,
     IEnumerable<IPluginTraitsUpgrader>? traitsUpgraders = null,
-    IInteractionModeSelector? modeSelector = null)
+    IInteractionModeSelector? modeSelector = null,
+    IEnumerable<IWorldTimeObserver>? timeObservers = null,
+    RollModifierPipeline? rollModifiers = null)
 {
     /// <summary>
     /// Events at this depth are dropped instead of delivered: batch change (0) → reaction (1) → reaction (2)
@@ -46,10 +48,17 @@ public sealed class WorldChangeDispatcher(
     /// </summary>
     internal const int MaxEventDepth = 3;
 
+    /// <summary>Most steps one span is split into for time observers.</summary>
+    internal const int MaxTimeSteps = 16;
+
     private readonly IReadOnlyList<IDomainEventHandler> _eventHandlers = eventHandlers?.ToList() ?? [];
     private readonly PluginEventSources _eventSources = eventSources ?? PluginEventSources.CoreOnly;
     private readonly IReadOnlyList<IWorldChangeHandler> _handlers = handlers?.ToList() ?? [];
     private readonly IReadOnlyList<IWorldChangeObserver> _observers = observers?.ToList() ?? [];
+    /// <summary>The modifier pipeline every roll runs through (core's providers plus the plugins').</summary>
+    internal RollModifierPipeline RollModifiers { get; } = rollModifiers ?? RollModifierPipeline.BuiltIn;
+
+    private readonly IReadOnlyList<IWorldTimeObserver> _timeObservers = timeObservers?.ToList() ?? [];
     private readonly ILogger<WorldChangeDispatcher> _logger = logger ?? NullLogger<WorldChangeDispatcher>.Instance;
     private readonly CampaignDocumentKeys _keys = keys ?? throw new ArgumentNullException(nameof(keys));
     private readonly EncounterResolver? _encounterResolver = encounterResolver;
@@ -404,8 +413,15 @@ public sealed class WorldChangeDispatcher(
                 }
 
                 ChangeHandlerResult result;
-                var refundActionSlot = ChargeModeActionSlot(change, context, out var slotError);
-                if (slotError is not null)
+                var gateError = GateError(chosen, change, context, topLevel: true);
+                gateError ??= await ActorBlockErrorAsync(change, context);
+                string? slotError = null;
+                var refundActionSlot = gateError is null ? ChargeModeActionSlot(change, context, out slotError) : null;
+                if (gateError is not null)
+                {
+                    result = ChangeHandlerResult.Failure(gateError);
+                }
+                else if (slotError is not null)
                 {
                     result = ChangeHandlerResult.Failure(slotError);
                 }
@@ -507,7 +523,8 @@ public sealed class WorldChangeDispatcher(
             CommittedIds = [.. context.CommittedIds],
             PhysicalStateNudges = physicalStateNudges,
             PluginFaults = [.. context.PluginFaults],
-            ReactionChanges = overallSuccess ? [.. context.ReactionChanges] : []
+            ReactionChanges = overallSuccess ? [.. context.ReactionChanges] : [],
+            TimeAdvances = overallSuccess ? [.. context.TimeNotes] : []
         };
     }
 
@@ -913,6 +930,61 @@ public sealed class WorldChangeDispatcher(
     }
 
     /// <summary>
+    /// Why a change may not run: its plugin does not apply to the campaign's system, or (top-level only) the model
+    /// sent a plugin verb marked <see cref="EngineOnlyAttribute"/>. Null when it may run.
+    /// </summary>
+    private static string? GateError(IWorldChangeHandler handler, WorldChange change, IChangeContext context, bool topLevel)
+    {
+        var handlerType = handler.GetType();
+        var system = context.Config?.ActiveSystem;
+        if (!PluginSystems.AppliesTo(handlerType, system))
+        {
+            return $"{change.GetType().GetCustomAttribute<PluginWorldChangeAttribute>()?.Discriminator ?? change.GetType().Name} " +
+                   $"belongs to a plugin that applies only to {PluginSystems.Listed(handlerType)}; this campaign's system is '{system}'.";
+        }
+
+        var changeType = change.GetType();
+        if (topLevel &&
+            changeType.Assembly != typeof(WorldChange).Assembly &&
+            changeType.GetCustomAttribute<EngineOnlyAttribute>() is not null)
+        {
+            var name = changeType.GetCustomAttribute<PluginWorldChangeAttribute>()?.Discriminator ?? changeType.Name;
+            return $"{name} is emitted by the engine; do not send it.";
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// A top-level action (a verb marked <see cref="ActorActionAttribute"/>, or a core attack / spell / item use) by an
+    /// actor who cannot act is refused. Saves, checks, recovery and everything aimed at the blocked character are not
+    /// actions and stay allowed. See <see cref="ActionBlock"/>.
+    /// </summary>
+    private static async Task<string?> ActorBlockErrorAsync(WorldChange change, IChangeContext context)
+    {
+        var isAction = change.GetType().GetCustomAttribute<ActorActionAttribute>() is not null ||
+                       change is RulesetAction { ActionType: RulesetActionType.Attack or RulesetActionType.Spell or RulesetActionType.UseItem };
+        if (!isAction || ActorIdOf(change) is not { } actorId ||
+            !context.Characters.TryGetValue(actorId, out var actor) ||
+            !ActionBlock.IsBlocked(actor, out var blocker))
+        {
+            return null;
+        }
+
+        if (blocker!.ExpiresAtDay is not null)
+        {
+            var time = await context.GetCurrentTimeAsync().ConfigureAwait(false);
+            if (!ActionBlock.IsBlocked(actor, out blocker, time.TotalDaysElapsed + time.Hour / 24.0))
+            {
+                return null;
+            }
+        }
+
+        var by = string.IsNullOrWhiteSpace(blocker!.AppliedBy) ? "" : $" (from {blocker.AppliedBy})";
+        return $"{actor.Name} is {blocker.Name}{by} and cannot act. Actions resume when it ends; saves, recovery and effects aimed at them still work.";
+    }
+
+    /// <summary>
     /// Runs every interested IWorldChangeObserver after a change's own handler has already committed
     /// successfully. Deliberately non-failing: an observer exception is logged and swallowed rather than
     /// recorded via context.RecordFailure(), so a broken observer (e.g. a buggy "inner voice" plugin)
@@ -925,7 +997,7 @@ public sealed class WorldChangeDispatcher(
         {
             try
             {
-                if (observer.IsInterestedIn(change, context))
+                if (PluginSystems.AppliesTo(observer, context.Config?.ActiveSystem) && observer.IsInterestedIn(change, context))
                 {
                     await RunAsSourceAsync((ChangeContext)context, observer, async () =>
                     {
@@ -939,6 +1011,61 @@ public sealed class WorldChangeDispatcher(
                 _logger.LogError(ex, "IWorldChangeObserver {ObserverType} threw while handling {ChangeType}",
                     observer.GetType().Name, change.GetType().Name);
             }
+        }
+    }
+
+    /// <summary>
+    /// Delivers a span of time to every <see cref="IWorldTimeObserver"/> in bucket-sized steps, oldest first. Same rules
+    /// as <see cref="NotifyObserversAsync"/>: system-gated, event-source stamped, and a throwing observer is logged
+    /// and swallowed. Skipped while an observer is already running, so its own dispatches cannot re-enter the hook.
+    /// </summary>
+    internal async Task NotifyTimeObserversAsync(TimeAdvancedChange span, IChangeContext context, CancellationToken ct = default)
+    {
+        var ctx = (ChangeContext)context;
+        if (_timeObservers.Count == 0 || span.Hours <= 0 || ctx.TimeHookDepth > 0)
+        {
+            return;
+        }
+
+        var bucket = span.BucketHours > 0 ? span.BucketHours : 6;
+        // A season-long skip is a handful of coarse steps, not thousands of ticks.
+        bucket = Math.Max(bucket, span.Hours / MaxTimeSteps);
+        var steps = (int)Math.Ceiling(span.Hours / bucket - 1e-9);
+        var startTotal = span.TotalHoursAfter - span.Hours;
+        ctx.TimeHookDepth++;
+        try
+        {
+            for (var i = 0; i < steps; i++)
+            {
+                var hours = Math.Min(bucket, span.Hours - i * bucket);
+                var advance = new TimeAdvance(
+                    span.Source, hours, startTotal + i * bucket + hours, span.CharacterIds, span.LocationId, span.Terrain);
+                foreach (var observer in _timeObservers)
+                {
+                    try
+                    {
+                        if (!PluginSystems.AppliesTo(observer, context.Config?.ActiveSystem))
+                        {
+                            continue;
+                        }
+
+                        await RunAsSourceAsync(ctx, observer, async () =>
+                        {
+                            await observer.OnTimeAdvancedAsync(advance, context, ct);
+                            return true;
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "IWorldTimeObserver {ObserverType} threw while handling {Source} time",
+                            observer.GetType().Name, span.Source);
+                    }
+                }
+            }
+        }
+        finally
+        {
+            ctx.TimeHookDepth--;
         }
     }
 
@@ -1015,6 +1142,11 @@ public sealed class WorldChangeDispatcher(
     /// </summary>
     private async Task DeliverToSubscriberAsync(ChangeContext context, IDomainEventHandler subscriber, DomainEvent domainEvent)
     {
+        if (!PluginSystems.AppliesTo(subscriber, context.Config?.ActiveSystem))
+        {
+            return;
+        }
+
         var previousDepth = context.EventDepth;
         context.EventDepth = domainEvent.Depth + 1;
         var policy = subscriber.FailurePolicy;
@@ -1242,6 +1374,12 @@ public sealed class WorldChangeDispatcher(
             _logger.LogWarning("No handler found for child mutation of type {ChangeType}", mutation?.GetType().Name);
             parent.RecordFailure();
             return new ChildResult(false, $"No handler for change type {mutation?.GetType().Name}.", null);
+        }
+
+        if (GateError(chosen, mutation, parent, topLevel: false) is { } childGateError)
+        {
+            parent.RecordFailure();
+            return new ChildResult(false, childGateError, null);
         }
 
         TrackInvolvedEntities(mutation, parent);

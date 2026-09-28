@@ -1,0 +1,21 @@
+# Hand-authored engine properties for dnd5e SRD items. NEVER regenerated from an API:
+# generate_items.py merges these into the generated item YAMLs on every run, so they survive a regeneration.
+# Overlay keys only ever ADD properties; API-derived stats (damage, weight, cost, range) are untouched.
+#
+# ammoType: the weapon spends real rounds (AmmoResolver). It must match a shipped ammo bundle's ammoFor/ammoType
+# (see AMMO in generate_items.py). Thrown weapons (dart, javelin) are not ammunition and stay out.
+
+shortbow:
+  ammoType: arrow
+longbow:
+  ammoType: arrow
+crossbow_light:
+  ammoType: bolt
+crossbow_heavy:
+  ammoType: bolt
+crossbow_hand:
+  ammoType: bolt
+sling:
+  ammoType: bullet
+blowgun:
+  ammoType: needle

@@ -86,6 +86,71 @@ public interface IModeStateMachine
     bool AdvanceTurn(ModeEncounter encounter);
 
     bool IsComplete(ModeEncounter encounter, out string? outcomeNarrative);
+
+    /// <summary>
+    /// Adds a participant to a running encounter (<c>mode_transition action=join</c>; the host has already checked
+    /// the mode's <see cref="IInteractionMode.ValidateEntry"/> for them). The default builds their state the way
+    /// <see cref="CreateEncounter"/> does, with every action budget at 0 so they act from the next round, and
+    /// appends them after the current order. Override to seed differently (0.8.0).
+    /// </summary>
+    bool TryAddParticipant(ModeEncounter encounter, string participantId, out string? errorReason)
+    {
+        errorReason = null;
+        if (encounter.Participants.Any(p => string.Equals(p.CharacterId, participantId, StringComparison.OrdinalIgnoreCase)))
+        {
+            errorReason = $"'{participantId}' is already in this encounter.";
+            return false;
+        }
+
+        var fresh = CreateEncounter(encounter.LocationId, [participantId]).Participants
+            .FirstOrDefault(p => string.Equals(p.CharacterId, participantId, StringComparison.OrdinalIgnoreCase));
+        if (fresh is null)
+        {
+            errorReason = $"The mode could not create state for '{participantId}'.";
+            return false;
+        }
+
+        foreach (var key in fresh.ActionBudget.Keys.ToList())
+        {
+            fresh.ActionBudget[key] = 0;
+        }
+
+        encounter.Participants.Add(fresh);
+        encounter.ActiveTurnId ??= fresh.CharacterId;
+        return true;
+    }
+
+    /// <summary>
+    /// Removes a participant from a running encounter (<c>mode_transition action=leave</c>). The host refuses to
+    /// remove the last participant (use <c>exit</c>). If it was their turn the turn passes to whoever now holds
+    /// their place in the order; the default does not refill that participant's budget, so override if the mode
+    /// hands out per-turn budgets (0.8.0).
+    /// </summary>
+    bool TryRemoveParticipant(ModeEncounter encounter, string participantId, out string? errorReason)
+    {
+        errorReason = null;
+        var index = encounter.Participants.FindIndex(p =>
+            string.Equals(p.CharacterId, participantId, StringComparison.OrdinalIgnoreCase));
+        if (index < 0)
+        {
+            errorReason = $"'{participantId}' is not in this encounter.";
+            return false;
+        }
+
+        var wasActive = string.Equals(encounter.ActiveTurnId, encounter.Participants[index].CharacterId,
+            StringComparison.OrdinalIgnoreCase);
+        encounter.Participants.RemoveAt(index);
+        if (encounter.Participants.Count == 0)
+        {
+            encounter.ActiveTurnId = null;
+        }
+        else if (wasActive)
+        {
+            encounter.ActiveTurnId = encounter.Participants[index % encounter.Participants.Count].CharacterId;
+        }
+
+        return true;
+    }
 }
 
 /// <summary>

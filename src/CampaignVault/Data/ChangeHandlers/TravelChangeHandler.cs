@@ -1,5 +1,6 @@
 using CampaignVault.Events;
 using CampaignVault.Models;
+using CampaignVault.Rulesets;
 
 namespace CampaignVault.Data.ChangeHandlers;
 
@@ -53,6 +54,18 @@ public class TravelChangeHandler : IWorldChangeHandler
             }
         }
 
+        // A tether holds the subject in place unless its anchor (or whoever holds it) travels along in this batch.
+        foreach (var tether in await TetherState.LiveAsync(ctx, character, ct))
+        {
+            if (!TetherState.AnchorTravelsAlong(ctx, tether, tc.DestinationLocationId))
+            {
+                var what = tether.Label is { Length: > 0 } l ? $"{l} to {tether.AnchorId}" : $"tethered to {tether.AnchorId}";
+                return ChangeHandlerResult.Failure(
+                    $"Character {character.Name} cannot travel: {what} (break DC {tether.BreakDc}). " +
+                    "Detach it or let them strain against it first, or move the anchor with them.");
+            }
+        }
+
         if (!ctx.Locations.TryGetValue(tc.DestinationLocationId, out var destination))
         {
             var suggested = await ctx.SuggestLocationMatchAsync(tc.DestinationLocationId);
@@ -102,6 +115,19 @@ public class TravelChangeHandler : IWorldChangeHandler
             var origin = character.CurrentLocationId ?? "(unknown origin)";
             return ChangeHandlerResult.Failure(
                 $"No LocationExit from {origin} to {tc.DestinationLocationId}, and travelCostHoursOverride was not supplied. Add an exit on the origin, or pass travelCostHoursOverride.");
+        }
+
+        // The group moves at the pace of its slowest member: someone hobbled, chained or slowed for a while stretches the
+        // trip (base speed over current speed, at most 3x). Armour is left out: this is about temporary states, not gear.
+        var leader = !GroupOutcomes.GetOrCreateValue(context).ContainsKey($"{fromLocationId}|{tc.DestinationLocationId}");
+        var stretch = leader ? await SlowestStretchAsync(ctx, character, tc, ct) : (Factor: 1.0, Who: "", Feet: 0, Normal: 0);
+        if (stretch.Factor > 1.0)
+        {
+            var normalHours = totalHours;
+            totalHours *= stretch.Factor;
+            ctx.RecordMessage(
+                $"{stretch.Who} slows the way ({stretch.Feet} ft a round instead of {stretch.Normal}): the trip takes " +
+                $"{totalHours:0.#}h instead of {normalHours:0.#}h.");
         }
 
         // F1/F2: travelers in one batch that share an origin and destination move as a group: the first
@@ -179,6 +205,28 @@ public class TravelChangeHandler : IWorldChangeHandler
                     Delta = tirednessDelta
                 }, ct);
             }
+        }
+
+        if (!isFollower && hoursTraveled > 0)
+        {
+            // The whole group lives through it: everyone in this batch travelling the same way, not just the leader.
+            var group = (ctx.Batch ?? [])
+                .OfType<TravelChange>()
+                .Where(t => string.Equals(t.DestinationLocationId, tc.DestinationLocationId, StringComparison.OrdinalIgnoreCase))
+                .Select(t => t.CharacterId)
+                .Append(tc.CharacterId)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            ctx.TimeNotes.Add(new TimeAdvancedChange
+            {
+                Source = "travel",
+                Hours = hoursTraveled,
+                BucketHours = 6,
+                TotalHoursAfter = time.TotalDaysElapsed * 24.0 + time.Hour,
+                CharacterIds = group,
+                LocationId = interrupted ? fromLocationId : tc.DestinationLocationId,
+                Terrain = terrain
+            });
         }
 
         // Apply generated deltas from the rule (e.g. ActivityChange if interrupted, EventOccurred)
@@ -412,6 +460,33 @@ public class TravelChangeHandler : IWorldChangeHandler
     /// TravelChange hasn't run yet) and sever the relation, even though everyone is headed to the same
     /// place in the same beat. Checking the batch directly makes the outcome order-independent.
     /// </summary>
+    /// <summary>The largest travel stretch among everyone in this batch heading to the same destination (this traveler included).</summary>
+    private static async Task<(double Factor, string Who, int Feet, int Normal)> SlowestStretchAsync(
+        ChangeContext ctx, Character self, TravelChange tc, CancellationToken ct)
+    {
+        var pipeline = ctx.Dispatcher.RollModifiers;
+        var options = ctx.GetSystemOptionsAsync is { } load ? await load() : new Dictionary<string, string>();
+        var system = ctx.Config?.ActiveSystem;
+        var who = new List<Character> { self };
+        foreach (var other in (ctx.Batch ?? []).OfType<TravelChange>()
+                     .Where(t => string.Equals(t.DestinationLocationId, tc.DestinationLocationId, StringComparison.OrdinalIgnoreCase)))
+        {
+            if (ctx.Characters.TryGetValue(other.CharacterId, out var c) && who.All(w => w.Id != c.Id))
+                who.Add(c);
+        }
+
+        var best = (Factor: 1.0, Who: self.Name, Feet: 0, Normal: 0);
+        foreach (var c in who)
+        {
+            var factor = SpeedRules.TravelStretch(c, pipeline, options, system);
+            if (factor <= best.Factor)
+                continue;
+            best = (factor, c.Name, pipeline.Speed(c, options, system, includeArmor: false), SpeedRules.Base(c.SystemStats) ?? 0);
+        }
+
+        return best;
+    }
+
     private static bool HasCoTravelInBatch(string targetId, string destinationLocationId, IChangeContext context) =>
         context.Batch?.OfType<TravelChange>().Any(tc =>
             string.Equals(tc.CharacterId, targetId, StringComparison.OrdinalIgnoreCase) &&

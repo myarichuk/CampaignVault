@@ -22,7 +22,7 @@ internal sealed class CombatStartedGuidanceContributor : IGuidanceContributor
         [
             new GuidanceHint(
                 Key: "combat.first-round",
-                Text: "Resolve every action through ruleset_action ($type: 'ruleset_action'), not separate hp/status changes. The engine applies effects automatically.",
+                Text: "Resolve every action through ruleset_action ($type: 'ruleset_action'), not separate hp/status changes. The engine applies effects automatically. It never adds dirt: when the fight ends, commit soil (blood, mud) yourself in the same batch.",
                 Trigger: GuidanceTrigger.CombatStarted,
                 Priority: 8)
             {

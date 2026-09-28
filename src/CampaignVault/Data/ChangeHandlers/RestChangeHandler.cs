@@ -76,6 +76,15 @@ public class RestChangeHandler : IWorldChangeHandler
             // marks this character exempt from the ambient tick's tiredness accrual for this commit so
             // resting never simultaneously adds tiredness while the recovery delta removes it.
             time.AdvanceHours(hoursRested);
+            ctx.TimeNotes.Add(new TimeAdvancedChange
+            {
+                Source = "rest",
+                Hours = hoursRested,
+                BucketHours = 4,
+                TotalHoursAfter = time.TotalDaysElapsed * 24.0 + time.Hour,
+                CharacterIds = [rc.CharacterId],
+                LocationId = rc.LocationId
+            });
         }
 
         // Dispatch encounter events / transient NPCs

@@ -31,6 +31,14 @@ public sealed class PluginManifest
     [JsonPropertyName("playerOnlyModeIds")]
     public List<string> PlayerOnlyModeIds { get; set; } = [];
 
+    /// <summary>
+    /// ActiveSystem values this plugin applies to (open strings, e.g. "dnd5e"; compared case-insensitively). Empty
+    /// means every system. In a campaign whose system is not listed the host skips the plugin's handlers, observers,
+    /// event handlers, contributors and guidance, and leaves its verbs out of the schema (0.8.0).
+    /// </summary>
+    [JsonPropertyName("systems")]
+    public List<string> Systems { get; set; } = [];
+
     [JsonPropertyName("rulesetDataRoots")]
     public List<string> RulesetDataRoots { get; set; } = [];
 

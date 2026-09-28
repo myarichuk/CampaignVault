@@ -1,3 +1,4 @@
+using CampaignVault.Plugins;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
 
@@ -138,6 +139,8 @@ internal sealed class GuidanceOrchestrator : IGuidanceOrchestrator
 
         foreach (var contributor in _pluginContributors)
         {
+            if (!PluginSystems.AppliesTo(contributor, pluginCtx.Config?.ActiveSystem))
+                continue;
             var source = contributor.GetType().Assembly.GetName().Name ?? contributor.GetType().Name;
             try
             {

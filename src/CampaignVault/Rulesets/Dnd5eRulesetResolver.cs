@@ -22,8 +22,11 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         ClassDefinitionProvider? classProvider = null,
         BackgroundDefinitionProvider? backgroundProvider = null,
         SpellDefinitionProvider? spellDefinitionProvider = null,
-        CreatureDefinitionProvider? creatureDefinitionProvider = null)
+        CreatureDefinitionProvider? creatureDefinitionProvider = null,
+        RollModifierPipeline? rollModifiers = null)
     {
+        if (rollModifiers is not null)
+            Pipeline = rollModifiers;
         _rollService = rollService ?? throw new ArgumentNullException(nameof(rollService));
         _spellDefinitionProvider = spellDefinitionProvider;
         _creatureDefinitionProvider = creatureDefinitionProvider;
@@ -106,7 +109,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             return await ResolveMultiInstanceAttackAsync(action, spell, context, actorStats, mutations, ct);
         }
 
-        var targets = AttackTargetHelper.SelectTargets(action);
+        var targets = AttackTargetHelper.SelectAttackInstances(action);
         if (targets.Count == 0)
         {
             return ResolverResult.Fail("InvalidTarget", "Error: No valid target specified for attack.");
@@ -148,8 +151,9 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             return ResolverResult.Fail("IncompatibleRuleset", "Error: Target uses incompatible ruleset stats for current ActiveSystem.");
         }
 
+        var actorChar = context.Characters[action.CharacterId];
         var ac = targetStats.ArmorClass;
-        ac = ApplyAllModifiers(targetStats, ac, "AC");
+        ac = (await FoldAsync(context, target, RollKinds.ArmorClass, null, ac, other: actorChar).ConfigureAwait(false)).Bonus;
         
         if (action.Parameters.TryGetValue("ac", out var acStr) && int.TryParse(acStr, out var overrideAc))
         {
@@ -168,7 +172,9 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             attackBonus = ResolveSpellAttackBonus(actorStats);
         }
 
-        attackBonus = ApplyAllModifiers(actorStats, attackBonus, "AttackRoll");
+        var attackFold = await FoldAsync(
+            context, actorChar, RollKinds.Attack, null, attackBonus, action, GetMechanicFromAction(action), target).ConfigureAwait(false);
+        attackBonus = attackFold.Bonus;
 
         var damageDice = damageDiceOverride ?? action.Parameters.GetValueOrDefault("damageDice", "1d4");
         
@@ -178,9 +184,9 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid damageBonus value '{db}'.");
         }
 
-        damageBonus = ApplyAllModifiers(actorStats, damageBonus, "DamageRoll");
+        damageBonus = (await FoldAsync(context, actorChar, RollKinds.Damage, null, damageBonus, action, other: target).ConfigureAwait(false)).Bonus;
 
-        var mechanic = GetMechanicFromAction(action);
+        var mechanic = attackFold.Mechanic;
         var requiresAttackRoll = spell?.RequiresAttackRoll ?? true;
 
         var attackRoll = requiresAttackRoll
@@ -212,7 +218,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         if (!isHit)
         {
             // Auto-hit spells always hit, so an attack roll exists on every path that reaches here.
-            var attackDetail = $"Attack {attackRoll!.Result} vs AC {ac}. {attackRoll.Summary}";
+            var attackDetail = $"Attack {attackRoll!.Result} vs AC {ac}. {attackRoll.Summary}{attackFold.Suffix}";
             if (spell?.OnMiss == MissBehavior.Half)
             {
                 // Acid Arrow shape: a miss still splashes half the (already rolled) initial damage.
@@ -244,14 +250,28 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             Delta = -finalDamage
         });
 
+        var riderMsg = "";
+        if (action.Parameters.TryGetValue("riderDice", out var riderDice) && !string.IsNullOrWhiteSpace(riderDice))
+        {
+            var riderRoll = await _rollService.RollAsync(new RollRequest { Tag = "rider", Expression = riderDice, Mechanic = DiceMechanic.Standard }, ct);
+            var riderType = action.Parameters.GetValueOrDefault("riderType");
+            var riderDamage = ApplyTargetDamageReduction(riderRoll.Result, targetStats, riderType);
+            if (riderDamage > 0)
+            {
+                mutations.Add(new HpChange { CharacterId = targetId, Delta = -riderDamage });
+            }
+
+            riderMsg = $" Rider: +{riderDamage}{(string.IsNullOrWhiteSpace(riderType) ? "" : $" {riderType}")} from the loaded round.";
+        }
+
         var tickMsg = spell?.DelayedTick != null
             ? EmitDelayedTick(action, spell, targetId, target.Name, mutations)
             : "";
 
         var damageWarning = BuildSpellDamageWarning(action, damageDice, actorStats.Level);
 
-        var attackSegment = attackRoll != null ? $"(Attack {attackRoll.Result} vs AC {ac})" : "(auto-hit)";
-        return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage. {attackSegment}.{critMsg}{tickMsg}{damageWarning}");
+        var attackSegment = attackRoll != null ? $"(Attack {attackRoll.Result} vs AC {ac}){attackFold.Suffix}" : "(auto-hit)";
+        return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage. {attackSegment}.{critMsg}{riderMsg}{tickMsg}{damageWarning}");
     }
 
     private SpellDefinition? LookupSpell(RulesetAction action)
@@ -883,7 +903,9 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
         var skillName = action.Parameters.GetValueOrDefault("skill", action.ActionName);
         var bonus = GetSkillOrAbilityBonus(actorStats, skillName);
-        bonus = ApplyAllModifiers(actorStats, bonus, "SkillCheck", skillName);
+        var checkFold = await FoldAsync(
+            context, context.Characters[action.CharacterId], RollKinds.Check, skillName, bonus, action, GetMechanicFromAction(action)).ConfigureAwait(false);
+        bonus = checkFold.Bonus;
 
         var relationshipLabel = "neutral";
         var relationshipBonus = 0;
@@ -900,7 +922,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             }
         }
 
-        var mechanic = GetMechanicFromAction(action);
+        var mechanic = checkFold.Mechanic;
 
         var outcome = await _rollService.RollAsync(new RollRequest
         {
@@ -916,7 +938,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
         return new ResolverResult
         {
-            Narrative = $"{action.ActionName} ({skillName}): {resultStr}. Rolled {outcome.Result} vs DC {dc}.{relationshipSuffix} {outcome.Summary}",
+            Narrative = $"{action.ActionName} ({skillName}): {resultStr}. Rolled {outcome.Result} vs DC {dc}.{relationshipSuffix} {outcome.Summary}{checkFold.Suffix}",
             RollTotal = outcome.Result,
             Skill = skillName
         };
@@ -951,7 +973,10 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             : isGrapple ? "Athletics" : actorSkill;
 
         var actorBonus = GetSkillOrAbilityBonus(actorStats, actorSkill);
-        actorBonus = ApplyAllModifiers(actorStats, actorBonus, "SkillCheck", actorSkill);
+        var actorChar = context.Characters[action.CharacterId];
+        var actorFold = await FoldAsync(
+            context, actorChar, RollKinds.Check, actorSkill, actorBonus, action, GetMechanicFromAction(action), target).ConfigureAwait(false);
+        actorBonus = actorFold.Bonus;
 
         var relationshipLabel = "neutral";
         var relationshipBonus = 0;
@@ -966,10 +991,12 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         }
 
         var targetBonus = GetSkillOrAbilityBonus(targetStats, targetSkill);
-        targetBonus = ApplyAllModifiers(targetStats, targetBonus, "SkillCheck", targetSkill);
+        var targetFold = await FoldAsync(
+            context, target, RollKinds.Check, targetSkill, targetBonus, other: actorChar).ConfigureAwait(false);
+        targetBonus = targetFold.Bonus;
 
-        var actorRoll = await _rollService.RollAsync(new RollRequest { Tag = "actor", Expression = "1d20", Bonus = actorBonus, Mechanic = GetMechanicFromAction(action) }, ct);
-        var targetRoll = await _rollService.RollAsync(new RollRequest { Tag = "target", Expression = "1d20", Bonus = targetBonus, Mechanic = DiceMechanic.Standard }, ct);
+        var actorRoll = await _rollService.RollAsync(new RollRequest { Tag = "actor", Expression = "1d20", Bonus = actorBonus, Mechanic = actorFold.Mechanic }, ct);
+        var targetRoll = await _rollService.RollAsync(new RollRequest { Tag = "target", Expression = "1d20", Bonus = targetBonus, Mechanic = targetFold.Mechanic }, ct);
 
         var actorWins = actorRoll.Result > targetRoll.Result;
         var resultStr = actorWins ? "Actor Wins" : "Target Wins";
@@ -986,7 +1013,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         }
 
         var relationshipSuffix = relationshipBonus != 0 ? $" ({relationshipLabel})" : "";
-        return ResolverResult.Ok($"{action.ActionName}: {resultStr}. Actor rolled {actorRoll.Result} ({actorSkill}){relationshipSuffix}, Target rolled {targetRoll.Result} ({targetSkill}).");
+        return ResolverResult.Ok($"{action.ActionName}: {resultStr}. Actor rolled {actorRoll.Result} ({actorSkill}){relationshipSuffix}, Target rolled {targetRoll.Result} ({targetSkill}).{actorFold.Suffix}{targetFold.Suffix}");
     }
 
     protected override async Task<ResolverResult> ResolveSavingThrowAsync(
@@ -1012,8 +1039,10 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var saveName = action.Parameters.GetValueOrDefault("save", "Dexterity");
         var bonus = GetSavingThrowBonus(actorStats, saveName);
         
-        bonus = ApplyAllModifiers(actorStats, bonus, "SavingThrow", saveName);
-        var mechanic = GetMechanicFromAction(action);
+        var saveFold = await FoldAsync(
+            context, context.Characters[action.CharacterId], RollKinds.Save, saveName, bonus, action, GetMechanicFromAction(action)).ConfigureAwait(false);
+        bonus = saveFold.Bonus;
+        var mechanic = saveFold.Mechanic;
 
         var outcome = await _rollService.RollAsync(new RollRequest
         {
@@ -1033,7 +1062,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             : string.Empty;
 
         return ResolverResult.Ok(
-            $"{action.ActionName} ({saveName} Save): {resultStr}. Rolled {outcome.Result} vs DC {dc}.{damageMsg} {outcome.Summary}");
+            $"{action.ActionName} ({saveName} Save): {resultStr}. Rolled {outcome.Result} vs DC {dc}.{damageMsg} {outcome.Summary}{saveFold.Suffix}");
     }
 
     protected override async Task<ResolverResult> ResolveSpellSaveAsync(
@@ -1079,8 +1108,11 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             }
 
             var bonus = GetSavingThrowBonus(targetStats, saveName);
-            bonus = ApplyAllModifiers(targetStats, bonus, "SavingThrow", saveName);
-            var mechanic = GetMechanicFromAction(action);
+            var spellSaveFold = await FoldAsync(
+                context, target, RollKinds.Save, saveName, bonus, action, GetMechanicFromAction(action),
+                context.Characters.GetValueOrDefault(action.CharacterId), spell?.Tags).ConfigureAwait(false);
+            bonus = spellSaveFold.Bonus;
+            var mechanic = spellSaveFold.Mechanic;
 
             var outcome = await _rollService.RollAsync(new RollRequest
             {
@@ -1105,7 +1137,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             }
             narratives.Add(
                 $"{action.ActionName} vs {target.Name}: {(isSuccess ? "Saved" : "Failed")} ({saveName} {outcome.Result} vs DC {dc})"
-                + (damage > 0 ? $" — {damage} damage{damageDetail}." : "."));
+                + (damage > 0 ? $" — {damage} damage{damageDetail}." : ".") + spellSaveFold.Suffix);
         }
 
         var saveTypeWarning = BuildSpellSaveTypeWarning(action, saveName);
@@ -1232,7 +1264,8 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     {
         var stats = character.SystemStats as Dnd5eExtension ?? new Dnd5eExtension();
         var dexMod = stats.GetAbilityModifier(stats.Dexterity);
-        dexMod = ApplyAllModifiers(stats, dexMod, "Initiative");
+        dexMod = Pipeline.Resolve(
+            new RollQuery(RollKinds.Initiative, null, [], character, null, System, new Dictionary<string, string>()), dexMod).Bonus;
         
         var request = new RollRequest { Tag = "initiative", Expression = "1d20", Bonus = dexMod, Mechanic = DiceMechanic.Standard };
         var outcome = await _rollService.RollAsync(request, ct);

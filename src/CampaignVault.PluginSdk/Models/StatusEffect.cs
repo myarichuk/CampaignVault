@@ -111,6 +111,20 @@ public class StatusEffect
     public PendingEffectDamage? PendingDamage { get; set; }
 
     /// <summary>
+    /// Non-stacking key for effects created through <c>apply_effect</c> (0.10.0): one effect per key per character;
+    /// reapplying refreshes it instead of adding a second. Null for effects authored the old way.
+    /// </summary>
+    [JsonPropertyName("effectKey")]
+    public string? EffectKey { get; set; }
+
+    /// <summary>
+    /// Guardrail tier the effect was clamped to by <c>apply_effect</c>: light, moderate, serious or persistent.
+    /// Null for effects authored the old way.
+    /// </summary>
+    [JsonPropertyName("effectTier")]
+    public string? EffectTier { get; set; }
+
+    /// <summary>
     /// Relative expiry: the effect expires the next time its owner's own turn starts in combat
     /// (checked by combat turn advancement), as an alternative to the absolute
     /// <see cref="ExpiresAtRound"/>. Needed for "end of target's next turn" effects, which can't

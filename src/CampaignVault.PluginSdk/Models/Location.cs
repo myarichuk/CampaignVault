@@ -3,9 +3,15 @@ using System.Text.Json.Serialization;
 
 namespace CampaignVault.Models;
 
-public class Location : ICampaignScopedEntity, IArchivable
+public class Location : ICampaignScopedEntity, IHasDirt, IArchivable
 {
     public string Id { get; set; } = null!;
+
+    /// <summary>
+    /// Filth on this location (props and scenery via the fixture qualifier) (dust, blood, mud, ...): see <see cref="DirtMark"/>. Mutated only through the core
+    /// <c>soil</c> verb; plugins read it via <c>IChangeContext</c>.
+    /// </summary>
+    public List<DirtMark> Dirt { get; set; } = [];
 
     [JsonIgnore]
     public float[]? SemanticVector { get; set; }

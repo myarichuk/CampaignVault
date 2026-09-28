@@ -47,8 +47,7 @@ public sealed class AttributeChangeHandler : IWorldChangeHandler
         switch (key)
         {
             case "willpower":
-                character.SystemStats.Willpower = Math.Clamp(
-                    attr.IsDelta ? character.SystemStats.Willpower + attr.Value : attr.Value, 0f, 100f);
+                CampaignVault.Rulesets.WillpowerRules.Apply(character.SystemStats, attr.Value, attr.IsDelta);
                 break;
 
             case "temperature":
