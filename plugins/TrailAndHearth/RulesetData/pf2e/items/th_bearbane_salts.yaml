@@ -1,0 +1,13 @@
+# Trail & Hearth: pungent mineral salts that offend large predators (original homebrew; no ORC text copied).
+# Consumable blueprint: charges live on the item instance (item_use).
+name: th_bearbane_salts
+system: pf2e
+category: Consumable
+tags: [camp, alchemical, adventuring-gear]
+description: Pouch of pungent mineral salts to ring a campsite. Bears, wolves, and boars think twice; humans just wrinkle noses.
+properties:
+  bulk: 0.5
+  costGp: 0.6
+  uses: 1
+  chargeUnit: uses
+  specialMechanic: "A salt ring around camp discourages curious predators for one night; a hungry or provoked beast is another matter (narrative/GM-arbitrated; not computed by the engine)."

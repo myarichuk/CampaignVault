@@ -1,0 +1,11 @@
+# Trail & Hearth: reusable steel striker and flint shard (original homebrew, not an SRD entry).
+# Mirrors the grantsAdvantageOn convention from the core climbers_kit blueprint.
+name: th_fire_steel
+system: dnd5e
+category: Tool
+tags: [camp, fire, adventuring-gear]
+description: C-shaped steel striker with a flint shard in a belt pouch. Throws fat sparks for years without wearing out.
+properties:
+  weight: 0.5
+  costGp: 2
+  grantsAdvantageOn: fire-starting checks

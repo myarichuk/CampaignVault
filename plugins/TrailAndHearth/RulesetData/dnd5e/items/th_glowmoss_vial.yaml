@@ -1,0 +1,14 @@
+# Trail & Hearth: stoppered vial of cave glowmoss (original homebrew, not an SRD entry).
+# Alchemical light — dim, green, and wonderfully un-flammable.
+# Consumable blueprint: charges live on the item instance (item_use).
+name: th_glowmoss_vial
+system: dnd5e
+category: Consumable
+tags: [light, alchemical, adventuring-gear]
+description: Stoppered vial of live cave glowmoss. Shaken awake, it glows dim green for hours — no flame, no smoke.
+properties:
+  weight: 0.2
+  costGp: 6
+  uses: 1
+  chargeUnit: uses
+  specialMechanic: "One shaking wakes about four hours of dim light over a few paces — enough to read by, not to blind (narrative/GM-arbitrated; not computed by the engine)."

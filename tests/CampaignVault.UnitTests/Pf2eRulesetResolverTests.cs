@@ -285,7 +285,6 @@ public class Pf2eRulesetResolverTests
         {
             Character = character,
             ActiveSystem = RulesetSystem.Pathfinder2e,
-            Session = null
         };
 
         var result = await step.ApplyAsync(context, TestContext.Current.CancellationToken);

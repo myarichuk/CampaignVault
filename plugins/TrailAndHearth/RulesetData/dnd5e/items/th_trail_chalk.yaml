@@ -1,0 +1,13 @@
+# Trail & Hearth: grease-bound chalk sticks for blazing trails (original homebrew, not an SRD entry).
+# Consumable blueprint: charges live on the item instance (item_use).
+name: th_trail_chalk
+system: dnd5e
+category: Consumable
+tags: [navigation, travel, adventuring-gear]
+description: Box of ten grease-bound chalk sticks that mark stone and bark through rain. Blazes wash off with a wet rag.
+properties:
+  weight: 0.5
+  costGp: 1
+  uses: 10
+  chargeUnit: sticks
+  specialMechanic: "Chalk blazes keep a party on the same path through trackless woods and mark retreat routes in caves (narrative/GM-arbitrated; not computed by the engine)."

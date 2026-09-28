@@ -373,7 +373,7 @@ public class LevelUpChangeHandler : IWorldChangeHandler
             ClassGained = levelUp.ClassGained,
             HpModeOverride = levelUp.HpMode,
             Trigger = BootstrapTrigger.LevelUp,
-            Session = ctx.Session,
+            EquipmentAccess = new SessionEquipmentAccess(ctx.Session),
             CampaignName = ctx.CampaignName,
         }, ct);
 

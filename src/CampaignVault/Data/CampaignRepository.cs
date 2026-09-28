@@ -3136,6 +3136,7 @@ public class CampaignRepository
             Name = npc.Name,
             CurrentAppearance = trim.StripAppearance ? null : npc.CurrentAppearance ?? "",
             Soil = trim.StripAppearance ? null : SoilHelpers.Summarize(npc.Dirt),
+            Piercings = trim.StripAppearance ? null : PiercingHelpers.Summarize(npc.Piercings),
             CurrentActivity = npc.CurrentActivity,
             CurrentMood = npc.Psychology?.CurrentMood,
             BehavioralSummary = behavioralSummary,

@@ -1,0 +1,11 @@
+# Trail & Hearth: short camp hatchet for splitting and limbing (original homebrew; no ORC text copied).
+# A camp tool, not a weapon — for fighting, buy a hatchet.
+name: th_camp_hatchet
+system: pf2e
+category: Tool
+tags: [camp, fire, adventuring-gear]
+description: Short wedge-headed camp hatchet for splitting kindling and limbing poles. Balanced for wood, not for war.
+properties:
+  bulk: 1
+  costGp: 0.4
+  grantsAdvantageOn: woodcutting checks

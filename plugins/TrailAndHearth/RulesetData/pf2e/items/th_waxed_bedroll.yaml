@@ -1,0 +1,10 @@
+# Trail & Hearth: oilcloth bedroll for wet ground (original homebrew; no ORC text copied).
+name: th_waxed_bedroll
+system: pf2e
+category: Tool
+tags: [shelter, camp, cold-weather, adventuring-gear]
+description: Bedroll wrapped in an oiled-canvas shell that sheds dew and light rain. Rolls tight behind a pack.
+properties:
+  bulk: 1
+  costGp: 0.2
+  specialMechanic: "Keeps the sleeper dry on damp ground and takes the edge off a chilly night (narrative/GM-arbitrated; not computed by the engine)."

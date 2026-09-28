@@ -58,6 +58,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(ApplyEffectChange), "apply_effect")]
 [JsonDerivedType(typeof(TetherChange), "tether")]
 [JsonDerivedType(typeof(SoilChange), "soil")]
+[JsonDerivedType(typeof(PiercingChange), "piercing")]
 [JsonDerivedType(typeof(XpGrantChange), "xp_grant")]
 [JsonDerivedType(typeof(NpcInitiativeNudge), "npc_initiative_nudge")]
 [JsonDerivedType(typeof(ModeTransitionChange), "mode_transition")]
@@ -327,6 +328,67 @@ public class SoilChange : WorldChange
     [Description("Optional provenance for who/what applied the dirt (character id, verb id, pluginId:cause). Audit only; does not split stacks. On worsen, a new value replaces the previous.")]
     [JsonPropertyName("appliedBy")]
     public string? AppliedBy { get; set; }
+}
+
+/// <summary>
+/// Body piercings on a character (earrings, septum, navel, plugin-namespaced intimate sites). One verb covers add,
+/// update, remove and clear. Fiction commits the change; each mutation publishes <c>core.pierced.v1</c>.
+/// </summary>
+[CommitCategory("World")]
+[Description("Add, update or remove a body piercing (site+kind; several marks may share a site — many labia rings + clit ring; pass id to target one; replace:true upserts a single site+kind). action: add|update|remove|clear_site|clear_all.")]
+public class PiercingChange : WorldChange
+{
+    [Description("Character ID receiving the piercing change.")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = null!;
+
+    [Description("Stable mark id on this character. Prefer for update/remove when several piercings share site+kind. On add, assigns this id (or auto 1,2,3…).")]
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+
+    [Description("add | update | remove | clear_site | clear_all. Default add.")]
+    [JsonPropertyName("action")]
+    public string Action { get; set; } = "add";
+
+    [Description("Piercing site (ear.lobe.left, nose.septum, navel, labia.left, clitoris, …). Required for add; for update/remove when id is omitted.")]
+    [JsonPropertyName("site")]
+    public string? Site { get; set; }
+
+    [Description("Piercing kind (stud, hoop, ring, barbell, captive_bead, or a namespaced kind). Required for add; for update when id is omitted; optional filter for remove.")]
+    [JsonPropertyName("kind")]
+    public string? Kind { get; set; }
+
+    [Description("Optional material: gold, silver, iron, bone.")]
+    [JsonPropertyName("material")]
+    public string? Material { get; set; }
+
+    [Description("none | light | heavy — hanging weights or charms.")]
+    [JsonPropertyName("load")]
+    public string? Load { get; set; }
+
+    [Description("Tags: bell, charm, leash_ring, locked, fresh, …")]
+    [JsonPropertyName("tags")]
+    public List<string>? Tags { get; set; }
+
+    [Description("When true on update, replace tags entirely instead of merging.")]
+    [JsonPropertyName("replaceTags")]
+    public bool ReplaceTags { get; set; }
+
+    [Description("add: when true, upsert the first matching site+kind instead of stacking another mark (singular jewelry: septum, one slave ring). Default false stacks.")]
+    [JsonPropertyName("replace")]
+    public bool Replace { get; set; }
+
+    [Description("Optional short remark.")]
+    [JsonPropertyName("note")]
+    public string? Note { get; set; }
+
+    [Description("Optional provenance (character id, verb id, pluginId:cause).")]
+    [JsonPropertyName("appliedBy")]
+    public string? AppliedBy { get; set; }
+
+    [Description("remove: true forces removal of locked piercings (key/smith/story).")]
+    [JsonPropertyName("force")]
+    public bool Force { get; set; }
 }
 
 /// <summary>
@@ -908,6 +970,10 @@ public class LocationUpdate : WorldChange
     [JsonPropertyName("parentLocationId")]
     public string? ParentLocationId { get; set; }
 
+    [Description("Set the plane of existence (open string — each table defines its own cosmology, e.g. 'Plane of Fire'). Omit to preserve. For planar travel (plane_shift and the like): create the destination first via world_build or location_update if it doesn't exist yet, cast the passage via ruleset_action in the same batch, and pass travelCostHoursOverride on the travel.")]
+    [JsonPropertyName("plane")]
+    public string? Plane { get; set; }
+
     [Description("Set the narrative danger modifier (-50 to +50) when the area becomes safer or more dangerous.")]
     [JsonPropertyName("dangerModifier")]
     public int? DangerModifier { get; set; }
@@ -1084,7 +1150,9 @@ public class TravelChange : WorldChange
         "For an off-route stop during travel (a campsite, a clearing, a hiding spot) that isn't on the map yet, first " +
         "world_build a specific child Location (parentLocationId = the road/region) instead of setting the destination " +
         "to the broad Region/Wilderness itself — landing directly on the broad node pulls its whole quest/NPC/rumor scope " +
-        "into this stop.")]
+        "into this stop. Planar travel (plane_shift and the like): the planar destination must already exist — create it " +
+        "first via world_build or location_update (setting its plane) — cast the passage via ruleset_action in the same " +
+        "batch, and pass travelCostHoursOverride (teleportation needs no exit edge).")]
     [JsonPropertyName("destinationLocationId")]
     public string DestinationLocationId { get; set; } = null!;
     

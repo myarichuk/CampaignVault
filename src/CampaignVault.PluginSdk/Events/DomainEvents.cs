@@ -191,6 +191,9 @@ public static class CoreEvents
     /// </summary>
     public const string Soiled = "core.soiled.v1";
 
+    /// <summary>A body piercing was added, updated, or removed on a character.</summary>
+    public const string Pierced = "core.pierced.v1";
+
     /// <summary>
     /// A plugin's reaction faulted. Fields: pluginId, handler, topic, stage (handler_threw, follow_up_failed,
     /// depth_capped), changeType, message, fixHint, appliedChangeTypes (follow-ups that landed before the
@@ -203,7 +206,7 @@ public static class CoreEvents
     public static IReadOnlyList<string> All { get; } =
     [
         ModeEntered, ModeExited, ModeJoined, ModeLeft, ModeTurnStarted, CharacterDamaged, CharacterDowned, Traveled, Rested, EncounterInterrupted,
-        EventLogged, CombatStarted, CombatTurnStarted, CombatEnded, Soiled, PluginFaulted
+        EventLogged, CombatStarted, CombatTurnStarted, CombatEnded, Soiled, Pierced, PluginFaulted
     ];
 
     public static class Fields
@@ -250,7 +253,12 @@ public static class CoreEvents
         public const string Spot = "spot";
         public const string Fixture = "fixture";
         public const string Action = "action";
+        public const string Site = "site";
+        public const string Load = "load";
+        public const string Tags = "tags";
         public const string AppliedBy = "appliedBy";
+        /// <summary>Stable piercing mark id on the character (stacked jewelry).</summary>
+        public const string PiercingId = "piercingId";
     }
 
     /// <summary>True when <paramref name="topic"/> sits under <paramref name="source"/>'s own prefix.</summary>

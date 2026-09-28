@@ -1,0 +1,10 @@
+# Trail & Hearth: reusable steel striker and flint shard (original homebrew; no ORC text copied).
+name: th_fire_steel
+system: pf2e
+category: Tool
+tags: [camp, fire, adventuring-gear]
+description: C-shaped steel striker with a flint shard in a belt pouch. Throws fat sparks for years without wearing out.
+properties:
+  bulk: 0.1
+  costGp: 0.2
+  grantsAdvantageOn: fire-starting checks

@@ -1,6 +1,4 @@
-using CampaignVault.Data;
 using CampaignVault.Models;
-using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Rulesets.Bootstrap;
 
@@ -16,8 +14,8 @@ public sealed class Pf2eDeriveDefenseStep : IBootstrapStep
         var stats = (Pf2eExtension)context.Character.SystemStats;
         var hints = new List<string>();
 
-        var equippedItems = context.Session is not null
-            ? await GetEquippedItemsAsync(context.Session, context.Character.Id, ct)
+        var equippedItems = context.EquipmentAccess is not null
+            ? await context.EquipmentAccess.GetEquippedItemsAsync(context.Character.Id, ct)
             : [];
 
         if (equippedItems.Count > 0)
@@ -54,19 +52,5 @@ public sealed class Pf2eDeriveDefenseStep : IBootstrapStep
             Message = $"Set armorClass={stats.ArmorClass} for {context.Character.Name}.",
             LlmHints = hints,
         };
-    }
-
-    private static async Task<List<Item>> GetEquippedItemsAsync(
-        IAsyncDocumentSession session,
-        string characterId,
-        CancellationToken ct)
-    {
-        var held = await session.Advanced.AsyncDocumentQuery<Item, Item_Search>()
-            .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
-            .WhereEquals(x => x.HolderId, characterId)
-            .Take(50)
-            .ToListAsync(ct);
-
-        return [.. held.Where(i => i.IsEquipped)];
     }
 }

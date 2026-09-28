@@ -1,0 +1,49 @@
+using CampaignVault.Models;
+
+namespace CampaignVault.Rulesets.Bootstrap;
+
+public enum BootstrapTrigger
+{
+    Create,
+    Upsert,
+    LevelUp,
+    SystemStatsPatch
+}
+
+public sealed class BootstrapContext
+{
+    public required Character Character { get; init; }
+    public required string ActiveSystem { get; init; }
+    public BootstrapTrigger Trigger { get; init; } = BootstrapTrigger.Create;
+    public int? ExplicitMaxHp { get; init; }
+    public int? ExplicitCurrentHp { get; init; }
+    public int LevelsGained { get; init; } = 1;
+    /// <summary>When leveling up a multiclass PC, the class that gained the level (e.g. "Wizard").</summary>
+    public string? ClassGained { get; init; }
+    public HitPointDerivationMode? HpModeOverride { get; init; }
+    /// <summary>
+    /// Narrow equipment read access for steps that derive stats from worn gear.
+    /// Null means no equipment data is available — degrade gracefully.
+    /// Deliberately not a database session: plugin contracts stay Raven-free.
+    /// </summary>
+    public IBootstrapEquipmentAccess? EquipmentAccess { get; init; }
+    public string? CampaignName { get; init; }
+
+    public bool HasExplicitMaxHp => ExplicitMaxHp is > 0;
+}
+
+public sealed class BootstrapStepResult
+{
+    public required string StepName { get; init; }
+    public string? Message { get; init; }
+    public IReadOnlyList<string> LlmHints { get; init; } = [];
+}
+
+public sealed class BootstrapReport
+{
+    public IReadOnlyList<BootstrapStepResult> Steps { get; init; } = [];
+    public IReadOnlyList<string> Messages =>
+        [.. Steps.Select(s => s.Message).Where(m => !string.IsNullOrWhiteSpace(m)).Cast<string>()];
+    public IReadOnlyList<string> LlmHints =>
+        [.. Steps.SelectMany(s => s.LlmHints).Where(h => !string.IsNullOrWhiteSpace(h))];
+}

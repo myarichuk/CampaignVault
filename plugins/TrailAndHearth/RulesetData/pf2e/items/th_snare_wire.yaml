@@ -1,0 +1,13 @@
+# Trail & Hearth: brass snare wire for rabbits and grouse (original homebrew; no ORC text copied).
+# Consumable blueprint: charges live on the item instance (item_use).
+name: th_snare_wire
+system: pf2e
+category: Consumable
+tags: [hunting, trapping, downtime, adventuring-gear]
+description: Coil of brass snare wire with three pre-tied running loops and anchoring stakes. Set along runs at dusk.
+properties:
+  bulk: 0.1
+  costGp: 0.2
+  uses: 3
+  chargeUnit: snares
+  specialMechanic: "Each loop set along a game run may hold a rabbit or grouse by morning; wire kinks with use (narrative/GM-arbitrated; not computed by the engine)."

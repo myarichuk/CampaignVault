@@ -1,0 +1,11 @@
+# Trail & Hearth: set of carved game calls — deer grunt, duck, owl (original homebrew, not an SRD entry).
+# Mirrors the grantsAdvantageOn convention from the core climbers_kit blueprint.
+name: th_game_calls
+system: dnd5e
+category: Tool
+tags: [hunting, downtime, adventuring-gear]
+description: Set of three carved calls — deer grunt, duck quack, and night-owl hoot — on a lanyard. Practice included, mastery not.
+properties:
+  weight: 0.5
+  costGp: 2
+  grantsAdvantageOn: calling-game checks

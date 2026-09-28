@@ -115,6 +115,14 @@ public class Location : ICampaignScopedEntity, IHasDirt, IArchivable
     /// if none in the chain.
     /// </summary>
     public ClimateZone? ClimateZone { get; set; }
+
+    /// <summary>
+    /// Plane of existence this location sits on. Open string — each table defines its own
+    /// cosmology (e.g. "Material Plane", "Plane of Fire"). Null = inherit from the nearest
+    /// ParentLocationId ancestor that has one set (via PlaneResolver); defaults to
+    /// "Material Plane" if none in the chain.
+    /// </summary>
+    public string? Plane { get; set; }
 }
 
 [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]

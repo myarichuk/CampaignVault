@@ -1,0 +1,11 @@
+# Trail & Hearth: heavy oilskin cloak against rain and wind (original homebrew; no ORC text copied).
+# Worn weather gear — no armor bonus, just blessed dryness.
+name: th_waxed_cloak
+system: pf2e
+category: Tool
+tags: [clothing, cold-weather, travel, adventuring-gear]
+description: Heavy oilskin cloak with a deep hood. Sheds rain, breaks wind, and doubles as a groundsheet in a pinch.
+properties:
+  bulk: 1
+  costGp: 0.6
+  specialMechanic: "Stays dry in driving rain and takes the bite out of highland wind; doubles as a one-person groundsheet (narrative/GM-arbitrated; not computed by the engine)."

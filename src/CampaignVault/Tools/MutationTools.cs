@@ -1757,6 +1757,8 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             StatusRemove sr => eq.Equals(sr.CharacterId, characterId),
             // Dirt is part of how a character looks right now (bloodied, muddy boots).
             SoilChange so => eq.Equals(so.TargetId, characterId),
+            // Piercings are visible adornment (earrings, septum ring, weighted bells).
+            PiercingChange pc => eq.Equals(pc.CharacterId, characterId),
             _ => false
         };
     }
@@ -2072,6 +2074,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             VisualTags = trim.StripAppearance ? null : npc.VisualTags,
             DistinctiveFeatures = trim.StripAppearance ? null : npc.DistinctiveFeatures,
             Soil = trim.StripAppearance ? null : npc.Soil,
+            Piercings = trim.StripAppearance ? null : npc.Piercings,
             BehavioralSummary = trim.SkipBehavioralSummary ? null : npc.BehavioralSummary,
             KnownNeeds = knownNeeds,
             NeedDescriptors = needDescriptors,

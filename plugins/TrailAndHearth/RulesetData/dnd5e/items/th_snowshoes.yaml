@@ -1,0 +1,10 @@
+# Trail & Hearth: rawhide-and-ash snowshoes (original homebrew, not an SRD entry).
+name: th_snowshoes
+system: dnd5e
+category: Tool
+tags: [cold-weather, travel, adventuring-gear]
+description: Rawhide-laced ash snowshoes that spread a walker's weight over deep powder. Straps fit any boot.
+properties:
+  weight: 3
+  costGp: 4
+  specialMechanic: "Deep snow becomes walkable instead of wallowable; drifts and crust still demand respect (narrative/GM-arbitrated; not computed by the engine)."

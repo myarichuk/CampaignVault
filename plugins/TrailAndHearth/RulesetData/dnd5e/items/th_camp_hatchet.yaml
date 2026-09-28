@@ -1,0 +1,12 @@
+# Trail & Hearth: short camp hatchet for splitting and limbing (original homebrew, not an SRD entry).
+# A camp tool, not a weapon — for fighting, buy a handaxe.
+# Mirrors the grantsAdvantageOn convention from the core climbers_kit blueprint.
+name: th_camp_hatchet
+system: dnd5e
+category: Tool
+tags: [camp, fire, adventuring-gear]
+description: Short wedge-headed camp hatchet for splitting kindling and limbing poles. Balanced for wood, not for war.
+properties:
+  weight: 2
+  costGp: 3
+  grantsAdvantageOn: woodcutting checks

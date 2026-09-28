@@ -36,7 +36,8 @@ public class LocationUpdateHandler : IWorldChangeHandler
                     Description = lu.Description ?? "",
                     Type = lu.Type ?? LocationType.Room,
                     CampaignName = ctx.CampaignName,
-                    LastUpdated = DateTime.UtcNow
+                    LastUpdated = DateTime.UtcNow,
+                    Plane = lu.Plane
                 };
                 await ctx.Session.StoreAsync(loc, ct);
                 createdNew = true;
@@ -57,6 +58,11 @@ public class LocationUpdateHandler : IWorldChangeHandler
         if (lu.ParentLocationId != null)
         {
             loc.ParentLocationId = lu.ParentLocationId;
+        }
+
+        if (lu.Plane != null)
+        {
+            loc.Plane = lu.Plane;
         }
 
         if (lu.AmbientCrowd != null)

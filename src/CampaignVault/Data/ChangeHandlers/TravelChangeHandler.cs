@@ -266,6 +266,16 @@ public class TravelChangeHandler : IWorldChangeHandler
                     "the entire region's quests/NPCs/rumors.");
             }
 
+            if (startLoc != null)
+            {
+                var fromPlane = await PlaneResolver.ResolveEffectivePlaneAsync(ctx.Session, startLoc, ct);
+                var toPlane = await PlaneResolver.ResolveEffectivePlaneAsync(ctx.Session, destination, ct);
+                if (!string.Equals(fromPlane, toPlane, StringComparison.OrdinalIgnoreCase))
+                {
+                    ctx.RecordMessage($"Planar transition: {character.Name} crossed from {fromPlane} to {toPlane}.");
+                }
+            }
+
             await ClearStaleEngagementsAsync(character, tc.DestinationLocationId, ctx, ct);
 
             foreach (var line in await ResolveRouteSecretsAsync(ctx, character, startLoc, exit, destination, ct))

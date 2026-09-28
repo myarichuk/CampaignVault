@@ -316,7 +316,7 @@ Omitted fields are preserved: on an existing character, omitting psychology/soci
             ExplicitMaxHp = hp.ExplicitMaxHp,
             ExplicitCurrentHp = hp.ExplicitCurrentHp,
             Trigger = BootstrapTrigger.Upsert,
-            Session = s,
+            EquipmentAccess = new SessionEquipmentAccess(s),
             CampaignName = effective,
         });
 

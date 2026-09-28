@@ -6,7 +6,7 @@ using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Rulesets;
 
-public class NarrativeRulesetResolver : IRulesetModule, IActionResolution, ICombatRuleset
+public class NarrativeRulesetResolver : IHostRulesetModule, IActionResolution, ICombatRuleset
 {
     private readonly IRollService _rollService;
 

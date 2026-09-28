@@ -117,6 +117,9 @@ public class LocationUpsertRequest
     [Description("Climate zone for weather/temperature simulation. Omit to inherit from the nearest ParentLocationId ancestor with one set (defaults to Temperate if none in the chain). Omit on update to preserve the existing value.")]
     public ClimateZone? ClimateZone { get; set; }
 
+    [Description("Plane of existence (open string — each table defines its own cosmology, e.g. 'Material Plane', 'Plane of Fire'). Omit to inherit from the nearest ParentLocationId ancestor with one set (defaults to Material Plane if none in the chain). Omit on update to preserve the existing value.")]
+    public string? Plane { get; set; }
+
     public string? CampaignName { get; set; }
 }
 

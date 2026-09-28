@@ -1,0 +1,11 @@
+# Trail & Hearth: layered linen-and-charcoal water filter (original homebrew; no ORC text copied).
+# Settles silt; boiling is still the traveler's friend.
+name: th_filter_cloth
+system: pf2e
+category: Tool
+tags: [water, camp, adventuring-gear]
+description: Layered linen-and-charcoal cloth that strains silt and grit from murky water. Boiling afterwards is still wise.
+properties:
+  bulk: 0.1
+  costGp: 0.4
+  specialMechanic: "Turns silty water clear enough to drink without grit; against foul or stagnant sources, boil as well (narrative/GM-arbitrated; not computed by the engine)."

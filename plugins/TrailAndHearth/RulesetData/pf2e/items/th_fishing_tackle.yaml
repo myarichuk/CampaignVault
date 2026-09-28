@@ -1,0 +1,10 @@
+# Trail & Hearth: cork-handled rod, line, hooks, and flies (original homebrew; no ORC text copied).
+name: th_fishing_tackle
+system: pf2e
+category: Tool
+tags: [fishing, downtime, adventuring-gear]
+description: Cork-handled rod that breaks down for travel, with line, hooks, floats, and a wallet of tied flies.
+properties:
+  bulk: 1
+  costGp: 0.5
+  grantsAdvantageOn: fishing checks

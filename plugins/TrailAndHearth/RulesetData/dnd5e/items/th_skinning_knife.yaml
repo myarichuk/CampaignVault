@@ -1,0 +1,16 @@
+# Trail & Hearth: curved gutting blade that doubles as a backup weapon (original homebrew, not an SRD entry).
+# NOTE: damage is real engine data; the skinning bonus is prose-only.
+name: th_skinning_knife
+system: dnd5e
+category: Weapon
+tags: [simple, melee, finesse, light]
+description: Short curved gutting blade with a grippy horn handle. Deals 1d4 slashing damage; a hunter's hand tool first.
+properties:
+  damage: 1d4
+  damageType: slashing
+  weight: 1
+  costGp: 3
+  specialMechanic: "In practiced hands it dresses game cleanly, saving usable hide and meat a heavier blade would spoil (narrative/GM-arbitrated; not computed by the engine)."
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

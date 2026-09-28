@@ -1,0 +1,10 @@
+# Trail & Hearth: pea-whistle cut to carry over wind (original homebrew; no ORC text copied).
+name: th_signal_whistle
+system: pf2e
+category: Tool
+tags: [signals, travel, adventuring-gear]
+description: Bone pea-whistle cut to carry over wind and water. Three blasts is the universal call for help.
+properties:
+  bulk: 0.1
+  costGp: 0.1
+  specialMechanic: "Carries roughly two miles over open ground — enough to regroup a scattered party or raise a camp (narrative/GM-arbitrated; not computed by the engine)."

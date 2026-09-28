@@ -28,6 +28,7 @@ public record LocationDetailView(
     /// <summary>Null when 0 (no danger adjustment).</summary>
     int? DangerModifier,
     ClimateZone? ClimateZone,
+    string? Plane,
     /// <summary>True if Description was cut down to CampaignConfig.LocationDescriptionCharCap (null when
     /// it wasn't). Call get_entity with fullDescription=true for the complete text.</summary>
     bool? DescriptionTruncated = null,
@@ -68,6 +69,7 @@ public record LocationDetailView(
             l.ControllingFactionId,
             l.DangerModifier == 0 ? null : l.DangerModifier,
             l.ClimateZone,
+            l.Plane,
             descriptionTruncated ? true : null,
             fullDescription ? null : SoilHelpers.Summarize(l.Dirt),
             fullDescription && l.Dirt is { Count: > 0 } ? l.Dirt : null);
@@ -370,7 +372,9 @@ public record NpcPresenceSummary(
     /// <summary>Compact wire projection of SystemStats (the full block stays in-process, see above).</summary>
     NpcStatLine? Stats = null,
     /// <summary>Compact dirt line ("muddy boots, heavily bloodied"); null when clean. Full marks: get_entity.</summary>
-    string? Soil = null)
+    string? Soil = null,
+    /// <summary>Compact piercing line; null when none.</summary>
+    string? Piercings = null)
 {
     public NpcPresenceSummary() : this(null!, null!, null!, null!, null!, null!) { }
 }

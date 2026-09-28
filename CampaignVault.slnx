@@ -12,7 +12,6 @@
   <Folder Name="/src/">
     <Project Path="src\CampaignVault\CampaignVault.csproj" />
     <Project Path="src\CampaignVault.PluginSdk\CampaignVault.PluginSdk.csproj" />
-    <Project Path="src\CampaignVault.Authoring\CampaignVault.Authoring.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CampaignVault.UnitTests/CampaignVault.UnitTests.csproj" />

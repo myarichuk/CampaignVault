@@ -1,0 +1,11 @@
+# Trail & Hearth: waxed-canvas A-tent for two (original homebrew, not an SRD entry).
+# Sleeps two out of the rain; poles and pegs included.
+name: th_trail_tent
+system: dnd5e
+category: Tool
+tags: [shelter, camp, adventuring-gear]
+description: Waxed-canvas A-tent that sleeps two out of the rain. Poles, pegs, and guy-lines included.
+properties:
+  weight: 8
+  costGp: 8
+  specialMechanic: "Sleeping under cover in this tent makes a cold or wet night's rest notably warmer and drier (narrative/GM-arbitrated; not computed by the engine)."

@@ -1,0 +1,12 @@
+# Trail & Hearth: dry-mounted surveyor's compass (original homebrew, not an SRD entry).
+# Purely mundane needle — points north, finds no portals.
+# Mirrors the grantsAdvantageOn convention from the core climbers_kit blueprint.
+name: th_trail_compass
+system: dnd5e
+category: Tool
+tags: [navigation, travel, adventuring-gear]
+description: Brass dry-mounted compass with a shepherd's dial on the lid. A mundane needle — it points north and nothing else.
+properties:
+  weight: 0.5
+  costGp: 15
+  grantsAdvantageOn: navigation and orienteering checks

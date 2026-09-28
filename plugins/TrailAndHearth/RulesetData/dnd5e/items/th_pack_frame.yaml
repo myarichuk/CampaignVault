@@ -1,0 +1,11 @@
+# Trail & Hearth: lashed ash-wood pack frame (original homebrew, not an SRD entry).
+# Carries the load on the hips instead of the shoulders.
+name: th_pack_frame
+system: dnd5e
+category: Tool
+tags: [camp, travel, adventuring-gear]
+description: Lashed ash-wood pack frame that rides on the hips. Lash bedrolls, pots, and game to it and walk all day.
+properties:
+  weight: 4
+  costGp: 4
+  specialMechanic: "A well-packed frame eases long marches under heavy loads and keeps awkward bundles from shifting (narrative/GM-arbitrated; not computed by the engine)."

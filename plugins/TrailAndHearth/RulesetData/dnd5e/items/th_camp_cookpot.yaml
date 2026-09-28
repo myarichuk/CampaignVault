@@ -1,0 +1,10 @@
+# Trail & Hearth: deep-bellied iron cookpot with bail handle (original homebrew, not an SRD entry).
+name: th_camp_cookpot
+system: dnd5e
+category: Tool
+tags: [camp, cooking, adventuring-gear]
+description: Deep-bellied iron cookpot with a bail handle for hanging over a fire. Stews for four, boils a kettle in minutes.
+properties:
+  weight: 3
+  costGp: 3
+  specialMechanic: "A hot meal from this pot lifts spirits on a miserable day and stretches meagre rations further (narrative/GM-arbitrated; not computed by the engine)."

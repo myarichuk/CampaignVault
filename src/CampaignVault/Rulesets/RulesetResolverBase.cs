@@ -7,7 +7,7 @@ using CampaignVault.Services;
 
 namespace CampaignVault.Rulesets;
 
-public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResolution, ICombatRuleset where TStats : SystemExtension, new()
+public abstract class RulesetResolverBase<TStats> : IHostRulesetModule, IActionResolution, ICombatRuleset where TStats : SystemExtension, new()
 {
     public abstract string System { get; }
     public IActionResolution Actions => this;

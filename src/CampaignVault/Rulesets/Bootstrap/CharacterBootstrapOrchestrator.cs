@@ -73,7 +73,7 @@ public sealed class CharacterBootstrapOrchestrator(IRulesetModuleSelector rulese
             LevelsGained = context.LevelsGained,
             ClassGained = context.ClassGained,
             HpModeOverride = context.HpModeOverride,
-            Session = context.Session,
+            EquipmentAccess = context.EquipmentAccess,
             CampaignName = context.CampaignName,
         };
 }

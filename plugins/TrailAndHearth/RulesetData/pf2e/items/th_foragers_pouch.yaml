@@ -1,0 +1,10 @@
+# Trail & Hearth: waxed-linen gathering pouch with side pockets (original homebrew; no ORC text copied).
+name: th_foragers_pouch
+system: pf2e
+category: Tool
+tags: [foraging, downtime, adventuring-gear]
+description: Waxed-linen gathering pouch with side pockets for roots, nuts, and berries. Keeps the day's pickings from bruising.
+properties:
+  bulk: 0.1
+  costGp: 0.2
+  grantsAdvantageOn: foraging checks

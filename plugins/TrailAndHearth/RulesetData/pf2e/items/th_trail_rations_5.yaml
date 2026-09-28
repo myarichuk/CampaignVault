@@ -1,0 +1,13 @@
+# Trail & Hearth: five days of hardtack, jerky, and dried fruit (original homebrew; no ORC text copied).
+# Consumable blueprint: charges live on the item instance (item_use).
+name: th_trail_rations_5
+system: pf2e
+category: Consumable
+tags: [food, travel, adventuring-gear]
+description: Oilcloth parcel of hardtack, salt jerky, and dried fruit — five days' marching food for one traveler.
+properties:
+  bulk: 1
+  costGp: 0.4
+  uses: 5
+  chargeUnit: days
+  specialMechanic: "Keeps without spoiling for a season if kept dry; a hot meal alongside stretches it further (narrative/GM-arbitrated; not computed by the engine)."

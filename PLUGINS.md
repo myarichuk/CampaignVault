@@ -295,31 +295,45 @@ dotnet new classlib -n MyRulesetPlugin
 cd MyRulesetPlugin
 ```
 
-**Step 2:** Add CampaignVault NuGet package (future: publish CampaignVault.Core package for plugins)
+**Step 2:** Reference the PluginSdk package only (never ProjectReference the host):
 
-For now, reference core types. Example structure:
+```xml
+<PackageReference Include="CampaignVault.PluginSdk" Version="0.12.0" />
+```
+
+`IRulesetModule`, `IActionResolution`, `ICombatRuleset`, and the character-bootstrap
+contracts (`IBootstrapStep`, `ICharacterBootstrapPipeline`, `BootstrapContext`) all live
+in the SDK, so a full ruleset authors out-of-tree. Example structure:
 
 ```csharp
-using CampaignVault.Rulesets;
 using CampaignVault.Models;
+using CampaignVault.Rulesets;
+using CampaignVault.Rulesets.Bootstrap;
 
 namespace MyRulesetPlugin
 {
     public class MyCustomRuleset : IRulesetModule
     {
         public string System => "my_system";
-        
+
         public IActionResolution Actions => this;
         public ICombatRuleset Combat => this;
-        
-        // Implement required interface methods
-        // - ResolveAction(...)
-        // - ResolveSave(...)
-        // - GetActionResult(...)
-        // etc.
+        public ICharacterBootstrapPipeline Bootstrap =>
+            new CharacterBootstrapPipeline([new MyDeriveHitPointsStep()]);
+
+        // IActionResolution.ResolveAsync, ICombatRuleset members (RollInitiativeAsync,
+        // GetTurnActionBudget, TryConsumeActionSlot, EnforcesRange), IBootstrapStep members.
     }
 }
 ```
+
+Notes:
+- System-specific read-side pressure is *not* part of `IRulesetModule` (pressure contexts
+  carry the host's live database session). Implement `IPluginGuidanceContributor` and/or
+  `IPluginContextContributor` instead — the host surfaces those on the same read paths.
+- Bootstrap steps needing worn gear read it via `BootstrapContext.EquipmentAccess`
+  (null = no data, degrade to unarmored defaults). Never touch RavenDB from a plugin;
+  the SDK stays Raven-free by design.
 
 **Step 3:** Build
 ```bash

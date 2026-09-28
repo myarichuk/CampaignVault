@@ -1,0 +1,11 @@
+# Trail & Hearth: cork-handled rod, line, hooks, and flies (original homebrew, not an SRD entry).
+# Mirrors the grantsAdvantageOn convention from the core climbers_kit blueprint.
+name: th_fishing_tackle
+system: dnd5e
+category: Tool
+tags: [fishing, downtime, adventuring-gear]
+description: Cork-handled rod that breaks down for travel, with line, hooks, floats, and a wallet of tied flies.
+properties:
+  weight: 3
+  costGp: 4
+  grantsAdvantageOn: fishing checks

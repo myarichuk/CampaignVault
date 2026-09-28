@@ -51,7 +51,7 @@ public class BootstrapPreEquippedArmorTests : IClassFixture<RavenDBFixture>
         {
             Character = character,
             ActiveSystem = RulesetSystem.Dnd5e,
-            Session = session,
+            EquipmentAccess = new SessionEquipmentAccess(session),
         }, TestContext.Current.CancellationToken);
 
         var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
@@ -95,7 +95,7 @@ public class BootstrapPreEquippedArmorTests : IClassFixture<RavenDBFixture>
         {
             Character = character,
             ActiveSystem = RulesetSystem.Pathfinder2e,
-            Session = session,
+            EquipmentAccess = new SessionEquipmentAccess(session),
         }, TestContext.Current.CancellationToken);
 
         var stats = Assert.IsType<Pf2eExtension>(character.SystemStats);
@@ -120,7 +120,7 @@ public class BootstrapPreEquippedArmorTests : IClassFixture<RavenDBFixture>
         {
             Character = character,
             ActiveSystem = RulesetSystem.Dnd5e,
-            Session = session,
+            EquipmentAccess = new SessionEquipmentAccess(session),
         }, TestContext.Current.CancellationToken);
 
         var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);

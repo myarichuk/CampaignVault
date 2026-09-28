@@ -44,7 +44,10 @@ public sealed class PressureOrchestrator : IPressureOrchestrator
         await CollectFromAsync(_contributors);
 
         var module = _rulesetSelector.GetModule(ctx.Config.ActiveSystem);
-        await CollectFromAsync(module.PressureContributors);
+        if (module is IHostRulesetModule hostModule)
+        {
+            await CollectFromAsync(hostModule.PressureContributors);
+        }
 
         var filtered = await _pressureManager.FilterAndCapAsync(
             ctx.Session,

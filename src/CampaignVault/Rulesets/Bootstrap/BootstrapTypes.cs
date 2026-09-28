@@ -1,46 +1,25 @@
-using System.Text.Json.Serialization;
+using CampaignVault.Data;
 using CampaignVault.Models;
+using CampaignVault.Rulesets.Bootstrap;
 using Raven.Client.Documents.Session;
 
 namespace CampaignVault.Rulesets.Bootstrap;
 
-public enum BootstrapTrigger
-{
-    Create,
-    Upsert,
-    LevelUp,
-    SystemStatsPatch
-}
+// Bootstrap contracts (BootstrapContext, IBootstrapStep, pipelines) live in the
+// PluginSdk so out-of-tree rulesets can derive stats. They stay Raven-free: steps
+// that need worn gear read it through IBootstrapEquipmentAccess, adapted here.
 
-public sealed class BootstrapContext
+/// <summary>Session-backed <see cref="IBootstrapEquipmentAccess"/> for host-run pipelines.</summary>
+public sealed class SessionEquipmentAccess(IAsyncDocumentSession session) : IBootstrapEquipmentAccess
 {
-    public required Character Character { get; init; }
-    public required string ActiveSystem { get; init; }
-    public BootstrapTrigger Trigger { get; init; } = BootstrapTrigger.Create;
-    public int? ExplicitMaxHp { get; init; }
-    public int? ExplicitCurrentHp { get; init; }
-    public int LevelsGained { get; init; } = 1;
-    /// <summary>When leveling up a multiclass PC, the class that gained the level (e.g. "Wizard").</summary>
-    public string? ClassGained { get; init; }
-    public HitPointDerivationMode? HpModeOverride { get; init; }
-    public IAsyncDocumentSession? Session { get; init; }
-    public string? CampaignName { get; init; }
+    public async Task<IReadOnlyList<Item>> GetEquippedItemsAsync(string characterId, CancellationToken ct = default)
+    {
+        var held = await session.Advanced.AsyncDocumentQuery<Item, Item_Search>()
+            .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
+            .WhereEquals(x => x.HolderId, characterId)
+            .Take(50)
+            .ToListAsync(ct);
 
-    public bool HasExplicitMaxHp => ExplicitMaxHp is > 0;
-}
-
-public sealed class BootstrapStepResult
-{
-    public required string StepName { get; init; }
-    public string? Message { get; init; }
-    public IReadOnlyList<string> LlmHints { get; init; } = [];
-}
-
-public sealed class BootstrapReport
-{
-    public IReadOnlyList<BootstrapStepResult> Steps { get; init; } = [];
-    public IReadOnlyList<string> Messages =>
-        [.. Steps.Select(s => s.Message).Where(m => !string.IsNullOrWhiteSpace(m)).Cast<string>()];
-    public IReadOnlyList<string> LlmHints =>
-        [.. Steps.SelectMany(s => s.LlmHints).Where(h => !string.IsNullOrWhiteSpace(h))];
+        return [.. held.Where(i => i.IsEquipped)];
+    }
 }

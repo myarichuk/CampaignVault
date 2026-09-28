@@ -26,7 +26,7 @@ internal static class CharacterBootstrapApplier
             ExplicitCurrentHp = hp.ExplicitCurrentHp,
             HpModeOverride = hpModeOverride,
             Trigger = trigger,
-            Session = ctx.Session,
+            EquipmentAccess = new SessionEquipmentAccess(ctx.Session),
             CampaignName = context.CampaignName,
         }, ct);
 

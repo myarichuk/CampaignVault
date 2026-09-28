@@ -1,0 +1,11 @@
+# Trail & Hearth: string of tuned copper camp chimes (original homebrew, not an SRD entry).
+# Mundane alarm — no magic, just a light sleeper's best friend.
+name: th_ward_chimes
+system: dnd5e
+category: Tool
+tags: [camp, watch, adventuring-gear]
+description: String of tuned copper chimes to hang across a camp entrance or guy-line. Mundane — no magic, just noise.
+properties:
+  weight: 0.5
+  costGp: 3
+  specialMechanic: "Anything larger than a rabbit that pushes through the line rings the chimes loud enough to wake light sleepers (narrative/GM-arbitrated; not computed by the engine)."

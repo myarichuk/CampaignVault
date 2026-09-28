@@ -1,0 +1,10 @@
+# Trail & Hearth: compartmented satchel for drying and sorting herbs (original homebrew; no ORC text copied).
+name: th_herbal_satchel
+system: pf2e
+category: Tool
+tags: [herbalism, downtime, adventuring-gear]
+description: Satchel with a dozen breathable pockets for drying and sorting herbs without crushing them. Smells of thyme.
+properties:
+  bulk: 0.1
+  costGp: 0.6
+  grantsAdvantageOn: herbalism checks

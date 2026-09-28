@@ -1,0 +1,10 @@
+# Trail & Hearth: set of carved game calls — deer grunt, duck, owl (original homebrew; no ORC text copied).
+name: th_game_calls
+system: pf2e
+category: Tool
+tags: [hunting, downtime, adventuring-gear]
+description: Set of three carved calls — deer grunt, duck quack, and night-owl hoot — on a lanyard. Practice included, mastery not.
+properties:
+  bulk: 0.1
+  costGp: 0.2
+  grantsAdvantageOn: calling-game checks

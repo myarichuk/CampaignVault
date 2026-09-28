@@ -20,6 +20,34 @@ CampaignVault install, and restart the host.
 See [PLUGINS.md](https://github.com/myarichuk/CampaignVault/blob/master/PLUGINS.md) in
 the main repository for the full plugin architecture, trust model, and quick-start guide.
 
+## 0.12.0
+
+- **Piercings** (`piercing`, `PiercingChange`, `Character.Piercings`): SFW body adornment (earrings, septum, navel, …).
+  Open `site`/`kind` strings (`PiercingSites` / `PiercingKinds` suggest; plugins may namespace kinds and use intimate
+  sites). Several marks may share one site (and the same kind) — e.g. three rings on `labia.left` plus a `clitoris`
+  ring. Each mark has a stable `id` (auto `1`,`2`,…); pass `id` to update/remove one of a stack. Default `add` stacks;
+  `replace:true` upserts a single site+kind. `load` none|light|heavy; tags (`locked`, `bell`, `leash_ring`, `fresh`, …).
+  Locked marks refuse `remove` without `force:true`. Cap 32 per character. Publishes `core.pierced.v1` (includes
+  `piercingId`). Cards show a compact summary (stacks as `3× …`). Mutate only via the verb (or return `PiercingChange`
+  from an event handler).
+- **Full rulesets out of tree.** `IRulesetModule`, `IActionResolution`, `ICombatRuleset`
+  (`CampaignVault.Rulesets`) and the character-bootstrap contracts (`IBootstrapStep`,
+  `ILevelGainStep`, `ICharacterBootstrapPipeline` + in-box implementations,
+  `BootstrapContext`, `BootstrapStepResult`, `BootstrapReport`,
+  `IBootstrapEquipmentAccess` in `CampaignVault.Rulesets.Bootstrap`) moved here from
+  the host (same namespaces, so host code is untouched). A plugin referencing only
+  this package can now author a complete ruleset: dice resolution, action economy,
+  and HP/defense/proficiency derivation.
+- **Deliberately not moved:** session-bound pressures. `IPressureContributor` and
+  `IRulesetPressureContributor` stay host-side (first-party resolvers implement the
+  host's `IHostRulesetModule` for those); out-of-tree rulesets contribute pressure
+  via `IPluginGuidanceContributor` / `IPluginContextContributor`, which the host
+  surfaces on the same read paths.
+- **Bootstrap stays Raven-free.** Steps that derived stats from worn gear previously
+  took a live session; they now read `BootstrapContext.EquipmentAccess`
+  (`GetEquippedItemsAsync`), which the host backs with its session. Null means no
+  equipment data — degrade to unarmored defaults.
+
 ## 0.11.1
 
 - **Dirt phrase leaf.** Namespaced kinds narrate the leaf after the last dot: `myplugin.ichor` → "ichor-stained hem"

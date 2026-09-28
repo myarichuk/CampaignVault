@@ -1,0 +1,13 @@
+# Trail & Hearth: bundle of pitch-dipped trail torches (original homebrew; no ORC text copied).
+# Consumable blueprint: charges live on the item instance (item_use).
+name: th_pitch_torch_6
+system: pf2e
+category: Consumable
+tags: [light, camp, adventuring-gear]
+description: Bundle of six pitch-dipped torches wrapped in oilcloth. Each burns about an hour, rain or shine.
+properties:
+  bulk: 1
+  costGp: 0.1
+  uses: 6
+  chargeUnit: torches
+  specialMechanic: "One torch lights a campsite or a cave mouth with steady flame for about an hour (narrative/GM-arbitrated; not computed by the engine)."

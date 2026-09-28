@@ -10,6 +10,12 @@ public class Character : ICampaignScopedEntity, IHasDirt
     /// </summary>
     public List<DirtMark> Dirt { get; set; } = [];
 
+    /// <summary>
+    /// Body piercings (earrings, septum, navel, …): see <see cref="PiercingMark"/>. Mutated only through the core
+    /// <c>piercing</c> verb (<see cref="PiercingChange"/>). Plugins return that change from event handlers.
+    /// </summary>
+    public List<PiercingMark> Piercings { get; set; } = [];
+
     [System.Text.Json.Serialization.JsonIgnore]
     public float[]? SemanticVector { get; set; }
     [System.Text.Json.Serialization.JsonIgnore]

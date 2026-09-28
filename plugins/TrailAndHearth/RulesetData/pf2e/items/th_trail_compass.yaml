@@ -1,0 +1,11 @@
+# Trail & Hearth: dry-mounted surveyor's compass (original homebrew; no ORC text copied).
+# Purely mundane needle — points north, finds no portals.
+name: th_trail_compass
+system: pf2e
+category: Tool
+tags: [navigation, travel, adventuring-gear]
+description: Brass dry-mounted compass with a shepherd's dial on the lid. A mundane needle — it points north and nothing else.
+properties:
+  bulk: 0.1
+  costGp: 2
+  grantsAdvantageOn: navigation and orienteering checks

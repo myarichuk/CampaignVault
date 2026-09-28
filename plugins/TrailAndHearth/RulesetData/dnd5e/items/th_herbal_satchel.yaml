@@ -1,0 +1,11 @@
+# Trail & Hearth: compartmented satchel for drying and sorting herbs (original homebrew, not an SRD entry).
+# Mirrors the grantsAdvantageOn convention from the core climbers_kit blueprint.
+name: th_herbal_satchel
+system: dnd5e
+category: Tool
+tags: [herbalism, downtime, adventuring-gear]
+description: Satchel with a dozen breathable pockets for drying and sorting herbs without crushing them. Smells of thyme.
+properties:
+  weight: 1
+  costGp: 5
+  grantsAdvantageOn: herbalism checks

@@ -63,6 +63,7 @@ internal sealed class LocationManager : ILocationManager
                 existing.IsArchived = location.IsArchived.Value;
             }
             existing.ClimateZone = location.ClimateZone ?? existing.ClimateZone;
+            existing.Plane = location.Plane ?? existing.Plane;
             result = existing;
         }
         else
@@ -86,6 +87,7 @@ internal sealed class LocationManager : ILocationManager
                 Hazards = location.Hazards ?? [],
                 IsArchived = location.IsArchived ?? false,
                 ClimateZone = location.ClimateZone,
+                Plane = location.Plane,
             };
             await session.StoreAsync(result);
         }

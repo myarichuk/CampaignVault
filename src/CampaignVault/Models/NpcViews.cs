@@ -46,7 +46,9 @@ public record CharacterDetailView(
     /// <summary>Compact dirt line ("muddy boots, heavily bloodied"); null when clean. Replaced by <see cref="Dirt"/> in full detail.</summary>
     string? Soil = null,
     /// <summary>Full dirt marks, only where the caller asked for full detail (get_entity, fullDetailCharacterId).</summary>
-    List<DirtMark>? Dirt = null)
+    List<DirtMark>? Dirt = null,
+    /// <summary>Compact piercing line ("gold stud at ear lobe left, iron ring at nose septum"); null when none. Full list on get_entity via Character.Piercings.</summary>
+    string? Piercings = null)
 {
     /// <param name="includeCombatDetail">Whether to include Needs/SystemStats — the mechanical slice a
     /// DM only needs once a roll or combat is actually in play. Default true for every caller except
@@ -78,7 +80,8 @@ public record CharacterDetailView(
         includeCombatDetail ? c.SystemStats : null,
         includeCombatDetail ? CampaignVault.Rulesets.SpeedRules.Describe(c.SystemStats) : null,
         includeDirtDetail ? null : SoilHelpers.Summarize(c.Dirt),
-        includeDirtDetail && c.Dirt is { Count: > 0 } ? c.Dirt : null);
+        includeDirtDetail && c.Dirt is { Count: > 0 } ? c.Dirt : null,
+        PiercingHelpers.Summarize(c.Piercings));
 }
 
 public class NpcContextView
@@ -155,6 +158,9 @@ public class NpcSummaryView
     /// <summary>Compact dirt line ("muddy boots, heavily bloodied"); null when clean. Stripped with the appearance
     /// fields in take_turn delta mode unless a soil change touched this NPC.</summary>
     public string? Soil { get; set; }
+
+    /// <summary>Compact piercing line; null when none. Stripped with appearance fields in take_turn delta unless a piercing change touched this NPC.</summary>
+    public string? Piercings { get; set; }
 
     public string? CurrentActivity { get; set; }
     public string? CurrentMood { get; set; }

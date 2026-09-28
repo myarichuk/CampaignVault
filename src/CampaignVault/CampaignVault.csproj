@@ -61,6 +61,7 @@
     <ProjectReference Include="..\..\plugins\CraftingMode\CraftingMode.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\plugins\MedievalWeapons\MedievalWeapons.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\plugins\ShadowAndSteel\ShadowAndSteel.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\plugins\TrailAndHearth\TrailAndHearth.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <!-- Copy plugin DLLs and static files to bin/Plugins folder after build -->
@@ -110,6 +111,16 @@
     <Copy SourceFiles="@(NecromancersGrimoireDll)" DestinationFolder="$(PluginsOutputDir)\NecromancersGrimoire" SkipUnchangedFiles="false" />
     <Copy SourceFiles="@(NecromancersGrimoireManifest)" DestinationFolder="$(PluginsOutputDir)\NecromancersGrimoire" SkipUnchangedFiles="false" />
     <Copy SourceFiles="@(NecromancersGrimoireRulesetData)" DestinationFolder="$(PluginsOutputDir)\NecromancersGrimoire\RulesetData\%(RecursiveDir)" SkipUnchangedFiles="false" />
+
+    <!-- Copy TrailAndHearth plugin -->
+    <ItemGroup>
+      <TrailAndHearthDll Include="..\..\plugins\TrailAndHearth\bin\$(Configuration)\net10.0\TrailAndHearth.dll" />
+      <TrailAndHearthManifest Include="..\..\plugins\TrailAndHearth\plugin.json" />
+      <TrailAndHearthRulesetData Include="..\..\plugins\TrailAndHearth\RulesetData\**\*.yaml" />
+    </ItemGroup>
+    <Copy SourceFiles="@(TrailAndHearthDll)" DestinationFolder="$(PluginsOutputDir)\TrailAndHearth" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="@(TrailAndHearthManifest)" DestinationFolder="$(PluginsOutputDir)\TrailAndHearth" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="@(TrailAndHearthRulesetData)" DestinationFolder="$(PluginsOutputDir)\TrailAndHearth\RulesetData\%(RecursiveDir)" SkipUnchangedFiles="false" />
 
     <Message Text="Plugins copied successfully" Importance="High" />
   </Target>
