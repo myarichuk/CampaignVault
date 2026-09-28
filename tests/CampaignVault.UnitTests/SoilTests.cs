@@ -32,8 +32,14 @@ public class SoilTests
     private static Task<ChangeHandlerResult> Run(SoilChange c, ChangeContext ctx) =>
         new SoilChangeHandler().ApplyAsync(c, ctx, TestContext.Current.CancellationToken);
 
-    private static SoilChange Soil(string target, string? kind, int amount = 1, string? spot = null, string? fixture = null, bool? clear = null) =>
-        new() { TargetId = target, Kind = kind, Amount = amount, Spot = spot, Fixture = fixture, Clear = clear };
+    private static SoilChange Soil(
+        string target, string? kind, int amount = 1, string? spot = null, string? fixture = null, bool? clear = null,
+        string? appliedBy = null, string? note = null) =>
+        new()
+        {
+            TargetId = target, Kind = kind, Amount = amount, Spot = spot, Fixture = fixture, Clear = clear,
+            AppliedBy = appliedBy, Note = note,
+        };
 
     // ---- helpers ------------------------------------------------------------------------------------------------
 
@@ -141,9 +147,19 @@ public class SoilTests
     [InlineData("scorch", null, "north wall", 3, "heavily scorched north wall")]
     [InlineData("notches", "leg", null, 1, "slightly notched leg")]
     [InlineData("debris", null, "floor", 2, "littered floor")]
-    [InlineData("myplugin.ichor", "hem", null, 2, "myplugin.ichor-stained hem")]
+    [InlineData("myplugin.ichor", "hem", null, 2, "ichor-stained hem")]
+    [InlineData("lewd.cum", "face", null, 3, "heavily cum-stained face")]
+    [InlineData("myplugin.blood", "hands", null, 2, "bloody hands")]
     public void Phrase_ReadsLikeNarration(string kind, string? spot, string? fixture, int severity, string expected) =>
         Assert.Equal(expected, SoilHelpers.Phrase(new DirtMark { Kind = kind, Spot = spot, Fixture = fixture, Severity = severity }));
+
+    [Theory]
+    [InlineData("blood", "blood")]
+    [InlineData("myplugin.ichor", "ichor")]
+    [InlineData("a.b.c.leaf", "leaf")]
+    [InlineData("trailing.", "trailing.")]
+    public void DisplayKind_UsesLeafAfterLastDot(string kind, string expected) =>
+        Assert.Equal(expected, SoilHelpers.DisplayKind(kind));
 
     [Fact]
     public void HostExtensions_ReadDirtOnAnyHost()
@@ -156,6 +172,24 @@ public class SoilTests
         Assert.False(host.HasDirt("mud"));
         Assert.Equal(2, host.SeverityOf("blood"));
         Assert.Equal(0, host.SeverityOf("mud"));
+    }
+
+    [Fact]
+    public void Apply_SetsAndReplacesAppliedBy_OnWorsen()
+    {
+        List<DirtMark> dirt = [];
+        SoilHelpers.Apply(dirt, "mud", DirtSpots.Boots, null, 1, day: 1, note: "road", appliedBy: "travel");
+        Assert.Equal("travel", Assert.Single(dirt).AppliedBy);
+        Assert.Equal("road", dirt[0].Note);
+
+        SoilHelpers.Apply(dirt, "mud", DirtSpots.Boots, null, 1, day: 2, appliedBy: "chars/guard");
+        Assert.Equal(2, Assert.Single(dirt).Severity);
+        Assert.Equal("chars/guard", dirt[0].AppliedBy);
+        Assert.Equal("road", dirt[0].Note);
+
+        SoilHelpers.Apply(dirt, "mud", DirtSpots.Boots, null, 1, day: 3, note: "worse");
+        Assert.Equal("chars/guard", dirt[0].AppliedBy);
+        Assert.Equal("worse", dirt[0].Note);
     }
 
     // ---- handler ------------------------------------------------------------------------------------------------
@@ -265,7 +299,7 @@ public class SoilTests
     public async Task Handler_PublishesSoiledEvent_WithFields()
     {
         var ctx = Ctx();
-        await Run(Soil(_pc.Id, "Mud", spot: "boots"), ctx);
+        await Run(Soil(_pc.Id, "Mud", spot: DirtSpots.Boots, appliedBy: "travel/muddy-road"), ctx);
         await Run(Soil(_tavern.Id, "scorch", fixture: "north wall", amount: 2), ctx);
         await Run(Soil(_pc.Id, "mud", amount: -1), ctx);
 
@@ -279,9 +313,11 @@ public class SoilTests
         Assert.True(events[0].TryGet<int>(CoreEvents.Fields.Severity, out var severity));
         Assert.Equal(1, severity);
         Assert.True(events[0].TryGet<string>(CoreEvents.Fields.Spot, out var spot));
-        Assert.Equal("boots", spot);
+        Assert.Equal(DirtSpots.Boots, spot);
         Assert.True(events[0].TryGet<string>(CoreEvents.Fields.Action, out var action));
         Assert.Equal("applied", action);
+        Assert.True(events[0].TryGet<string>(CoreEvents.Fields.AppliedBy, out var appliedBy));
+        Assert.Equal("travel/muddy-road", appliedBy);
 
         Assert.True(events[1].TryGet<string>(CoreEvents.Fields.Fixture, out var fixture));
         Assert.Equal("north wall", fixture);
@@ -290,6 +326,20 @@ public class SoilTests
         Assert.Equal("cleaned", cleaned);
         Assert.True(events[2].TryGet<int>(CoreEvents.Fields.Severity, out var gone));
         Assert.Equal(0, gone);
+    }
+
+    [Fact]
+    public async Task Handler_AppliedBy_ReplacesOnWorsen_KeepsWhenOmitted()
+    {
+        var ctx = Ctx();
+        await Run(Soil(_pc.Id, "blood", spot: DirtSpots.Hands, appliedBy: "chars/bandit"), ctx);
+        await Run(Soil(_pc.Id, "blood", spot: DirtSpots.Hands), ctx);
+        Assert.Equal("chars/bandit", Assert.Single(_pc.Dirt).AppliedBy);
+        Assert.Equal(2, _pc.Dirt[0].Severity);
+
+        await Run(Soil(_pc.Id, "blood", spot: DirtSpots.Hands, appliedBy: "combat"), ctx);
+        Assert.Equal("combat", Assert.Single(_pc.Dirt).AppliedBy);
+        Assert.Equal(3, _pc.Dirt[0].Severity);
     }
 
     [Fact]

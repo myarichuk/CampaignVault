@@ -186,8 +186,8 @@ public static class CoreEvents
 
     /// <summary>
     /// Dirt on a character, item or location changed (<c>soil</c>): one event per mark. Fields: targetId, kind,
-    /// severity (0 once gone), spot, fixture, action (applied, worsened, cleaned, cleared, evicted). Kinds are open
-    /// strings, so plugins filter on the kinds they own; the engine gives none of them special behavior.
+    /// severity (0 once gone), spot, fixture, action (applied, worsened, cleaned, cleared, evicted), appliedBy.
+    /// Kinds are open strings, so plugins filter on the kinds they own; the engine gives none of them special behavior.
     /// </summary>
     public const string Soiled = "core.soiled.v1";
 
@@ -250,6 +250,7 @@ public static class CoreEvents
         public const string Spot = "spot";
         public const string Fixture = "fixture";
         public const string Action = "action";
+        public const string AppliedBy = "appliedBy";
     }
 
     /// <summary>True when <paramref name="topic"/> sits under <paramref name="source"/>'s own prefix.</summary>

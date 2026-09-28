@@ -69,7 +69,8 @@ public sealed class SoilChangeHandler : IWorldChangeHandler
         else
         {
             var day = (int)(await ctx.GetCurrentTimeAsync()).TotalDaysElapsed;
-            var outcome = SoilHelpers.Apply(host.Dirt, kind!, req.Spot, req.Fixture, req.Amount, day, req.Note);
+            var outcome = SoilHelpers.Apply(
+                host.Dirt, kind!, req.Spot, req.Fixture, req.Amount, day, req.Note, req.AppliedBy);
             foreach (var mark in outcome.Changed)
                 touched.Add((mark, outcome.Action, mark.Severity));
             if (outcome.Evicted is { } evicted)
@@ -95,6 +96,7 @@ public sealed class SoilChangeHandler : IWorldChangeHandler
                 [CoreEvents.Fields.Spot] = mark.Spot,
                 [CoreEvents.Fields.Fixture] = mark.Fixture,
                 [CoreEvents.Fields.Action] = action,
+                [CoreEvents.Fields.AppliedBy] = mark.AppliedBy,
             });
         }
 

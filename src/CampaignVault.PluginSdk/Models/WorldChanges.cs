@@ -323,6 +323,10 @@ public class SoilChange : WorldChange
     [Description("Optional short remark (from the ogre, river silt).")]
     [JsonPropertyName("note")]
     public string? Note { get; set; }
+
+    [Description("Optional provenance for who/what applied the dirt (character id, verb id, pluginId:cause). Audit only; does not split stacks. On worsen, a new value replaces the previous.")]
+    [JsonPropertyName("appliedBy")]
+    public string? AppliedBy { get; set; }
 }
 
 /// <summary>

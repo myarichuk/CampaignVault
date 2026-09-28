@@ -20,6 +20,18 @@ CampaignVault install, and restart the host.
 See [PLUGINS.md](https://github.com/myarichuk/CampaignVault/blob/master/PLUGINS.md) in
 the main repository for the full plugin architecture, trust model, and quick-start guide.
 
+## 0.11.1
+
+- **Dirt phrase leaf.** Namespaced kinds narrate the leaf after the last dot: `myplugin.ichor` → "ichor-stained hem"
+  (`SoilHelpers.DisplayKind` / `Phrase`). Stored `Kind` stays fully qualified.
+- **`DirtMark.AppliedBy` / `SoilChange.AppliedBy`.** Optional provenance (character id, verb id, `pluginId:cause`). Audit
+  only; does not split stacks. On worsen, a new non-null value replaces the previous. Included on `core.soiled.v1` as
+  `appliedBy`.
+- **`DirtSpots`.** Suggested spot constants (`face`, `hair`, `hands`, `chest`, `back`, `clothes`, `boots`, `cloak`, `hem`,
+  `blade`, `hilt`) — freeform spots still work.
+- **Docs.** Plugins mutate dirt by returning `SoilChange` from an `IDomainEventHandler` follow-up. Observers cannot return
+  WorldChanges and must not call `SoilHelpers.Apply` on tracked hosts.
+
 ## 0.11.0
 
 - **Roll modifiers.** Implement `IRollModifierProvider.Modifiers(RollQuery)` to change what a roll is: a numeric bonus, advantage
@@ -42,16 +54,16 @@ the main repository for the full plugin architecture, trust model, and quick-sta
   normal pace, so a chase can be adjudicated.
 - **Dirt** (`soil`, `SoilChange`, `IHasDirt.Dirt`): dust, blood, mud... on a character, an item or a location (scenery via
   `fixture`: `north wall`, `floor`; props are items whose `HolderId` is the location). Each host keeps at most 8 `DirtMark`s
-  (`Kind`, `Severity` 1-3, `Spot`, `Fixture`, `AppliedDay`, `Note`); identity is `(kind, spot, fixture)`, case-insensitive.
-  `amount` +1 adds or worsens, -1 washes (spot and fixture then act as filters), `clear: true` removes every match. Past the
-  cap the least severe, oldest mark fades. The engine never soils anything on its own: the DM commits `soil` in the same
-  batch as the fight or the road. **Kinds are open strings** (`DirtKinds` only suggests `blood`, `mud`, `dust`, `soot`...):
-  invent `ectoplasm`, or `myplugin.ichor` if you want a namespace; unknown kinds just get no engine behavior. To read dirt,
-  use `ctx.Characters/Items/Locations[id].Dirt` (or `SoilHelpers.HasDirt/SeverityOf/Summarize`) from any handler,
-  observer or event handler. To change it, return a `SoilChange` (a follow-up from an `IDomainEventHandler`, or from an
-  observer); there is no need for a new `$type`. Every changed mark publishes `core.soiled.v1` (`targetId`, `kind`,
-  `severity` (0 once gone), `spot`, `fixture`, `action`: `applied`, `worsened`, `cleaned`, `cleared`, `evicted`), which is
-  where scent tracking, infection or cleaning rituals belong. On the wire, lists carry one short `soil` line ("muddy boots,
+  (`Kind`, `Severity` 1-3, `Spot`, `Fixture`, `AppliedDay`, `Note`, `AppliedBy`); identity is `(kind, spot, fixture)`,
+  case-insensitive. `amount` +1 adds or worsens, -1 washes (spot and fixture then act as filters), `clear: true` removes
+  every match. Past the cap the least severe, oldest mark fades. The engine never soils anything on its own: the DM
+  commits `soil` in the same batch as the fight or the road. **Kinds are open strings** (`DirtKinds` only suggests
+  `blood`, `mud`, `dust`, `soot`...): invent `ectoplasm`, or `myplugin.ichor` if you want a namespace; summaries phrase the
+  leaf (`ichor-stained`). To read dirt, use `ctx.Characters/Items/Locations[id].Dirt` (or
+  `SoilHelpers.HasDirt/SeverityOf/Summarize`) from any handler, observer or event handler. To change it, return a
+  `SoilChange` as an `IDomainEventHandler` follow-up; there is no need for a new `$type`. Every changed mark publishes
+  `core.soiled.v1` (`targetId`, `kind`, `severity` (0 once gone), `spot`, `fixture`, `action`, `appliedBy`), which is where
+  scent tracking, infection or cleaning rituals belong. On the wire, lists carry one short `soil` line ("muddy boots,
   heavily bloodied") or nothing; the full `dirt` array appears only in `get_entity` for characters and items, take_turn's
   `fullDetailCharacterId`, and a location's `fullDescription` view.
 

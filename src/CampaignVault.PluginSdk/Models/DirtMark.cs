@@ -9,9 +9,11 @@ namespace CampaignVault.Models;
 ///
 /// <see cref="Kind"/> is an open string, exactly like <c>ItemCategories</c> / <c>EquipZones</c> /
 /// <c>StatusEffect.Category</c>: <see cref="DirtKinds"/> lists suggestions, but any string works and unknown kinds
-/// simply have no special engine behaviour. Plugins may namespace their own (<c>myplugin.ichor</c>) by convention.
+/// simply have no special engine behaviour. Plugins may namespace their own (<c>myplugin.ichor</c>) by convention;
+/// <see cref="SoilHelpers.Phrase"/> narrates the leaf after the last dot.
 ///
-/// The identity of a mark is <c>(kind, spot, fixture)</c>, compared case-insensitively.
+/// The identity of a mark is <c>(kind, spot, fixture)</c>, compared case-insensitively. <see cref="AppliedBy"/> is
+/// audit-only and does not split stacks.
 /// </summary>
 public class DirtMark
 {
@@ -41,6 +43,13 @@ public class DirtMark
     /// <summary>Optional short remark ("from the ogre", "river silt").</summary>
     [JsonPropertyName("note")]
     public string? Note { get; set; }
+
+    /// <summary>
+    /// Who or what applied this mark (audit / plugin provenance). Typical values: a character id, a verb id, or
+    /// <c>pluginId:cause</c>. Does not affect mark identity; on worsen, a new non-null value replaces the previous.
+    /// </summary>
+    [JsonPropertyName("appliedBy")]
+    public string? AppliedBy { get; set; }
 
     /// <summary>True when this mark has the given identity (case-insensitive; null and empty spot/fixture are the same).</summary>
     public bool Matches(string kind, string? spot, string? fixture) =>
@@ -81,6 +90,25 @@ public static class DirtKinds
     public const string Debris = "debris";
 }
 
+/// <summary>
+/// Suggested <see cref="DirtMark.Spot"/> values for characters and items. Freeform spots still work; these keep the
+/// LLM and plugins aligned. Not validated.
+/// </summary>
+public static class DirtSpots
+{
+    public const string Face = "face";
+    public const string Hair = "hair";
+    public const string Hands = "hands";
+    public const string Chest = "chest";
+    public const string Back = "back";
+    public const string Clothes = "clothes";
+    public const string Boots = "boots";
+    public const string Cloak = "cloak";
+    public const string Hem = "hem";
+    public const string Blade = "blade";
+    public const string Hilt = "hilt";
+}
+
 /// <summary>What a <see cref="SoilHelpers.Apply"/> call did, for messages and the <c>core.soiled.v1</c> event.</summary>
 public sealed record SoilOutcome(IReadOnlyList<DirtMark> Changed, string Action, DirtMark? Evicted = null);
 
@@ -89,7 +117,8 @@ public sealed record SoilOutcome(IReadOnlyList<DirtMark> Changed, string Action,
 /// <c>SeverityOf</c>, <see cref="Summarize"/>) are safe anywhere. <see cref="Apply"/> and <see cref="Clear"/> mutate the list
 /// in place, so calling them on a tracked entity from <c>IChangeContext</c> would be saved silently, without the verb's
 /// validation and without the <c>core.soiled.v1</c> event. To change dirt from a plugin, return a
-/// <c>SoilChange</c> (from an <c>IDomainEventHandler</c> or an observer) instead.
+/// <c>SoilChange</c> from an <c>IDomainEventHandler.HandleAsync</c> follow-up (same-commit). Observers cannot return
+/// WorldChanges; they must not call <see cref="Apply"/> on tracked hosts.
 /// </summary>
 public static class SoilHelpers
 {
@@ -130,12 +159,14 @@ public static class SoilHelpers
     /// with no spot lightens that kind everywhere; marks that reach 0 are removed.
     /// </summary>
     public static SoilOutcome Apply(
-        List<DirtMark> dirt, string kind, string? spot, string? fixture, int amount, int day, string? note = null)
+        List<DirtMark> dirt, string kind, string? spot, string? fixture, int amount, int day, string? note = null,
+        string? appliedBy = null)
     {
         kind = NormalizeKind(kind) ?? throw new ArgumentException("kind is required.", nameof(kind));
         spot = Clean(spot);
         fixture = Clean(fixture);
         note = Clean(note) is { } n ? Truncate(n, MaxNoteLength) : null;
+        appliedBy = Clean(appliedBy) is { } a ? Truncate(a, MaxNoteLength) : null;
 
         if (amount == 0)
         {
@@ -162,6 +193,7 @@ public static class SoilHelpers
             existing.Severity = Math.Min(DirtMark.MaxSeverity, existing.Severity + amount);
             existing.AppliedDay = day;
             existing.Note = note ?? existing.Note;
+            existing.AppliedBy = appliedBy ?? existing.AppliedBy;
             return new SoilOutcome([existing], "worsened");
         }
 
@@ -180,6 +212,7 @@ public static class SoilHelpers
             Fixture = fixture is null ? null : Truncate(fixture, MaxPlacementLength),
             AppliedDay = day,
             Note = note,
+            AppliedBy = appliedBy,
         };
         dirt.Add(mark);
         return new SoilOutcome([mark], "applied", evicted);
@@ -222,11 +255,25 @@ public static class SoilHelpers
         return string.Join(", ", parts);
     }
 
-    /// <summary>"heavily bloodied", "muddy boots", "slightly dusty north wall", "myplugin.ichor-stained hem".</summary>
+    /// <summary>
+    /// The narratable leaf of a kind: <c>myplugin.ichor</c> → <c>ichor</c>, <c>blood</c> → <c>blood</c>.
+    /// Stored kind stays fully qualified; only summaries strip the namespace.
+    /// </summary>
+    public static string DisplayKind(string? kind)
+    {
+        var normalized = NormalizeKind(kind);
+        if (normalized is null)
+            return "";
+        var dot = normalized.LastIndexOf('.');
+        return dot >= 0 && dot < normalized.Length - 1 ? normalized[(dot + 1)..] : normalized;
+    }
+
+    /// <summary>"heavily bloodied", "muddy boots", "slightly dusty north wall", "ichor-stained hem".</summary>
     public static string Phrase(DirtMark d)
     {
         var place = d.Fixture ?? d.Spot;
-        var adjective = (d.Kind, place) switch
+        var leaf = DisplayKind(d.Kind);
+        var adjective = (leaf, place) switch
         {
             (DirtKinds.Blood, null) => "bloodied",
             (DirtKinds.Blood, _) => "bloody",
@@ -243,7 +290,7 @@ public static class SoilHelpers
             (DirtKinds.Scorch, _) => "scorched",
             (DirtKinds.Notches, _) => "notched",
             (DirtKinds.Debris, _) => "littered",
-            _ => $"{d.Kind}-stained",
+            _ => $"{leaf}-stained",
         };
         var degree = d.Severity >= DirtMark.MaxSeverity ? "heavily " : d.Severity <= DirtMark.MinSeverity ? "slightly " : "";
         var phrase = degree + adjective;
