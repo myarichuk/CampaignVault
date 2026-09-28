@@ -1,0 +1,11 @@
+# Non-weapon example: item definitions are not limited to weapons/armor — Category + the open
+# properties bag cover tools, outfits, and artifacts uniformly.
+name: climbers_kit
+system: dnd5e
+category: Tool
+tags: [mountaineering, adventuring-gear]
+description: Pitons, boot tips, gloves, and a harness for scaling sheer surfaces.
+properties:
+  weight: 12
+  costGp: 25
+  grantsAdvantageOn: climbing checks

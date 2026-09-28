@@ -1,0 +1,14 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# A hound dead too long, baying with a grave-cold throat.
+name: Ghast Hound
+system: dnd5e
+description: A gaunt canine corpse whose howl curdles the living.
+level: 0
+challengeRating: "1"
+hp: 24
+defense: 12
+skills:
+  - "Perception +4"
+abilities:
+  - "Bite (Melee Weapon Attack): +5 to hit, reach 5 ft., one target. Hit: 7 (1d8 + 3) piercing damage plus 3 (1d6) necrotic damage."
+  - "Grave Howl (1/Day): each living creature within 30 ft. makes a DC 12 Wisdom saving throw or is frightened until the end of its next turn."

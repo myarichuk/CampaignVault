@@ -1,0 +1,22 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: call_lightning
+system: dnd5e
+level: 3
+classes: [druid]
+concentration: true
+castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+damageType: lightning
+damageAtSlotLevel:
+  3: 3d10
+  4: 4d10
+  5: 5d10
+  6: 6d10
+  7: 7d10
+  8: 8d10
+  9: 9d10
+areaOfEffectType: sphere
+areaOfEffectSize: 5

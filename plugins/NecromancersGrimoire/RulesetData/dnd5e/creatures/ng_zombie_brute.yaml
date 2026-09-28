@@ -1,0 +1,12 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# A bloated corpse-pile given orders. Spawn armed with ng_greatclub.
+name: Zombie Brute
+system: dnd5e
+description: A broad, stitch-seamed zombie that hits like a falling wall.
+level: 0
+challengeRating: "1"
+hp: 30
+defense: 11
+abilities:
+  - "Greatclub (Melee Weapon Attack): +5 to hit, reach 5 ft., one target. Hit: 9 (1d8 + 5) bludgeoning damage. Spawn with ng_greatclub."
+  - "Undead Fortitude: if damage reduces it to 0 hit points, it makes a Constitution saving throw (DC 5 + damage taken) and drops to 1 instead unless the damage is radiant or from a critical hit."

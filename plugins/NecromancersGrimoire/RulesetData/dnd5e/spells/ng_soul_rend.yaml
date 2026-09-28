@@ -1,0 +1,23 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# Tear at the soul directly: Wisdom save, 5d8 necrotic, half on success.
+name: ng_soul_rend
+system: dnd5e
+level: 3
+classes: [warlock, wizard]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+damageType: necrotic
+damageAtSlotLevel:
+  3: 5d8
+  4: 6d8
+  5: 7d8
+  6: 8d8
+  7: 9d8
+  8: 10d8
+  9: 11d8
+saveType: wisdom
+saveSuccess: half

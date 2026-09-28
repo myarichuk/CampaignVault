@@ -68,8 +68,30 @@ public class CreatureDefinitionProvider : IRulesetYamlProvider
     public bool TryGet(string system, string creatureName, [NotNullWhen(true)] out CreatureDefinition? creature)
     {
         var creatures = GetCreaturesForSystem(system);
-        return creatures.TryGetValue(creatureName, out creature);
+        if (creatures.TryGetValue(creatureName, out creature))
+        {
+            return true;
+        }
+
+        // Handbook refs travel as file slugs (air_elemental) while templates are
+        // keyed by display name (Air Elemental): compare separator-insensitively so
+        // overlay refs, caller parameters, and catalog names all resolve.
+        var wanted = NormalizeCreatureName(creatureName);
+        foreach (var (name, candidate) in creatures)
+        {
+            if (NormalizeCreatureName(name) == wanted)
+            {
+                creature = candidate;
+                return true;
+            }
+        }
+
+        creature = null;
+        return false;
     }
+
+    internal static string NormalizeCreatureName(string name) =>
+        name.Trim().ToLowerInvariant().Replace('_', ' ').Replace('-', ' ');
 
     public void Reload()
     {

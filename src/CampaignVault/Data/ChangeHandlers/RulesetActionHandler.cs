@@ -50,8 +50,15 @@ public sealed class RulesetActionHandler(
                     $"[NotInCombat] {action.CharacterId} is not on the active combat roster.");
             }
 
-            // Turn ownership check (unless this is a reaction)
-            if (!action.IsReaction && activeCombat.ActiveTurnId != action.CharacterId)
+            // Turn ownership check (unless this is a reaction). A bound minion acts
+            // on its controller's turn via the same ordinary ruleset_action — no new
+            // action type. The exception is deliberately narrow: the actor must be
+            // live-linked (ControlledById set, binding present and not lapsed) to
+            // the exact character whose turn is active. Anything else — unknown
+            // actor, no link, lapsed binding, another master's turn — keeps the
+            // previous failure. Minions still consume their own action slots below.
+            if (!action.IsReaction && activeCombat.ActiveTurnId != action.CharacterId
+                && !ActsOnControllersTurn(context, action.CharacterId, activeCombat.ActiveTurnId))
             {
                 return ChangeHandlerResult.Failure($"[NotYourTurn] {action.CharacterId} cannot act — it is {activeCombat.ActiveTurnId}'s turn.");
             }
@@ -129,6 +136,24 @@ public sealed class RulesetActionHandler(
         return string.IsNullOrWhiteSpace(narrative)
             ? ChangeHandlerResult.Ok
             : new ChangeHandlerResult(true, narrative);
+    }
+
+    /// <summary>
+    /// Minion-turn rule: a live-bound minion may act when its controller's turn is
+    /// active. Pure in-memory id comparison — no session access, no new failure
+    /// modes: any absent data returns false and the caller keeps the old behavior.
+    /// </summary>
+    internal static bool ActsOnControllersTurn(IChangeContext context, string actorId, string? activeTurnId)
+    {
+        if (string.IsNullOrEmpty(activeTurnId)
+            || !context.Characters.TryGetValue(actorId, out var actor)
+            || string.IsNullOrEmpty(actor.ControlledById)
+            || actor.MinionBinding is not { ControlLapsed: false })
+        {
+            return false;
+        }
+
+        return string.Equals(actor.ControlledById, activeTurnId, StringComparison.Ordinal);
     }
 
     /// <summary>T5c: a skill check at a location resolves against its secrets, as dice do. A check whose

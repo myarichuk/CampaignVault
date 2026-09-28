@@ -1,7 +1,9 @@
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
+using CampaignVault.Data.Templates;
 using CampaignVault.Models;
 using CampaignVault.Rulesets.Bootstrap;
+using CampaignVault.Services;
 
 namespace CampaignVault.Rulesets;
 
@@ -121,6 +123,37 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
         List<WorldChange> mutations, 
         CancellationToken ct);
 
+    /// <summary>
+    /// Spell lookup for the summon path. The base implementation knows no spell
+    /// catalog and returns null (summon spells resolve as plain utility narration);
+    /// system resolvers with a <see cref="SpellDefinitionProvider"/> override this.
+    /// </summary>
+    protected virtual SpellDefinition? LookupSummonSpell(RulesetAction action) => null;
+
+    /// <summary>
+    /// Handbook creature catalog for resolving a summon's <c>creatures</c> refs.
+    /// Null means catalog lookups are skipped: the cast then needs an inline seed
+    /// or an explicit <c>maxHp</c> parameter, and says so when neither is present.
+    /// </summary>
+    protected virtual CreatureDefinitionProvider? SummonCreatureProvider => null;
+
+    /// <summary>
+    /// Highest legal <c>slotLevel</c> for a summon cast: 9 for dnd5e spell slots,
+    /// 10 for pf2e spell ranks.
+    /// </summary>
+    protected virtual int MaxSummonSlot => 9;
+
+    /// <summary>
+    /// Applies a handbook/seed defense value to fresh minion stats. No-op by
+    /// default; systems with a settable armor class override this.
+    /// </summary>
+    protected virtual void ApplySummonedDefense(TStats stats, int defense)
+    {
+    }
+
+    protected static string NormalizeSpellSlug(string name) =>
+        name.Trim().ToLowerInvariant().Replace(' ', '_').Replace('-', '_');
+
     protected virtual async Task<ResolverResult> ResolveSpellAsync(
         RulesetAction action,
         IChangeContext context,
@@ -128,6 +161,13 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
         List<WorldChange> mutations,
         CancellationToken ct)
     {
+        var summonSpell = LookupSummonSpell(action);
+        if (summonSpell?.Summon != null
+            && !TryGetParameter(action.Parameters, out _, "resolution", "spellResolution"))
+        {
+            return await ResolveSummonAsync(action, context, actorStats, summonSpell, mutations, ct);
+        }
+
         var mode = SpellResolutionHelper.InferMode(action);
 
         switch (mode)
@@ -148,6 +188,453 @@ public abstract class RulesetResolverBase<TStats> : IRulesetModule, IActionResol
             default:
                 return await ResolveSpellUtilityAsync(action, context, actorStats, mutations, ct);
         }
+    }
+
+    /// <summary>
+    /// Shared summon-spell resolution (option (a) from the summoning plan): the slot
+    /// comes from the action's explicit <c>slotLevel</c> parameter and falls back to
+    /// the spell's base slot; the headcount comes from <c>count</c> (validated
+    /// against the slot's legal options) and falls back to the strongest option;
+    /// the kind comes from <c>creature</c> and falls back to the first catalog ref.
+    /// Emits one <c>CharacterCreate</c> per minion plus link updates, so cast-time
+    /// creation, both-ways linking, and control-cap enforcement share one
+    /// implementation for PC, NPC, and enemy casters alike.
+    /// </summary>
+    protected virtual async Task<ResolverResult> ResolveSummonAsync(
+        RulesetAction action,
+        IChangeContext context,
+        TStats actorStats,
+        SpellDefinition spell,
+        List<WorldChange> mutations,
+        CancellationToken ct)
+    {
+        var effect = spell.Summon!;
+        if (!context.Characters.TryGetValue(action.CharacterId, out var actor))
+        {
+            return ResolverResult.Fail("ActorNotFound",
+                $"Error: Character '{action.CharacterId}' not found.");
+        }
+
+        var baseSlot = SummonBaseSlot(spell);
+        var slot = baseSlot;
+        if (TryGetParameter(action.Parameters, out var slotRaw, "slotLevel"))
+        {
+            if (!int.TryParse(slotRaw, out slot) || slot < 1 || slot > MaxSummonSlot)
+            {
+                return ResolverResult.Fail("InvalidParameter",
+                    $"Error: '{action.ActionName}' slotLevel must be a spell-slot level 1-{MaxSummonSlot}, got '{slotRaw}'. " +
+                    $"Omit it to cast at the base slot ({baseSlot}).");
+            }
+        }
+
+        var spendError = SpellSlotValidator.ValidateSpend(spell, slot);
+        if (spendError != null)
+        {
+            return ResolverResult.Fail("InvalidParameter",
+                $"Error: {spendError} Cast at slot {spell.Level} or higher.");
+        }
+
+        if (TryGetParameter(action.Parameters, out var reassertRaw, "reassert")
+            && bool.TryParse(reassertRaw, out var reassert) && reassert)
+        {
+            return await ResolveReassertAsync(action, context, actor, spell, effect, slot, mutations, ct);
+        }
+
+        var useChoices = effect.CountChoicesAtSlotLevel is { Count: > 0 };
+        var candidates = SummonCandidates(effect, slot);
+        var count = candidates[0];
+        if (TryGetParameter(action.Parameters, out var countRaw, "count"))
+        {
+            if (!int.TryParse(countRaw, out count) || count < 1)
+            {
+                return ResolverResult.Fail("InvalidParameter",
+                    $"Error: '{action.ActionName}' count must be a positive headcount, got '{countRaw}'.");
+            }
+
+            if (useChoices && !candidates.Contains(count))
+            {
+                return ResolverResult.Fail("InvalidParameter",
+                    $"Error: '{action.ActionName}' at slot {slot} raises {string.Join(", ", candidates)} — got {count}.");
+            }
+
+            if (count > candidates.Max())
+            {
+                return ResolverResult.Fail("InvalidParameter",
+                    $"Error: '{action.ActionName}' at slot {slot} raises at most {candidates.Max()} — got {count}.");
+            }
+        }
+
+        string? chosenName = null;
+        if (TryGetParameter(action.Parameters, out var creatureRaw, "creature"))
+        {
+            chosenName = effect.Creatures.FirstOrDefault(c =>
+                string.Equals(c, creatureRaw.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (chosenName == null)
+            {
+                var known = effect.Creatures.Count > 0 ? string.Join(", ", effect.Creatures) : "nothing catalogued";
+                return ResolverResult.Fail("InvalidParameter",
+                    $"Error: '{action.ActionName}' can raise {known} — got '{creatureRaw}'.");
+            }
+        }
+
+        chosenName ??= effect.Creatures.FirstOrDefault();
+
+        CreatureDefinition? creatureDef = null;
+        if (chosenName != null)
+        {
+            SummonCreatureProvider?.TryGet(System, chosenName, out creatureDef);
+        }
+
+        int? maxHp = null;
+        if (TryGetParameter(action.Parameters, out var hpRaw, "maxHp"))
+        {
+            if (!int.TryParse(hpRaw, out var parsedHp) || parsedHp < 1)
+            {
+                return ResolverResult.Fail("InvalidParameter",
+                    $"Error: '{action.ActionName}' maxHp must be positive hit points, got '{hpRaw}'.");
+            }
+
+            maxHp = parsedHp;
+        }
+
+        var hp = maxHp ?? creatureDef?.Hp ?? effect.InlineSeed?.Hp;
+        if (hp == null || hp < 1)
+        {
+            return ResolverResult.Fail("MissingStatistics",
+                $"Error: no statistics for '{chosenName ?? action.ActionName}' — pass maxHp (hit points) explicitly, " +
+                "or add a handbook creature entry / inline seed for this summon.");
+        }
+
+        var defense = creatureDef?.Defense ?? effect.InlineSeed?.Defense;
+        var display = creatureDef?.Name ?? chosenName ?? "Bound spirit";
+        var disposition = effect.Disposition.ToString().ToLowerInvariant();
+
+        int? round = context.ActiveCombat?.IsActive == true ? context.ActiveCombat.Round : null;
+        int? day = null;
+        if (context.GetCurrentTimeAsync is { } clock)
+        {
+            day = (await clock()).TotalDaysElapsed;
+        }
+
+        var slug = SlugifyMinionOwner(action.CharacterId);
+        var next = actor.ControlsMinionIds.Count + 1;
+        var createdIds = new List<string>();
+        var createdNames = new List<string>();
+        for (var i = 0; i < count; i++)
+        {
+            var id = $"chars/{slug}-minion-{next}";
+            while (context.Characters.ContainsKey(id))
+            {
+                next++;
+                id = $"chars/{slug}-minion-{next}";
+            }
+
+            createdIds.Add(id);
+            createdNames.Add(count == 1 ? display : $"{display} {i + 1}");
+            next++;
+        }
+
+        var detailLines = new List<string>();
+        if (creatureDef?.Abilities is { Count: > 0 } abilities)
+        {
+            detailLines.Add("Abilities: " + string.Join(" ", abilities));
+        }
+
+        if (effect.InlineSeed?.Attacks is { Count: > 0 } attacks)
+        {
+            detailLines.Add("Attacks: " + string.Join(" ", attacks));
+        }
+
+        var details = detailLines.Count > 0 ? " " + string.Join(" ", detailLines) : string.Empty;
+        for (var i = 0; i < count; i++)
+        {
+            var stats = new TStats { StatBlockHp = hp.Value };
+            if (defense.HasValue)
+            {
+                ApplySummonedDefense(stats, defense.Value);
+            }
+
+            mutations.Add(new CharacterCreate
+            {
+                CharacterId = createdIds[i],
+                Name = createdNames[i],
+                Notes = $"Summoned by {actor.Name} via {action.ActionName} (slot {slot}). " +
+                        $"Controlled by {actor.Name} ({disposition}).{details}",
+                CurrentLocationId = actor.CurrentLocationId,
+                KeepAlive = true,
+                MaxHp = hp.Value,
+                CurrentHp = hp.Value,
+                SystemStats = stats,
+                ControlledById = actor.Id,
+                MinionBinding = new MinionBinding
+                {
+                    ControllerId = actor.Id,
+                    SpellName = spell.Name,
+                    Disposition = effect.Disposition,
+                    ConcentrationBound = spell.Concentration == true,
+                    DurationRounds = effect.DurationRounds,
+                    ExpiresAtRound = round.HasValue && effect.DurationRounds.HasValue
+                        ? round.Value + effect.DurationRounds.Value
+                        : null,
+                    DurationDays = effect.DurationDays,
+                    ExpiresAtDay = day.HasValue && effect.DurationDays.HasValue
+                        ? day.Value + effect.DurationDays.Value
+                        : null,
+                },
+            });
+        }
+
+        var releasedIds = new List<string>();
+        var releasedNames = new List<string>();
+        var overCapNote = string.Empty;
+        if (effect.ControlCap?.MaxCreatures is { } maxCreatures && maxCreatures >= 1)
+        {
+            var listed = actor.ControlsMinionIds
+                .Select(id => context.Characters.TryGetValue(id, out var m) ? m : null)
+                .ToList();
+            var unloaded = listed.Count(m => m == null);
+            var pool = listed.OfType<Character>()
+                .OrderBy(m => m.LastUpdated)
+                .Select(m => (Id: m.Id, Name: m.Name))
+                .Concat(createdIds.Select((id, idx) => (Id: id, Name: createdNames[idx])))
+                .ToList();
+            var toRelease = unloaded + pool.Count - maxCreatures;
+            foreach (var victim in pool.Take(Math.Max(0, toRelease)))
+            {
+                releasedIds.Add(victim.Id);
+                releasedNames.Add(victim.Name);
+                mutations.Add(new CharacterUpdate { CharacterId = victim.Id, ClearMinionLink = true });
+            }
+
+            if (toRelease > pool.Count)
+            {
+                overCapNote = $" {unloaded} older minion(s) were retained sight-unseen (not loaded); " +
+                              "control exceeds the cap until they are dismissed explicitly.";
+            }
+        }
+        else if (effect.ControlCap is { MaxHitDice: not null } or { HitDicePerCasterLevel: not null })
+        {
+            context.RecordMessage(
+                $"[HINT] '{action.ActionName}' carries a hit-dice control cap, which the engine does not enforce " +
+                "(creature hit dice are not in the handbook catalog yet) — enforce it narratively.");
+        }
+
+        var keptCreated = createdIds.Except(releasedIds, StringComparer.Ordinal).ToList();
+        var releasedExisting = releasedIds.Except(createdIds, StringComparer.Ordinal).ToList();
+        if (keptCreated.Count > 0 || releasedExisting.Count > 0)
+        {
+            mutations.Add(new CharacterUpdate
+            {
+                CharacterId = actor.Id,
+                ControlsMinionIdsAdd = keptCreated.Count > 0 ? keptCreated : null,
+                ControlsMinionIdsRemove = releasedExisting.Count > 0 ? releasedExisting : null,
+            });
+        }
+
+        var duration = SummonDurationClause(effect, day, round);
+        var concentration = spell.Concentration == true ? " Control rides on concentration." : string.Empty;
+        var released = releasedNames.Count > 0
+            ? $" Control cap {effect.ControlCap!.MaxCreatures}: released {string.Join(", ", releasedNames)} (oldest first)."
+            : string.Empty;
+
+        return ResolverResult.Ok(
+            $"{action.ActionName} (slot {slot}): {actor.Name} binds {count} {display} — " +
+            $"controlled by {actor.Name} ({disposition}). {duration}{concentration}{released}{overCapNote}");
+    }
+
+    /// <summary>
+    /// Recast-to-retain (animate dead): instead of raising new minions, the cast
+    /// names already-raised creatures of the same spell via <c>targetIds</c> and
+    /// re-binds up to the slot's retain cap; other listed minions of the spell
+    /// lapse (their control was not maintained).
+    /// </summary>
+    protected virtual async Task<ResolverResult> ResolveReassertAsync(
+        RulesetAction action,
+        IChangeContext context,
+        Character actor,
+        SpellDefinition spell,
+        SummonEffect effect,
+        int slot,
+        List<WorldChange> mutations,
+        CancellationToken ct)
+    {
+        if (effect.RetainCountAtSlotLevel is not { Count: > 0 } retain)
+        {
+            return ResolverResult.Fail("InvalidParameter",
+                $"Error: '{action.ActionName}' does not support recast-to-retain — every cast raises new minions. " +
+                "Omit 'reassert' to animate.");
+        }
+
+        var keep = retain.TryGetValue(slot, out var k) ? k : retain[retain.Keys.Min()];
+        if (action.TargetIds.Count == 0)
+        {
+            return ResolverResult.Fail("InvalidParameter",
+                $"Error: '{action.ActionName}' recast names the raised creatures to retain via targetIds " +
+                $"(up to {keep} at slot {slot}).");
+        }
+
+        var wanted = action.TargetIds.Distinct(StringComparer.Ordinal).ToList();
+        if (wanted.Count > keep)
+        {
+            return ResolverResult.Fail("InvalidParameter",
+                $"Error: '{action.ActionName}' at slot {slot} retains at most {keep} — got {wanted.Count}.");
+        }
+
+        var targets = new List<Character>();
+        foreach (var id in wanted)
+        {
+            if (!context.Characters.TryGetValue(id, out var minion) || minion == null)
+            {
+                return ResolverResult.Fail("InvalidTarget",
+                    $"Error: '{id}' is not loaded or visible — recast-to-retain names loaded minions only.");
+            }
+
+            if (!string.Equals(minion.MinionBinding?.SpellName, spell.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                return ResolverResult.Fail("InvalidTarget",
+                    $"Error: '{minion.Name}' was not raised by '{spell.Name}' — cast without 'reassert' to animate new dead.");
+            }
+
+            targets.Add(minion);
+        }
+
+        int? round = context.ActiveCombat?.IsActive == true ? context.ActiveCombat.Round : null;
+        int? day = null;
+        if (context.GetCurrentTimeAsync is { } clock)
+        {
+            day = (await clock()).TotalDaysElapsed;
+        }
+
+        var disposition = effect.Disposition.ToString().ToLowerInvariant();
+        foreach (var target in targets)
+        {
+            mutations.Add(new CharacterUpdate
+            {
+                CharacterId = target.Id,
+                ControlledById = actor.Id,
+                MinionBinding = new MinionBinding
+                {
+                    ControllerId = actor.Id,
+                    SpellName = spell.Name,
+                    Disposition = effect.Disposition,
+                    ConcentrationBound = spell.Concentration == true,
+                    DurationRounds = effect.DurationRounds,
+                    ExpiresAtRound = round.HasValue && effect.DurationRounds.HasValue
+                        ? round.Value + effect.DurationRounds.Value
+                        : null,
+                    DurationDays = effect.DurationDays,
+                    ExpiresAtDay = day.HasValue && effect.DurationDays.HasValue
+                        ? day.Value + effect.DurationDays.Value
+                        : null,
+                },
+            });
+        }
+
+        var wantedSet = new HashSet<string>(wanted, StringComparer.Ordinal);
+        var releasedIds = new List<string>();
+        var releasedNames = new List<string>();
+        var unloaded = 0;
+        foreach (var id in actor.ControlsMinionIds.ToList())
+        {
+            if (wantedSet.Contains(id))
+            {
+                continue;
+            }
+
+            if (!context.Characters.TryGetValue(id, out var other) || other == null)
+            {
+                unloaded++;
+                continue;
+            }
+
+            if (!string.Equals(other.MinionBinding?.SpellName, spell.Name, StringComparison.OrdinalIgnoreCase)
+                || other.MinionBinding is not { ControlLapsed: false })
+            {
+                continue;
+            }
+
+            releasedIds.Add(id);
+            releasedNames.Add(other.Name);
+            mutations.Add(new CharacterUpdate { CharacterId = id, ClearMinionLink = true });
+        }
+
+        mutations.Add(new CharacterUpdate
+        {
+            CharacterId = actor.Id,
+            ControlsMinionIdsAdd = wanted,
+            ControlsMinionIdsRemove = releasedIds.Count > 0 ? releasedIds : null,
+        });
+
+        var duration = SummonDurationClause(effect, day, round);
+        var concentration = spell.Concentration == true ? " Control rides on concentration." : string.Empty;
+        var released = releasedNames.Count > 0
+            ? $" Not maintained: {string.Join(", ", releasedNames)} lapse."
+            : string.Empty;
+        var unseen = unloaded > 0
+            ? $" {unloaded} listed minion(s) not loaded; left untouched."
+            : string.Empty;
+
+        return ResolverResult.Ok(
+            $"{action.ActionName} (slot {slot}): {actor.Name} reasserts control over " +
+            $"{string.Join(", ", targets.Select(t => t.Name))} — " +
+            $"controlled by {actor.Name} ({disposition}). {duration}{concentration}{released}{unseen}");
+    }
+
+    private static string SummonDurationClause(SummonEffect effect, int? day, int? round) =>
+        effect.DurationDays.HasValue
+            ? $"Control lasts {effect.DurationDays} day(s)" +
+              (day.HasValue ? "; recast to retain." : " (unanchored: no campaign clock).")
+            : effect.DurationRounds.HasValue
+                ? $"Control lasts {effect.DurationRounds} round(s)" +
+                  (round.HasValue ? "." : " (unanchored: no active combat).")
+                : "Bound until dispelled or destroyed.";
+
+    private static int SummonBaseSlot(SpellDefinition spell)
+    {
+        if (spell.Level.HasValue)
+        {
+            return spell.Level.Value;
+        }
+
+        var keys = new List<int>();
+        if (spell.Summon?.CountAtSlotLevel is { } counts)
+        {
+            keys.AddRange(counts.Keys);
+        }
+
+        if (spell.Summon?.CountChoicesAtSlotLevel is { } choices)
+        {
+            keys.AddRange(choices.Keys);
+        }
+
+        if (spell.Summon?.RetainCountAtSlotLevel is { } retain)
+        {
+            keys.AddRange(retain.Keys);
+        }
+
+        return keys.Count > 0 ? keys.Min() : 1;
+    }
+
+    private static List<int> SummonCandidates(SummonEffect effect, int slot)
+    {
+        if (effect.CountChoicesAtSlotLevel is { Count: > 0 } choices)
+        {
+            return choices.TryGetValue(slot, out var picked) ? [.. picked] : [.. choices[choices.Keys.Min()]];
+        }
+
+        if (effect.CountAtSlotLevel is { Count: > 0 } counts)
+        {
+            return [counts.TryGetValue(slot, out var n) ? n : counts[counts.Keys.Min()]];
+        }
+
+        return [1];
+    }
+
+    private static string SlugifyMinionOwner(string characterId)
+    {
+        var tail = characterId.Split('/').LastOrDefault() ?? string.Empty;
+        var slug = new string([.. tail.ToLowerInvariant().Select(c => char.IsLetterOrDigit(c) ? c : '_')]).Trim('_');
+        return string.IsNullOrEmpty(slug) ? "caster" : slug;
     }
 
     protected virtual Task<ResolverResult> ResolveSpellSaveAsync(

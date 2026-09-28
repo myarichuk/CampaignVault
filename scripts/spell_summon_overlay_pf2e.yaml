@@ -1,0 +1,127 @@
+# Hand-authored summon metadata for pf2e Remaster (ORC) spells. NEVER regenerated
+# from the API — merged into the generated pf2e spell YAMLs verbatim by
+# generate_spells.py (same pattern as the dnd5e summon overlay).
+#
+# Evidentiary standard: every entry cites verified Archives of Nethys data —
+# no entry without a source. Durations below are the spells' AoN duration_raw
+# values ("sustained up to 1 minute" = 10 combat rounds at 6s/round); ranks are
+# the AoN spell levels. PF2e summon spells conjure exactly one minion per cast
+# (heightened ranks raise the creature's level, never the headcount), so every
+# count table holds a single rank entry and higher ranks fall back to it.
+# Sustained PF2e summons end when the caster stops sustaining: lapse keeps
+# loyal, and every entry here is concentration-flagged upstream, so control
+# rides on concentration.
+#
+# Deferred (same shape when needed): summon_giant, summon_instrument (summons
+# an OBJECT, like instant_summons — excluded from the minion model),
+# summon_lesser_servitor, summon_monitor, summon_plant_or_fungus.
+
+summon_undead:
+  # Rank 1. The rank-1 undead servitor: the catalog's Skeleton Guard.
+  # Higher ranks summon stronger undead from the spell's list (maxHp path).
+  creatures: [skeleton_guard]
+  countAtSlotLevel:
+    1: 1
+  # AoN duration_raw: "sustained up to 1 minute".
+  durationRounds: 10
+  disposition: loyal
+
+summon_animal:
+  # Rank 1. The catalog's Wolf stands in for the rank-1 animal options;
+  # other ranks/choices pass maxHp explicitly.
+  creatures: [wolf]
+  countAtSlotLevel:
+    1: 1
+  # AoN duration_raw: "sustained up to 1 minute".
+  durationRounds: 10
+  disposition: loyal
+
+summon_fey:
+  # Rank 1. No catalog fey exists: casts pass maxHp for the spell's rank-1 fey.
+  inlineSeed:
+    attacks: ["Fey's own attack: the GM applies the spell's rank-appropriate fey statistics and passes maxHp explicitly."]
+  countAtSlotLevel:
+    1: 1
+  # AoN duration_raw: "sustained up to 1 minute".
+  durationRounds: 10
+  disposition: loyal
+
+summon_construct:
+  # Rank 1. No catalog construct exists: casts pass maxHp.
+  inlineSeed:
+    attacks: ["Construct's own attack: the GM applies the spell's rank-appropriate construct statistics and passes maxHp explicitly."]
+  countAtSlotLevel:
+    1: 1
+  # AoN duration_raw: "sustained up to 1 minute".
+  durationRounds: 10
+  disposition: loyal
+
+summon_elemental:
+  # Rank 2. No catalog elemental exists: casts pass maxHp.
+  inlineSeed:
+    attacks: ["Elemental's own attack: the GM applies the spell's rank-appropriate elemental statistics and passes maxHp explicitly."]
+  countAtSlotLevel:
+    2: 1
+  # AoN duration_raw: "sustained up to 1 minute".
+  durationRounds: 10
+  disposition: loyal
+
+summon_celestial:
+  # Rank 5. No catalog celestial exists: casts pass maxHp.
+  inlineSeed:
+    attacks: ["Celestial's own attack: the GM applies the spell's rank-appropriate celestial statistics and passes maxHp explicitly."]
+  countAtSlotLevel:
+    5: 1
+  # AoN duration_raw: "sustained up to 1 minute".
+  durationRounds: 10
+  disposition: loyal
+
+summon_dragon:
+  # Rank 5. No catalog dragon exists: casts pass maxHp.
+  inlineSeed:
+    attacks: ["Dragon's own attack: the GM applies the spell's rank-appropriate dragon statistics and passes maxHp explicitly."]
+  countAtSlotLevel:
+    5: 1
+  # AoN duration_raw: "sustained up to 1 minute".
+  durationRounds: 10
+  disposition: loyal
+
+summon_entity:
+  # Rank 5. No catalog outsider entity exists: casts pass maxHp.
+  inlineSeed:
+    attacks: ["Entity's own attack: the GM applies the spell's rank-appropriate outsider statistics and passes maxHp explicitly."]
+  countAtSlotLevel:
+    5: 1
+  # AoN duration_raw: "sustained up to 1 minute".
+  durationRounds: 10
+  disposition: loyal
+
+summon_fiend:
+  # Rank 5. No catalog fiend exists: casts pass maxHp.
+  inlineSeed:
+    attacks: ["Fiend's own attack: the GM applies the spell's rank-appropriate fiend statistics and passes maxHp explicitly."]
+  countAtSlotLevel:
+    5: 1
+  # AoN duration_raw: "sustained up to 1 minute".
+  durationRounds: 10
+  disposition: loyal
+
+animated_assault:
+  # Rank 2, two actions. The spell's animated assailant (a construct);
+  # no catalog entry exists: casts pass maxHp.
+  inlineSeed:
+    attacks: ["Assailant's own attack: the GM applies the animated assailant's statistics and passes maxHp explicitly."]
+  countAtSlotLevel:
+    2: 1
+  # AoN duration_raw: "sustained up to 1 minute".
+  durationRounds: 10
+  disposition: loyal
+
+rouse_skeletons:
+  # Rank 3, two actions. Raises skeletal servitors: the catalog's Skeleton Guard.
+  creatures: [skeleton_guard]
+  countAtSlotLevel:
+    3: 1
+  # AoN duration_raw: "sustained up to 1 minute".
+  durationRounds: 10
+  disposition: loyal

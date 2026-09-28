@@ -1,0 +1,12 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# A barrow-knight's remains, still drilled and still deadly. Spawn armed with ng_bone_dagger.
+name: Wight Blade
+system: dnd5e
+description: A mail-clad wight that remembers every duel it ever fought.
+level: 0
+challengeRating: "3"
+hp: 45
+defense: 15
+abilities:
+  - "Bone Dagger (Melee Weapon Attack): +6 to hit, reach 5 ft., one target. Hit: 8 (1d4 + 6) piercing damage plus 7 (2d6) necrotic damage. Spawn with ng_bone_dagger."
+  - "Undead Nature: does not require air, food, drink, or sleep."

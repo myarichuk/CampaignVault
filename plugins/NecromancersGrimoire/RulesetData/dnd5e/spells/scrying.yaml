@@ -1,0 +1,15 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: scrying
+system: dnd5e
+level: 5
+classes: [bard, cleric, druid, warlock, wizard]
+concentration: true
+castingTime: 10 minutes
+verbal: true
+somatic: true
+material: true
+materialText: A focus worth at least 1,000 gp, such as a crystal ball, a silver mirror, or a font filled with holy water.
+materialCost: 1000.0
+materialConsumed: false
+saveType: wis
+saveSuccess: none

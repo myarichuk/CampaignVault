@@ -1,0 +1,15 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: chain_mail
+system: dnd5e
+category: Armor
+tags: [heavy]
+description: Heavy armor. Base AC 16 + no Dexterity bonus. Requires 13 Strength. Imposes disadvantage on Stealth checks.
+properties:
+  acBonus: 6
+  armorType: Heavy
+  weight: 55
+  costGp: 75
+  strMinimum: 13
+  stealthDisadvantage: true
+equipZones: [Torso]
+equipLayer: Armor

@@ -11,3 +11,10 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+summon:
+  inlineSeed:
+    attacks: ["Fey's own attack: the GM applies the spell's rank-appropriate fey statistics and passes maxHp explicitly."]
+  countAtSlotLevel:
+    1: 1
+  durationRounds: 10
+  disposition: loyal

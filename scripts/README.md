@@ -70,6 +70,17 @@ no entry without a quote. After any regen, diff-review: every file except the
 overlay-flagged spells (plus any new `damagePools` the API grew) must be
 byte-identical to before.
 
+### `spell_summon_overlay.yaml` (hand-authored, never regenerated)
+
+Same pattern as the damage overlay, but for **summoning**: `generate_dnd5e()`
+merges each entry as a `summon:` block (see `SpellDefinition.Summon`).
+`creatures` names handbook refs that must exist under
+`RulesetData/dnd5e/creatures/` or the regen fails; `inlineSeed` covers stock
+summons with no catalog entry. `instant_summons` is deliberately excluded —
+it retrieves an object, not a creature. The pf2e twin,
+`spell_summon_overlay_pf2e.yaml`, works the same way for `generate_pf2e()`
+(table levels are spell ranks 1–10, refs resolve under `pf2e/creatures/`).
+
 ## `generate_pf2e_feats.py`
 
 ```

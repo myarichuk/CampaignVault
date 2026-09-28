@@ -1,0 +1,23 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: meteor_swarm
+system: dnd5e
+level: 9
+classes: [sorcerer, wizard]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+damageType: fire
+damageAtSlotLevel:
+  9: 20d6
+saveType: dex
+saveSuccess: half
+areaOfEffectType: sphere
+areaOfEffectSize: 40
+damagePools:
+  fire:
+    9: 20d6
+  bludgeoning:
+    9: 20d6

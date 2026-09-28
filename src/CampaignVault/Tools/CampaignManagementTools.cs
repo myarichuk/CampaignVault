@@ -217,7 +217,7 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
     [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
-        "Reference lookup by kind. Rules: handbook, spells (className, level), creatures (query, levelMin/levelMax), items (query, category, tag), item_tags, level_up (characterId). Templates only; place live instances with world_build. " +
+        "Reference lookup by kind. Rules: handbook, spells (query=name and/or className, level), creatures (query, levelMin/levelMax), items (query, category, tag), item_tags, level_up (characterId). Templates only; place live instances with world_build. " +
         "Engine: commit_schema (type='<one $type>' = its fields; none = index), help (topic: onboarding, world-building, commit-enum, tools, take-turn-modes, sessions, faq). Responses already carry guidance: don't call speculatively.")]
     public async Task<ToolResult<object>> Lookup(
         [Description("See tool description.")] string kind,
@@ -226,7 +226,7 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
         [Description("help: topic.")] string? topic = null,
         [Description("spells: class, e.g. 'Wizard'.")] string? className = null,
         [Description("spells: level (0 = cantrip).")] int? level = null,
-        [Description("Name substring (creatures, items).")] string? query = null,
+        [Description("Name search (spells, creatures, items): all words must match, typo-tolerant, best first.")] string? query = null,
         [Description("items: item category; commit_schema: Combat|Narrative|World|PlotThread.")] string? category = null,
         [Description("items: tag.")] string? tag = null,
         [Description("creatures: min level.")] int? levelMin = null,
@@ -259,17 +259,17 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
 
     // Served through lookup(kind: <rules kind>); no longer an MCP tool of its own.
     [Description(
-        "Ruleset reference lookup by 'kind': handbook (classes/races/feats/conditions), spells (className required; filter by level), creatures (stat-block templates), items (item templates), item_tags, level_up (characterId required; then commit one level_up change). Templates only: place live instances with world_build.")]
+        "Ruleset reference lookup by 'kind': handbook (classes/races/feats/conditions), spells (query=name and/or className; filter by level), creatures (stat-block templates), items (item templates), item_tags, level_up (characterId required; then commit one level_up change). Templates only: place live instances with world_build.")]
     public async Task<ToolResult<object>> GetRulesReference(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,
         [Description("What to look up: 'handbook', 'spells', 'creatures', or 'level_up'.")]
         string kind,
-        [Description("spells only (required there): class name to list spells for, e.g. 'Wizard', 'Cleric'.")]
+        [Description("spells only: class name to list spells for, e.g. 'Wizard', 'Cleric'. Required unless 'nameQuery' is given.")]
         string? className = null,
         [Description("spells only: spell level filter (0 = cantrip). Strongly recommended — full class lists are large.")]
         int? level = null,
-        [Description("creatures only: creature name substring filter.")]
+        [Description("spells/creatures: name search, e.g. 'tiny hut'. All words must match; ignores case/apostrophes/plurals; tolerates small typos; best match first.")]
         string? nameQuery = null,
         [Description("creatures only: minimum level filter.")]
         int? levelMin = null,
@@ -281,7 +281,7 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
         int? limit = null,
         [Description("level_up only (required there): character ID, e.g. 'chars/hero-123'.")]
         string? characterId = null,
-        [Description("items only: item name substring filter.")]
+        [Description("items only: item name search (all words must match; typo-tolerant; best match first).")]
         string? itemNameQuery = null,
         [Description("items only: category (Weapon, Armor, Clothing, Container, Consumable, Tool, Material, Valuable, Document, Key, Other).")]
         string? itemCategory = null,
@@ -293,14 +293,14 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
             case "handbook":
                 return Box(await GetSystemHandbook(campaignName));
             case "spells":
-                if (string.IsNullOrWhiteSpace(className))
+                if (string.IsNullOrWhiteSpace(className) && string.IsNullOrWhiteSpace(nameQuery))
                 {
                     return await ToolArgumentErrors.Missing<object>(
                         "className",
-                        "kind:'spells' requires className (e.g. 'Wizard'). Get valid class names from kind:'handbook'.",
+                        "kind:'spells' requires query (spell name, e.g. 'tiny hut') and/or className (e.g. 'Wizard'). Get valid class names from kind:'handbook'.",
                         toolName: "lookup");
                 }
-                return Box(await GetSpells(className, campaignName, level, offset, limit));
+                return Box(await GetSpells(className, campaignName, level, offset, limit, nameQuery));
             case "creatures":
                 return Box(await QueryCreatures(campaignName, nameQuery, levelMin, levelMax, offset, limit));
             case "level_up":
@@ -351,11 +351,12 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
     }
 
     internal Task<ToolResult<SpellListResponse>> GetSpells(
-        string @class,
+        string? @class,
         string campaignName,
         int? level = null,
         int offset = 0,
-        int? limit = null)
+        int? limit = null,
+        string? nameQuery = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
@@ -363,9 +364,9 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
             var system = config.ActiveSystem;
             var homebrew = await _repository.GetCustomSpellsForSystemAsync(session, system, effective);
             var page = SpellQueryBuilder.QueryPage(
-                spellProvider, system, @class, classProvider, level, offset, limit, homebrew);
+                spellProvider, system, @class, classProvider, level, offset, limit, homebrew, nameQuery);
 
-            var response = SpellQueryBuilder.ToResponse(system, @class, level, page, ToSpellSummary);
+            var response = SpellQueryBuilder.ToResponse(system, @class, level, page, ToSpellSummary, nameQuery);
 
             return new ToolResult<SpellListResponse>(
                 true,

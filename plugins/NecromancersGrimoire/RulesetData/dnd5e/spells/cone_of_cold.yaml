@@ -1,0 +1,23 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: cone_of_cold
+system: dnd5e
+level: 5
+classes: [sorcerer, wizard]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A small crystal or glass cone.
+materialConsumed: false
+damageType: cold
+damageAtSlotLevel:
+  5: 8d8
+  6: 9d8
+  7: 10d8
+  8: 11d8
+  9: 12d8
+saveType: con
+saveSuccess: half
+areaOfEffectType: cone
+areaOfEffectSize: 60

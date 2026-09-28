@@ -11,3 +11,9 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+summon:
+  creatures: [wolf]
+  countAtSlotLevel:
+    1: 1
+  durationRounds: 10
+  disposition: loyal

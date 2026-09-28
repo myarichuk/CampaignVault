@@ -154,8 +154,9 @@ public enum XpSource
 /// LLM calls this after tense beats in crowded locations — not on every line of dialog.
 /// ENGINE MACRO: Rolls crowd reaction internally and may emit a derived ActivityChange promoting
 /// a transient from the crowd. Cooldown: one interrupt per location per day.
+/// Rejected outright during active combat — use combat promotion instead.
 /// </summary>
-[Description("Roll whether the ambient crowd interrupts a tense scene; may spawn a transient NPC activity.")]
+[Description("Roll whether the ambient crowd interrupts a tense scene; may spawn a transient NPC activity. Not usable during active combat — use combat promotion instead.")]
 public class SceneInterruptCheck : WorldChange
 {
     [Description("ID of the location where the scene beat occurred.")]
@@ -853,6 +854,14 @@ public class CharacterCreate : WorldChange
     [Description("Optional class and level string (e.g. 'Human Fighter 2') to help infer stats when bootstrapping.")]
     [JsonPropertyName("classLevel")]
     public string? ClassLevel { get; set; }
+
+    [Description("Set on a summoned minion: character id of the controlling caster (e.g. 'chars/kergil'). The caster's controlsMinionIds list is updated by a paired character_update in the same batch.")]
+    [JsonPropertyName("controlledById")]
+    public string? ControlledById { get; set; }
+
+    [Description("Set on a summoned minion: how/when control over it ends (spell, disposition, concentration link, duration). Kept as a lapsed record on dismiss, release, or lapse.")]
+    [JsonPropertyName("minionBinding")]
+    public MinionBinding? MinionBinding { get; set; }
 }
 
 /// <summary>
@@ -1219,6 +1228,26 @@ public class CharacterUpdate : WorldChange
     [Description("Clear departure metadata when re-promoting or returning an evicted NPC.")]
     [JsonPropertyName("clearDeparture")]
     public bool? ClearDeparture { get; set; }
+
+    [Description("Set a summoned minion's controlling caster (character id). Fails when the controller does not exist. Pair with controlsMinionIdsAdd on the caster in the same batch so both sides of the link stay in sync.")]
+    [JsonPropertyName("controlledById")]
+    public string? ControlledById { get; set; }
+
+    [Description("Set/replace a summoned minion's binding (spell, disposition, concentration link, duration). Pair with controlledById.")]
+    [JsonPropertyName("minionBinding")]
+    public MinionBinding? MinionBinding { get; set; }
+
+    [Description("Dismiss/release: ends live control (clears controlledById; the binding is kept as a lapsed record preserving disposition). The body stays in the world as an ordinary NPC. Pair with controlsMinionIdsRemove on the former caster in the same batch.")]
+    [JsonPropertyName("clearMinionLink")]
+    public bool? ClearMinionLink { get; set; }
+
+    [Description("Minion character ids newly placed under this caster's control. Unioned onto controlsMinionIds (oldest first). Pair with controlledById on each minion.")]
+    [JsonPropertyName("controlsMinionIdsAdd")]
+    public List<string>? ControlsMinionIdsAdd { get; set; }
+
+    [Description("Minion character ids released from this caster's control (dismiss, lapse, cap overflow). Removed from controlsMinionIds. Pair with clearMinionLink on each minion.")]
+    [JsonPropertyName("controlsMinionIdsRemove")]
+    public List<string>? ControlsMinionIdsRemove { get; set; }
 }
 
 [NarrativeOnly]

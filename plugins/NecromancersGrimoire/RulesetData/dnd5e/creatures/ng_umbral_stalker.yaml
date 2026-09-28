@@ -1,0 +1,15 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# The shade bound by ng_bind_shade: a ribbon of gloom with grabbing hands.
+name: Umbral Stalker
+system: dnd5e
+description: A coherent scrap of shadow, loyal to the binder while controlled.
+level: 0
+challengeRating: "1"
+hp: 22
+defense: 14
+skills:
+  - "Stealth +6"
+abilities:
+  - "Claws (Melee Weapon Attack): +5 to hit, reach 5 ft., one target. Hit: 6 (1d6 + 3) necrotic damage."
+  - "Shadow Blend: while in dim light or darkness, attacks against it have disadvantage."
+  - "Bound Servitor: raised by ng_bind_shade; at most two per caster (controlCap.maxCreatures: 2)."

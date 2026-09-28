@@ -124,6 +124,14 @@ public record SpellDefinition : RulesetTemplate
     /// (Acid Arrow's "2d4 at the end of its next turn"). Null means no delayed tick.</summary>
     public DelayedDamageTick? DelayedTick { get; init; }
 
+    /// <summary>
+    /// Summoning effect (animate dead, conjure animals, ...). Null for non-summoning
+    /// spells. Hand-authored via scripts/spell_summon_overlay.yaml, merged into the
+    /// generated spell YAMLs verbatim by generate_spells.py (same pattern as the
+    /// damage overlay) so regeneration never drops it.
+    /// </summary>
+    public SummonEffect? Summon { get; init; }
+
     /// <summary>dnd5e only. Multi-pool damage (Ice Storm's bludgeoning + cold, Meteor Swarm's
     /// fire + bludgeoning, Flame Strike's fire + radiant), keyed by damage type then spell-slot
     /// level. API-derived when dnd5eapi.co carries every pool cleanly, overlay-supplied when it
@@ -170,5 +178,6 @@ public record SpellDefinition : RulesetTemplate
             UpcastChoice = child.UpcastChoice ?? parent.UpcastChoice,
             OnMiss = child.OnMiss ?? parent.OnMiss,
             DelayedTick = child.DelayedTick ?? parent.DelayedTick,
+            Summon = child.Summon ?? parent.Summon,
         };
 }

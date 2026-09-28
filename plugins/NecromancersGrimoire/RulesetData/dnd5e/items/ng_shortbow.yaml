@@ -1,0 +1,16 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# A plain shortbow issued to raised skeletal archers.
+name: ng_shortbow
+system: dnd5e
+category: Weapon
+tags: [martial, ranged]
+description: A serviceable shortbow for skeletal archers (see ng_skeletal_archer).
+properties:
+  damage: 1d6
+  damageType: piercing
+  weight: 2
+  costGp: 25
+  range: 80/320
+equipZones: [MainHand, OffHand]
+equipLayer: Held
+twoHanded: false

@@ -1,0 +1,14 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: war_pick
+system: dnd5e
+category: Weapon
+tags: [martial, melee]
+description: Martial melee weapon. Deals 1d8 piercing damage.
+properties:
+  damage: 1d8
+  damageType: piercing
+  weight: 2
+  costGp: 5
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

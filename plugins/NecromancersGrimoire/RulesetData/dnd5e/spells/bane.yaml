@@ -1,0 +1,14 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: bane
+system: dnd5e
+level: 1
+classes: [bard, cleric]
+concentration: true
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A drop of blood.
+materialConsumed: false
+saveType: cha
+saveSuccess: none

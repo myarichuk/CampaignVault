@@ -55,6 +55,26 @@ public class SpellDefinitionTests
     }
 
     [Fact]
+    public void QuerySpells_NameQuery_ReturnsOnlyNameMatches_AcrossAllClasses()
+    {
+        var hits = Spells.QuerySpells(RulesetSystem.Dnd5e, null, null, Classes, "tiny hut");
+
+        Assert.NotEmpty(hits);
+        Assert.All(hits, s => Assert.Contains("hut", s.Name, StringComparison.OrdinalIgnoreCase));
+        Assert.All(hits, s => Assert.Contains("tiny", s.Name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void QueryPage_NameQuery_WithoutClassName_NarrowsResults()
+    {
+        var page = SpellQueryBuilder.QueryPage(
+            Spells, RulesetSystem.Dnd5e, null, Classes, nameQuery: "tiny hut");
+
+        Assert.InRange(page.TotalCount, 1, 3);
+        Assert.Contains("tiny_hut", page.Spells[0].Name, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void QuerySpells_FiltersByClassAndLevel()
     {
         var level3Wizard = Spells.QuerySpells(RulesetSystem.Dnd5e, "Wizard", 3, Classes);
@@ -401,6 +421,7 @@ public class SpellDefinitionTests
         Assert.Null(fireball.DamageIsPool);
         Assert.Null(fireball.DamagePools);
         Assert.Null(fireball.UpcastChoice);
+        Assert.Null(fireball.Summon);
     }
 
     [Fact]

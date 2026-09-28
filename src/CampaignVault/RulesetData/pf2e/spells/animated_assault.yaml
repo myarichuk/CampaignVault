@@ -11,3 +11,10 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+summon:
+  inlineSeed:
+    attacks: ["Assailant's own attack: the GM applies the animated assailant's statistics and passes maxHp explicitly."]
+  countAtSlotLevel:
+    2: 1
+  durationRounds: 10
+  disposition: loyal

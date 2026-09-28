@@ -18,6 +18,8 @@ internal static class DelayedTickProcessor
         Character character,
         IRollService? rollService,
         List<string> messages,
+        Func<Character, Task>? onConcentrationBroken = null,
+        Func<Character, Task>? onDowned = null,
         CancellationToken ct = default)
     {
         var events = new List<(string Topic, object? Data)>();
@@ -78,9 +80,13 @@ internal static class DelayedTickProcessor
                     [CoreEvents.Fields.MaxHp] = character.MaxHp,
                     [CoreEvents.Fields.ActorId] = null,
                 }));
+                if (onDowned != null)
+                {
+                    await onDowned(character);
+                }
             }
 
-            await CheckConcentrationAsync(character, outcome.Result, rollService, messages, ct);
+            await CheckConcentrationAsync(character, outcome.Result, rollService, messages, onConcentrationBroken, ct);
         }
 
         return events;
@@ -91,6 +97,7 @@ internal static class DelayedTickProcessor
         int damageTaken,
         IRollService rollService,
         List<string> messages,
+        Func<Character, Task>? onConcentrationBroken,
         CancellationToken ct)
     {
         if (damageTaken <= 0 || character.SystemStats?.StatusEffects is null)
@@ -114,6 +121,10 @@ internal static class DelayedTickProcessor
         {
             character.SystemStats.StatusEffects.Remove(concentration);
             messages.Add($"Concentration broken for {character.Id}: {damageTaken} damage (DC {dc}), {saveLabel} save {outcome.Result} failed.");
+            if (onConcentrationBroken != null)
+            {
+                await onConcentrationBroken(character);
+            }
         }
         else
         {

@@ -1,0 +1,202 @@
+# Hand-authored summon metadata for dnd5e SRD 5.1 spells whose rules raise a
+# creature the engine tracks as a minion. NEVER regenerated from an API —
+# merged into the generated spell YAMLs verbatim by generate_spells.py
+# (overlay fields only ever ADD the `summon` key; API-derived fields are
+# untouched; a collision fails the regen loudly).
+#
+# Evidentiary standard: every entry cites the exact SRD rules text backing it.
+# No entry without a quote. Engine semantics live on SpellDefinition.Summon:
+# creatures = handbook CreatureDefinition refs (caster picks one when several
+# fit); countAtSlotLevel = minions created per cast; retainCountAtSlotLevel =
+# recast-to-retain cap (absent = recast starts fresh, i.e. concentration
+# summons); durationRounds/durationDays = how long control lasts (at most one;
+# absent = indefinite, bound until dispelled or destroyed); controlCap = standing
+# control limit enforced at cast; disposition = how the minion regards its
+# summoner once control lapses.
+#
+# Coverage: all dnd5e SRD summon-creature spells. Every creatures entry names a
+# YAML in RulesetData/dnd5e/creatures or the regen fails; spells whose conjured
+# kind has no catalog entry carry an inlineSeed instead (full stats where the
+# SRD states them, GM-guidance prose where the choice is the caster's — those
+# casts pass maxHp explicitly). instant_summons is DELIBERATELY excluded: it
+# retrieves an object, not a creature, so the minion model never applies.
+#
+# Durations: API duration "Up to 1 hour" = 600 combat rounds (6s rounds);
+# "Up to 1 minute" = 10 rounds. All conjure spells are concentration-bound
+# (API concentration: true), so control rides on concentration.
+
+animate_dead:
+  # "This spell creates an undead servant. Choose a pile of bones or a corpse
+  # of a Medium or Small humanoid within range. Your spell imbues the target
+  # with a foul mimicry of life, raising it as an undead creature. The target
+  # becomes a skeleton if you chose bones or a zombie if you chose a corpse."
+  creatures: [skeleton, zombie]
+  # Base: one target ("Choose a pile of bones or a corpse"). HIGHER: "you
+  # animate ... two additional undead creatures for each slot level above 3rd."
+  countAtSlotLevel:
+    3: 1
+    4: 3
+    5: 5
+    6: 7
+    7: 9
+    8: 11
+    9: 13
+  # "This use of the spell reasserts your control over up to four creatures
+  # you have animated with this spell, rather than animating a new one."
+  # Same +2/slot scaling as new animations (shared HIGHER clause).
+  retainCountAtSlotLevel:
+    3: 4
+    4: 6
+    5: 8
+    6: 10
+    7: 12
+    8: 14
+    9: 16
+  # "The creature is under your control for 24 hours, after which it stops
+  # obeying any command you've given it."
+  durationDays: 1
+  # "The creature is under your control" + obeys mental commands while
+  # controlled — loyal for the bound duration.
+  disposition: loyal
+
+conjure_animals:
+  # "You summon fey spirits that take the form of beasts ... Choose one of the
+  # following options for what appears: One beast of challenge rating 2 or
+  # lower / Two beasts of challenge rating 1 or lower / Four beasts of
+  # challenge rating 1/2 or lower / Eight beasts of challenge rating 1/4 or
+  # lower ... The GM has the creatures' statistics."
+  # Only the CR1 catalog beast is linked; other options pass maxHp explicitly.
+  creatures: [giant_spider]
+  # HIGHER: "twice as many with a 5th-level slot, three times as many with a
+  # 7th-level [slot]." Other slots raise the base options.
+  countChoicesAtSlotLevel:
+    3: [1, 2, 4, 8]
+    4: [1, 2, 4, 8]
+    5: [2, 4, 8, 16]
+    6: [1, 2, 4, 8]
+    7: [3, 6, 12, 24]
+    8: [1, 2, 4, 8]
+    9: [1, 2, 4, 8]
+  # API duration: "Up to 1 hour". No hostile-lapse clause (unlike elemental/fey
+  # below): the spirits are friendly while bound, uncontrolled-but-harmless after.
+  durationRounds: 600
+  disposition: neutral
+
+conjure_celestial:
+  # "You summon a celestial of challenge rating 4 or lower ... The celestial is
+  # friendly to you and your companions for the duration ... The GM has the
+  # celestial's statistics." No catalog celestial exists: casts pass maxHp.
+  # HIGHER: "When you cast this spell using a 9th-level spell slot, you summon
+  # a celestial of challenge rating 5 or lower." (rank, not headcount)
+  inlineSeed:
+    attacks: ["Celestial's own attack: the GM applies the chosen celestial's statistics and passes maxHp explicitly."]
+  countAtSlotLevel:
+    7: 1
+    8: 1
+    9: 1
+  # API duration: "Up to 1 hour". No hostile clause: lapse to neutral.
+  durationRounds: 600
+  disposition: neutral
+
+conjure_elemental:
+  # "You call forth an elemental servant ... An elemental of challenge rating 5
+  # or lower appropriate to the area you chose appears ... The elemental is
+  # friendly to you and your companions for the duration."
+  # HIGHER: "the challenge rating increases by 1 for each slot level above 5th."
+  # (rank, not headcount)
+  creatures: [air_elemental, earth_elemental, fire_elemental, water_elemental]
+  countAtSlotLevel:
+    5: 1
+    6: 1
+    7: 1
+    8: 1
+    9: 1
+  # API duration: "Up to 1 hour". "If your concentration is broken, the
+  # elemental doesn't disappear. Instead, you lose control of the elemental, it
+  # becomes hostile toward you and your companions, and it might attack."
+  durationRounds: 600
+  disposition: hostile
+
+conjure_fey:
+  # "You summon a fey creature of challenge rating 6 or lower, or a fey spirit
+  # that takes the form of a beast of challenge rating 6 or lower ... The fey
+  # creature is friendly to you and your companions for the duration ... The GM
+  # has the fey creature's statistics." No catalog CR6 fey: casts pass maxHp.
+  # HIGHER: "the challenge rating increases by 1 for each slot level above 6th."
+  inlineSeed:
+    attacks: ["Fey's own attack: the GM applies the chosen fey's statistics and passes maxHp explicitly."]
+  countAtSlotLevel:
+    6: 1
+    7: 1
+    8: 1
+    9: 1
+  # API duration: "Up to 1 hour". "If your concentration is broken, the fey
+  # creature doesn't disappear. Instead, you lose control of the fey creature,
+  # it becomes hostile toward you and your companions, and it might attack."
+  durationRounds: 600
+  disposition: hostile
+
+conjure_minor_elementals:
+  # "You summon elementals ... You choose one [of] the following options for
+  # what appears: One elemental of challenge rating 2 or lower / Two elementals
+  # of challenge rating 1 or lower / Four elementals of challenge rating 1/2 or
+  # lower / Eight elementals of challenge rating 1/4 or lower ... The GM has
+  # the creatures' statistics." No catalog CR2-or-lower elemental: maxHp path.
+  # HIGHER: "twice as many with a 6th-level slot and three times as many with
+  # an 8th-level slot."
+  inlineSeed:
+    attacks: ["Elemental's own attack: the GM applies the chosen elemental's statistics and passes maxHp explicitly."]
+  countChoicesAtSlotLevel:
+    4: [1, 2, 4, 8]
+    5: [1, 2, 4, 8]
+    6: [2, 4, 8, 16]
+    7: [1, 2, 4, 8]
+    8: [3, 6, 12, 24]
+    9: [1, 2, 4, 8]
+  # API duration: "Up to 1 hour". Friendly while bound, no hostile clause.
+  durationRounds: 600
+  disposition: neutral
+
+conjure_woodland_beings:
+  # "You summon fey creatures ... Choose one of the following options for what
+  # appears: One fey creature of challenge rating 2 or lower / Two fey
+  # creatures of challenge rating 1 or lower / Four fey creatures of challenge
+  # rating 1/2 or lower / Eight fey creatures of challenge rating 1/4 or lower
+  # ... The GM has the creatures' statistics." No catalog match: maxHp path.
+  # HIGHER: "twice as many with a 6th-level slot and three times as many with
+  # an 8th-level slot."
+  inlineSeed:
+    attacks: ["Fey's own attack: the GM applies the chosen fey's statistics and passes maxHp explicitly."]
+  countChoicesAtSlotLevel:
+    4: [1, 2, 4, 8]
+    5: [1, 2, 4, 8]
+    6: [2, 4, 8, 16]
+    7: [1, 2, 4, 8]
+    8: [3, 6, 12, 24]
+    9: [1, 2, 4, 8]
+  # API duration: "Up to 1 hour". Friendly while bound, no hostile clause.
+  durationRounds: 600
+  disposition: neutral
+
+animate_objects:
+  # "Choose up to ten nonmagical objects ... Each target animates and becomes a
+  # creature under your control until the spell ends or until reduced to 0 hit
+  # points." Size budget (Medium counts as two, Large four, Huge eight) is
+  # handled by the cast's count parameter (at most the slot's table value).
+  # HIGHER: "you can animate two additional objects for each slot level above 5th."
+  # Default seed = Small (the common case); other sizes pass maxHp. SRD table:
+  # Tiny 20hp/18AC/+8/1d4+4, Small 25hp/16AC/+6/1d8+2, Medium 40hp/13AC/+5/2d6+1,
+  # Large 50hp/10AC/+6/2d10+2, Huge 80hp/10AC/+8/2d12+4.
+  inlineSeed:
+    hp: 25
+    defense: 16
+    attacks: ["Slam (Melee Weapon Attack): +6 to hit, reach 5 ft. Hit: 1d8 + 2 bludgeoning damage. (Small; other sizes pass maxHp.)"]
+  countAtSlotLevel:
+    5: 10
+    6: 12
+    7: 14
+    8: 16
+    9: 18
+  # API duration: "Up to 1 minute". Objects cannot turn: lapse keeps loyal.
+  durationRounds: 10
+  disposition: loyal

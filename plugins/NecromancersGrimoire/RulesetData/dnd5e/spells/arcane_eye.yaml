@@ -1,0 +1,14 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: arcane_eye
+system: dnd5e
+level: 4
+classes: [cleric, wizard]
+concentration: true
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A bit of bat fur.
+materialConsumed: false
+areaOfEffectType: sphere
+areaOfEffectSize: 30

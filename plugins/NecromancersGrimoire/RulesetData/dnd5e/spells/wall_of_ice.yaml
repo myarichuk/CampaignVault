@@ -1,0 +1,22 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: wall_of_ice
+system: dnd5e
+level: 6
+classes: [wizard]
+concentration: true
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A small piece of quartz.
+materialConsumed: false
+damageType: cold
+damageAtSlotLevel:
+  6: 10d6
+  7: 12d6
+  8: 14d6
+  9: 16d6
+saveType: dex
+saveSuccess: half
+areaOfEffectType: sphere
+areaOfEffectSize: 10

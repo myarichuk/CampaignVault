@@ -1,0 +1,18 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: blade_barrier
+system: dnd5e
+level: 6
+classes: [cleric]
+concentration: true
+castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+damageType: slashing
+damageAtSlotLevel:
+  6: 6d10
+saveType: dex
+saveSuccess: half
+areaOfEffectType: line
+areaOfEffectSize: 100

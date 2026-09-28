@@ -1,0 +1,19 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: sunbeam
+system: dnd5e
+level: 6
+classes: [druid, sorcerer, wizard]
+concentration: true
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A magnifying glass.
+materialConsumed: false
+damageType: radiant
+damageAtSlotLevel:
+  6: 6d8
+saveType: con
+saveSuccess: half
+areaOfEffectType: line
+areaOfEffectSize: 60

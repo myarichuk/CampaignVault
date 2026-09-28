@@ -1,0 +1,17 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: dream
+system: dnd5e
+level: 5
+classes: [bard, warlock, wizard]
+concentration: false
+castingTime: 1 minute
+verbal: true
+somatic: true
+material: true
+materialText: A handful of sand, a dab of ink, and a writing quill plucked from a sleeping bird.
+materialConsumed: false
+damageType: psychic
+damageAtSlotLevel:
+  5: 3d6
+saveType: wis
+saveSuccess: none

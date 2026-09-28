@@ -24,6 +24,16 @@ public class CreatureDefinitionProviderTests
     }
 
     [Fact]
+    public void TryGet_SlugForm_ResolvesDisplayName()
+    {
+        Assert.True(Provider.TryGet(RulesetSystem.Dnd5e, "air_elemental", out var elemental));
+        Assert.Equal("Air Elemental", elemental!.Name);
+        Assert.True(Provider.TryGet(RulesetSystem.Pathfinder2e, "skeleton_guard", out var guard));
+        Assert.Equal("Skeleton Guard", guard!.Name);
+        Assert.True(Provider.TryGet(RulesetSystem.Dnd5e, "AIR-ELEMENTAL", out _));
+    }
+
+    [Fact]
     public void GetCreaturesForSystem_Pf2e_ReturnsSeedCreatures()
     {
         var creatures = Provider.GetCreaturesForSystem(RulesetSystem.Pathfinder2e);

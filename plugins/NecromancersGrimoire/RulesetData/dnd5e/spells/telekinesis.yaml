@@ -1,0 +1,13 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: telekinesis
+system: dnd5e
+level: 5
+classes: [sorcerer, wizard]
+concentration: true
+castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+areaOfEffectType: sphere
+areaOfEffectSize: 30

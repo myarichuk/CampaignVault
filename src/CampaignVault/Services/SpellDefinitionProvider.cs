@@ -13,6 +13,8 @@ public class SpellDefinitionProvider : IRulesetYamlProvider
         new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, IReadOnlyDictionary<string, SpellDefinition>?> _cache =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, NameSearchIndex<SpellDefinition>> _nameIndexes =
+        new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
     private readonly ILogger? _logger;
 
@@ -89,26 +91,64 @@ public class SpellDefinitionProvider : IRulesetYamlProvider
         string system,
         string? className = null,
         int? level = null,
-        ClassDefinitionProvider? classProvider = null)
+        ClassDefinitionProvider? classProvider = null,
+        string? nameQuery = null) =>
+        [.. QuerySpellsRanked(system, className, level, classProvider, nameQuery).Select(h => h.Item)];
+
+    /// <summary>
+    /// Filters by class and level. Without <paramref name="nameQuery"/> the order is level then name (score 0);
+    /// with it, only name matches are returned, best match first.
+    /// </summary>
+    public IReadOnlyList<NameSearchHit<SpellDefinition>> QuerySpellsRanked(
+        string system,
+        string? className = null,
+        int? level = null,
+        ClassDefinitionProvider? classProvider = null,
+        string? nameQuery = null)
     {
-        var spells = GetSpellsForSystem(system).Values;
+        IEnumerable<NameSearchHit<SpellDefinition>> hits;
+        var hasNameQuery = !string.IsNullOrWhiteSpace(nameQuery);
+        if (hasNameQuery)
+        {
+            hits = GetNameIndex(system).Search(nameQuery);
+        }
+        else
+        {
+            hits = GetSpellsForSystem(system).Values.Select(s => new NameSearchHit<SpellDefinition>(s, 0));
+        }
 
         if (!string.IsNullOrWhiteSpace(className))
         {
-            spells = spells.Where(s => SpellMatchesClass(s, className, system, classProvider));
+            hits = hits.Where(h => SpellMatchesClass(h.Item, className, system, classProvider));
         }
 
         if (level.HasValue)
         {
-            spells = spells.Where(s => (s.Level ?? 0) == level.Value);
+            hits = hits.Where(h => (h.Item.Level ?? 0) == level.Value);
         }
 
-        return
-        [
-            .. spells
-                .OrderBy(s => s.Level ?? 0)
-                .ThenBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
-        ];
+        var ordered = hasNameQuery
+            ? hits.OrderByDescending(h => h.Score)
+                .ThenBy(h => h.Item.Level ?? 0)
+                .ThenBy(h => h.Item.Name, StringComparer.OrdinalIgnoreCase)
+            : hits.OrderBy(h => h.Item.Level ?? 0)
+                .ThenBy(h => h.Item.Name, StringComparer.OrdinalIgnoreCase);
+        return [.. ordered];
+    }
+
+    private NameSearchIndex<SpellDefinition> GetNameIndex(string system)
+    {
+        var spells = GetSpellsForSystem(system);
+        lock (_lock)
+        {
+            if (!_nameIndexes.TryGetValue(system, out var index))
+            {
+                index = NameSearchIndex<SpellDefinition>.Build(spells.Values, s => s.Name);
+                _nameIndexes[system] = index;
+            }
+
+            return index;
+        }
     }
 
     public static bool SpellMatchesClass(
@@ -135,6 +175,9 @@ public class SpellDefinitionProvider : IRulesetYamlProvider
     public void Reload()
     {
         lock (_lock)
+        {
             _cache.Clear();
+            _nameIndexes.Clear();
+        }
     }
 }

@@ -1,0 +1,7 @@
+{
+  "id": "com.campaignvault.necromancers-grimoire",
+  "displayName": "Necromancer's Grimoire",
+  "version": "1.0.0",
+  "minEngineVersion": "0.2.0",
+  "rulesetDataRoots": ["./RulesetData"]
+}

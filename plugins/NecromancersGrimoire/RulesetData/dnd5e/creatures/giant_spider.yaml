@@ -1,0 +1,16 @@
+name: Giant Spider
+system: dnd5e
+description: A creature with four pairs of legs and venomous fangs, the size of a horse or larger. Often found in dark caves or deep forests.
+level: 1
+challengeRating: "1"
+hp: 26
+defense: 14
+skills:
+  - "Perception +4"
+  - "Stealth +7"
+abilities:
+  - "Speed: 30 ft., Climb 30 ft."
+  - "Senses: Darkvision 60 ft., Passive Perception 14."
+  - "Web Sense: The spider senses vibrations in its web."
+  - "Bite (Melee Weapon Attack): +5 to hit, reach 5 ft., one creature. Hit: 7 (1d8 + 3) piercing damage, and the target must succeed on a DC 13 Constitution saving throw or take 4 (1d8) poison damage."
+  - "Web (Recharge 5-6): Ranged Weapon Attack: +5 to hit, range 30/60 ft., one Large or smaller creature. Hit: The creature is restrained by webbing. As an action, the restrained creature can make a DC 13 Strength check, breaking the web on a success."

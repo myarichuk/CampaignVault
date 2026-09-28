@@ -1,0 +1,21 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: aid
+system: dnd5e
+level: 2
+classes: [cleric, paladin]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A tiny strip of white cloth.
+materialConsumed: false
+healAtSlotLevel:
+  2: 5
+  3: 10
+  4: 15
+  5: 20
+  6: 25
+  7: 30
+  8: 35
+  9: 40

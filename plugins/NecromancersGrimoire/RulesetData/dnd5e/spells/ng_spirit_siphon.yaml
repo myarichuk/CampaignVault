@@ -1,0 +1,24 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# Drain a wound's last warmth: Constitution save, 3d6 necrotic, half on success.
+name: ng_spirit_siphon
+system: dnd5e
+level: 2
+classes: [wizard, warlock, cleric]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+damageType: necrotic
+damageAtSlotLevel:
+  2: 3d6
+  3: 4d6
+  4: 5d6
+  5: 6d6
+  6: 7d6
+  7: 8d6
+  8: 9d6
+  9: 10d6
+saveType: constitution
+saveSuccess: half

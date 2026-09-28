@@ -1,0 +1,22 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: inflict_wounds
+system: dnd5e
+level: 1
+classes: [cleric]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+damageType: necrotic
+damageAtSlotLevel:
+  1: 3d10
+  2: 4d10
+  3: 5d10
+  4: 6d10
+  5: 7d10
+  6: 8d10
+  7: 9d10
+  8: 10d10
+  9: 11d10

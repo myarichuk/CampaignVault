@@ -1,0 +1,16 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: harm
+system: dnd5e
+level: 6
+classes: [cleric]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+damageType: necrotic
+damageAtSlotLevel:
+  6: 14d6
+saveType: con
+saveSuccess: half

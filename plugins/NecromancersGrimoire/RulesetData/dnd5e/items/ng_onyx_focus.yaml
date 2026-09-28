@@ -1,0 +1,15 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# Consumable blueprint: a carved onyx gem that powers bindings. One focus is
+# consumed per shade bound by ng_bind_shade (material currency for control).
+# The engine does not auto-track components — expenditure resolves narratively
+# / by GM arbitration, as with other consumables.
+name: ng_onyx_focus
+system: dnd5e
+category: Consumable
+tags: [spell-focus, necromancy, material-component]
+description: A thumb-sized onyx carved with a binding rune. Consumed when a shade is bound (ng_bind_shade) — 25 gp of onyx per binding.
+properties:
+  weight: 0
+  costGp: 25
+  uses: 1
+  chargeUnit: binding

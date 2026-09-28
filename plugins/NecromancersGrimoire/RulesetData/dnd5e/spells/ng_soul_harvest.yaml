@@ -1,0 +1,20 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# Reap the dying: Wisdom save, 8d8 necrotic, half on success.
+name: ng_soul_harvest
+system: dnd5e
+level: 6
+classes: [warlock, wizard, cleric]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+damageType: necrotic
+damageAtSlotLevel:
+  6: 8d8
+  7: 9d8
+  8: 10d8
+  9: 11d8
+saveType: wisdom
+saveSuccess: half

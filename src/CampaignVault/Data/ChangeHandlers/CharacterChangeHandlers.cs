@@ -114,6 +114,21 @@ public class CharacterCreateHandler : IWorldChangeHandler
                 existing.ClassLevel = cc.ClassLevel;
             }
 
+            if (cc.ControlledById != null || cc.MinionBinding != null)
+            {
+                var (linkError, controller) = await MinionLinkApplier.ResolveControllerAsync(
+                    ctx, existing.Id, cc.ControlledById, cc.MinionBinding, ct);
+                if (linkError != null)
+                {
+                    return ChangeHandlerResult.Failure(linkError);
+                }
+
+                if (controller != null)
+                {
+                    MinionLinkApplier.ApplyLink(existing, controller, cc.MinionBinding);
+                }
+            }
+
             if (cc.SystemStats != null)
             {
                 var existingSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(ctx, _keys, ct);
@@ -146,6 +161,13 @@ public class CharacterCreateHandler : IWorldChangeHandler
             ctx.RecordEntityCollision(cc.CharacterId,
                 $"Warning: Character {cc.CharacterId} already exists. Updated existing character fields.{hint}");
             return ChangeHandlerResult.Ok;
+        }
+
+        var (createLinkError, createController) = await MinionLinkApplier.ResolveControllerAsync(
+            ctx, cc.CharacterId, cc.ControlledById, cc.MinionBinding, ct);
+        if (createLinkError != null)
+        {
+            return ChangeHandlerResult.Failure(createLinkError);
         }
 
         var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(ctx, _keys, ct);
@@ -183,6 +205,11 @@ public class CharacterCreateHandler : IWorldChangeHandler
             CurrentHp = cc.CurrentHp ?? cc.MaxHp ?? 0,
             SystemStats = systemStats
         };
+
+        if (createController != null)
+        {
+            MinionLinkApplier.ApplyLink(newChar, createController, cc.MinionBinding);
+        }
 
         if (string.IsNullOrEmpty(newChar.CampaignName))
         {
@@ -674,7 +701,130 @@ public class CharacterUpdateHandler : IWorldChangeHandler
             character.DepartedFromLocationId = null;
         }
 
+        if (cu.ControlledById != null || cu.MinionBinding != null)
+        {
+            var (updateLinkError, updateController) = await MinionLinkApplier.ResolveControllerAsync(
+                ctx, character.Id, cu.ControlledById, cu.MinionBinding, ct);
+            if (updateLinkError != null)
+            {
+                return ChangeHandlerResult.Failure(updateLinkError);
+            }
+
+            if (updateController != null)
+            {
+                MinionLinkApplier.ApplyLink(character, updateController, cu.MinionBinding);
+            }
+        }
+
+        if (cu.ClearMinionLink == true)
+        {
+            MinionLinkApplier.ClearLink(character);
+        }
+
+        MinionLinkApplier.ApplyListDelta(character, cu.ControlsMinionIdsAdd, cu.ControlsMinionIdsRemove);
+
         return ChangeHandlerResult.Ok;
+    }
+}
+
+/// <summary>
+/// Shared minion-link application for character_create / character_update (and the
+/// engine-emitted summon, dismiss, cap-release, and lapse mutations, which flow
+/// through the same handlers). All operations are idempotent no-ops when the link
+/// is already in the requested state, so retried or half-paired batches converge
+/// instead of failing.
+/// </summary>
+internal static class MinionLinkApplier
+{
+    /// <summary>
+    /// Resolves the effective controller from an explicit id and/or a binding,
+    /// failing when they disagree, when the controller is the character itself,
+    /// or when the controller does not exist. Null controller means "no link".
+    /// </summary>
+    public static async Task<(string? Error, string? Controller)> ResolveControllerAsync(
+        ChangeContext ctx, string characterId, string? controlledById, MinionBinding? binding,
+        CancellationToken ct)
+    {
+        var controller = controlledById ?? binding?.ControllerId;
+        if (string.IsNullOrWhiteSpace(controller))
+        {
+            return (null, null);
+        }
+
+        if (controlledById != null && binding?.ControllerId != null
+            && !string.Equals(controlledById, binding.ControllerId, StringComparison.Ordinal))
+        {
+            return ($"controlledById '{controlledById}' disagrees with minionBinding.controllerId '{binding.ControllerId}'.", null);
+        }
+
+        if (string.Equals(controller, characterId, StringComparison.Ordinal))
+        {
+            return ($"Character '{characterId}' cannot control itself as a minion.", null);
+        }
+
+        if (!ctx.Characters.ContainsKey(controller)
+            && await ctx.Session.LoadAsync<Character>(controller, ct) == null)
+        {
+            return ($"Minion controller '{controller}' does not exist.", null);
+        }
+
+        return (null, controller);
+    }
+
+    public static void ApplyLink(Character character, string controller, MinionBinding? binding)
+    {
+        character.ControlledById = controller;
+        if (binding != null)
+        {
+            var retargeted = binding.ControllerId == controller
+                ? binding
+                : binding with { ControllerId = controller };
+            character.MinionBinding = retargeted.ControlLapsed
+                ? retargeted with { ControlLapsed = false }
+                : retargeted;
+        }
+        else if (character.MinionBinding?.ControllerId != controller)
+        {
+            character.MinionBinding = character.MinionBinding == null
+                ? new MinionBinding { ControllerId = controller }
+                : character.MinionBinding with { ControllerId = controller, ControlLapsed = false };
+        }
+        else if (character.MinionBinding is { ControlLapsed: true } lapsed)
+        {
+            character.MinionBinding = lapsed with { ControlLapsed = false };
+        }
+    }
+
+    /// <summary>
+    /// Ends live control. The binding is kept as a lapsed record (disposition
+    /// preserved) so the GM can see what the released minion is and how it now
+    /// regards its former controller; the body stays as an ordinary NPC.
+    /// </summary>
+    public static void ClearLink(Character character)
+    {
+        character.ControlledById = null;
+        if (character.MinionBinding != null)
+        {
+            character.MinionBinding = character.MinionBinding with { ControlLapsed = true };
+        }
+    }
+
+    public static void ApplyListDelta(Character character, List<string>? add, List<string>? remove)
+    {
+        if (remove != null && remove.Count > 0)
+        {
+            var doomed = new HashSet<string>(remove, StringComparer.Ordinal);
+            character.ControlsMinionIds.RemoveAll(id => doomed.Contains(id));
+        }
+
+        if (add != null && add.Count > 0)
+        {
+            var known = new HashSet<string>(character.ControlsMinionIds, StringComparer.Ordinal);
+            foreach (var id in add.Where(id => !string.IsNullOrWhiteSpace(id) && known.Add(id)))
+            {
+                character.ControlsMinionIds.Add(id);
+            }
+        }
     }
 }
 

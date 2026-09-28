@@ -1,0 +1,12 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# A coal-bright spark of a fire spirit, barely bound and hissing.
+name: Cinder Wisp
+system: dnd5e
+description: A fist-sized ember with eyes, eager to burn at its binder's word.
+level: 0
+challengeRating: "1/2"
+hp: 16
+defense: 13
+abilities:
+  - "Touch (Melee Weapon Attack): +5 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) fire damage."
+  - "Immune to fire damage."

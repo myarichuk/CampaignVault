@@ -1,0 +1,13 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: mirage_arcane
+system: dnd5e
+level: 7
+classes: [bard, druid, wizard]
+concentration: false
+castingTime: 10 minutes
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+areaOfEffectType: cube
+areaOfEffectSize: 5280

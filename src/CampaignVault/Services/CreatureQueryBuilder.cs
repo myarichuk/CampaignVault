@@ -61,17 +61,30 @@ public static class CreatureQueryBuilder
             merged[homebrew.Name] = (true, homebrew);
         }
 
-        // Apply filters (name query, level range) in memory
-        var filtered = merged.Values
-            .Where(item => MatchesFilters(item.creature, nameQuery, levelMin, levelMax))
+        // Apply filters (name search, level range) in memory. The name index is built per query because
+        // the merged set includes campaign-scoped homebrew; the SRD catalog is small enough that this is cheap.
+        var candidates = merged.Values
+            .Where(item => MatchesLevelRange(item.creature, levelMin, levelMax))
             .ToList();
 
-        // Sort by name
-        filtered =
-        [
-            .. filtered
-                .OrderBy(item => GetCreatureName(item.creature), StringComparer.OrdinalIgnoreCase)
-        ];
+        List<(bool isHomebrew, object creature)> filtered;
+        if (string.IsNullOrWhiteSpace(nameQuery))
+        {
+            filtered = [.. candidates.OrderBy(item => GetCreatureName(item.creature), StringComparer.OrdinalIgnoreCase)];
+        }
+        else
+        {
+            // Best match first.
+            filtered =
+            [
+                .. NameSearchIndex<(bool isHomebrew, object creature)>
+                    .Build(candidates, item => GetCreatureName(item.creature))
+                    .Search(nameQuery)
+                    .OrderByDescending(h => h.Score)
+                    .ThenBy(h => GetCreatureName(h.Item.creature), StringComparer.OrdinalIgnoreCase)
+                    .Select(h => h.Item)
+            ];
+        }
 
         var totalCount = filtered.Count;
         var page = filtered.Skip(offsetClamped).Take(pageLimit).ToList();
@@ -82,13 +95,9 @@ public static class CreatureQueryBuilder
         return new CreatureQueryPage(creaturesView, totalCount, offsetClamped, pageLimit);
     }
 
-    private static bool MatchesFilters(object creature, string? nameQuery, int? levelMin, int? levelMax)
+    private static bool MatchesLevelRange(object creature, int? levelMin, int? levelMax)
     {
-        var name = GetCreatureName(creature);
         var level = GetCreatureLevel(creature);
-
-        if (!string.IsNullOrWhiteSpace(nameQuery) && !name.Contains(nameQuery, StringComparison.OrdinalIgnoreCase))
-            return false;
 
         if (levelMin.HasValue && level < levelMin.Value)
             return false;

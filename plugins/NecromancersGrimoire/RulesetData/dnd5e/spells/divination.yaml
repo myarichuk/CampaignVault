@@ -1,0 +1,13 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: divination
+system: dnd5e
+level: 4
+classes: [druid]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: Incense and a sacrificial offering appropriate to your religion, together worth at least 25gp, which the spell consumes.
+materialCost: 25.0
+materialConsumed: true

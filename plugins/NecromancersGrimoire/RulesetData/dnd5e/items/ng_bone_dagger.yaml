@@ -1,0 +1,15 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# A dagger knapped from a thighbone, issued to wight blades.
+name: ng_bone_dagger
+system: dnd5e
+category: Weapon
+tags: [simple, melee, necromancy]
+description: A thighbone dagger for wight blades (see ng_wight_blade).
+properties:
+  damage: 1d4
+  damageType: piercing
+  weight: 1
+  costGp: 2
+equipZones: [MainHand, OffHand]
+equipLayer: Held
+twoHanded: false

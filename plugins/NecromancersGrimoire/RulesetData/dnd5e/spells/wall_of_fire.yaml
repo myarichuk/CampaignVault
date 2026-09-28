@@ -1,0 +1,19 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: wall_of_fire
+system: dnd5e
+level: 4
+classes: [druid, sorcerer, wizard]
+concentration: true
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A small piece of phosphorus.
+materialConsumed: false
+damageType: fire
+damageAtSlotLevel:
+  4: 5d8
+saveType: dex
+saveSuccess: half
+areaOfEffectType: line
+areaOfEffectSize: 60

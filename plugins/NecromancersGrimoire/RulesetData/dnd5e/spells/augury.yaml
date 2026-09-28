@@ -1,0 +1,13 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: augury
+system: dnd5e
+level: 2
+classes: [cleric]
+concentration: false
+castingTime: 1 minute
+verbal: true
+somatic: true
+material: true
+materialText: Specially marked sticks, bones, or similar tokens worth at least 25gp.
+materialCost: 25.0
+materialConsumed: false

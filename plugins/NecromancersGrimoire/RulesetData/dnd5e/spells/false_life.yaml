@@ -1,0 +1,22 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: false_life
+system: dnd5e
+level: 1
+classes: [sorcerer, wizard]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A small amount of alcohol or distilled spirits.
+materialConsumed: false
+healAtSlotLevel:
+  1: 1d4 + 4
+  2: 1d4 + 9
+  3: 1d4 + 14
+  4: 1d4 + 19
+  5: 1d4 + 24
+  6: 1d4 + 29
+  7: 1d4 + 34
+  8: 1d4 + 39
+  9: 1d4 + 44

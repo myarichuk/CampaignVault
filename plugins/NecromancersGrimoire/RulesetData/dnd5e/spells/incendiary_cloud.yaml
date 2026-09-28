@@ -1,0 +1,18 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: incendiary_cloud
+system: dnd5e
+level: 8
+classes: [sorcerer, wizard]
+concentration: true
+castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+damageType: fire
+damageAtSlotLevel:
+  8: 10d8
+saveType: dex
+saveSuccess: half
+areaOfEffectType: sphere
+areaOfEffectSize: 20

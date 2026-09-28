@@ -1,0 +1,33 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# A death knell that echoes: Wisdom save, 6d6 necrotic now plus 3d6 at the end
+# of the target's next turn (only when the first blast hits), half of the first
+# blast on a successful save.
+name: ng_sepulchral_echo
+system: dnd5e
+level: 5
+classes: [wizard, warlock]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+damageType: necrotic
+damageAtSlotLevel:
+  5: 6d6
+  6: 7d6
+  7: 8d6
+  8: 9d6
+  9: 10d6
+saveType: wisdom
+saveSuccess: half
+delayedTick:
+  damageType: necrotic
+  triggerAt: endOfTargetNextTurn
+  requiresInitialHit: true
+  diceExpressionAtSlotLevel:
+    5: 3d6
+    6: 4d6
+    7: 5d6
+    8: 6d6
+    9: 7d6

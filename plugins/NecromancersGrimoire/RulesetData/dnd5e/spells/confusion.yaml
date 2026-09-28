@@ -1,0 +1,16 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: confusion
+system: dnd5e
+level: 4
+classes: [bard, druid, sorcerer, wizard]
+concentration: true
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: Three walnut shells.
+materialConsumed: false
+saveType: wis
+saveSuccess: none
+areaOfEffectType: sphere
+areaOfEffectSize: 10

@@ -83,8 +83,17 @@ internal static class CommitSchemaRegistry
 
     // Enum-typed fields (e.g. event.category) carry their valid values inline, since the caller most
     // likely to hit this lookup is the one that just got a bad-enum rejection and needs the real list.
-    private static string FormatField(CommitFieldModel field) =>
-        field.EnumValues is { Count: > 0 }
+    // Conditionally-required fields also carry their RequiredHint (e.g. "Required if source=Witnessed/
+    // Experienced, else batch fails.") so this lookup doesn't disagree with the live take_turn schema,
+    // which always inlines that hint regardless of truncation/tier (see TakeTurnSchemaBuilder).
+    private static string FormatField(CommitFieldModel field)
+    {
+        var name = field.EnumValues is { Count: > 0 }
             ? $"{field.JsonName} ({string.Join("|", field.EnumValues)})"
             : field.JsonName;
+
+        return string.IsNullOrWhiteSpace(field.RequiredHint)
+            ? name
+            : $"{name} [{field.RequiredHint}]";
+    }
 }

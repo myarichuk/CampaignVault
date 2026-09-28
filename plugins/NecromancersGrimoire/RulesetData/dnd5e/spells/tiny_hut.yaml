@@ -1,0 +1,14 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: tiny_hut
+system: dnd5e
+level: 3
+classes: [bard, wizard]
+concentration: false
+castingTime: 1 minute
+verbal: true
+somatic: true
+material: true
+materialText: A small crystal bead.
+materialConsumed: false
+areaOfEffectType: sphere
+areaOfEffectSize: 10

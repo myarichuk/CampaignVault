@@ -1,0 +1,22 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# Boil the blood: Constitution save, 6d8 necrotic, half on success.
+name: ng_exsanguinate
+system: dnd5e
+level: 4
+classes: [wizard, warlock]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+damageType: necrotic
+damageAtSlotLevel:
+  4: 6d8
+  5: 7d8
+  6: 8d8
+  7: 9d8
+  8: 10d8
+  9: 11d8
+saveType: constitution
+saveSuccess: half

@@ -1,0 +1,14 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# A fleshless archer that never misses its watch. Spawn armed with ng_shortbow.
+name: Skeletal Archer
+system: dnd5e
+description: The bleached remains of a bowman, still holding its draw.
+level: 0
+challengeRating: "1/2"
+hp: 16
+defense: 13
+skills:
+  - "Perception +4"
+abilities:
+  - "Shortbow (Ranged Weapon Attack): +5 to hit, range 80/320 ft., one target. Hit: 6 (1d6 + 3) piercing damage. Spawn with ng_shortbow."
+  - "Undead Fortitude: if damage reduces it to 0 hit points, it makes a Constitution saving throw (DC 5 + damage taken) and drops to 1 instead unless the damage is radiant or from a critical hit."

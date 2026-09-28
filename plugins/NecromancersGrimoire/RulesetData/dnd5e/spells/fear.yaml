@@ -1,0 +1,16 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: fear
+system: dnd5e
+level: 3
+classes: [bard, sorcerer, warlock, wizard]
+concentration: true
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A white feather or the heart of a hen.
+materialConsumed: false
+saveType: wis
+saveSuccess: none
+areaOfEffectType: cone
+areaOfEffectSize: 30

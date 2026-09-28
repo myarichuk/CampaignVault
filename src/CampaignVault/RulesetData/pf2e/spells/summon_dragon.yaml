@@ -11,3 +11,10 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+summon:
+  inlineSeed:
+    attacks: ["Dragon's own attack: the GM applies the spell's rank-appropriate dragon statistics and passes maxHp explicitly."]
+  countAtSlotLevel:
+    5: 1
+  durationRounds: 10
+  disposition: loyal

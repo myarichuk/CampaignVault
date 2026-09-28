@@ -1,0 +1,26 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# Detonate marrow in a 20-foot sphere: Dexterity save, 4d6 necrotic, half on success.
+name: ng_marrow_burst
+system: dnd5e
+level: 3
+classes: [wizard]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A splinter of bone.
+materialConsumed: false
+damageType: necrotic
+damageAtSlotLevel:
+  3: 4d6
+  4: 5d6
+  5: 6d6
+  6: 7d6
+  7: 8d6
+  8: 9d6
+  9: 10d6
+saveType: dexterity
+saveSuccess: half
+areaOfEffectType: sphere
+areaOfEffectSize: 20

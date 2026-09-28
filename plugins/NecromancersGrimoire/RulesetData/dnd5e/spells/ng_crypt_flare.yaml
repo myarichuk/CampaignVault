@@ -1,0 +1,21 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# Cold cairn-light: Intelligence save, 8d10 necrotic, half on success.
+name: ng_crypt_flare
+system: dnd5e
+level: 5
+classes: [wizard]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+damageType: necrotic
+damageAtSlotLevel:
+  5: 8d10
+  6: 9d10
+  7: 10d10
+  8: 11d10
+  9: 12d10
+saveType: intelligence
+saveSuccess: half

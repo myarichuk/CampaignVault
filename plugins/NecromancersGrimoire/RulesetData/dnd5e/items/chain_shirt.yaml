@@ -1,0 +1,13 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: chain_shirt
+system: dnd5e
+category: Armor
+tags: [medium]
+description: Medium armor. Base AC 13 + Dexterity bonus (max 2).
+properties:
+  acBonus: 3
+  armorType: Medium
+  weight: 20
+  costGp: 50
+equipZones: [Torso]
+equipLayer: Armor

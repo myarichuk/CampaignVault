@@ -101,6 +101,16 @@
     <Copy SourceFiles="@(ShadowAndSteelManifest)" DestinationFolder="$(PluginsOutputDir)\ShadowAndSteel" SkipUnchangedFiles="false" />
     <Copy SourceFiles="@(ShadowAndSteelRulesetData)" DestinationFolder="$(PluginsOutputDir)\ShadowAndSteel\RulesetData\%(RecursiveDir)" SkipUnchangedFiles="false" />
 
+    <!-- Copy NecromancersGrimoire plugin -->
+    <ItemGroup>
+      <NecromancersGrimoireDll Include="..\..\plugins\NecromancersGrimoire\bin\$(Configuration)\net10.0\NecromancersGrimoire.dll" />
+      <NecromancersGrimoireManifest Include="..\..\plugins\NecromancersGrimoire\plugin.json" />
+      <NecromancersGrimoireRulesetData Include="..\..\plugins\NecromancersGrimoire\RulesetData\**\*.yaml" />
+    </ItemGroup>
+    <Copy SourceFiles="@(NecromancersGrimoireDll)" DestinationFolder="$(PluginsOutputDir)\NecromancersGrimoire" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="@(NecromancersGrimoireManifest)" DestinationFolder="$(PluginsOutputDir)\NecromancersGrimoire" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="@(NecromancersGrimoireRulesetData)" DestinationFolder="$(PluginsOutputDir)\NecromancersGrimoire\RulesetData\%(RecursiveDir)" SkipUnchangedFiles="false" />
+
     <Message Text="Plugins copied successfully" Importance="High" />
   </Target>
 </Project>

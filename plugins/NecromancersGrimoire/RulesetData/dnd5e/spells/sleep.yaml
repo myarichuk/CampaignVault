@@ -1,0 +1,17 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: sleep
+system: dnd5e
+level: 1
+classes: [bard, sorcerer, wizard]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A pinch of fine sand, rose petals, or a cricket.
+materialConsumed: false
+damageAtSlotLevel:
+  1: 5d8
+areaOfEffectType: sphere
+areaOfEffectSize: 20
+damageIsPool: true

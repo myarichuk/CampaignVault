@@ -1,0 +1,14 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: suggestion
+system: dnd5e
+level: 2
+classes: [bard, sorcerer, warlock, wizard]
+concentration: true
+castingTime: 1 action
+verbal: true
+somatic: false
+material: true
+materialText: "A snake's tongue and either a bit of honeycomb or a drop of sweet oil."
+materialConsumed: false
+saveType: wis
+saveSuccess: none

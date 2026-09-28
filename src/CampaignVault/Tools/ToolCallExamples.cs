@@ -469,6 +469,7 @@ internal static class ToolCallExamples
                     + "SPELLS: use actionType Spell + parameters.resolution (attack|save|check|utility|heal). "
                     + "AoE saves: ONE ruleset_action with all targetIds — NOT per-target SavingThrow. "
                     + "Fireball pattern: resolution save, dc, save, damageDice, halfOnSave true. "
+                    + "SUMMONS (animate dead, conjure X, ng_bind_shade): parameters slotLevel (else base slot), count (else strongest option, at most the slot's max), creature (else first kind), maxHp when the kind has no catalog stats; reassert true + targetIds retains raised minions instead of raising new ones. Minions act on the caster's turn via ordinary ruleset_action; dismiss with character_update clearMinionLink + controlsMinionIdsRemove on the caster. "
                     + "Detect Magic: resolution check, dc, skill — no targetIds. "
                     + "5e casters: bootstrap spellcastingAbility on systemStats; omit dc/bonus if spellSaveDc/spellAttackBonus derived. "
                     + "RESOURCES: $type resource with poolName/delta/spellName spends spell slots/ki/focus points/gold; validates spell level, and spending below 0 HARD-FAILS the commit (\"Insufficient <pool> for <name>: has X, needs Y.\") — grants above max still clamp silently. Eligible pools recover immediately on rest completion, not on a later advance_world. "

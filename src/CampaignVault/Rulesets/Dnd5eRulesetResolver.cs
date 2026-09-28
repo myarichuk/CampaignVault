@@ -14,16 +14,19 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     private readonly IRollService _rollService;
     private readonly ICharacterBootstrapPipeline _bootstrap;
     private readonly SpellDefinitionProvider? _spellDefinitionProvider;
+    private readonly CreatureDefinitionProvider? _creatureDefinitionProvider;
 
     public Dnd5eRulesetResolver(
         IRollService rollService,
         RaceDefinitionProvider? raceProvider = null,
         ClassDefinitionProvider? classProvider = null,
         BackgroundDefinitionProvider? backgroundProvider = null,
-        SpellDefinitionProvider? spellDefinitionProvider = null)
+        SpellDefinitionProvider? spellDefinitionProvider = null,
+        CreatureDefinitionProvider? creatureDefinitionProvider = null)
     {
         _rollService = rollService ?? throw new ArgumentNullException(nameof(rollService));
         _spellDefinitionProvider = spellDefinitionProvider;
+        _creatureDefinitionProvider = creatureDefinitionProvider;
         var hpStep = new Dnd5eDeriveHitPointsStep(_rollService);
         var profStep = new Dnd5eDeriveProficiencyStep(classProvider, backgroundProvider);
         var passiveStep = new Dnd5eDerivePassivePerceptionStep();
@@ -261,6 +264,17 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var slug = NormalizeSpellSlug(action.ActionName);
         return _spellDefinitionProvider.TryGet(System, slug, out var spell) ? spell : null;
     }
+
+    protected override SpellDefinition? LookupSummonSpell(RulesetAction action)
+    {
+        var spell = LookupSpell(action);
+        return spell?.Summon != null ? spell : null;
+    }
+
+    protected override CreatureDefinitionProvider? SummonCreatureProvider => _creatureDefinitionProvider;
+
+    protected override void ApplySummonedDefense(Dnd5eExtension stats, int defense) =>
+        stats.ArmorClass = defense;
 
     private static bool HasInstanceData(SpellDefinition spell) =>
         spell.InstanceCountAtSlotLevel is { Count: > 0 }
@@ -674,9 +688,6 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         ["wis"] = "Wisdom",
         ["cha"] = "Charisma",
     };
-
-    private static string NormalizeSpellSlug(string name) =>
-        name.Trim().ToLowerInvariant().Replace(' ', '_').Replace('-', '_');
 
     private static string NormalizeDice(string dice) =>
         RegularExpressions.Regex.Replace(dice.Trim(), @"\s+", "");

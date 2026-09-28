@@ -76,6 +76,7 @@ public sealed class HpChangeHandler(IRollService rollService) : IWorldChangeHand
                     [CoreEvents.Fields.MaxHp] = character.MaxHp,
                     [CoreEvents.Fields.ActorId] = actorId
                 });
+                await LapseMinionsAsync(ctx, character, boundOnly: false, ct);
             }
         }
 
@@ -95,6 +96,7 @@ public sealed class HpChangeHandler(IRollService rollService) : IWorldChangeHand
                     character.SystemStats.StatusEffects.Remove(concentration);
                     ctx.RecordMessage(
                         $"Concentration broken for {hp.CharacterId}: {damageTaken} damage (DC {dc}), {saveLabel} save {outcome.Result} failed.");
+                    await LapseMinionsAsync(ctx, character, boundOnly: true, ct);
                 }
                 else
                 {
@@ -122,6 +124,18 @@ public sealed class HpChangeHandler(IRollService rollService) : IWorldChangeHand
         return batch[ctx.BatchIndex] is RulesetAction ra && ra.TargetIds.Contains(characterId, StringComparer.OrdinalIgnoreCase)
             ? ra.CharacterId
             : null;
+    }
+
+    private static async Task LapseMinionsAsync(
+        ChangeContext ctx, Character caster, bool boundOnly, CancellationToken ct)
+    {
+        var messages = new List<string>();
+        await MinionLapse.LapseCasterMinionsAsync(
+            ctx.Session, ctx.Characters, caster, boundOnly, messages, ct);
+        foreach (var message in messages)
+        {
+            ctx.RecordMessage(message);
+        }
     }
 
     /// <summary>Shared with DelayedTickProcessor so turn-start tick damage breaks concentration identically.</summary>

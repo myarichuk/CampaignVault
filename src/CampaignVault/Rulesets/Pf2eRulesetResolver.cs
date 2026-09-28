@@ -1,5 +1,6 @@
 using CampaignVault.Data;
 using CampaignVault.Data.ChangeHandlers;
+using CampaignVault.Data.Templates;
 using CampaignVault.Models;
 using CampaignVault.Rulesets.Bootstrap;
 using CampaignVault.Services;
@@ -18,10 +19,18 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 {
     private readonly IRollService _rollService;
     private readonly ICharacterBootstrapPipeline _bootstrap;
+    private readonly SpellDefinitionProvider? _spellDefinitionProvider;
+    private readonly CreatureDefinitionProvider? _creatureDefinitionProvider;
 
-    public Pf2eRulesetResolver(IRollService rollService, RaceDefinitionProvider? raceProvider = null)
+    public Pf2eRulesetResolver(
+        IRollService rollService,
+        RaceDefinitionProvider? raceProvider = null,
+        SpellDefinitionProvider? spellDefinitionProvider = null,
+        CreatureDefinitionProvider? creatureDefinitionProvider = null)
     {
         _rollService = rollService;
+        _spellDefinitionProvider = spellDefinitionProvider;
+        _creatureDefinitionProvider = creatureDefinitionProvider;
         var hpStep = new Pf2eDeriveHitPointsStep();
         var profStep = new Pf2eDeriveProficiencyStep();
         var spellStep = new Pf2eDeriveSpellcastingStep();
@@ -35,6 +44,29 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
     public override string System => RulesetSystem.Pathfinder2e;
 
     public override ICharacterBootstrapPipeline Bootstrap => _bootstrap;
+
+    protected override SpellDefinition? LookupSummonSpell(RulesetAction action)
+    {
+        if (_spellDefinitionProvider == null)
+        {
+            return null;
+        }
+
+        var slug = NormalizeSpellSlug(action.ActionName);
+        if (!_spellDefinitionProvider.TryGet(System, slug, out var spell) || spell?.Summon == null)
+        {
+            return null;
+        }
+
+        return spell;
+    }
+
+    protected override CreatureDefinitionProvider? SummonCreatureProvider => _creatureDefinitionProvider;
+
+    protected override int MaxSummonSlot => 10;
+
+    protected override void ApplySummonedDefense(Pf2eExtension stats, int defense) =>
+        stats.ArmorClass = defense;
 
     protected override IRollService? GetRollService() => _rollService;
 

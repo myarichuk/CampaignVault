@@ -1,0 +1,25 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# A hurled shard of bone: ranged spell attack, 2d8 piercing, +1d8 per slot.
+name: ng_bone_spear
+system: dnd5e
+level: 1
+classes: [wizard, cleric]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A knucklebone.
+materialConsumed: false
+damageType: piercing
+damageAtSlotLevel:
+  1: 2d8
+  2: 3d8
+  3: 4d8
+  4: 5d8
+  5: 6d8
+  6: 7d8
+  7: 8d8
+  8: 9d8
+  9: 10d8
+requiresAttackRoll: true

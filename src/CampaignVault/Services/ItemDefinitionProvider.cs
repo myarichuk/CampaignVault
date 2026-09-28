@@ -15,6 +15,8 @@ public class ItemDefinitionProvider : IRulesetYamlProvider
         new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, IReadOnlyDictionary<string, ItemDefinition>?> _cache =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, NameSearchIndex<ItemDefinition>> _nameIndexes =
+        new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
     private readonly ILogger? _logger;
 
@@ -95,11 +97,18 @@ public class ItemDefinitionProvider : IRulesetYamlProvider
         string? category = null,
         string? tag = null)
     {
-        var items = GetItemsForSystem(system).Values.AsEnumerable();
-
-        if (!string.IsNullOrWhiteSpace(nameQuery))
+        var hasNameQuery = !string.IsNullOrWhiteSpace(nameQuery);
+        var scores = new Dictionary<ItemDefinition, int>();
+        IEnumerable<ItemDefinition> items;
+        if (hasNameQuery)
         {
-            items = items.Where(i => i.Name.Contains(nameQuery, StringComparison.OrdinalIgnoreCase));
+            var hits = GetNameIndex(system).Search(nameQuery);
+            scores = hits.ToDictionary(h => h.Item, h => h.Score);
+            items = hits.Select(h => h.Item);
+        }
+        else
+        {
+            items = GetItemsForSystem(system).Values;
         }
 
         if (!string.IsNullOrWhiteSpace(category))
@@ -112,11 +121,28 @@ public class ItemDefinitionProvider : IRulesetYamlProvider
             items = items.Where(i => i.Tags.Any(t => string.Equals(t, tag, StringComparison.OrdinalIgnoreCase)));
         }
 
+        // Name search: best match first. Otherwise alphabetical.
         return
         [
-            .. items
-                .OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase)
+            .. (hasNameQuery
+                ? items.OrderByDescending(i => scores[i]).ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase)
+                : items.OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase))
         ];
+    }
+
+    private NameSearchIndex<ItemDefinition> GetNameIndex(string system)
+    {
+        var items = GetItemsForSystem(system);
+        lock (_lock)
+        {
+            if (!_nameIndexes.TryGetValue(system, out var index))
+            {
+                index = NameSearchIndex<ItemDefinition>.Build(items.Values, i => i.Name);
+                _nameIndexes[system] = index;
+            }
+
+            return index;
+        }
     }
 
     /// <summary>
@@ -136,6 +162,9 @@ public class ItemDefinitionProvider : IRulesetYamlProvider
     public void Reload()
     {
         lock (_lock)
+        {
             _cache.Clear();
+            _nameIndexes.Clear();
+        }
     }
 }

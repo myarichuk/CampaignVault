@@ -1,0 +1,15 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# A heavy club issued to zombie brutes.
+name: ng_greatclub
+system: dnd5e
+category: Weapon
+tags: [simple, melee]
+description: A door-beam club for zombie brutes (see ng_zombie_brute).
+properties:
+  damage: 1d8
+  damageType: bludgeoning
+  weight: 10
+  costGp: 1
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: true

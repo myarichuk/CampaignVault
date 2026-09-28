@@ -17,6 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DND5E_DIR = ROOT / "src/CampaignVault/RulesetData/dnd5e/spells"
 PF2E_DIR = ROOT / "src/CampaignVault/RulesetData/pf2e/spells"
 OVERLAY_PATH = ROOT / "scripts" / "spell_damage_overlay.yaml"
+SUMMON_OVERLAY_PATH = ROOT / "scripts" / "spell_summon_overlay.yaml"
+SUMMON_PF2E_OVERLAY_PATH = ROOT / "scripts" / "spell_summon_overlay_pf2e.yaml"
 
 DND5E_HEADER = (
     "# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0\n"
@@ -147,7 +149,52 @@ def write_spell(path: Path, header: str, body: dict) -> None:
             lines.append("  diceExpressionAtSlotLevel:")
             for level in sorted(dice_table):
                 lines.append(f"    {level}: {yaml_quote(dice_table[level])}")
+    lines.extend(render_summon_lines(body.get("summon")))
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def render_summon_lines(summon: dict | None) -> list[str]:
+    """Render the `summon:` YAML block for write_spell (also reused to verify
+    checked-in files carry exactly the generator's bytes)."""
+    if not summon:
+        return []
+    lines = ["summon:"]
+    if summon.get("creatures"):
+        lines.append(f"  creatures: [{', '.join(summon['creatures'])}]")
+    seed = summon.get("inlineSeed")
+    if seed:
+        lines.append("  inlineSeed:")
+        if seed.get("hp") is not None:
+            lines.append(f"    hp: {seed['hp']}")
+        if seed.get("defense") is not None:
+            lines.append(f"    defense: {seed['defense']}")
+        if seed.get("attacks"):
+            quoted = ", ".join(yaml_quote(a) for a in seed["attacks"])
+            lines.append(f"    attacks: [{quoted}]")
+    for key in ("countAtSlotLevel", "retainCountAtSlotLevel"):
+        table = summon.get(key)
+        if table:
+            lines.append(f"  {key}:")
+            for level in sorted(table):
+                lines.append(f"    {level}: {table[level]}")
+    choices = summon.get("countChoicesAtSlotLevel")
+    if choices:
+        lines.append("  countChoicesAtSlotLevel:")
+        for level in sorted(choices):
+            lines.append(f"    {level}: [{', '.join(str(v) for v in choices[level])}]")
+    if summon.get("durationRounds") is not None:
+        lines.append(f"  durationRounds: {summon['durationRounds']}")
+    if summon.get("durationDays") is not None:
+        lines.append(f"  durationDays: {summon['durationDays']}")
+    cap = summon.get("controlCap")
+    if cap:
+        lines.append("  controlCap:")
+        for key in ("maxCreatures", "maxHitDice", "hitDicePerCasterLevel"):
+            if cap.get(key) is not None:
+                lines.append(f"    {key}: {cap[key]}")
+    if summon.get("disposition"):
+        lines.append(f"  disposition: {summon['disposition']}")
+    return lines
 
 
 def fetch_json(url: str, retries: int = 3, data: bytes | None = None) -> dict:
@@ -356,6 +403,179 @@ def apply_damage_overlay(slug: str, body: dict, overlay: dict[str, dict]) -> Non
         body[key] = value
 
 
+# Summon overlay schema (scripts/spell_summon_overlay.yaml). Same stdlib-only
+# mini-YAML subset as the damage overlay (2-space indent, `#` comments), plus
+# inline string lists (`creatures: [skeleton, zombie]`) for handbook references
+# and seed attacks. Anything outside this schema fails loudly.
+SUMMON_INT_KEYS = {"durationRounds", "durationDays"}
+SUMMON_TABLE_KEYS = {"countAtSlotLevel", "retainCountAtSlotLevel"}
+SUMMON_CHOICE_TABLE_KEYS = {"countChoicesAtSlotLevel"}
+SUMMON_SEED_INT_KEYS = {"hp", "defense"}
+SUMMON_CAP_INT_KEYS = {"maxCreatures", "maxHitDice", "hitDicePerCasterLevel"}
+VALID_DISPOSITIONS = {"loyal", "neutral", "hostile"}
+
+
+def _parse_inline_str_list(text: str, where: str) -> list[str]:
+    text = text.strip()
+    if not (text.startswith("[") and text.endswith("]")):
+        raise ValueError(f"{where}: expected an inline list like [a, b], got {text!r}")
+    items: list[str] = []
+    current: list[str] = []
+    in_single = in_double = False
+    for ch in text[1:-1]:
+        if ch == "'" and not in_double:
+            in_single = not in_single
+            current.append(ch)
+        elif ch == '"' and not in_single:
+            in_double = not in_double
+            current.append(ch)
+        elif ch == "," and not in_single and not in_double:
+            items.append("".join(current).strip())
+            current = []
+        else:
+            current.append(ch)
+    tail = "".join(current).strip()
+    if tail:
+        items.append(tail)
+    result = []
+    for item in items:
+        if len(item) >= 2 and item[0] == item[-1] and item[0] in ("'", '"'):
+            item = item[1:-1]
+        if not item:
+            raise ValueError(f"{where}: empty entry in inline list")
+        result.append(item)
+    if not result:
+        raise ValueError(f"{where}: inline list must not be empty")
+    return result
+
+
+def _parse_inline_int_list(text: str, where: str) -> list[int]:
+    try:
+        return [int(item) for item in _parse_inline_str_list(text, where)]
+    except ValueError:
+        raise ValueError(f"{where}: expected an inline int list like [1, 2], got {text!r}") from None
+
+
+def load_summon_overlay() -> dict[str, dict]:
+    """Parse scripts/spell_summon_overlay.yaml into {slug: {'summon': {...}}}."""
+    return load_summon_overlay_file(SUMMON_OVERLAY_PATH, DND5E_DIR.parent / "creatures", 9)
+
+
+def load_summon_overlay_file(path, creatures_dir, max_slot: int) -> dict[str, dict]:
+    """Parse a summon overlay file into {slug: {'summon': {...}}}.
+
+    path: overlay YAML; creatures_dir: handbook dir creature refs must exist in;
+    max_slot: highest legal table level (9 for dnd5e slots, 10 for pf2e ranks).
+    """
+    if not path.exists():
+        return {}
+    overlay: dict[str, dict] = {}
+    slug: str | None = None
+    section: str | None = None
+    name = path.name
+    for lineno, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        line = _strip_overlay_comment(raw).rstrip()
+        if not line.strip():
+            continue
+        indent = len(line) - len(line.lstrip(" "))
+        if indent % 2 or indent > 4:
+            raise ValueError(f"{name}:{lineno}: bad indent (use 2 spaces/level, max 3 levels)")
+        content = line.strip()
+        where = f"{name}:{lineno}"
+        if indent == 0:
+            if not content.endswith(":"):
+                raise ValueError(f"{where}: expected 'slug:'")
+            slug = content[:-1].strip()
+            if not slug or slug in overlay:
+                raise ValueError(f"{where}: bad or duplicate slug {slug!r}")
+            overlay[slug] = {"summon": {}}
+            section = None
+        elif indent == 2:
+            if slug is None:
+                raise ValueError(f"{where}: entry before any slug")
+            key, _, value = content.partition(":")
+            key, value = key.strip(), value.strip()
+            section = None
+            summon = overlay[slug]["summon"]
+            if key == "creatures":
+                summon[key] = _parse_inline_str_list(value, where)
+            elif key in SUMMON_INT_KEYS:
+                summon[key] = _parse_overlay_scalar(value, "int", where)
+            elif key == "disposition":
+                summon[key] = _parse_overlay_scalar(value, "str", where)
+            elif key in SUMMON_TABLE_KEYS | SUMMON_CHOICE_TABLE_KEYS | {"inlineSeed", "controlCap"}:
+                if value:
+                    raise ValueError(f"{where}: {key!r} takes nested entries, not an inline value")
+                summon[key] = {}
+                section = key
+            else:
+                raise ValueError(f"{where}: unknown summon key {key!r}")
+        else:  # indent == 4
+            if slug is None or section is None:
+                raise ValueError(f"{where}: nested entry outside a mapping")
+            key, _, value = content.partition(":")
+            key, value = key.strip(), value.strip()
+            summon = overlay[slug]["summon"]
+            if section in SUMMON_TABLE_KEYS:
+                summon[section][_parse_overlay_scalar(key, "int", where)] = (
+                    _parse_overlay_scalar(value, "int", where))
+            elif section in SUMMON_CHOICE_TABLE_KEYS:
+                summon[section][_parse_overlay_scalar(key, "int", where)] = (
+                    _parse_inline_int_list(value, where))
+            elif section == "inlineSeed":
+                if key in SUMMON_SEED_INT_KEYS:
+                    summon[section][key] = _parse_overlay_scalar(value, "int", where)
+                elif key == "attacks":
+                    summon[section][key] = _parse_inline_str_list(value, where)
+                else:
+                    raise ValueError(f"{where}: unknown inlineSeed key {key!r}")
+            elif section == "controlCap":
+                if key not in SUMMON_CAP_INT_KEYS:
+                    raise ValueError(f"{where}: unknown controlCap key {key!r}")
+                summon[section][key] = _parse_overlay_scalar(value, "int", where)
+            else:
+                raise ValueError(f"{where}: nested entry under scalar {section!r}")
+    for entry_slug, entry in overlay.items():
+        summon = entry["summon"]
+        if not summon.get("creatures") and not summon.get("inlineSeed"):
+            raise ValueError(f"{entry_slug}: summon needs creatures or inlineSeed")
+        if summon.get("disposition") not in VALID_DISPOSITIONS:
+            raise ValueError(f"{entry_slug}: disposition must be one of {sorted(VALID_DISPOSITIONS)}")
+        for table_key in SUMMON_TABLE_KEYS:
+            for level, count in summon.get(table_key, {}).items():
+                if not 1 <= level <= max_slot:
+                    raise ValueError(f"{entry_slug}: {table_key} level {level} outside 1-{max_slot}")
+                if count < 1:
+                    raise ValueError(f"{entry_slug}: {table_key} counts must be >= 1")
+        for level, options in summon.get("countChoicesAtSlotLevel", {}).items():
+            if not 1 <= level <= max_slot:
+                raise ValueError(f"{entry_slug}: countChoicesAtSlotLevel level {level} outside 1-{max_slot}")
+            if not options or any(o < 1 for o in options):
+                raise ValueError(f"{entry_slug}: countChoicesAtSlotLevel options must be non-empty and >= 1")
+        durations = [k for k in ("durationRounds", "durationDays") if summon.get(k) is not None]
+        if len(durations) > 1:
+            raise ValueError(f"{entry_slug}: set at most one of durationRounds/durationDays")
+        for key in durations:
+            if summon[key] < 1:
+                raise ValueError(f"{entry_slug}: {key} must be >= 1")
+        for key in SUMMON_CAP_INT_KEYS:
+            if summon.get("controlCap", {}).get(key) is not None and summon["controlCap"][key] < 1:
+                raise ValueError(f"{entry_slug}: controlCap.{key} must be >= 1")
+        for creature in summon.get("creatures", []):
+            if not (creatures_dir / f"{creature}.yaml").exists():
+                raise ValueError(f"{entry_slug}: creature {creature!r} has no {creatures_dir.parent.name}/creatures YAML")
+    return overlay
+
+
+def apply_summon_overlay(slug: str, body: dict, overlay: dict[str, dict]) -> None:
+    entry = overlay.get(slug)
+    if not entry:
+        return
+    if "summon" in body:
+        raise ValueError(f"overlay for {slug!r} collides with API-derived key 'summon'")
+    body["summon"] = entry["summon"]
+
+
 def parse_dnd5e_mechanics(detail: dict) -> dict:
     """Pull damage/save/heal/AoE off the already-fetched dnd5eapi.co spell detail JSON.
     Confirmed live: damage is always keyed by slot level for leveled spells, even
@@ -424,6 +644,7 @@ def generate_dnd5e() -> int:
     spells = index["results"]
     DND5E_DIR.mkdir(parents=True, exist_ok=True)
     overlay = load_damage_overlay()
+    summon_overlay = load_summon_overlay()
 
     def load_spell(entry: dict) -> tuple[str, dict]:
         detail = fetch_json(f"https://www.dnd5eapi.co{entry['url']}")
@@ -458,6 +679,7 @@ def generate_dnd5e() -> int:
             if damage_entry_count > 1 and "damagePools" not in body and "damagePools" not in overlay.get(slug, {}):
                 print(f"  dnd5e: {slug} has multi-entry damage but no clean pools and no overlay — flat first-entry only")
             apply_damage_overlay(slug, body, overlay)
+            apply_summon_overlay(slug, body, summon_overlay)
             generated[slug] = body
             if i % 50 == 0:
                 print(f"  dnd5e: {i}/{len(spells)}")
@@ -465,6 +687,9 @@ def generate_dnd5e() -> int:
     unused = sorted(set(overlay) - set(generated))
     if unused:
         raise ValueError(f"overlay entries match no API spell: {', '.join(unused)}")
+    unused_summon = sorted(set(summon_overlay) - set(generated))
+    if unused_summon:
+        raise ValueError(f"summon overlay entries match no API spell: {', '.join(unused_summon)}")
 
     for path in DND5E_DIR.glob("*.yaml"):
         path.unlink()
@@ -574,6 +799,15 @@ def generate_pf2e() -> int:
             "materialCost": parse_gp_cost(cost_text) if cost_text else None,
             "materialConsumed": bool(cost_text),
         }
+
+    summon_overlay = load_summon_overlay_file(
+        SUMMON_PF2E_OVERLAY_PATH, PF2E_DIR.parent / "creatures", 10)
+    for slug, body in generated.items():
+        apply_summon_overlay(slug, body, summon_overlay)
+
+    unused_summon = sorted(set(summon_overlay) - set(generated))
+    if unused_summon:
+        raise ValueError(f"pf2e summon overlay entries match no AoN spell: {', '.join(unused_summon)}")
 
     for path in PF2E_DIR.glob("*.yaml"):
         path.unlink()

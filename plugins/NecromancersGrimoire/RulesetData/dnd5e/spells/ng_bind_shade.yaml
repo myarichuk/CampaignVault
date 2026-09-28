@@ -1,0 +1,31 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# Bind a shade from the gloom: one umbral stalker at 2nd level, two from 4th.
+# Control rides on concentration for up to 1 hour; the engine enforces the
+# two-shade standing cap across castings (excess oldest-first is released).
+# Each binding consumes onyx worth 25 gp (ng_onyx_focus).
+name: ng_bind_shade
+system: dnd5e
+level: 2
+classes: [wizard, warlock]
+concentration: true
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: Onyx worth 25 gp per bound shade, which the spell consumes (ng_onyx_focus).
+materialConsumed: true
+summon:
+  creatures: [Umbral Stalker]
+  countAtSlotLevel:
+    2: 1
+    3: 1
+    4: 2
+    5: 2
+    6: 2
+    7: 2
+    8: 2
+    9: 2
+  durationRounds: 600
+  controlCap:
+    maxCreatures: 2
+  disposition: loyal

@@ -1,0 +1,16 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: reverse_gravity
+system: dnd5e
+level: 7
+classes: [druid, sorcerer, wizard]
+concentration: true
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A lodestone and iron filings.
+materialConsumed: false
+saveType: dex
+saveSuccess: other
+areaOfEffectType: cylinder
+areaOfEffectSize: 50

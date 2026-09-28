@@ -1,0 +1,15 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: light_hammer
+system: dnd5e
+category: Weapon
+tags: [light, melee, monk, simple, thrown]
+description: Simple melee weapon. Deals 1d4 bludgeoning damage.
+properties:
+  damage: 1d4
+  damageType: bludgeoning
+  weight: 2
+  costGp: 2
+  range: Close
+equipZones: [MainHand]
+equipLayer: Held
+twoHanded: false

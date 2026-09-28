@@ -58,7 +58,6 @@ public class PendingLevelUpChoicesResponse
     public int CurrentLevel { get; set; }
     public int TargetLevel { get; set; }
 
-    [JsonConverter(typeof(JsonStringEnumConverter))]
     public string? System { get; set; }
 
     /// <summary>Feature names/descriptions gained at the target level, for narrative flavor.</summary>

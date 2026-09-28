@@ -1,0 +1,14 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: divine_favor
+system: dnd5e
+level: 1
+classes: [paladin]
+concentration: true
+castingTime: 1 bonus action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+damageType: radiant
+damageAtSlotLevel:
+  1: 1d4

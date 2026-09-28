@@ -1,0 +1,17 @@
+name: Skeleton
+system: dnd5e
+description: The animated skeletal remains of a creature, often under magical control.
+level: 0
+challengeRating: "1/8"
+hp: 13
+defense: 13
+skills:
+  - "Perception +2"
+abilities:
+  - "Speed: 30 ft."
+  - "Vulnerable to Bludgeoning damage."
+  - "Immune to cold, lightning, poison."
+  - "Darkvision: 60 ft."
+  - "Undead: The skeleton doesn't require air, food, drink, or sleep."
+  - "Shortsword (Melee Weapon Attack): +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) piercing damage."
+  - "Shortbow (Ranged Weapon Attack): +4 to hit, range 80/320 ft., one target. Hit: 5 (1d6 + 2) piercing damage."

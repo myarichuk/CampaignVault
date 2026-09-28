@@ -1,0 +1,22 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: wall_of_thorns
+system: dnd5e
+level: 6
+classes: [druid]
+concentration: true
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A handful of thorns.
+materialConsumed: false
+damageType: piercing
+damageAtSlotLevel:
+  6: 7d8
+  7: 8d8
+  8: 9d8
+  9: 10d8
+saveType: dex
+saveSuccess: half
+areaOfEffectType: line
+areaOfEffectSize: 60

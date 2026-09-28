@@ -1,0 +1,13 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: command
+system: dnd5e
+level: 1
+classes: [cleric, paladin]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: false
+material: false
+materialConsumed: false
+saveType: wis
+saveSuccess: none

@@ -1,0 +1,11 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: true_strike
+system: dnd5e
+level: 0
+classes: [bard, sorcerer, warlock, wizard]
+concentration: true
+castingTime: 1 action
+verbal: false
+somatic: true
+material: false
+materialConsumed: false

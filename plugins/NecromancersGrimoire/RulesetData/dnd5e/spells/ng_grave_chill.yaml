@@ -1,0 +1,19 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# A cantrip that leeches warmth: make a ranged spell attack, 1d8 necrotic.
+name: ng_grave_chill
+system: dnd5e
+level: 0
+classes: [wizard, warlock]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+damageType: necrotic
+damageAtCharacterLevel:
+  1: 1d8
+  5: 2d8
+  11: 3d8
+  17: 4d8
+requiresAttackRoll: true

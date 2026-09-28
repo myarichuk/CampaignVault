@@ -1,0 +1,14 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: move_earth
+system: dnd5e
+level: 6
+classes: [druid, sorcerer, wizard]
+concentration: true
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: An iron blade and a small bag containing a mixture of soils--clay, loam, and sand.
+materialConsumed: false
+areaOfEffectType: cone
+areaOfEffectSize: 40

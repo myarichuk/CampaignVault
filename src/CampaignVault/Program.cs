@@ -8,7 +8,10 @@ using CampaignVault.Services;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
+using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 
 // for brevity in the listener
 
@@ -225,6 +228,17 @@ if (enableStdioTransport)
     mcpServerBuilder.WithStdioServerTransport();
 }
 
+// Tool request/response payloads carry WorldChange (e.g. take_turn's PartyDelta[].Changes), whose
+// polymorphism must stay open to plugin-registered $types (see WorldChangeTypeRegistry) — the SDK's
+// own default resolver only knows the closed, compile-time [JsonDerivedType] set on WorldChange and
+// throws NotSupportedException serializing a plugin type like LewdHandbook's LewdRestChange otherwise.
+var mcpToolSerializerOptions = new JsonSerializerOptions(McpJsonUtilities.DefaultOptions)
+{
+    TypeInfoResolver = JsonTypeInfoResolver.Combine(
+        WorldChangeTypeRegistry.Instance.CreateTypeInfoResolver(),
+        McpJsonUtilities.DefaultOptions.TypeInfoResolver)
+};
+
 mcpServerBuilder
     .WithHttpTransport(options =>
     {
@@ -237,7 +251,7 @@ mcpServerBuilder
             return Task.CompletedTask;
         };
     })
-    .WithToolsFromAssembly()
+    .WithToolsFromAssembly(serializerOptions: mcpToolSerializerOptions)
     .WithRequestFilters(filters =>
     {
         McpToolTelemetryFilter.Register(filters);

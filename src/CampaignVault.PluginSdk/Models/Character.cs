@@ -126,6 +126,28 @@ public class Character : ICampaignScopedEntity
     /// (No legacy BC requirement per review feedback; always set for new data.)
     /// </summary>
     public string? CampaignName { get; set; }
+
+    /// <summary>
+    /// Set on a summoned minion: character id of the controlling caster. Null for
+    /// ordinary characters. Mirrored by the caster's <see cref="ControlsMinionIds"/>;
+    /// both sides are kept in sync by the summon, dismiss, cap-release, and lapse
+    /// paths (never hand-edited separately).
+    /// </summary>
+    public string? ControlledById { get; set; }
+
+    /// <summary>
+    /// Set on a summoned minion: how/when control over it ends. Null for ordinary
+    /// characters. Kept as a lapsed record on dismiss, release, or lapse (the body
+    /// stays as an ordinary NPC played at the recorded disposition).
+    /// </summary>
+    public MinionBinding? MinionBinding { get; set; }
+
+    /// <summary>
+    /// Set on a summoner (PC, NPC, or enemy): character ids of the minions it
+    /// currently controls, oldest first. Powers the control-cap check and the
+    /// minion-may-act-on-controller's-turn rule. Empty for non-summoners.
+    /// </summary>
+    public List<string> ControlsMinionIds { get; set; } = [];
 }
 
 public class PsychologyProfile

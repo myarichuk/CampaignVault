@@ -1,0 +1,39 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: ice_storm
+system: dnd5e
+level: 4
+classes: [druid, sorcerer, wizard]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A pinch of dust and a few drops of water.
+materialConsumed: false
+damageType: bludgeoning
+damageAtSlotLevel:
+  4: 2d8
+  5: 3d8
+  6: 4d8
+  7: 5d8
+  8: 6d8
+  9: 7d8
+saveType: dex
+saveSuccess: half
+areaOfEffectType: cylinder
+areaOfEffectSize: 20
+damagePools:
+  bludgeoning:
+    4: 2d8
+    5: 3d8
+    6: 4d8
+    7: 5d8
+    8: 6d8
+    9: 7d8
+  cold:
+    4: 4d6
+    5: 4d6
+    6: 4d6
+    7: 4d6
+    8: 4d6
+    9: 4d6

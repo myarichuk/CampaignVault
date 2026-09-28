@@ -1,0 +1,21 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+name: blight
+system: dnd5e
+level: 4
+classes: [druid, sorcerer, warlock, wizard]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+damageType: necrotic
+damageAtSlotLevel:
+  4: 8d8
+  5: 9d8
+  6: 10d8
+  7: 11d8
+  8: 12d8
+  9: 13d8
+saveType: con
+saveSuccess: half

@@ -69,6 +69,19 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
         return new ToolResult<object>(r.Success, r.Data, r.Summary, r.Error, r.WorldPressure, r.RetryExample);
     }
 
+    /// <summary>
+    /// Lapses a combatant caster's minions after turn-start tick damage breaks its
+    /// concentration or drops it. Shared by every DelayedTickProcessor call site so
+    /// tick damage and direct HpChange damage lapse minions identically.
+    /// </summary>
+    private static Task LapseCasterMinionsAsync(
+        IAsyncDocumentSession session,
+        IReadOnlyDictionary<string, Character> loaded,
+        Character caster,
+        bool concentrationOnly,
+        List<string> messages) =>
+        MinionLapse.LapseCasterMinionsAsync(session, loaded, caster, concentrationOnly, messages);
+
     internal Task<ToolResult<CombatEncounterView>> StartCombat(
         [Description("The location ID where combat is happening.")]
         string locationId,
@@ -120,7 +133,10 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                 var oldCharacters = await session.LoadAsync<Character>(oldIds);
                 foreach (var abandoned in oldCharacters.Values.Where(c => c != null)!)
                 {
-                    abandonedTickEvents.AddRange(await DelayedTickProcessor.ProcessAsync(abandoned, _rollService, abandonedMessages));
+                    abandonedTickEvents.AddRange(await DelayedTickProcessor.ProcessAsync(
+                        abandoned, _rollService, abandonedMessages,
+                        onConcentrationBroken: c => LapseCasterMinionsAsync(session, oldCharacters, c, true, abandonedMessages),
+                        onDowned: c => LapseCasterMinionsAsync(session, oldCharacters, c, false, abandonedMessages)));
                     if (abandoned.SystemStats?.StatusEffects != null)
                     {
                         var stale = abandoned.SystemStats.StatusEffects.Where(e => e.ExpiresAtRound.HasValue).ToList();
@@ -129,6 +145,13 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                             abandoned.SystemStats.StatusEffects.Remove(effect);
                             abandonedMessages.Add($"Cleared effect '{effect.Name}' on '{abandoned.Name}' from the abandoned encounter.");
                         }
+                    }
+
+                    // Round-scoped minion control does not survive into the fresh encounter.
+                    if (abandoned!.MinionBinding is { ControlLapsed: false, DurationRounds: not null })
+                    {
+                        await MinionLapse.LapseAndUnlinkAsync(session, oldCharacters, abandoned,
+                            "sees its binding combat end.", abandonedMessages);
                     }
                 }
             }
@@ -330,7 +353,10 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                 .FirstOrDefault(id => characters.TryGetValue(id, out var upcoming) && upcoming != null && upcoming.CurrentHp > 0);
             if (upcomingId != null && characters.TryGetValue(upcomingId, out var upcomingCharacter) && upcomingCharacter != null)
             {
-                tickEvents.AddRange(await DelayedTickProcessor.ProcessAsync(upcomingCharacter, _rollService, expiredMessages));
+                tickEvents.AddRange(await DelayedTickProcessor.ProcessAsync(
+                    upcomingCharacter, _rollService, expiredMessages,
+                    onConcentrationBroken: c => LapseCasterMinionsAsync(session, characters, c, true, expiredMessages),
+                    onDowned: c => LapseCasterMinionsAsync(session, characters, c, false, expiredMessages)));
             }
 
             var next = GetNextAliveUnacted();
@@ -370,12 +396,26 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                     }
                 }
 
+                // Expire round-scoped minion bindings on the same round boundary.
+                foreach (var character in characters.Values.Where(c => c != null))
+                {
+                    if (character!.MinionBinding is { ControlLapsed: false, ExpiresAtRound: { } expires }
+                        && expires <= encounter.Round)
+                    {
+                        await MinionLapse.LapseAndUnlinkAsync(session, characters, character,
+                            "reaches the end of its bound duration.", expiredMessages);
+                    }
+                }
+
                 // Post-wrap: the freshly picked `next` never saw the pre-pick peek (it ran before
                 // the wrap, when everyone had acted). Resolve its turn-start effects now; a lethal
                 // tick passes the turn on, ending combat if nobody remains.
                 if (next != null && characters.TryGetValue(next.CharacterId, out var wrapped) && wrapped != null)
                 {
-                    tickEvents.AddRange(await DelayedTickProcessor.ProcessAsync(wrapped, _rollService, expiredMessages));
+                    tickEvents.AddRange(await DelayedTickProcessor.ProcessAsync(
+                        wrapped, _rollService, expiredMessages,
+                        onConcentrationBroken: c => LapseCasterMinionsAsync(session, characters, c, true, expiredMessages),
+                        onDowned: c => LapseCasterMinionsAsync(session, characters, c, false, expiredMessages)));
                     if (wrapped.CurrentHp <= 0)
                     {
                         // No acted-flag: the HP filter already skips the corpse on re-pick, and an
@@ -457,7 +497,10 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
             {
                 // Own-turn-start effects never get another turn start once combat ends — resolve any
                 // pending damage now rather than leaking the effects into a later encounter.
-                tickEvents.AddRange(await DelayedTickProcessor.ProcessAsync(character, _rollService, expiredMessages));
+                tickEvents.AddRange(await DelayedTickProcessor.ProcessAsync(
+                    character, _rollService, expiredMessages,
+                    onConcentrationBroken: c => LapseCasterMinionsAsync(session, characters, c, true, expiredMessages),
+                    onDowned: c => LapseCasterMinionsAsync(session, characters, c, false, expiredMessages)));
 
                 if (character.SystemStats?.StatusEffects != null)
                 {
@@ -468,6 +511,14 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                         effects.Remove(effect);
                         expiredMessages.Add($"Cleared effect '{effect.Name}' on '{character.Name}'.");
                     }
+                }
+
+                // Round-scoped minion control ends with the encounter (mirrors the
+                // aggressive effect clearing above); day-bound bindings persist.
+                if (character.MinionBinding is { ControlLapsed: false, DurationRounds: not null })
+                {
+                    await MinionLapse.LapseAndUnlinkAsync(session, characters, character,
+                        "sees its binding combat end.", expiredMessages);
                 }
 
                 // Recover pools with RecoveryType.EncounterEnd

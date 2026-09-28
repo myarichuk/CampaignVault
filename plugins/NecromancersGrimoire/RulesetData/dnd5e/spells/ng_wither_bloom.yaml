@@ -1,0 +1,25 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# A blooming rot in a 10-foot sphere: Dexterity save, 7d6 necrotic, half on success.
+name: ng_wither_bloom
+system: dnd5e
+level: 4
+classes: [wizard, druid]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: true
+materialText: A desiccated flower.
+materialConsumed: false
+damageType: necrotic
+damageAtSlotLevel:
+  4: 7d6
+  5: 8d6
+  6: 9d6
+  7: 10d6
+  8: 11d6
+  9: 12d6
+saveType: dexterity
+saveSuccess: half
+areaOfEffectType: sphere
+areaOfEffectSize: 10
