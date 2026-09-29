@@ -58,6 +58,10 @@ Note: `world_build.quests[].objectives[]` only needs `description` (+ optional `
 | `parameters.halfOnSave` | true/false — 5e defaults **true** (half damage on successful save) |
 | `parameters.healDice` / `healBonus` / `healAmount` | Healing spells (5e/PF2e) |
 | `parameters.spellAttackBonus` / `dc` | Optional if caster has bootstrapped `spellAttackBonus` / `spellSaveDc` on systemStats |
+| `parameters.bonus` / `damageBonus` | **Omit for weapon attacks**: to-hit and damage derive from the sheet (ability, proficiency, fighting style, weapon enchantment). Passing either REPLACES that derived total. On skill checks `bonus` replaces the sheet skill modifier |
+| `parameters.assert` | Comma-separated condition flags YOU judge true now (e.g. `allyNear`); unlocks recorded feat effects that require them. take_turn's `featChecklist` lists them while combat is active; unclaimed effects are reported in the roll result |
+| `parameters.offHand` / `option` | true: bonus-action off-hand attack (no ability mod on damage without Two-Weapon Fighting) / Cunning Action choice `dash`, `disengage` or `hide` (actionName "Cunning Action", hide needs `dc`) |
+| `parameters.powerAttack` / `sneakAttack` / `actionSurge` / `bonusAction` | true: opt in to a recorded feat's toggle of that name (e.g. a homebrew -5/+10 power attack) / sneak dice when an ally is adjacent (advantage also triggers) / spend Action Surge for +1 action / use the bonus action (Cunning Action, Second Wind, off-hand) |
 
 ### knowledge_update
 | Field | Valid values |

@@ -11,12 +11,15 @@ namespace CampaignVault.Models;
 public class LevelUpChoiceRecord
 {
     /// <summary>The character level at which this choice was made.</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("level")]
     public int Level { get; set; }
 
     /// <summary>Choice key from the progression data (e.g. "subclass", "fightingStyle", "asiOrFeat").</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("key")]
     public string Key { get; set; } = null!;
 
     /// <summary>The chosen option id, or free-text description for systems without an enumerated catalog.</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("value")]
     public string Value { get; set; } = null!;
 }
 

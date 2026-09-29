@@ -93,8 +93,8 @@ public class ResourcePoolStage2Tests
     {
         var actual = Provider.GetPoolsForSystem(RulesetSystem.Dnd5e);
 
-        // 9 spell slot levels + 10 class-specific pools (including gold, pact_magic)
-        Assert.Equal(19, actual.Count);
+        // 9 spell slot levels + 11 class-specific pools (including gold, pact_magic, second_wind)
+        Assert.Equal(20, actual.Count);
         Assert.True(actual.ContainsKey("spell_slots_1"));
         Assert.True(actual.ContainsKey("font_of_magic"));
     }

@@ -1,6 +1,6 @@
 ---
 name: dnd-combat
-description: D&D combat initialization, turn order, actions, spells, HP, grapple, and status effects
+description: D&D 5e combat (Pathfinder 2e campaigns use pf2e-combat) — initialization, turn order, actions, spells, HP, grapple, and status effects
 metadata:
   type: skill
 ---
@@ -22,7 +22,7 @@ Only bundle multiple actors into one `take_turn` when they're genuinely simultan
 
 ## Action Types (ruleset_action.actionType)
 
-- **Attack** — bonus, optional dc
+- **Attack** — omit `bonus`/`damageBonus`: the engine derives them from the sheet (ability + proficiency + fighting style + weapon enchantment); passing either replaces the derived total. Optional per-attack flags: `powerAttack` (only if a recorded feat defines that toggle), `sneakAttack` (ally adjacent), `offHand` (bonus-action off-hand attack; no ability mod on damage without Two-Weapon Fighting; refused before an Attack action this turn, and, when weapons are equipped in the hand zones, unless two light weapons are wielded — `item_equip` both), `actionSurge`, `bonusAction`, `assert` (see below). List one target per swing of Extra Attack; the result warns if `targetIds` outnumber the attacks one action allows or `attackCount` skips a listed target. Cunning Action is its own bonus action: `actionName` "Cunning Action", `parameters.option` dash|disengage|hide (hide needs `dc`). Bard Jack of All Trades is applied automatically to unproficient ability checks and initiative. Extra Attack (Fighter 5+) needs no flag: the further swings of one Attack action don't cost another action. Record fighting style/subclass via level_up choices or `systemStats.levelUpChoices`, or Archery/Dueling won't apply.
 - **SkillCheck** — skill name, dc
 - **SavingThrow** — save type (Dexterity, etc.), dc
 - **ContestedCheck** — skill vs. skill (for grapple, opposed rolls)
@@ -127,3 +127,12 @@ Commit status changes:
 - [ ] Is someone grappling? → Engine auto-applies engagement; manual `engagement_relation` only for non-grapple restraint
 - [ ] If it just advanced to a PC's turn, did I stop instead of choosing their action for them?
 - [ ] Did I resolve the PC's declared action via a check instead of refusing it outright?
+
+## Feat effects (homebrew and SRD)
+Feats can declare `effects` (upsert_feat): fixed numeric modifiers to attack, damage, skill, save or AC rolls. The engine applies the number; you only supply facts.
+- **Engine-checked** conditions (weapon `ranged`/`melee`/`finesse`/`twoHanded`/`heavy`) and player **toggles** (`parameters.powerAttack: "true"`) need nothing from you beyond the toggle.
+- **DM-judged** conditions ("an ally is adjacent", "shooting from higher ground") are flags: put the ones you judge true right now in `parameters.assert` (comma-separated, e.g. `"allyNear,highGround"`). take_turn's `featChecklist` lists the flags every response while combat is active (everyone in round 1, the active character after). An effect whose flag you did not assert is *reported* in the roll result ("not applied: needs assert=…"), never applied silently. Never invent the number; pass only the flag.
+- PF2e effects carry a `bonusType`; among a character's feat effects only the highest bonus and worst penalty of each typed kind count.
+- A feat gated with `requires: {plugin, mode?}` is inert until that plugin is loaded (and that mode running, if named).
+- A homebrew feat with no effects is flagged `feat_unimplemented_effects`; set `adjudicated: true` if you will apply it by judgment. Rules that fit no effect kind (reactions, triggers) belong in `mechanicalSummary` with `adjudicated: true`.
+- Roll results echo every applied or unclaimed effect (attack, damage, skill, save, AC, PF2e grapple/escape). Not yet echoed: PF2e contested checks and spell saves against a target, and 5e/PF2e initiative (initiative effects are not supported).

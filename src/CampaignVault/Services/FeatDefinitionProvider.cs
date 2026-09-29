@@ -76,6 +76,14 @@ public class FeatDefinitionProvider : IRulesetYamlProvider
 
             var resolved = resolver.ResolveAll(raw, _logger);
 
+            // A typo'd effect kind in shipped or plugin YAML would silently do nothing; say so once, at load.
+            foreach (var (name, def) in resolved)
+            {
+                var problems = CampaignVault.Rulesets.FeatEffectRules.Validate(def.Effects);
+                if (problems.Count > 0)
+                    _logger?.LogWarning("Feat '{Feat}' ({System}) has invalid effects: {Problems}", name, system, string.Join(" ", problems));
+            }
+
             _cache[system] = resolved;
             return resolved;
         }

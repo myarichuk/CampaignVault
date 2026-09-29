@@ -12,9 +12,11 @@ internal static class WeaponParameterResolver
     private static readonly Dictionary<string, string> PropertyAliases =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            ["toHitBonus"] = "bonus",
-            ["attackBonus"] = "bonus",
-            ["tohit"] = "bonus",
+            // A weapon's own enchantment is an input to the derived to-hit, not a caller-supplied total:
+            // mapping it to "bonus" would switch derivation off for every +1 weapon.
+            ["toHitBonus"] = "itemToHitBonus",
+            ["attackBonus"] = "itemToHitBonus",
+            ["tohit"] = "itemToHitBonus",
             ["damage"] = "damageDice",
             ["shots"] = "attackCount",
             ["rateOfFire"] = "attackCount",
@@ -116,6 +118,12 @@ internal static class WeaponParameterResolver
             }
         }
 
+        // Item tags (ranged, finesse, two-handed, heavy...) tell the resolver which ability and feature rules apply.
+        if (weapon.Tags.Count > 0 && !action.Parameters.ContainsKey("weaponTags"))
+        {
+            action.Parameters["weaponTags"] = string.Join(',', weapon.Tags);
+        }
+
         if (string.IsNullOrWhiteSpace(action.DamageType))
         {
             var damageType = weapon.Properties.Keys
@@ -131,6 +139,17 @@ internal static class WeaponParameterResolver
     {
         itemId = string.Empty;
         return TryGetItemId(parameters, out itemId);
+    }
+
+    /// <summary>Weapons the character has equipped in a hand zone (what is actually wielded, not merely carried).</summary>
+    public static async Task<List<Item>> GetWieldedWeaponsAsync(
+        IChangeContext context,
+        string characterId,
+        CancellationToken ct = default)
+    {
+        var held = await GetHeldWeaponsAsync(context, characterId, ct);
+        return [.. held.Where(i => i.IsEquipped
+                                   && i.EquipZones.Any(z => z is EquipZones.MainHand or EquipZones.OffHand))];
     }
 
     private static async Task<List<Item>> GetHeldWeaponsAsync(

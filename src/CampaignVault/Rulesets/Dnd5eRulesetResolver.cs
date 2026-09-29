@@ -58,6 +58,12 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             return skillMod;
         }
 
+        // A skill the sheet has no entry for is untrained, not zero: it still rolls its governing ability modifier.
+        if (CampaignVault.Rulesets.Bootstrap.Dnd5eSkillTable.GoverningAbility.TryGetValue(name, out var governing))
+        {
+            name = governing;
+        }
+
         return name.ToLower() switch
         {
             "strength" => stats.GetAbilityModifier(stats.Strength),
@@ -68,6 +74,44 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             "charisma" => stats.GetAbilityModifier(stats.Charisma),
             _ => 0
         };
+    }
+
+    /// <summary>
+    /// Jack of All Trades (Bard 2): half the proficiency bonus, rounded down, on any ability check the character is not proficient
+    /// in. A skill counts as proficient when its sheet modifier already includes the proficiency bonus.
+    /// </summary>
+    private int JackOfAllTradesBonus(Character character, Dnd5eExtension stats, string skillOrAbility)
+    {
+        if (CombatFeatureRules.ClassLevel(character, "bard") < 2)
+        {
+            return 0;
+        }
+
+        var prof = CombatFeatureRules.ProficiencyBonus(stats);
+        if (prof <= 0)
+        {
+            return 0;
+        }
+
+        var governing = CampaignVault.Rulesets.Bootstrap.Dnd5eSkillTable.GoverningAbility.TryGetValue(skillOrAbility, out var g) ? g : skillOrAbility;
+        var abilityMod = governing.ToLowerInvariant() switch
+        {
+            "strength" => stats.GetAbilityModifier(stats.Strength),
+            "dexterity" => stats.GetAbilityModifier(stats.Dexterity),
+            "constitution" => stats.GetAbilityModifier(stats.Constitution),
+            "intelligence" => stats.GetAbilityModifier(stats.Intelligence),
+            "wisdom" => stats.GetAbilityModifier(stats.Wisdom),
+            "charisma" => stats.GetAbilityModifier(stats.Charisma),
+            _ => int.MinValue,
+        };
+        if (abilityMod == int.MinValue)
+        {
+            return 0;
+        }
+
+        var entry = stats.SkillModifiers.FirstOrDefault(kv => string.Equals(kv.Key, skillOrAbility, StringComparison.OrdinalIgnoreCase));
+        var proficient = entry.Key is not null && entry.Value >= abilityMod + prof;
+        return proficient ? 0 : prof / 2;
     }
 
     private int GetSavingThrowBonus(Dnd5eExtension stats, string name)
@@ -115,6 +159,12 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             return ResolverResult.Fail("InvalidTarget", "Error: No valid target specified for attack.");
         }
 
+        if (action.ActionType == RulesetActionType.Attack && CombatFeatureRules.IsTrue(action, "offHand")
+            && await OffHandProblemAsync(action, context, ct) is { } offHandProblem)
+        {
+            return ResolverResult.Fail("InvalidAction", $"Error: {offHandProblem}");
+        }
+
         var narratives = new List<string>();
         for (var i = 0; i < targets.Count; i++)
         {
@@ -128,7 +178,10 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             narratives.Add(result.Narrative);
         }
 
-        return ResolverResult.Ok(string.Join(" | ", narratives));
+        var attacksPerAction = action.ActionType == RulesetActionType.Attack && context.Characters.TryGetValue(action.CharacterId, out var attacker)
+            ? CombatFeatureRules.ExtraAttacksPerAction(attacker)
+            : (int?)null;
+        return ResolverResult.Ok(string.Join(" | ", narratives) + AttackTargetHelper.MultiTargetWarning(action, attacksPerAction));
     }
 
     private async Task<ResolverResult> ResolveAttackAgainstTargetAsync(
@@ -153,7 +206,8 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
         var actorChar = context.Characters[action.CharacterId];
         var ac = targetStats.ArmorClass;
-        ac = (await FoldAsync(context, target, RollKinds.ArmorClass, null, ac, other: actorChar).ConfigureAwait(false)).Bonus;
+        var acFold = await FoldAsync(context, target, RollKinds.ArmorClass, null, ac, action, other: actorChar).ConfigureAwait(false);
+        ac = acFold.Bonus;
         
         if (action.Parameters.TryGetValue("ac", out var acStr) && int.TryParse(acStr, out var overrideAc))
         {
@@ -172,6 +226,16 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             attackBonus = ResolveSpellAttackBonus(actorStats);
         }
 
+        // Weapon attacks earn ability modifier, proficiency and fighting-style bonuses from the sheet unless the caller
+        // states the number; see DerivedAttack for the override rules.
+        var hasExplicitDamage = action.Parameters.ContainsKey("damageBonus")
+            || DerivedAttack.HasInlineModifier(action.Parameters.GetValueOrDefault("damageDice"));
+        var derived = action.ActionType == RulesetActionType.Attack
+            ? DerivedAttack.Dnd5e(actorChar, actorStats, action, hasExplicitBonus, hasExplicitDamage)
+            : null;
+        attackBonus += derived?.ToHit ?? 0;
+        var bareWarning = (derived?.Note ?? "") + acFold.Suffix;
+
         var attackFold = await FoldAsync(
             context, actorChar, RollKinds.Attack, null, attackBonus, action, GetMechanicFromAction(action), target).ConfigureAwait(false);
         attackBonus = attackFold.Bonus;
@@ -184,7 +248,11 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid damageBonus value '{db}'.");
         }
 
-        damageBonus = (await FoldAsync(context, actorChar, RollKinds.Damage, null, damageBonus, action, other: target).ConfigureAwait(false)).Bonus;
+        damageBonus += derived?.Damage ?? 0;
+
+        var damageFold = await FoldAsync(context, actorChar, RollKinds.Damage, null, damageBonus, action, other: target).ConfigureAwait(false);
+        damageBonus = damageFold.Bonus;
+        bareWarning += damageFold.Suffix;
 
         var mechanic = attackFold.Mechanic;
         var requiresAttackRoll = spell?.RequiresAttackRoll ?? true;
@@ -228,9 +296,9 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
                 {
                     mutations.Add(new HpChange { CharacterId = targetId, Delta = -splashDamage });
                 }
-                return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Missed, but the acid still splashes for {splashDamage} damage. {attackDetail}");
+                return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Missed, but the acid still splashes for {splashDamage} damage. {attackDetail}{bareWarning}");
             }
-            return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Missed. {attackDetail}");
+            return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Missed. {attackDetail}{bareWarning}");
         }
 
         var finalDamage = damageRoll.Result;
@@ -240,6 +308,14 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             var critDmg = await _rollService.RollAsync(new RollRequest { Tag = "critDamage", Expression = damageDice, Mechanic = DiceMechanic.Standard }, ct);
             finalDamage += critDmg.Result;
             critMsg = $" CRITICAL HIT! Added {critDmg.Result} extra damage.";
+        }
+
+        var sneakMsg = "";
+        if (action.ActionType == RulesetActionType.Attack)
+        {
+            var (sneakDamage, note) = await TrySneakAttackAsync(action, context, actorChar, isCrit, mechanic, ct);
+            finalDamage += sneakDamage;
+            sneakMsg = note;
         }
 
         finalDamage = ApplyTargetDamageReduction(finalDamage, targetStats, action.DamageType);
@@ -271,7 +347,227 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var damageWarning = BuildSpellDamageWarning(action, damageDice, actorStats.Level);
 
         var attackSegment = attackRoll != null ? $"(Attack {attackRoll.Result} vs AC {ac}){attackFold.Suffix}" : "(auto-hit)";
-        return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage. {attackSegment}.{critMsg}{riderMsg}{tickMsg}{damageWarning}");
+        return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage. {attackSegment}.{critMsg}{sneakMsg}{riderMsg}{tickMsg}{damageWarning}{bareWarning}");
+    }
+
+    /// <summary>
+    /// Sneak Attack: ceil(rogue level / 2) d6 once per turn on a hit with a finesse or ranged weapon, when the attack
+    /// has advantage or the caller says an ally is adjacent (<c>sneakAttack: true</c>) and there is no disadvantage.
+    /// </summary>
+    private async Task<(int Damage, string Note)> TrySneakAttackAsync(
+        RulesetAction action, IChangeContext context, Character actor, bool isCrit, DiceMechanic mechanic, CancellationToken ct)
+    {
+        var dice = CombatFeatureRules.Dnd5eSneakAttackDice(actor);
+        if (dice == 0)
+        {
+            return (0, "");
+        }
+
+        var requested = action.Parameters.TryGetValue("sneakAttack", out var raw) && bool.TryParse(raw, out var yes) && yes;
+        if (mechanic != DiceMechanic.Advantage && !requested)
+        {
+            return (0, "");
+        }
+
+        if (mechanic == DiceMechanic.Disadvantage)
+        {
+            return (0, " (No Sneak Attack: the attack has disadvantage.)");
+        }
+
+        var weapon = WeaponProfile.Read(action);
+        if (weapon.Known && !weapon.Ranged && !weapon.Finesse)
+        {
+            return (0, " (No Sneak Attack: needs a finesse or ranged weapon.)");
+        }
+
+        var state = (context as ChangeContext)?.ActiveCombat?.Combatants.FirstOrDefault(c => c.CharacterId == actor.Id);
+        if (state is not null && state.ActionBudget.TryGetValue("sneakAttack", out var left))
+        {
+            if (left <= 0)
+            {
+                return (0, " (Sneak Attack already used this turn.)");
+            }
+
+            state.ActionBudget["sneakAttack"] = left - 1;
+        }
+
+        var roll = await _rollService.RollAsync(new RollRequest { Tag = "sneakAttack", Expression = $"{dice}d6", Mechanic = DiceMechanic.Standard }, ct);
+        var total = roll.Result;
+        if (isCrit)
+        {
+            total += (await _rollService.RollAsync(new RollRequest { Tag = "sneakAttackCrit", Expression = $"{dice}d6", Mechanic = DiceMechanic.Standard }, ct)).Result;
+        }
+
+        return (total, $" Sneak Attack +{total} ({dice}d6{(isCrit ? " doubled" : "")}).");
+    }
+
+    public override IReadOnlyDictionary<string, int> GetTurnActionBudget(Character character)
+    {
+        var budget = new Dictionary<string, int>(base.GetTurnActionBudget(character));
+        if (CombatFeatureRules.Dnd5eSneakAttackDice(character) > 0)
+        {
+            budget["sneakAttack"] = 1;
+        }
+
+        var perAction = CombatFeatureRules.ExtraAttacksPerAction(character);
+        if (perAction > 1)
+        {
+            budget["extraAttacksPerAction"] = perAction - 1;
+        }
+
+        return budget;
+    }
+
+    public override bool TryConsumeActionSlot(CombatantState state, RulesetAction action, out string? errorReason)
+    {
+        // Second Wind is a bonus action whether or not the caller says so.
+        if (CombatFeatureRules.Norm(action.ActionName) is "secondwind" or "cunningaction"
+            || (action.ActionType == RulesetActionType.Attack && CombatFeatureRules.IsTrue(action, "offHand")))
+        {
+            action.Parameters.TryAdd("bonusAction", "true");
+        }
+
+        var isBonus = action.Parameters.TryGetValue("bonusAction", out var b) && bool.TryParse(b, out var yes) && yes;
+        var isAttackAction = !action.IsReaction && !isBonus && action.ActionType == RulesetActionType.Attack;
+
+        // Two-weapon fighting: the off-hand attack is a bonus action that follows an Attack action taken this turn.
+        if (action.ActionType == RulesetActionType.Attack && !action.IsReaction && CombatFeatureRules.IsTrue(action, "offHand")
+            && state.ActionBudget.ContainsKey("action") && state.ActionBudget.GetValueOrDefault(AttackActionTaken) == 0)
+        {
+            errorReason = "An off-hand attack is a bonus action that follows the Attack action: attack with the main-hand "
+                          + "weapon first this turn (a light melee weapon), then make the off-hand attack.";
+            return false;
+        }
+
+        // Extra Attack: the further attacks of one Attack action ride on the action already spent.
+        if (isAttackAction && state.ActionBudget.TryGetValue("attackActionOpen", out var open) && open > 0)
+        {
+            state.ActionBudget["attackActionOpen"] = open - 1;
+            errorReason = null;
+            return true;
+        }
+
+        if (!base.TryConsumeActionSlot(state, action, out errorReason))
+        {
+            if (!isBonus && state.ActionBudget.GetValueOrDefault("bonus") > 0)
+            {
+                errorReason += " A bonus action remains: pass parameters.bonusAction=\"true\" for bonus-action options "
+                               + "(Cunning Action Dash/Disengage/Hide, Second Wind, off-hand attack).";
+            }
+
+            return false;
+        }
+
+        if (isAttackAction)
+        {
+            state.ActionBudget[AttackActionTaken] = 1;
+            if (state.ActionBudget.TryGetValue("extraAttacksPerAction", out var extra) && extra > 0)
+            {
+                state.ActionBudget["attackActionOpen"] = extra;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>Budget marker: the Attack action was used this turn (what an off-hand attack follows).</summary>
+    private const string AttackActionTaken = "attackActionTaken";
+
+    /// <summary>
+    /// Why the wielded gear can't make an off-hand attack, or null when it can (or nothing is tracked). Weapons count
+    /// only when equipped in a hand zone; a character with none equipped is left to the tag note in the attack result.
+    /// </summary>
+    private static async Task<string?> OffHandProblemAsync(RulesetAction action, IChangeContext context, CancellationToken ct)
+    {
+        var wielded = await WeaponParameterResolver.GetWieldedWeaponsAsync(context, action.CharacterId, ct);
+        if (wielded.Count == 0)
+        {
+            return null;
+        }
+
+        var heavy = wielded.FirstOrDefault(w => !CombatFeatureRules.IsLightWeapon(w));
+        if (heavy is not null)
+        {
+            return $"Two-weapon fighting needs a light melee weapon in each hand, and '{heavy.Name}' is not light.";
+        }
+
+        return wielded.Count < 2
+            ? $"Two-weapon fighting needs a light weapon in each hand, but only '{wielded[0].Name}' is equipped (item_equip the second)."
+            : null;
+    }
+
+    protected override async Task<ResolverResult?> TryResolveClassFeatureAsync(
+        RulesetAction action, IChangeContext context, Dnd5eExtension stats, List<WorldChange> mutations, CancellationToken ct)
+    {
+        if (CombatFeatureRules.Norm(action.ActionName) == "cunningaction")
+        {
+            return await ResolveCunningActionAsync(action, context, stats, mutations, ct);
+        }
+
+        if (CombatFeatureRules.Norm(action.ActionName) != "secondwind"
+            || TryGetParameter(action.Parameters, out _, "healDice", "damageDice", "healAmount"))
+        {
+            return null; // not the class feature, or the caller supplied the healing themselves: generic recovery handles it.
+        }
+
+        var actor = context.Characters[action.CharacterId];
+        var fighter = CombatFeatureRules.ClassLevel(actor, "fighter");
+        if (fighter < 1)
+        {
+            return null; // not a Fighter: fall through to the generic Recovery action (which asks for healDice/healAmount).
+        }
+
+        if (!stats.ResourcePools.TryGetValue("second_wind", out var pool) || pool.Current < 1)
+        {
+            return ResolverResult.Fail("NoResource",
+                $"Error: {actor.Name} has no Second Wind use left (pool 'second_wind'). If the pool is missing, re-commit systemStats to re-derive class pools.");
+        }
+
+        var roll = await _rollService.RollAsync(new RollRequest { Tag = "secondWind", Expression = "1d10", Bonus = fighter, Mechanic = DiceMechanic.Standard }, ct);
+        mutations.Add(new ResourceChange { CharacterId = actor.Id, PoolName = "second_wind", Delta = -1, Reason = "Second Wind" });
+        mutations.Add(new HpChange { CharacterId = actor.Id, Delta = roll.Result });
+        return ResolverResult.Ok($"Second Wind: {actor.Name} regains {roll.Result} HP (1d10 + {fighter}). {roll.Summary}");
+    }
+
+    /// <summary>
+    /// Cunning Action (Rogue 2): Dash, Disengage or Hide as a bonus action. <c>parameters.option</c> picks one; Hide rolls Stealth
+    /// against the <c>dc</c> the DM sets (the observers' passive Perception).
+    /// </summary>
+    private async Task<ResolverResult> ResolveCunningActionAsync(
+        RulesetAction action, IChangeContext context, Dnd5eExtension stats, List<WorldChange> mutations, CancellationToken ct)
+    {
+        var actor = context.Characters[action.CharacterId];
+        if (CombatFeatureRules.ClassLevel(actor, "rogue") < 2)
+        {
+            return ResolverResult.Fail("NoFeature", $"Error: {actor.Name} has no Cunning Action (needs Rogue level 2).");
+        }
+
+        var option = CombatFeatureRules.Norm(action.Parameters.GetValueOrDefault("option", action.Parameters.GetValueOrDefault("choice", "")));
+        switch (option)
+        {
+            case "dash":
+                return ResolverResult.Ok($"Cunning Action (Dash): {actor.Name} dashes as a bonus action; movement is doubled this turn.");
+            case "disengage":
+                return ResolverResult.Ok($"Cunning Action (Disengage): {actor.Name} disengages as a bonus action; no opportunity attacks this turn.");
+            case "hide":
+                if (!action.Parameters.ContainsKey("dc"))
+                {
+                    return ResolverResult.Fail("InvalidParameter", "Error: Cunning Action Hide needs parameters.dc (the observers' highest passive Perception).");
+                }
+
+                var stealth = new RulesetAction
+                {
+                    CharacterId = action.CharacterId,
+                    ActionType = RulesetActionType.SkillCheck,
+                    ActionName = "Stealth",
+                    Parameters = new Dictionary<string, string>(action.Parameters) { ["skill"] = "Stealth" },
+                    FeatEffects = action.FeatEffects,
+                };
+                var hide = await ResolveSkillCheckAsync(stealth, context, stats, mutations, ct);
+                return hide.Success ? ResolverResult.Ok("Cunning Action (Hide): " + hide.Narrative) : hide;
+            default:
+                return ResolverResult.Fail("InvalidParameter", "Error: Cunning Action needs parameters.option: dash, disengage or hide.");
+        }
     }
 
     private SpellDefinition? LookupSpell(RulesetAction action)
@@ -903,6 +1199,25 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
         var skillName = action.Parameters.GetValueOrDefault("skill", action.ActionName);
         var bonus = GetSkillOrAbilityBonus(actorStats, skillName);
+        var bonusSource = "";
+        var jack = action.Parameters.ContainsKey("bonus") ? 0 : JackOfAllTradesBonus(context.Characters[action.CharacterId], actorStats, skillName);
+        if (jack > 0)
+        {
+            bonus += jack;
+            bonusSource = $" [Jack of All Trades +{jack}]";
+        }
+
+        if (action.Parameters.TryGetValue("bonus", out var suppliedBonus))
+        {
+            if (!int.TryParse(suppliedBonus, out var callerBonus))
+            {
+                return ResolverResult.Fail("InvalidParameter", $"Error: invalid bonus value '{suppliedBonus}'.");
+            }
+
+            bonus = callerBonus;
+            bonusSource = " [bonus supplied by caller; sheet modifier not added]";
+        }
+
         var checkFold = await FoldAsync(
             context, context.Characters[action.CharacterId], RollKinds.Check, skillName, bonus, action, GetMechanicFromAction(action)).ConfigureAwait(false);
         bonus = checkFold.Bonus;
@@ -938,7 +1253,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
         return new ResolverResult
         {
-            Narrative = $"{action.ActionName} ({skillName}): {resultStr}. Rolled {outcome.Result} vs DC {dc}.{relationshipSuffix} {outcome.Summary}{checkFold.Suffix}",
+            Narrative = $"{action.ActionName} ({skillName}): {resultStr}. Rolled {outcome.Result} vs DC {dc}.{relationshipSuffix} {outcome.Summary}{checkFold.Suffix}{bonusSource}",
             RollTotal = outcome.Result,
             Skill = skillName
         };
@@ -972,7 +1287,8 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             ? ts_name
             : isGrapple ? "Athletics" : actorSkill;
 
-        var actorBonus = GetSkillOrAbilityBonus(actorStats, actorSkill);
+        var actorBonus = GetSkillOrAbilityBonus(actorStats, actorSkill)
+            + JackOfAllTradesBonus(context.Characters[action.CharacterId], actorStats, actorSkill);
         var actorChar = context.Characters[action.CharacterId];
         var actorFold = await FoldAsync(
             context, actorChar, RollKinds.Check, actorSkill, actorBonus, action, GetMechanicFromAction(action), target).ConfigureAwait(false);
@@ -1263,7 +1579,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     public override async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)
     {
         var stats = character.SystemStats as Dnd5eExtension ?? new Dnd5eExtension();
-        var dexMod = stats.GetAbilityModifier(stats.Dexterity);
+        var dexMod = stats.GetAbilityModifier(stats.Dexterity) + JackOfAllTradesBonus(character, stats, "Dexterity");
         dexMod = Pipeline.Resolve(
             new RollQuery(RollKinds.Initiative, null, [], character, null, System, new Dictionary<string, string>()), dexMod).Bonus;
         

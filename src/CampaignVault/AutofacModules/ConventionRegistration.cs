@@ -199,6 +199,7 @@ internal static class ConventionRegistration
         builder.RegisterType<CampaignRepository>().InstancePerLifetimeScope();
         builder.RegisterType<EncounterResolver>().InstancePerLifetimeScope();
         builder.RegisterType<CharacterBootstrapOrchestrator>().InstancePerLifetimeScope();
+        builder.RegisterType<CampaignVault.Rulesets.CharacterWiringAuditor>().AsSelf().InstancePerLifetimeScope();
         builder.RegisterType<GuidanceOrchestrator>().As<IGuidanceOrchestrator>().InstancePerLifetimeScope();
         builder.RegisterType<ContextOrchestrator>().As<IContextOrchestrator>().InstancePerLifetimeScope();
     }

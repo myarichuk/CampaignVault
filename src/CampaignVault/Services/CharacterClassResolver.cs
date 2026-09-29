@@ -18,7 +18,24 @@ public static partial class CharacterClassResolver
             return dnd.ClassLevels;
         }
 
-        return ParseClassLevelString(character.ClassLevel);
+        var parsed = ParseClassLevelString(character.ClassLevel);
+        if (parsed.Count == 0)
+        {
+            // "Human Wizard" with systemStats.level = 3: the level lives on the stats, not in the string.
+            var statsLevel = character.SystemStats switch
+            {
+                Dnd5eExtension d => d.Level,
+                Pf2eExtension p => p.Level,
+                _ => null,
+            };
+            var text = character.ClassLevel?.Trim();
+            if (statsLevel is > 0 && !string.IsNullOrEmpty(text) && !text.Contains('/'))
+            {
+                return [new ClassLevelEntry { Class = text, Level = statsLevel.Value }];
+            }
+        }
+
+        return parsed;
     }
 
     public static bool HasClass(IReadOnlyList<ClassLevelEntry> classLevels, string classSlug) =>

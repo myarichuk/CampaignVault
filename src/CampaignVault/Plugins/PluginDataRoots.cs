@@ -10,4 +10,10 @@ public static class PluginDataRoots
 
     /// <summary>Mode IDs plugins declared <c>playerOnlyModeIds</c>: only the player switches them on or off.</summary>
     public static IReadOnlyCollection<string> PlayerOnlyModeIds { get; set; } = [];
+
+    /// <summary>Ids (plugin.json <c>id</c>) of every loaded plugin, for feat <c>requires.plugin</c> gating.</summary>
+    public static IReadOnlyCollection<string> LoadedPluginIds { get; set; } = [];
+
+    /// <summary>Mode id to the id of the plugin that declared it, for feat <c>requires.mode</c> gating.</summary>
+    public static IReadOnlyDictionary<string, string> ModeOwners { get; set; } = new Dictionary<string, string>();
 }

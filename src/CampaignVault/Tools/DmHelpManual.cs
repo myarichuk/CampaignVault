@@ -104,6 +104,9 @@ When calling `take_turn`, each change in the array must specify a `$type` discri
 - Some `$type`s have automatic side effects (marked in `lookup kind=commit_schema`) — do not duplicate them in a single batch (e.g., do not include both `rest` and a separate `hp` for HP recovery; `rest` auto-applies).
 
 For more details, call `lookup kind=commit_schema` (optional category filter: Combat, Narrative, World, PlotThread).
+
+## Weapon attacks
+Omit `bonus`/`damageBonus` (derived from the sheet). Flags, features and feat `assert`: dnd-combat skill.
 ";
 
     internal const string FaqSection = @"# FAQ & Laziness Traps
@@ -153,11 +156,11 @@ For more details, call `lookup kind=commit_schema` (optional category filter: Co
 
 **Use `recordingMode: Deliberate` + `importance: Core` for player-initiated acts:** When the party *deliberately* does something they mark as important (marking the map, making a vow, burning a bridge), set these flags so the event survives all retrieval budgets.
 
-**Transients created with `schedule: null` + `keepAlive: false` auto-GC:** If you create an NPC for a single scene and don't want to keep them around, leave schedule unset and keepAlive false. Engine cleans up when the area goes cold.
+**Transients created with `schedule: null` + `keepAlive: false` auto-GC:** For a one-scene NPC, leave schedule unset and keepAlive false; the engine cleans up when the area goes cold.
 
 **Location state persists:** After combat, vandalism, or major events, use `location_update` to record the state. Fixtures are items held by the location (item_update); narrate their decay realistically.
 
-**Engage visual tags early:** Persist visual state (bloodied, disheveled, wanted) via `character_update` early so crowd interrupt and faction pressure can react naturally.
+**Engage visual tags early:** Persist visual state (bloodied, disheveled, wanted) via `character_update` so crowds and factions react.
 
 **Watch your WorldPressure — it's your co-DM:** Never ignore ENGINE WARNING or NARRATIVE PROMPT. If you see the same pressure twice, you didn't commit the fix.
 

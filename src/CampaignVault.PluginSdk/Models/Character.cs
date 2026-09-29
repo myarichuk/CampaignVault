@@ -407,6 +407,7 @@ public class SystemExtension
     /// feats, pact boon, invocations, etc.). Appended to, never overwritten, so repeatable picks
     /// (feats gained at multiple levels) are all preserved.
     /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("levelUpChoices")]
     public List<LevelUpChoiceRecord> LevelUpChoices { get; set; } = [];
 
     /// <summary>

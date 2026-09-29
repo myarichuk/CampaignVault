@@ -1,0 +1,8 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: second_wind
+description: Fighter Second Wind uses (recovers on short rest)
+applicableSystems: [dnd5e]
+applicableClasses: [fighter]
+recovery: ShortRest
+defaultMax: 1

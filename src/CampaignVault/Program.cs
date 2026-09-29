@@ -272,7 +272,8 @@ var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 Console.Error.WriteLine("[Startup] Running data migrations...");
 await RavenStartup.RunDataMigrationsAsync(
     documentStore, loggerFactory, PluginTraitsClaims.Claimed,
-    app.Services.GetServices<IPluginCampaignOptionsUpgrader>());
+    app.Services.GetServices<IPluginCampaignOptionsUpgrader>(),
+    app.Services.GetService<CampaignVault.Services.ResourcePoolInitializer>());
 Console.Error.WriteLine("[Startup] Data migrations complete ✓\n");
 
 // Semantic vector bootstrap: repair any entities missing embeddings

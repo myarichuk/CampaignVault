@@ -145,7 +145,7 @@ public sealed class Dnd5eDeriveProficiencyStep(
     }
 
     /// <summary>
-    /// Fills SavingThrowModifiers for saves the character's class(es) are proficient in, using ability mod + proficiency bonus.
+    /// Fills SavingThrowModifiers for saves the character's starting class is proficient in, using ability mod + proficiency bonus.
     /// Never overwrites a save the caller already set.
     /// </summary>
     private List<string> DeriveClassSavingThrowModifiers(BootstrapContext context, Dnd5eExtension stats, int prof)
@@ -157,7 +157,8 @@ public sealed class Dnd5eDeriveProficiencyStep(
         }
 
         var classLevels = Dnd5eClassProfileResolver.ParseClassLevels(context.Character.ClassLevel, stats.ClassLevels);
-        foreach (var entry in classLevels)
+        // Saving-throw proficiencies come from the starting class only; multiclassing grants none.
+        foreach (var entry in classLevels.Take(1))
         {
             if (!classProvider.TryResolveClass(RulesetSystem.Dnd5e, entry.Class, out var classDef) || classDef is null)
             {

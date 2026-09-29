@@ -1,6 +1,7 @@
 using CampaignVault.Data;
 using CampaignVault.Data.Context;
 using CampaignVault.Models;
+using CampaignVault.Rulesets;
 
 namespace CampaignVault.Tools;
 
@@ -273,6 +274,49 @@ public partial class MutationTools
         return includeCombatDetail
             ? trimmed with { Stats = null, Gear = null, PressingNeeds = null, NeedNotes = null }
             : trimmed;
+    }
+
+    /// <summary>
+    /// While a combat is active, lists the feat effects that need a call from the DM: the active character's every response, everyone's in
+    /// round 1. Read from the live encounter (not the guidance channel, which delivers each hint once per campaign), so a second fight
+    /// with the same party is briefed again.
+    /// </summary>
+    private async Task AddFeatChecklistAsync(TurnContext ctx)
+    {
+        if (_featProvider is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var encounter = await _repository.GetActiveCombatAsync(new CampaignSession(ctx.Session, ctx.Campaign));
+            if (encounter is not { IsActive: true } || encounter.Combatants.Count == 0)
+            {
+                return;
+            }
+
+            var ids = encounter.Round <= 1
+                ? encounter.Combatants.Select(c => c.CharacterId).ToList()
+                : encounter.Combatants.Where(c => c.CharacterId == encounter.ActiveTurnId).Select(c => c.CharacterId).ToList();
+            var characters = (await ctx.Session.LoadAsync<Character>(ids)).Values.Where(c => c is not null).ToList();
+            var activeModes = (await LoadActiveModeParticipantsAsync(ctx)).Where(kv => kv.Value.Count > 0).Select(kv => kv.Key).ToList();
+            var live = await FeatEffectRules.ResolveAsync(
+                ctx.Session, _featProvider, ctx.Config.ActiveSystem, characters, ctx.Campaign, activeModes);
+
+            var lines = characters
+                .Where(c => live.ContainsKey(c.Id))
+                .SelectMany(c => FeatEffectRules.ChecklistLines(c.Name, live[c.Id]))
+                .ToList();
+            if (lines.Count > 0)
+            {
+                ctx.Result.FeatChecklist = lines;
+            }
+        }
+        catch (Exception ex)
+        {
+            Warn(ctx, $"Feat checklist unavailable: {ex.Message}");
+        }
     }
 
     /// <summary>Every campaign-enabled mode id mapped to the character IDs currently active in that mode's

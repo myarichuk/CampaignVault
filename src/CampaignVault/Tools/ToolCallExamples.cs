@@ -474,8 +474,10 @@ internal static class ToolCallExamples
                     + "5e casters: bootstrap spellcastingAbility on systemStats; omit dc/bonus if spellSaveDc/spellAttackBonus derived. "
                     + "RESOURCES: $type resource with poolName/delta/spellName spends spell slots/ki/focus points/gold; validates spell level, and spending below 0 HARD-FAILS the commit (\"Insufficient <pool> for <name>: has X, needs Y.\") — grants above max still clamp silently. Eligible pools recover immediately on rest completion, not on a later advance_world. "
                     + "RUMORS: create with world_build (rumors[]: id, regionLocationId, subject, text); evolve an existing one with $type rumor (rumorId, newState). "
+                    + "WEAPON ATTACKS: omit parameters.bonus/damageBonus (derived from the sheet; passing them replaces the derived value). Flags: sneakAttack, offHand (no ability mod on damage without Two-Weapon Fighting), powerAttack (only if a recorded feat defines it), actionSurge, bonusAction, assert (comma-separated DM-judged feat conditions, e.g. \"allyNear\"; see take_turn featChecklist). "
+                    + "CLASS FEATURES: actionName \"Second Wind\" (Recovery) and \"Cunning Action\" with parameters.option dash|disengage|hide (hide needs dc) are bonus actions. Extra Attack: list one target per swing; the result warns on too many targets or a short attackCount. "
                     + "Engine auto-applies hp from ruleset_action — no duplicate hp commits. "
-                    + "See lookup kind=help → Ruleset Actions for copy-paste JSON.",
+                    + "See lookup kind=help → Weapon attacks, class features and feats for details.",
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {

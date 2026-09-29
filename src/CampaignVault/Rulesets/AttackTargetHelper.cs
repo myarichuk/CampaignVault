@@ -37,6 +37,37 @@ internal static class AttackTargetHelper
         return DistributeInstances(distinctTargets, ResolveAttackCount(action, distinctTargets.Count));
     }
 
+    /// <summary>
+    /// A note for a multi-target weapon attack that does not add up: targets the attack count silently leaves out, or (when the
+    /// ruleset knows how many attacks one action grants) more attacks than the character gets from one action. Null when fine.
+    /// </summary>
+    public static string? MultiTargetWarning(RulesetAction action, int? attacksPerAction)
+    {
+        var distinct = action.TargetIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (distinct.Count < 2)
+        {
+            return null;
+        }
+
+        var count = ResolveAttackCount(action, distinct.Count);
+        if (count < distinct.Count)
+        {
+            return $" [WARNING] {distinct.Count} targets listed but attackCount is {count}: {string.Join(", ", distinct.Skip(count))} "
+                   + "were not attacked. Raise attackCount or trim targetIds.";
+        }
+
+        if (!HasExplicitCount(action) && attacksPerAction is { } allowed && count > allowed)
+        {
+            return $" [WARNING] {count} attacks were resolved (one per listed target) but this character makes {allowed} per Attack action. "
+                   + "The extra attacks need Action Surge or another action; trim targetIds or set attackCount to what the action allows.";
+        }
+
+        return null;
+    }
+
     /// <summary>True when the caller (not a weapon default) named the attack count.</summary>
     public static bool HasExplicitCount(RulesetAction action) =>
         TryGetIntParameter(action.Parameters, out var n, "attackCount", "shots", "rateOfFire", "attacks") && n > 0;

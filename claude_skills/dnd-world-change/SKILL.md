@@ -11,7 +11,7 @@ You are persisting changes to the world: events, character state, items, relatio
 
 ## Skill Ownership (canonical homes — pointers elsewhere defer here)
 
-`dnd-world-change`: mutation syntax, batching, required fields, delta/refresh. `dnd-bundling`: which types cohere in one beat. `dnd-combat`: turn order, action types, spell components. `dnd-exploration`: location hierarchy, travel/rest, fixtures-vs-Location, encounter cleanup. `dnd-narration`: prose craft only. `dnd-npc-interaction`: psychology, memory, initiative. `dnd-social`: checks, DCs, modifiers. `dnd-campaign-events`: pressure, quests, rumors, factions, time. `dnd-world-building`: seeding. On conflict, the owning skill wins — never restate another skill's rule inline.
+`dnd-world-change`: mutation syntax, batching, required fields, delta/refresh. `dnd-bundling`: which types cohere in one beat. `dnd-combat`: turn order, action types, spell components (5e); `pf2e-combat`: the same for Pathfinder 2e campaigns only. `dnd-exploration`: location hierarchy, travel/rest, fixtures-vs-Location, encounter cleanup. `dnd-narration`: prose craft only. `dnd-npc-interaction`: psychology, memory, initiative. `dnd-social`: checks, DCs, modifiers. `dnd-campaign-events`: pressure, quests, rumors, factions, time. `dnd-world-building`: seeding. On conflict, the owning skill wins — never restate another skill's rule inline.
 
 ## No-Op Rule (diagnosis is read-only)
 

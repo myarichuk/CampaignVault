@@ -33,8 +33,14 @@ public static class SystemHandbookBuilder
         FeatDefinitionProvider featProvider,
         ConditionDefinitionProvider conditionProvider,
         CreatureDefinitionProvider? creatureProvider = null,
-        IReadOnlyList<CustomFeat>? homebrewFeats = null)
+        IReadOnlyList<CustomFeat>? homebrewFeats = null,
+        IReadOnlyCollection<string>? activeModeIds = null)
     {
+        // Plugin gate always; the mode gate too once the caller says which modes are running.
+        bool Shown(FeatRequirement? requires) => activeModeIds is null
+            ? CampaignVault.Rulesets.FeatEffectRules.PluginAvailable(requires)
+            : CampaignVault.Rulesets.FeatEffectRules.IsAvailable(requires, activeModeIds);
+
         var classes = classProvider.GetClassesForSystem(system)
             .Values
             .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
@@ -51,9 +57,13 @@ public static class SystemHandbookBuilder
             .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+        // A feat gated on a plugin that is not loaded (or a mode that is not running) is hidden, not deleted; it returns with them.
         var feats = featProvider.GetFeatsForSystem(system)
-            .Keys
-            .Union((homebrewFeats ?? []).Where(f => !f.IsArchived).Select(f => f.Name), StringComparer.OrdinalIgnoreCase)
+            .Where(kv => Shown(kv.Value.Requires))
+            .Select(kv => kv.Key)
+            .Union((homebrewFeats ?? [])
+                .Where(f => !f.IsArchived && Shown(f.Requires))
+                .Select(f => f.Name), StringComparer.OrdinalIgnoreCase)
             .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
             .ToList();
 

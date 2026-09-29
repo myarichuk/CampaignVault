@@ -21,6 +21,84 @@ public sealed class RulesetActionHandler(
     public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change, IChangeContext context, CancellationToken ct = default)
     {
+        if (change is not RulesetAction surgeAction
+            || !surgeAction.Parameters.TryGetValue("actionSurge", out var surgeRaw)
+            || !bool.TryParse(surgeRaw, out var surge) || !surge)
+        {
+            return await ApplyActionAsync(change, context, ct);
+        }
+
+        // Action Surge: spend the pool and add one action for this turn, then run the action normally.
+        // If that action then fails, the surge is refunded so a rejected attack never burns the class feature.
+        var (failure, undo) = await BeginActionSurgeAsync((ChangeContext)context, surgeAction, ct);
+        if (failure is { } refused)
+        {
+            return refused;
+        }
+
+        var result = await ApplyActionAsync(change, context, ct);
+        if (!result.Success)
+        {
+            undo!();
+            return result;
+        }
+
+        return new ChangeHandlerResult(true, $"Action Surge spent (+1 action this turn). {result.Message}");
+    }
+
+    private static async Task<(ChangeHandlerResult? Failure, Action? Undo)> BeginActionSurgeAsync(
+        ChangeContext ctx, RulesetAction action, CancellationToken ct)
+    {
+        if (ctx.ActiveCombat?.IsActive != true)
+        {
+            return (ChangeHandlerResult.Failure("[ActionSurge] Action Surge only applies during active combat."), null);
+        }
+
+        var state = ctx.ActiveCombat.Combatants.FirstOrDefault(c => c.CharacterId == action.CharacterId);
+        if (state is null)
+        {
+            return (ChangeHandlerResult.Failure($"[NotInCombat] {action.CharacterId} is not on the active combat roster."), null);
+        }
+
+        if (!ctx.Characters.TryGetValue(action.CharacterId, out var character))
+        {
+            character = await ctx.Session.LoadAsync<Character>(action.CharacterId, ct);
+            if (character is null)
+            {
+                return (ChangeHandlerResult.Failure($"Character '{action.CharacterId}' not found."), null);
+            }
+
+            ctx.RegisterNewCharacter(character);
+        }
+
+        var pools = character.SystemStats?.ResourcePools;
+        if (pools is null || !pools.TryGetValue("action_surge", out var pool) || pool.Current < 1)
+        {
+            return (ChangeHandlerResult.Failure(
+                $"[ActionSurge] {character.Name} has no Action Surge use left (pool 'action_surge'). "
+                + "If the pool is missing, re-commit systemStats to re-derive class pools."), null);
+        }
+
+        if (state.ActionBudget.ContainsKey("actionSurgeUsed"))
+        {
+            return (ChangeHandlerResult.Failure("[ActionSurge] Action Surge was already used this turn."), null);
+        }
+
+        pools["action_surge"] = pool with { Current = pool.Current - 1 };
+        state.ActionBudget["action"] = state.ActionBudget.GetValueOrDefault("action") + 1;
+        state.ActionBudget["actionSurgeUsed"] = 1;
+
+        return (null, () =>
+        {
+            pools["action_surge"] = pool;
+            state.ActionBudget["action"] = Math.Max(0, state.ActionBudget.GetValueOrDefault("action") - 1);
+            state.ActionBudget.Remove("actionSurgeUsed");
+        });
+    }
+
+    private async Task<ChangeHandlerResult> ApplyActionAsync(
+        WorldChange change, IChangeContext context, CancellationToken ct)
+    {
         var ctx = (ChangeContext)context;
         if (change is not RulesetAction action)
         {
@@ -79,6 +157,13 @@ public sealed class RulesetActionHandler(
                     break;
             }
         }
+
+        // Feat effects live for everyone this action touches (SRD or homebrew, plugin/mode gated); the resolver folds them into rolls.
+        var involved = new[] { action.CharacterId }.Concat(action.TargetIds)
+            .Where(id => ctx.Characters.ContainsKey(id)).Distinct()
+            .Select(id => ctx.Characters[id]);
+        action.FeatEffects = await FeatEffectRules.ResolveAsync(
+            ctx.Session, _featProvider, config.ActiveSystem, involved, effectiveCampaign, [.. ctx.ActiveModes.Keys]);
 
         // Merge weapon-derived defaults (including "range") before range validation runs,
         // so weapon-based range enforcement (the documented, primary path) actually has data to check.

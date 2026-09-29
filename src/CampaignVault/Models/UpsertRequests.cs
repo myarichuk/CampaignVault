@@ -445,6 +445,15 @@ public class CustomFeatUpsertRequest
     [Description("Passive spell-component requirements this feat waives, e.g. \"SomaticHandsFull\". Omit to preserve the spell's existing list. Provide to replace it wholesale.")]
     public List<string>? CastingWaivers { get; set; }
 
+    [Description("Declarative roll effects the engine applies itself. Each: kind (attackBonus|damageBonus|skillBonus|saveBonus|armorClassBonus), value (fixed number), optional bonusType (PF2e: circumstance|item|status|untyped), subject (skill/save name), weapon (ranged|melee|finesse|twoHanded|heavy), toggle (an action parameter the player opts in with, e.g. powerAttack), assert (DM-judged flags such as allyNear, with a 'when' sentence), requires ({plugin, mode}). Numbers live here, never in the DM's hands. Omit to preserve; provide to replace wholesale.")]
+    public List<FeatEffect>? Effects { get; set; }
+
+    [Description("Gate for the whole feat: {plugin?, mode?}. The plugin must be loaded and the mode, if named, running. Omit to preserve.")]
+    public FeatRequirement? Requires { get; set; }
+
+    [Description("Set true for a feat whose rules are prose the DM adjudicates (no machine-readable effects). Silences the 'unimplemented effects' audit. Omit to preserve.")]
+    public bool? Adjudicated { get; set; }
+
     [Description("Classes that can take this feat. Omit to preserve the existing list. Provide to replace it wholesale. Leave empty for ancestry/general/skill feats.")]
     public List<string>? Classes { get; set; }
 

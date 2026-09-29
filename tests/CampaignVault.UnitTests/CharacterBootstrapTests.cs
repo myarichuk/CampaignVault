@@ -518,6 +518,41 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task CharacterUpdate_SystemStatsPatch_RederivesClassPools()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var keys = new CampaignVault.Data.CampaignDocumentKeys();
+        await session.StoreAsync(new CampaignConfig
+        {
+            Id = keys.Config("char-update-pools"),
+            ActiveSystem = RulesetSystem.Dnd5e,
+        }, TestContext.Current.CancellationToken);
+
+        var existing = new Character
+        {
+            Id = "chars/pool-patched",
+            Name = "Hank",
+            ClassLevel = "Human Fighter 4",
+            SystemStats = new Dnd5eExtension { Level = 4, Constitution = 14 },
+        };
+        await session.StoreAsync(existing, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        Assert.Empty(existing.SystemStats.ResourcePools);
+
+        var initializer = RulesetDataTestHelper.CreateServices().Initializer;
+        var handler = new CharacterUpdateHandler(keys, BootstrapTestHelper.CreateOrchestrator(), initializer);
+        var ctx = CreateContext(session, "char-update-pools", new List<string>());
+        var result = await handler.ApplyAsync(new CharacterUpdate
+        {
+            CharacterId = "chars/pool-patched",
+            SystemStats = new Dnd5eExtension { Dexterity = 18 },
+        }, ctx, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(1, existing.SystemStats.ResourcePools["action_surge"].Max);
+    }
+
+    [Fact]
     public async Task Pf2e_DerivesDefense_WhenArmorClassDefault()
     {
         var orchestrator = BootstrapTestHelper.CreateOrchestrator();

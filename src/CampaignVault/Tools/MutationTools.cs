@@ -1,3 +1,4 @@
+using CampaignVault.Services;
 using CampaignVault.Data.Context;
 using System.ComponentModel;
 using System.Collections.Concurrent;
@@ -141,6 +142,8 @@ public partial class MutationTools : CampaignToolBase, IMcpServerTool
         }
     }
 
+    private readonly FeatDefinitionProvider? _featProvider;
+
     public MutationTools(
         CampaignRepository repository,
         CampaignDocumentKeys keys,
@@ -149,9 +152,11 @@ public partial class MutationTools : CampaignToolBase, IMcpServerTool
         IGuidanceOrchestrator guidanceOrchestrator,
         INpcBehaviorSynthesizer behaviorSynthesizer,
         IContextOrchestrator contextOrchestrator,
-        ILogger<MutationTools>? logger = null)
+        ILogger<MutationTools>? logger = null,
+        FeatDefinitionProvider? featProvider = null)
         : base(repository, keys, logger)
     {
+        _featProvider = featProvider;
         _contextOrchestrator = contextOrchestrator;
         _pressureManager = pressureManager;
         _pressureOrchestrator = pressureOrchestrator;
@@ -422,6 +427,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             await IncludeMemoriesOnlyAsync(ctx);
             await IncludeFullSceneDetailAsync(ctx);
             await BriefAsync(ctx);
+            await AddFeatChecklistAsync(ctx);
             await RefreshPartyFingerprintAsync(ctx);
             await CollectCharacterGuidanceAsync(ctx);
 

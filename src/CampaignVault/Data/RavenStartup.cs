@@ -1,3 +1,4 @@
+using CampaignVault.Services;
 using CampaignVault.Plugins;
 using CampaignVault.Data.Migrations;
 using CampaignVault.Rulesets;
@@ -60,6 +61,7 @@ public static class RavenStartup
         ILoggerFactory loggerFactory,
         IReadOnlyCollection<string>? claimedTraitPrefixes = null,
         IEnumerable<IPluginCampaignOptionsUpgrader>? campaignOptionsUpgraders = null,
+        ResourcePoolInitializer? resourcePoolInitializer = null,
         CancellationToken ct = default)
     {
         var logger = loggerFactory.CreateLogger(nameof(RavenStartup));
@@ -113,6 +115,26 @@ public static class RavenStartup
             else
             {
                 logger.LogInformation("✓ SystemStats type validation: no degraded characters found");
+            }
+
+            // Class-derived pools (action_surge, spell slots, ...) that were never created for characters
+            // built or edited outside character_create/level_up. Additive only; see RepairMissingResourcePools.
+            if (resourcePoolInitializer is not null)
+            {
+                var poolRepair = new RepairMissingResourcePools(documentStore, resourcePoolInitializer);
+                var (poolsRepaired, poolDetails) = await poolRepair.ExecuteAsync(ct);
+                if (poolsRepaired > 0)
+                {
+                    logger.LogWarning("⚠️  MISSING RESOURCE POOLS ADDED for {Count} character(s):", poolsRepaired);
+                    foreach (var detail in poolDetails)
+                    {
+                        logger.LogWarning("  • {Detail}", detail);
+                    }
+                }
+                else
+                {
+                    logger.LogInformation("✓ Class resource pool check: no missing pools found");
+                }
             }
 
             // Plugin-owned campaign option renames (e.g. a retired option mapped onto its replacements).

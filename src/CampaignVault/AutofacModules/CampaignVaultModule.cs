@@ -78,6 +78,18 @@ public class CampaignVaultModule : Autofac.Module
 
             PluginSystems.Set(plugins.Select(p => (p.Assembly, (IReadOnlyList<string>?)p.Manifest?.Systems)));
 
+            PluginDataRoots.LoadedPluginIds = plugins
+                .Select(p => p.Manifest?.Id)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Select(id => id!)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            PluginDataRoots.ModeOwners = plugins
+                .Where(p => !string.IsNullOrWhiteSpace(p.Manifest?.Id))
+                .SelectMany(p => (p.Manifest!.ModeIds ?? []).Select(m => (Mode: m, Owner: p.Manifest.Id)))
+                .Where(x => !string.IsNullOrWhiteSpace(x.Mode))
+                .GroupBy(x => x.Mode, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First().Owner, StringComparer.OrdinalIgnoreCase);
+
             PluginDataRoots.PlayerOnlyModeIds = plugins
                 .SelectMany(p => p.Manifest?.PlayerOnlyModeIds ?? [])
                 .Where(id => !string.IsNullOrWhiteSpace(id))

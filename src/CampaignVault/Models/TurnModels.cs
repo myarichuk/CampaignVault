@@ -206,6 +206,11 @@ public class TurnResult
     [Description("Full scene view for the requested location (if fullDetailLocationId was provided); includes all NPCs, items, and environmental details. Otherwise null.")]
     public SceneView? FullScene { get; set; }
 
+    [Description("While a combat is active: feat effects of the character whose turn it is (everyone in round 1) that need a call from you. " +
+        "'assert=flag' lines are conditions YOU judge: pass the ones that are true right now as parameters.assert (comma-separated) on the ruleset_action; " +
+        "'parameter x=true' lines are toggles the player may opt in to. The engine owns every number. Null outside combat or when no such feat applies.")]
+    public List<string>? FeatChecklist { get; set; }
+
     [Description("Non-fatal problems encountered while assembling this response (failed refreshes, missing entities, world-state errors). Null when every requested section succeeded. Check this whenever an expected section came back null.")]
     public List<string>? Warnings { get; set; }
 

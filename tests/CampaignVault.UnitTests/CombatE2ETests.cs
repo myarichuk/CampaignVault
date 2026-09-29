@@ -137,4 +137,50 @@ public class CombatE2ETests : IClassFixture<RavenDBFixture>
         Assert.False(turnAfterEnd.Success);
         Assert.Equal("NotFound", turnAfterEnd.Error);
     }
+
+    [Fact]
+    public async Task TakeTurn_InCombat_ListsTheDmJudgedFeatEffects()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var campaignName = $"e2e-featlist-{suffix}";
+        var heroId = $"chars/e2e-hero-{suffix}";
+        var goblinId = $"chars/e2e-goblin-{suffix}";
+        var tools = CreateTools();
+        var repo = _fixture.CreateRepository();
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, campaignName);
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            {
+                Id = heroId, Name = "Hero", CurrentHp = 50, MaxHp = 50,
+                SystemStats = new Dnd5eExtension { ArmorClass = 10, Feats = ["Long Shot"] },
+            });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            {
+                Id = goblinId, Name = "Goblin", CurrentHp = 15, MaxHp = 15,
+                SystemStats = new Dnd5eExtension { ArmorClass = 10 },
+            });
+            await repo.UpsertCustomFeatAsync(session, new CustomFeatUpsertRequest
+            {
+                Id = $"feats/long-shot-{suffix}", Name = "Long Shot", System = RulesetSystem.Dnd5e,
+                Effects = [new FeatEffect { Kind = FeatEffectKinds.AttackBonus, Value = 2, Assert = ["allyNear"], When = "an ally is next to the target" }],
+            }, campaignName);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+            await session.Query<CustomFeat, CustomFeat_Search>()
+                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(10)))
+                .ToListAsync(TestContext.Current.CancellationToken);
+        }
+
+        await tools.SetActiveSystem(RulesetSystem.Dnd5e, null, campaignName);
+        var start = await tools.StartCombat("loc-1", [heroId, goblinId], campaignName);
+        Assert.True(start.Success, start.Summary);
+
+        var turn = await tools.TakeTurn(new TakeTurnRequest { IncludeParty = true }, campaignName);
+
+        Assert.True(turn.Success, turn.Summary);
+        var line = Assert.Single(turn.Data!.FeatChecklist!);
+        Assert.Contains("Long Shot (Hero)", line);
+        Assert.Contains("assert=allyNear", line);
+    }
 }

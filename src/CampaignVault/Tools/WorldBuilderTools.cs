@@ -496,7 +496,7 @@ This is the only tool that creates a new location. During play, use commit's loc
     }
 
     [Description(
-        "WORLD BUILDER TOOL: Create or update a homebrew feat/perk. Overrides SRD feats by name when queried via lookup (kind:'handbook'). If this feat passively waives a spell-component requirement (like War Caster), set castingWaivers.")]
+        "WORLD BUILDER TOOL: Create or update a homebrew feat/perk. Overrides SRD feats by name when queried via lookup (kind:'handbook'). If this feat passively waives a spell-component requirement (like War Caster), set castingWaivers. To make a feat mechanical, give it effects (closed set: attackBonus, damageBonus, skillBonus, saveBonus, armorClassBonus; fixed values; optional weapon/toggle/assert conditions and, for PF2e, bonusType). Gate it on a plugin or interaction mode with requires. Feats whose rules do not fit effects (reactions, triggers) get adjudicated=true; a feat with none of these is flagged in the wiring audit.")]
     internal Task<ToolResult<CustomFeat>> UpsertFeat(
         [Description("The feat to create or update. Strongly typed.")]
         CustomFeatUpsertRequest feat,
@@ -508,6 +508,12 @@ This is the only tool that creates a new location. During play, use commit's loc
 
     private async Task<ToolResult<CustomFeat>> ApplyFeatUpsertAsync(IAsyncDocumentSession s, CustomFeatUpsertRequest feat, string effective)
     {
+        var problems = CampaignVault.Rulesets.FeatEffectRules.Validate(feat.Effects);
+        if (problems.Count > 0)
+        {
+            return new ToolResult<CustomFeat>(false, null, "Feat not saved: " + string.Join(" ", problems));
+        }
+
         var merged = await _repository.UpsertCustomFeatAsync(s, feat, effective);
         return new ToolResult<CustomFeat>(true, merged, $"Feat upserted (campaign context: {effective}).");
     }

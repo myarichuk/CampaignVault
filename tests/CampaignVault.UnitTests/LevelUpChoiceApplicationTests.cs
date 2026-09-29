@@ -99,20 +99,20 @@ public class LevelUpChoiceApplicationTests : IClassFixture<RavenDBFixture>
         {
             CharacterId = "chars/fighter2",
             LevelsGained = 1,
-            Choices = new Dictionary<string, string> { ["asiOrFeat"] = "greatWeaponMaster" },
+            Choices = new Dictionary<string, string> { ["asiOrFeat"] = "grappler" },
         }, ctx, TestContext.Current.CancellationToken);
 
         await handler.ApplyAsync(new LevelUpChange
         {
             CharacterId = "chars/fighter2",
             LevelsGained = 1,
-            Choices = new Dictionary<string, string> { ["asiOrFeat"] = "sentinel" },
+            Choices = new Dictionary<string, string> { ["asiOrFeat"] = "homebrewFeat" },
         }, ctx, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, fighter.SystemStats!.LevelUpChoices.Count);
-        Assert.Equal("greatWeaponMaster", fighter.SystemStats.LevelUpChoices[0].Value);
+        Assert.Equal("grappler", fighter.SystemStats.LevelUpChoices[0].Value);
         Assert.Equal(4, fighter.SystemStats.LevelUpChoices[0].Level);
-        Assert.Equal("sentinel", fighter.SystemStats.LevelUpChoices[1].Value);
+        Assert.Equal("homebrewFeat", fighter.SystemStats.LevelUpChoices[1].Value);
         Assert.Equal(5, fighter.SystemStats.LevelUpChoices[1].Level);
     }
 

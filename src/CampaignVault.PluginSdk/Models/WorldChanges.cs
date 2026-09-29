@@ -854,9 +854,19 @@ public class ActivityChange : WorldChange
 ///
 /// parameters keys (all optional, resolver-specific; values may be strings or numbers in JSON):
 ///   "dc"            – difficulty class for skill/opposed checks
-///   "bonus"         – attack roll bonus for D&amp;D 5e attacks (alias: "toHitBonus")
+///   "bonus"         – TOTAL to-hit for an attack (alias: "toHitBonus"). OMIT IT for weapon attacks: the engine derives to-hit from the
+///                     sheet (ability mod + proficiency + fighting style + weapon enchantment). Passing it REPLACES that derived value (recorded feat effects still stack on top).
+///                     On skill checks it replaces the sheet skill modifier.
 ///   "damageDice"    – damage expression for attacks (e.g. "1d8")
-///   "damageBonus"   – flat damage bonus for attacks
+///   "damageBonus"   – TOTAL flat damage bonus for attacks. OMIT to get the derived ability modifier (+ Dueling); passing it replaces that.
+///   "powerAttack"   – "true" to opt in to a feat's toggle of that name (a feat effect with toggle "powerAttack"); ignored, with a note, when no recorded feat provides one
+///   "assert"        – comma-separated condition flags the DM judges true right now (e.g. "allyNear,longRange"); each unlocks the recorded feat effects that require it. take_turn's featChecklist lists them while combat is active.
+///   "sneakAttack"   – "true" when an ally is adjacent to the target (advantage also triggers it): rogues add their sneak dice on a hit
+///   "actionSurge"   – "true" to spend an Action Surge use and gain one extra action this turn (combat only, once per turn)
+///   "offHand"       – "true" for the bonus-action off-hand attack (light weapon): no ability modifier on damage unless Two-Weapon Fighting (or it is negative)
+///   "option"        – Cunning Action choice: dash, disengage or hide (actionName "Cunning Action"; hide also needs "dc")
+///   "bonusAction"   – "true" to spend the bonus action instead (Cunning Action Dash/Disengage/Hide, Second Wind, off-hand attack)
+///   Second Wind: ruleset_action actionType Recovery, actionName "Second Wind" (no healDice needed for a Fighter); spends the second_wind pool.
 ///   "ac"            – target AC override for attacks
 ///   "difficulty"    – alias for "dc" on Spell actions
 ///   "advantage"     – "true"/"false" for D&amp;D 5e
@@ -924,6 +934,13 @@ public class RulesetAction : WorldChange
     [JsonPropertyName("parameters")]
     [JsonConverter(typeof(FlexibleStringDictionaryConverter))]
     public Dictionary<string, string> Parameters { get; set; } = [];
+
+    /// <summary>
+    /// Feat effects that are live for each involved character (actor and targets), keyed by character id. Filled by the host
+    /// before the resolver runs; never part of the wire schema.
+    /// </summary>
+    [JsonIgnore]
+    public Dictionary<string, List<ActiveFeatEffect>> FeatEffects { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>
@@ -1109,7 +1126,7 @@ public class LevelUpChange : WorldChange
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
 
-    [Description("Level-up choices to record, keyed by choice key from lookup kind:'level_up' (e.g. 'subclass': 'battleMaster', 'fightingStyle': 'archery', 'asiOrFeat': 'greatWeaponMaster'). For PF2e feat budgets with no enumerated catalog, use keys like 'classFeat'/'skillFeat'/'generalFeat'/'ancestryFeat' with a free-text feat name. Appended to the character's choice history — does not overwrite earlier picks, so repeatable choices (feats at multiple levels) are all kept.")]
+    [Description("Level-up choices to record, keyed by choice key from lookup kind:'level_up' (e.g. 'subclass': 'battleMaster', 'fightingStyle': 'archery', 'asiOrFeat': 'grappler'). For PF2e feat budgets with no enumerated catalog, use keys like 'classFeat'/'skillFeat'/'generalFeat'/'ancestryFeat' with a free-text feat name. Appended to the character's choice history — does not overwrite earlier picks, so repeatable choices (feats at multiple levels) are all kept.")]
     [JsonPropertyName("choices")]
     public Dictionary<string, string>? Choices { get; set; }
 

@@ -12,13 +12,16 @@ public class CharacterCreateHandler : IWorldChangeHandler
     private readonly CharacterBootstrapOrchestrator _bootstrap;
     private readonly ResourcePoolInitializer _poolInitializer;
     private readonly ClassDefinitionProvider _classProvider;
+    private readonly CharacterWiringAuditor? _auditor;
 
     public CharacterCreateHandler(
         CampaignDocumentKeys keys,
         CharacterBootstrapOrchestrator bootstrap,
         ResourcePoolInitializer poolInitializer,
-        ClassDefinitionProvider classProvider)
+        ClassDefinitionProvider classProvider,
+        CharacterWiringAuditor? auditor = null)
     {
+        _auditor = auditor;
         _keys = keys ?? throw new ArgumentNullException(nameof(keys));
         _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
         _poolInitializer = poolInitializer ?? throw new ArgumentNullException(nameof(poolInitializer));
@@ -231,6 +234,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
         _poolInitializer.InitializePools(newChar, activeSystem, campaignConfig);
 
         RecordClassResolutionEcho(ctx, newChar, activeSystem, cc.ClassLevel);
+        await RecordWiringFindingsAsync(ctx, _auditor, newChar, activeSystem, campaignConfig);
 
         await ctx.Session.StoreAsync(newChar, ct);
         ctx.RegisterNewCharacter(newChar);
@@ -291,6 +295,30 @@ public class CharacterCreateHandler : IWorldChangeHandler
         CancellationToken ct) =>
         CharacterBootstrapApplier.ApplyCreationBootstrapAsync(
             _bootstrap, character, activeSystem, explicitMaxHp, explicitCurrentHp, trigger, context, hpMode, ct);
+
+    /// <summary>
+    /// Surfaces half-wired characters (declared class with no matching pools, stale proficiency, unresolved feats, ...)
+    /// at the moment they are written, when the caller can still fix them in the same commit.
+    /// </summary>
+    internal static async Task RecordWiringFindingsAsync(
+        IChangeContext context,
+        CharacterWiringAuditor? auditor,
+        Character character,
+        string system,
+        CampaignConfig? config)
+    {
+        if (auditor is null)
+        {
+            return;
+        }
+
+        var ctx = (ChangeContext)context;
+        var findings = await auditor.AuditAsync(ctx.Session, ctx.CampaignName, character, system, config);
+        if (findings.Count > 0)
+        {
+            context.RecordMessage($"[WIRING] {CharacterWiringAuditor.Format(character, findings)}");
+        }
+    }
 
     internal static void RecordBootstrapReport(IChangeContext context, BootstrapReport report)
     {
@@ -512,11 +540,19 @@ public class CharacterUpdateHandler : IWorldChangeHandler
 {
     private readonly CampaignDocumentKeys _keys;
     private readonly CharacterBootstrapOrchestrator _bootstrap;
+    private readonly ResourcePoolInitializer? _poolInitializer;
+    private readonly CharacterWiringAuditor? _auditor;
 
-    public CharacterUpdateHandler(CampaignDocumentKeys keys, CharacterBootstrapOrchestrator bootstrap)
+    public CharacterUpdateHandler(
+        CampaignDocumentKeys keys,
+        CharacterBootstrapOrchestrator bootstrap,
+        ResourcePoolInitializer? poolInitializer = null,
+        CharacterWiringAuditor? auditor = null)
     {
         _keys = keys ?? throw new ArgumentNullException(nameof(keys));
         _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
+        _poolInitializer = poolInitializer;
+        _auditor = auditor;
     }
 
     public bool ShouldHandle(WorldChange change) => change is CharacterUpdate;
@@ -681,6 +717,14 @@ public class CharacterUpdateHandler : IWorldChangeHandler
 
             await CharacterBootstrapApplier.ApplyCreationBootstrapAsync(
                 _bootstrap, character, activeSystem, null, null, BootstrapTrigger.SystemStatsPatch, ctx, ct: ct);
+
+            // A patch can add classes/levels/feats; without this the pools those imply (action_surge, spell
+            // slots, ...) were only ever created by character_create and level_up, so patched-in classes stayed pool-less.
+            var patchConfig = !string.IsNullOrEmpty(ctx.CampaignName)
+                ? await ctx.Session.LoadAsync<CampaignConfig>(_keys.Config(ctx.CampaignName), ct)
+                : null;
+            _poolInitializer?.InitializePools(character, activeSystem, patchConfig);
+            await CharacterCreateHandler.RecordWiringFindingsAsync(ctx, _auditor, character, activeSystem, patchConfig);
         }
 
         if (cu.DepartedAtDay.HasValue)

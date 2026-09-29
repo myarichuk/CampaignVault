@@ -1,3 +1,5 @@
+using CampaignVault.Models;
+
 namespace CampaignVault.Data.Templates;
 
 public record FeatDefinition : RulesetTemplate
@@ -29,6 +31,21 @@ public record FeatDefinition : RulesetTemplate
     /// </summary>
     public List<string> CastingWaivers { get; init; } = [];
 
+    /// <summary>
+    /// Declarative roll effects the engine applies itself (see <see cref="FeatEffect"/>). Closed vocabulary, fixed magnitudes:
+    /// no scripting. Conditions are either engine-checked (weapon, toggle) or DM-asserted flags.
+    /// </summary>
+    public List<FeatEffect> Effects { get; init; } = [];
+
+    /// <summary>Plugin/mode gate for the whole feat: hidden and inert unless the plugin is loaded and, if named, the mode is running.</summary>
+    public FeatRequirement? Requires { get; init; }
+
+    /// <summary>
+    /// True when the feat's rules are prose the DM applies by judgment (no machine-readable effects). Marks it as knowingly
+    /// unimplemented so the wiring audit does not report it.
+    /// </summary>
+    public bool Adjudicated { get; init; }
+
     public static FeatDefinition Merge(FeatDefinition child, FeatDefinition parent) =>
         child with
         {
@@ -41,5 +58,8 @@ public record FeatDefinition : RulesetTemplate
             CastingWaivers = child.CastingWaivers.Count > 0 ? child.CastingWaivers : parent.CastingWaivers,
             Classes = child.Classes.Count > 0 ? child.Classes : parent.Classes,
             Level = child.Level ?? parent.Level,
+            Effects = child.Effects.Count > 0 ? child.Effects : parent.Effects,
+            Requires = child.Requires ?? parent.Requires,
+            Adjudicated = child.Adjudicated || parent.Adjudicated,
         };
 }

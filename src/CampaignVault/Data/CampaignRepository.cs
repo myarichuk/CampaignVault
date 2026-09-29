@@ -2173,6 +2173,9 @@ public class CampaignRepository
             existing.Prerequisite = feat.Prerequisite;
             existing.MechanicalSummary = feat.MechanicalSummary;
             existing.CastingWaivers = feat.CastingWaivers ?? existing.CastingWaivers;
+            existing.Effects = feat.Effects ?? existing.Effects;
+            existing.Requires = feat.Requires ?? existing.Requires;
+            existing.Adjudicated = feat.Adjudicated ?? existing.Adjudicated;
             existing.Classes = feat.Classes ?? existing.Classes;
             existing.Level = feat.Level;
             existing.LastUpdated = DateTime.UtcNow;
@@ -2194,6 +2197,9 @@ public class CampaignRepository
                 Prerequisite = feat.Prerequisite,
                 MechanicalSummary = feat.MechanicalSummary,
                 CastingWaivers = feat.CastingWaivers ?? [],
+                Effects = feat.Effects ?? [],
+                Requires = feat.Requires,
+                Adjudicated = feat.Adjudicated ?? false,
                 Classes = feat.Classes ?? [],
                 Level = feat.Level,
                 IsArchived = feat.IsArchived ?? false,

@@ -31,6 +31,15 @@ public class CustomFeat : ICampaignScopedEntity, IArchivable
     /// </summary>
     public List<string> CastingWaivers { get; set; } = [];
 
+    /// <summary>Declarative roll effects the engine applies itself (see <see cref="FeatEffect"/>).</summary>
+    public List<FeatEffect> Effects { get; set; } = [];
+
+    /// <summary>Plugin/mode gate for the whole feat.</summary>
+    public FeatRequirement? Requires { get; set; }
+
+    /// <summary>True when the feat is prose the DM adjudicates (knowingly no machine-readable effects).</summary>
+    public bool Adjudicated { get; set; }
+
     /// <summary>Classes that can take this feat. Empty for ancestry/general/skill feats.</summary>
     public List<string> Classes { get; set; } = [];
 

@@ -40,6 +40,30 @@ public class RulesetDataDiTests
     }
 
     [Fact]
+    public void Container_Wires_CharacterUpdateHandler_AndPartialWiringContributor()
+    {
+        var builder = new ContainerBuilder();
+        builder.RegisterModule<CampaignVaultModule>();
+        builder.RegisterInstance(new TestFakeEmbeddingService()).As<ILocalEmbeddingService>();
+
+        using var container = builder.Build();
+        using var scope = container.BeginLifetimeScope();
+
+        var update = scope.Resolve<CharacterUpdateHandler>();
+        var create = scope.Resolve<CharacterCreateHandler>();
+        foreach (var (name, handler) in new (string, object)[] { ("update", update), ("create", create) })
+        {
+            var fields = handler.GetType().GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            Assert.NotNull(fields.Single(f => f.Name == "_auditor").GetValue(handler));
+            Assert.True(name != "update" || fields.Single(f => f.Name == "_poolInitializer").GetValue(handler) != null,
+                "CharacterUpdateHandler must receive the pool initializer from the container.");
+        }
+
+        Assert.Contains(scope.Resolve<IEnumerable<CampaignVault.Data.Pressure.IPressureContributor>>(),
+            c => c is CampaignVault.Data.Pressure.Contributors.PartialWiringPressureContributor);
+    }
+
+    [Fact]
     public void Container_Scans_AllRulesetYamlProviders()
     {
         var builder = new ContainerBuilder();

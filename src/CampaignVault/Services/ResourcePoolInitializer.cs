@@ -30,31 +30,49 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
             return;
         }
 
-        IReadOnlyDictionary<string, ResourcePoolTemplate> schemas;
+        character.SystemStats.ResourcePools = ComputeDesiredPools(character, system, campaignConfig);
+    }
+
+    /// <summary>The pool schemas in force for a campaign: its own override when present, else the system's YAML.</summary>
+    public IReadOnlyDictionary<string, ResourcePoolTemplate> GetSchemas(string system, CampaignConfig? campaignConfig)
+    {
         if (campaignConfig?.ResourcePoolSchemas?.Count > 0)
         {
-            schemas = campaignConfig.ResourcePoolSchemas;
-        }
-        else if (_provider != null)
-        {
-            schemas = _provider.GetPoolsForSystem(system);
-        }
-        else
-        {
-            throw new InvalidOperationException(
-                "ResourcePoolProvider is required when campaign config has no ResourcePoolSchemas. " +
-                "Register ResourcePoolInitializer through DI (CampaignVaultModule) or supply schemas in CampaignConfig.");
+            return campaignConfig.ResourcePoolSchemas;
         }
 
-        character.SystemStats.ResourcePools ??= [];
+        if (_provider != null)
+        {
+            return _provider.GetPoolsForSystem(system);
+        }
+
+        throw new InvalidOperationException(
+            "ResourcePoolProvider is required when campaign config has no ResourcePoolSchemas. " +
+            "Register ResourcePoolInitializer through DI (CampaignVaultModule) or supply schemas in CampaignConfig.");
+    }
+
+    /// <summary>
+    /// The pools this character should have right now, given its classes, level and feats. Pure with
+    /// respect to the character: preserves spent amounts from the stored pools but assigns nothing, so
+    /// audits can diff "expected" against "stored" without running the mutating initializer.
+    /// </summary>
+    public Dictionary<string, ResourcePool> ComputeDesiredPools(Character character, string system, CampaignConfig? campaignConfig)
+    {
+        var desiredPools = new Dictionary<string, ResourcePool>();
+        if (character.SystemStats == null)
+        {
+            return desiredPools;
+        }
+
+        var schemas = GetSchemas(system, campaignConfig);
+
+        var existingPools = character.SystemStats.ResourcePools ?? [];
 
         var classLevels = CharacterClassResolver.ResolveClassLevels(character);
         var characterLevel = DeriveCharacterLevel(character);
         var casterLevel = system == RulesetSystem.Dnd5e
             ? Dnd5eCasterLevelHelper.ComputeCasterLevel(classLevels, _classProvider)
             : 0;
-
-        var desiredPools = new Dictionary<string, ResourcePool>();
 
         foreach (var (poolName, template) in schemas)
         {
@@ -69,7 +87,7 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
                 characterLevel,
                 casterLevel,
                 _classProvider,
-                character.SystemStats.ResourcePools,
+                existingPools,
                 desiredPools);
         }
 
@@ -80,9 +98,20 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
             classLevels,
             characterLevel,
             casterLevel,
+            existingPools,
             desiredPools);
 
-        character.SystemStats.ResourcePools = desiredPools;
+        // Pools the schemas don't know about (hand-added, or from a plugin that dropped its schema) can't be
+        // re-derived, so rebuilding must not silently delete them. Schema pools that stopped applying still go.
+        foreach (var (name, pool) in existingPools)
+        {
+            if (!schemas.ContainsKey(name))
+            {
+                desiredPools.TryAdd(name, pool);
+            }
+        }
+
+        return desiredPools;
     }
 
     private void AddFeatGrantedPools(
@@ -92,6 +121,7 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
         IReadOnlyList<ClassLevelEntry> classLevels,
         int characterLevel,
         int casterLevel,
+        Dictionary<string, ResourcePool> existingPools,
         Dictionary<string, ResourcePool> desiredPools)
     {
         if (_featProvider == null)
@@ -121,7 +151,7 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
                     characterLevel,
                     casterLevel,
                     _classProvider,
-                    character.SystemStats.ResourcePools,
+                    existingPools,
                     desiredPools);
             }
         }

@@ -48,6 +48,17 @@ public abstract class RulesetResolverBase<TStats> : IHostRulesetModule, IActionR
         var mutations = new List<WorldChange>();
         ResolverResult result;
 
+        // Named class features (Second Wind, ...) are actions of any declared type; a ruleset claims them here.
+        var featureResult = await TryResolveClassFeatureAsync(action, context, actorStats, mutations, ct);
+        if (featureResult is not null)
+        {
+            return new ResolverOutput
+            {
+                Mutations = featureResult.Success ? mutations : Array.Empty<WorldChange>(),
+                Result = featureResult
+            };
+        }
+
         switch (action.ActionType)
         {
             case RulesetActionType.Attack:
@@ -94,6 +105,14 @@ public abstract class RulesetResolverBase<TStats> : IHostRulesetModule, IActionR
             Result = result
         };
     }
+
+    /// <summary>Hook for rulesets to resolve a named class feature themselves; null means "not a feature, resolve normally".</summary>
+    protected virtual Task<ResolverResult?> TryResolveClassFeatureAsync(
+        RulesetAction action,
+        IChangeContext context,
+        TStats actorStats,
+        List<WorldChange> mutations,
+        CancellationToken ct) => Task.FromResult<ResolverResult?>(null);
 
     protected abstract Task<ResolverResult> ResolveAttackAsync(
         RulesetAction action, 
@@ -882,6 +901,12 @@ public abstract class RulesetResolverBase<TStats> : IHostRulesetModule, IActionR
             _ => AdvantageEffect.None,
         };
         var resolved = Pipeline.Resolve(query, baseBonus, explicitAdvantage);
+        if (action is not null)
+        {
+            var featEffects = action.FeatEffects.GetValueOrDefault(actor.Id) ?? [];
+            var feat = FeatEffectRules.Fold(kind, subject, action, featEffects, System, isActor: actor.Id == action.CharacterId);
+            resolved = resolved with { Bonus = resolved.Bonus + feat.Bonus, Notes = [.. resolved.Notes, .. feat.Notes] };
+        }
         var mechanic = resolved.Advantage switch
         {
             AdvantageEffect.Advantage => DiceMechanic.Advantage,

@@ -388,6 +388,14 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
         {
             var config = await _repository.GetCampaignConfigAsync(new CampaignSession(session, effective));
             var homebrewFeats = await _repository.GetCustomFeatsForSystemAsync(session, config.ActiveSystem, effective);
+            var activeModes = new List<string>();
+            foreach (var modeId in config.EnabledModeIds)
+            {
+                var encounter = await session.LoadAsync<ModeEncounter>(_keys.ModeCurrent(effective, modeId));
+                if (encounter is { IsActive: true })
+                    activeModes.Add(modeId);
+            }
+
             var handbook = SystemHandbookBuilder.Build(
                 config.ActiveSystem,
                 classProvider,
@@ -396,7 +404,8 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
                 featProvider,
                 conditionProvider,
                 creatureProvider,
-                homebrewFeats);
+                homebrewFeats,
+                activeModes);
 
             return new ToolResult<SystemHandbookResponse>(
                 true,

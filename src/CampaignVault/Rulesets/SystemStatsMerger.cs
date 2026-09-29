@@ -115,7 +115,20 @@ public static class SystemStatsMerger
 
             if (property.Value is JsonArray sourceArray)
             {
-                if (sourceArray.Count > 0)
+                if (sourceArray.Count > 0 && string.Equals(property.Key, "levelUpChoices", StringComparison.OrdinalIgnoreCase)
+                    && target[property.Key] is JsonArray existingChoices)
+                {
+                    // A choice history is appended to, never replaced: patching in a subclass must not erase the fighting style.
+                    var seen = existingChoices.Select(n => n?.ToJsonString()).ToHashSet();
+                    foreach (var choice in sourceArray)
+                    {
+                        if (seen.Add(choice?.ToJsonString()))
+                        {
+                            existingChoices.Add(choice?.DeepClone());
+                        }
+                    }
+                }
+                else if (sourceArray.Count > 0)
                 {
                     target[property.Key] = sourceArray.DeepClone();
                 }

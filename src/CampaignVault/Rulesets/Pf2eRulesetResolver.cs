@@ -81,6 +81,16 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             return skillMod;
         }
 
+        // A skill with no recorded modifier is untrained: ability modifier only (no level, no rank).
+        if (CampaignVault.Rulesets.Bootstrap.Pf2eSkillTable.KeyAbility.TryGetValue(name, out var keyAbility))
+        {
+            name = keyAbility;
+        }
+        else if (string.Equals(name, "Perception", StringComparison.OrdinalIgnoreCase))
+        {
+            name = "Wisdom";
+        }
+
         return name.ToLower() switch
         {
             "strength" => stats.StrengthMod,
@@ -213,7 +223,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             narratives.Add(result.Narrative);
         }
 
-        return ResolverResult.Ok(string.Join(" | ", narratives));
+        return ResolverResult.Ok(string.Join(" | ", narratives) + AttackTargetHelper.MultiTargetWarning(action, null));
     }
 
     private async Task<ResolverResult> ResolveAttackAgainstTargetAsync(
@@ -236,17 +246,25 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         }
 
         var ac = targetStats.ArmorClass;
-        ac = (await FoldAsync(context, target, RollKinds.ArmorClass, null, ac, action).ConfigureAwait(false)).Bonus;
+        var acFold = await FoldAsync(context, target, RollKinds.ArmorClass, null, ac, action).ConfigureAwait(false);
+        ac = acFold.Bonus;
         if (action.Parameters.TryGetValue("ac", out var acStr) && int.TryParse(acStr, out var overrideAc))
         {
             ac = overrideAc;
         }
 
         var attackBonus = 0;
-        if (action.Parameters.TryGetValue("bonus", out var b) && !int.TryParse(b, out attackBonus))
+        var hasExplicitBonus = TryGetParameter(action.Parameters, out var b, "bonus", "toHitBonus");
+        if (hasExplicitBonus && !int.TryParse(b, out attackBonus))
         {
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid bonus value '{b}'.");
         }
+
+        // Ability modifier, level + proficiency and item bonuses come from the sheet unless the caller states the number.
+        var actorChar = context.Characters[action.CharacterId];
+        var derived = DerivedAttack.Pf2e(actorChar, actorStats, action, hasExplicitBonus, action.Parameters.ContainsKey("damageBonus") || DerivedAttack.HasInlineModifier(action.Parameters.GetValueOrDefault("damageDice")));
+        attackBonus += derived.ToHit;
+        var bareWarning = derived.Note + acFold.Suffix;
 
         if (action.Parameters.TryGetValue("mapPenalty", out var mapStr))
         {
@@ -259,14 +277,17 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
                 return ResolverResult.Fail("InvalidParameter", $"Error: invalid mapPenalty value '{mapStr}'.");
             }
         }
-        else if (attackIndex > 0)
+        else
         {
-            attackBonus -= attackIndex * 5;
+            // Strikes already made this turn (stamped by TryConsumeActionSlot) plus this action's own position in targetIds.
+            var prior = action.Parameters.TryGetValue(PriorStrikesParameter, out var priorRaw) && int.TryParse(priorRaw, out var p) ? p : 0;
+            attackBonus -= Math.Min(prior + attackIndex, 2) * 5;
         }
 
         var attackFold = await FoldAsync(
             context, context.Characters[action.CharacterId], RollKinds.Attack, null, attackBonus, action, GetMechanicFromAction(action), target).ConfigureAwait(false);
         attackBonus = attackFold.Bonus;
+        bareWarning += attackFold.Suffix;
 
         var damageDice = action.Parameters.GetValueOrDefault("damageDice", "1d4");
         
@@ -276,7 +297,11 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             return ResolverResult.Fail("InvalidParameter", $"Error: invalid damageBonus value '{db}'.");
         }
 
-        damageBonus = (await FoldAsync(context, context.Characters[action.CharacterId], RollKinds.Damage, null, damageBonus, action).ConfigureAwait(false)).Bonus;
+        damageBonus += derived.Damage;
+
+        var damageFold = await FoldAsync(context, context.Characters[action.CharacterId], RollKinds.Damage, null, damageBonus, action).ConfigureAwait(false);
+        damageBonus = damageFold.Bonus;
+        bareWarning += damageFold.Suffix;
 
         var attackRoll = await _rollService.RollAsync(new RollRequest { Tag = "attack", Expression = "1d20", Bonus = attackBonus, Mechanic = attackFold.Mechanic }, ct);
         
@@ -284,11 +309,21 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         if (degree == Pf2eDegreeOfSuccess.Failure || degree == Pf2eDegreeOfSuccess.CriticalFailure)
         {
-            return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Missed. ({degree}) Attack {attackRoll.Result} vs AC {ac}. {attackRoll.Summary}");
+            return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Missed. ({degree}) Attack {attackRoll.Result} vs AC {ac}. {attackRoll.Summary}{bareWarning}");
         }
 
         var damageRoll = await _rollService.RollAsync(new RollRequest { Tag = "damage", Expression = damageDice, Bonus = damageBonus, Mechanic = DiceMechanic.Standard }, ct);
         var finalDamage = damageRoll.Result;
+
+        // Rogue precision damage: caller says the target is off-guard (sneakAttack: true); a critical doubles it with the rest.
+        var sneakNote = "";
+        var sneakDice = CombatFeatureRules.Pf2eSneakAttackDice(actorChar, actorStats.Level ?? 0);
+        if (sneakDice > 0 && action.Parameters.TryGetValue("sneakAttack", out var sneakRaw) && bool.TryParse(sneakRaw, out var sneakYes) && sneakYes)
+        {
+            var sneakRoll = await _rollService.RollAsync(new RollRequest { Tag = "sneakAttack", Expression = $"{sneakDice}d6", Mechanic = DiceMechanic.Standard }, ct);
+            finalDamage += sneakRoll.Result;
+            sneakNote = $" Sneak Attack +{sneakRoll.Result} ({sneakDice}d6 precision).";
+        }
 
         if (degree == Pf2eDegreeOfSuccess.CriticalSuccess)
         {
@@ -309,7 +344,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         mutations.Add(new HpChange { CharacterId = targetId, Delta = -finalDamage });
 
-        return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage. ({degree}) Attack {attackRoll.Result} vs AC {ac}.");
+        return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage. ({degree}) Attack {attackRoll.Result} vs AC {ac}.{sneakNote}{bareWarning}");
     }
 
     protected override async Task<ResolverResult> ResolveSkillCheckAsync(RulesetAction action, IChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
@@ -321,7 +356,20 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         var skillName = action.Parameters.GetValueOrDefault("skill", action.ActionName);
         var bonus = GetSkillOrAbilityBonus(actorStats, skillName);
-        bonus = (await FoldAsync(context, context.Characters[action.CharacterId], RollKinds.Check, skillName, bonus, action).ConfigureAwait(false)).Bonus;
+        var bonusSource = "";
+        if (action.Parameters.TryGetValue("bonus", out var suppliedBonus))
+        {
+            if (!int.TryParse(suppliedBonus, out var callerBonus))
+            {
+                return ResolverResult.Fail("InvalidParameter", $"Error: invalid bonus value '{suppliedBonus}'.");
+            }
+
+            bonus = callerBonus;
+            bonusSource = " [bonus supplied by caller; sheet modifier not added]";
+        }
+
+        var checkFold = await FoldAsync(context, context.Characters[action.CharacterId], RollKinds.Check, skillName, bonus, action).ConfigureAwait(false);
+        bonus = checkFold.Bonus;
 
         var relationshipLabel = "neutral";
         var relationshipBonus = 0;
@@ -344,7 +392,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         return new ResolverResult
         {
-            Narrative = $"{action.ActionName} ({skillName}): {degree}. Rolled {outcome.Result} vs DC {dc}.{relationshipSuffix} {outcome.Summary}",
+            Narrative = $"{action.ActionName} ({skillName}): {degree}. Rolled {outcome.Result} vs DC {dc}.{relationshipSuffix} {outcome.Summary}{checkFold.Suffix}{bonusSource}",
             RollTotal = outcome.Result,
             Skill = skillName
         };
@@ -375,7 +423,8 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         {
             var skillName = action.Parameters.GetValueOrDefault("skill", "Athletics");
             var bonus = GetSkillOrAbilityBonus(actorStats, skillName);
-            bonus = (await FoldAsync(context, context.Characters[action.CharacterId], RollKinds.Check, skillName, bonus, action).ConfigureAwait(false)).Bonus;
+            var grabFold = await FoldAsync(context, context.Characters[action.CharacterId], RollKinds.Check, skillName, bonus, action).ConfigureAwait(false);
+            bonus = grabFold.Bonus;
 
             var fortDc = 10 + GetSavingThrowBonus(targetStats, "Fortitude");
             if (action.Parameters.TryGetValue("dc", out var dcStr) && int.TryParse(dcStr, out var overrideDc))
@@ -400,14 +449,15 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             }
 
             var resultSuffix = success ? " Target is now grabbed." : string.Empty;
-            return ResolverResult.Ok($"{action.ActionName}: {degree}. Rolled {outcome.Result} vs Fortitude DC {fortDc}.{resultSuffix} {outcome.Summary}");
+            return ResolverResult.Ok($"{action.ActionName}: {degree}. Rolled {outcome.Result} vs Fortitude DC {fortDc}.{resultSuffix} {outcome.Summary}{grabFold.Suffix}");
         }
 
         if (isEscape)
         {
             var skillName = action.Parameters.GetValueOrDefault("skill", "Athletics");
             var actorBonus = GetSkillOrAbilityBonus(actorStats, skillName);
-            actorBonus = (await FoldAsync(context, context.Characters[action.CharacterId], RollKinds.Check, skillName, actorBonus, action).ConfigureAwait(false)).Bonus;
+            var escapeFold = await FoldAsync(context, context.Characters[action.CharacterId], RollKinds.Check, skillName, actorBonus, action).ConfigureAwait(false);
+            actorBonus = escapeFold.Bonus;
 
             var grapplerBonus = GetSkillOrAbilityBonus(targetStats, skillName);
             grapplerBonus = (await FoldAsync(context, target, RollKinds.Check, skillName, grapplerBonus, action).ConfigureAwait(false)).Bonus;
@@ -430,7 +480,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             }
 
             var resultSuffix = success ? " Actor breaks free." : string.Empty;
-            return ResolverResult.Ok($"{action.ActionName}: {degree}. Rolled {outcome.Result} vs Escape DC {escapeDc}.{resultSuffix} {outcome.Summary}");
+            return ResolverResult.Ok($"{action.ActionName}: {degree}. Rolled {outcome.Result} vs Escape DC {escapeDc}.{resultSuffix} {outcome.Summary}{escapeFold.Suffix}");
         }
 
         var actorSkill = action.Parameters.GetValueOrDefault("skill", "Athletics");
@@ -483,7 +533,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         var damage = await TryApplyPf2eSaveDamageAsync(action, action.CharacterId, degree, mutations, ct);
         var damageMsg = damage > 0 ? $" Took {damage} damage." : string.Empty;
-        return ResolverResult.Ok($"{action.ActionName} ({saveName}): {degree}. Rolled {outcome.Result} vs DC {dc}.{damageMsg} {outcome.Summary}");
+        return ResolverResult.Ok($"{action.ActionName} ({saveName}): {degree}. Rolled {outcome.Result} vs DC {dc}.{damageMsg} {outcome.Summary}{saveFold.Suffix}");
     }
 
     protected override async Task<ResolverResult> ResolveSpellSaveAsync(
@@ -624,9 +674,13 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         return new Dictionary<string, int> { { "actions", 3 } };
     }
 
+    private const string StrikesMade = "strikesMade";
+    private const string PriorStrikesParameter = "priorStrikes";
+
     public override bool TryConsumeActionSlot(CombatantState state, RulesetAction action, out string? errorReason)
     {
         errorReason = null;
+        action.Parameters.Remove(PriorStrikesParameter);
 
         if (action.IsReaction)
         {
@@ -648,6 +702,15 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         }
 
         state.ActionBudget["actions"] -= cost;
+
+        // Multiple attack penalty across separate actions: remember Strikes this turn; the resolver reads the count back.
+        if (action.ActionType == RulesetActionType.Attack)
+        {
+            var made = state.ActionBudget.GetValueOrDefault(StrikesMade);
+            action.Parameters[PriorStrikesParameter] = made.ToString();
+            state.ActionBudget[StrikesMade] = made + Math.Max(1, AttackTargetHelper.SelectAttackInstances(action).Count);
+        }
+
         return true;
     }
 }
