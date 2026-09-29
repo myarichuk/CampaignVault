@@ -30,13 +30,14 @@ Quiet travel, a rest, a privy stop, a nod-and-wait still get *place + body + one
 
 ### Floor (quality, not quota)
 
-A beat is normally 3–5 short paragraphs and 6–8 under real tension, but length comes from new things happening, never from restating old ones. Before sending, check:
+A beat is normally 3–5 short paragraphs and 6–8 under real tension, but length comes from new things (events, sensory descriptions) happening, never from restating old ones. Before sending, check:
 
 1. Place — more than one sense, and only details that were not in the last beat.
 2. Body — breath, hands, stance, kit weight, a need if it is actually moving the character.
 3. Geometry — who is where relative to whom.
 4. Spoken lines in quotes when anyone talks. Reported speech is a skip.
 5. Time felt through the body, not captioned as a duration.
+6. Consider who is talking (realism, species, job, circumstances, emotions) and what the actor knows or doesn't know. NEVER narrate what actor cannot plausibly know.
 
 Stop when the change has landed. Three short paragraphs that move are better than eight that recap. If you wrote a caption (`You climb back on. Wheels moving again.`), rewrite once. If you wrote a sunset three times, cut two.
 
@@ -48,7 +49,8 @@ Stop when the change has landed. Three short paragraphs that move are better tha
 - Naming a need the engine tracks ("her bladder has opinions") — narrate its sensory effect (`dnd-npc-interaction` Need-Driven Behavior).
 - Re-describing an established room from scratch. One new tag per mention.
 - Author name-drops as style. Concrete cost + a tell in the same paragraph is enough.
-- Modern consent language in NPC or narrator mouths ("you can do X or Y, either way I'm writing the report"). Menus of choices belong to the player; NPCs in this world state terms, threaten, plead or wait.
+- Modern consent language in NPC or narrator mouths. Not just kink-meta (`consent`, `unwilling`, `stance`, `safe word`, `limits`, `you can say no`). Also the polite fork: `come talk or I tell`; `X or Y, your choice`; `either way I'm writing the report`. Engine stance lives in traits. In the scene: demand, threaten, wait, grab. Do not ask the PC to pick a menu.
+- Telegram captions. Fragment stacks (`Trail bread. Water. Twelve hours.`) and time-stamps as their own paragraph. Write clauses with a body in them. If a line would fit under a photo, rewrite it.
 
 ## Structure When There Are Stakes
 
@@ -98,6 +100,16 @@ Only their Memory, linked plot threads, public reputation and job expertise — 
 
 - Never flatly refuse a fictionally possible action — resolve it via the matching `ruleset_action` and let the roll be the "no." Refuse only the fictionally impossible, saying why and what is available. A `[SpellcastingBlocked]` rejection is rules working, not railroading.
 - A `take_turn` batch narrates the consequences of the stated action — never the player's next choice, reply or move. Stop at forks, questions and PC combat turns (one batch = one player-stated beat).
+
+## Log Voice vs. Scene Voice
+
+`take_turn`'s `narrative` is a one-sentence vault log. It is not the prose. When engine returns stack up (combat, chase, several checks in a row), the log line becomes the easy thing to paste. Resist it:
+
+- A log line (`Hut up. Rest broken. Goblin outside.`) that reads as the scene has failed this skill, even if the facts are right.
+- A miss or failed check gets the same place + body + consequence as a hit: what the body did, what the world did. Never a fragment stack.
+- Rules and slot answers go in one OOC line above a visible break, never inside the scene or the last in-character paragraph, and are not restated every beat.
+- Person: 2nd (`you do, you see`) for the whole beat, every beat. Never mix `you` and a third-person name for the PC.
+- Where the fiction and the roster disagree (dead, fled, or moved NPCs still in `presentNPCs`), narrate the fiction and clear the location in the same batch; never voice a stale NPC.
 
 ## Checklist
 

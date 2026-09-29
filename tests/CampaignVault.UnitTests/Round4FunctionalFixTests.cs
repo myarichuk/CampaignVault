@@ -204,4 +204,27 @@ public class Round4FunctionalFixTests
 
         Assert.Null(result.NarrativeReminder);
     }
+
+    [Fact]
+    public void DepartedActivityWithoutLocationClear_Reminds()
+    {
+        var result = new TurnResult();
+        MutationTools.ComposeReminders(
+            [new ActivityChange { CharacterId = "chars/joss", NewActivity = "dead in the frost" }],
+            result);
+
+        Assert.Contains("chars/joss", result.NarrativeReminder);
+        Assert.Contains("updateLocation", result.NarrativeReminder);
+    }
+
+    [Fact]
+    public void DepartedActivityWithLocationClear_StaysQuiet()
+    {
+        var result = new TurnResult();
+        MutationTools.ComposeReminders(
+            [new ActivityChange { CharacterId = "chars/joss", NewActivity = "dead in the frost", NewLocationId = null, UpdateLocation = true }],
+            result);
+
+        Assert.Null(result.NarrativeReminder);
+    }
 }

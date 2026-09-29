@@ -27,7 +27,9 @@ public class TakeTurnRequest
     public WorldChange[]? Changes { get; set; }
 
     [Description(
-        "Narrative summary of what happened. Required if Changes is provided; omit for pure queries.")]
+        "One-sentence LOG entry for the vault, required if Changes is provided; omit for pure queries. This is a record, " +
+        "not your prose to the player: write the actual scene separately after the commit, with place, body, and what " +
+        "the outcome did, including on a miss.")]
     [JsonPropertyName("narrative")]
     public string? Narrative { get; set; }
 
@@ -130,7 +132,8 @@ public class TurnResult
 
     [Description("Narrative summary of each change processed — includes randomized/computed combat outcomes (hit/miss, " +
         "damage rolled) and validation notices you couldn't have known just from the Changes you sent; explicit " +
-        "confirmations of what you already specified (e.g. 'HP adjusted by -5') are included too but add nothing new.")]
+        "confirmations of what you already specified (e.g. 'HP adjusted by -5') are included too but add nothing new. " +
+        "Bookkeeping for you, not player-facing text: never paste or paraphrase these lines as the scene.")]
     public List<string> Summary { get; set; } = [];
 
     [Description("Entity IDs where a create-style change hit an existing document and was merged instead of creating new.")]

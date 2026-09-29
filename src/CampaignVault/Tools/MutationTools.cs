@@ -1364,7 +1364,23 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                 "matching take_turn change (item_equip/item_unequip/item_update/status/status_remove/character_update/" +
                 "archive_entity). Add it now — otherwise the change silently reverts next scene.");
         }
+
+        var strandedIds = changes.OfType<ActivityChange>()
+            .Where(a => !a.UpdateLocation && a.NewActivity is { } act && DepartureActivityRegex.IsMatch(act))
+            .Select(a => a.CharacterId)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (strandedIds.Count > 0)
+        {
+            AppendReminder(result,
+                $"Activity for {string.Join(", ", strandedIds)} reads as dead/fled/departed but their location was not cleared, " +
+                "so they still show in presentNPCs. Add updateLocation:true with newLocationId (null to clear) in this batch.");
+        }
     }
+
+    private static readonly System.Text.RegularExpressions.Regex DepartureActivityRegex = new(
+        @"\b(dead|dies|died|slain|killed|corpse|body|fled|flees|fleeing|flee|ran (off|away)|running (off|away)|sprinting away|leaves|left|departed|gone)\b",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
 
     private static void AppendReminder(TurnResult result, string reminder) =>
         result.NarrativeReminder = result.NarrativeReminder is null
