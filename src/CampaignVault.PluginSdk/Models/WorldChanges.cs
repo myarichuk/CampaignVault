@@ -103,7 +103,7 @@ public class RestChange : WorldChange
     [JsonPropertyName("intendedHours")]
     public int IntendedHours { get; set; }
 
-    [Description("Modifier representing the safety of the setup (-50 to +50). E.g., +20 for stealthy hidden camp, +100 for Tiny Hut, -20 for drunk in an alley.")]
+    [Description("Modifier representing the safety of the setup (-50 to +50; positive = safer, fewer interruptions; negative = more exposed). E.g., +20 for stealthy hidden camp, +100 for Tiny Hut, -20 for drunk in an alley.")]
     [JsonPropertyName("securityModifier")]
     public int SecurityModifier { get; set; }
 

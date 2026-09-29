@@ -13,16 +13,25 @@ You are running NPCs: their psychology drives their decisions, not your narrativ
 
 Before narrating any NPC action, read their card: `cards[]` in `take_turn` carries traits, wants, fears, stance, notes, gear and key memories once per session (the scene roster only lists id/name/activity/mood). Topical memories, tier changes and pressing needs arrive as `context[]` lines on the beat that needs them. A card you no longer have (compaction) or want fresh: `get_entity` chars/ id (or bundle `fullDetailCharacterId`): Motivation, Ideology, Pride/Paranoia, Trust/Suspicion/Loyalty/Fear, Schedule, Memory, `TurnIntent` (advisory). If memory/psychology may be stale (gap, resume), add `memoriesOnlyCharacterId` (cheapest) or `fullDetailCharacterId` — never assume multi-beat-old memory is current. `fullDetailCharacterId` omits SystemStats/Needs/gear by default — that's the mechanical slice for a roll or combat, not for voicing someone. Add `includeCombatDetail: true` on the same call once a check lands on this NPC or a fight starts, not before.
 
+## Empty Card = Do Not Speak Yet
+
+If the card has default psychology (`openness: 0.5`, no memories, no `personality`), stop. Seed the Speaking NPC floor in `dnd-world-building` (personality + two memories) before the first quoted line. Playing them on an empty card is how every hedge-cutter sounds like every carter.
+
 ## NPC Voice
 
-Differentiate each NPC by diction, rhythm, verbosity from their Social/Psychology profile:
+Diction comes from `personality` and Memory, not from a generic grimdark:
+
 - A nervous merchant speaks clipped, apologetic sentences
 - A proud knight speaks formal, uses titles, is slow to admit fault
 - A weary innkeeper speaks wearily, with sighs and longer pauses
+- A city outrider counts hands and names the gate
+- A country carter blesses himself at horns and looks at the mantle second
+
+After they learn something, `knowledge_update` so the next scene is not empty again.
 
 ## Self-Interest Overrides Helpfulness
 
-Never default to cooperativeness — gate through Trust/Suspicion/ideology/Fear (Low Trust: resistant; High Suspicion: evasive; strong ideology: won't betray interests even if paid; Fear: complies now, resents later). Show it in behavior (tight jaw, delayed response, a look away), never as stated reluctance. Same as `dnd-narration`'s Prompt Discipline — fear and greed drive NPCs, not courtesy.
+Never default to cooperativeness — gate through Trust/Suspicion/ideology/Fear (Low Trust: resistant; High Suspicion: evasive; strong ideology: won't betray interests even if paid; Fear: complies now, resents later). Show it in behavior (tight jaw, delayed response, a look away), never as stated reluctance. Same as `dnd-narration`'s Dialogue section — fear and greed drive NPCs, not courtesy.
 
 ## Knowledge Updates
 
@@ -70,7 +79,7 @@ The engine's scheduler picks initiative from measurable need/momentum — it can
 
 If the PC narrates only internal experience with no external action, the NPC has nothing to react to — advance the scene with NPC initiative instead.
 
-**Pacing & Escalation**: Scan back 3 beats. Same action-type ongoing with only sensory variation and no dynamic shift underneath = stalling — escalate, complicate, or cool it down (detail: `dnd-narration`'s Progression rule).
+**Pacing & Escalation**: Scan back 3 beats. Same action-type ongoing with only sensory variation and no dynamic shift underneath = stalling — escalate, complicate, or cool it down (detail: `dnd-narration`'s Progression vs. Sensory Variation).
 
 ## NPC Promotion & "Little Stories"
 

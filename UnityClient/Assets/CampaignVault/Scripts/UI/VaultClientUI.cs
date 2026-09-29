@@ -34,16 +34,25 @@ namespace CampaignVault.UnityClient.UI
 
     /// <summary>
     /// Builds the whole client UI in code (no hand-edited scene YAML): a dark
-    /// vault shell with a tab bar over Chat, Character, Inventory, Companions,
-    /// Campaigns, Events, Plugins, and Settings. Add it to an empty scene via
+    /// vault shell: chat as the centerpiece, a dockable party rail (overview,
+    /// sheet, pack, allies, table), and header-launched pages (Campaigns,
+    /// Events, Settings, Plugins, Onboard). Add it to an empty scene via
     /// CampaignVault &gt; Create Client UI in the Editor menu.
     /// </summary>
     public class VaultClientUI : MonoBehaviour
     {
-        private static readonly string[] Tabs =
+        private const float RailWidth = 380f;
+        private const float PageMaxWidth = 900f;
+        private const float ChatMaxWidth = 860f;
+
+        // Chat is the app. Party-facing panels dock in a rail beside it; the
+        // rest are full-width pages opened from the header.
+        private static readonly string[] RailTabs = { "Dashboard", "Character", "Inventory", "Companions", "Session" };
+        private static readonly string[] PageTabs = { "Campaigns", "Events", "Settings", "Plugins", "Onboard" };
+        private static readonly string[] AllTabs =
         {
-            "Chat", "Session", "Dashboard", "Onboard", "Character", "Inventory",
-            "Companions", "Campaigns", "Events", "Plugins", "Settings",
+            "Chat", "Dashboard", "Character", "Inventory", "Companions", "Session",
+            "Campaigns", "Events", "Settings", "Plugins", "Onboard",
         };
 
         private readonly VaultUiContext _ctx = new VaultUiContext();
@@ -56,6 +65,13 @@ namespace CampaignVault.UnityClient.UI
         // (and animate) only what's new instead of rebuilding every line.
         private readonly List<TranscriptSegment> _renderedSegments = new List<TranscriptSegment>();
         private string _activeTab = string.Empty;
+        private string _railTab = "Dashboard";
+        private bool _railOpen;
+        private GameObject _chatHost;
+        private GameObject _rail;
+        private GameObject _pagesHost;
+        private Text _campaignLabel;
+        private Button _partyToggle;
         private Transform _chatContent;
         private InputField _chatInput;
         private Text _healthLabel;
@@ -205,6 +221,7 @@ namespace CampaignVault.UnityClient.UI
                 }
             }
             PlayerPrefs.Save();
+            if (_pagesHost != null) { ApplyView(); }
         }
 
         /// <summary>
@@ -275,62 +292,7 @@ namespace CampaignVault.UnityClient.UI
             var root = VaultTheme.Column(canvasGo.transform, "Root", 0);
             VaultTheme.Stretch(root.GetComponent<RectTransform>(), 0, 0, 0, 0);
 
-            var header = VaultTheme.PanelBox(root.transform, "Header", VaultTheme.Panel);
-            header.AddComponent<LayoutElement>().minHeight = 76;
-            var title = VaultTheme.MakeText(header.transform, "Title", VaultTheme.HeaderSize, VaultTheme.Gold, FontStyle.Bold, VaultTheme.DisplayFont);
-            title.text = "  \u2726 CAMPAIGN VAULT";
-            title.alignment = TextAnchor.MiddleLeft;
-            VaultTheme.Stretch(title.GetComponent<RectTransform>(), 8, 8, 4, 4);
-            var shimmer = title.gameObject.AddComponent<Breathe>();
-            shimmer.Target = title;
-            shimmer.From = VaultTheme.Gold;
-            shimmer.To = new Color(1f, 0.86f, 0.45f);
-            shimmer.Period = 5f;
-            var rule = new GameObject("GoldRule");
-            rule.transform.SetParent(header.transform, false);
-            var ruleImage = rule.AddComponent<Image>();
-            ruleImage.color = VaultTheme.GoldDim;
-            ruleImage.raycastTarget = false;
-            var ruleRect = rule.GetComponent<RectTransform>();
-            ruleRect.anchorMin = new Vector2(0f, 0f);
-            ruleRect.anchorMax = new Vector2(1f, 0f);
-            ruleRect.pivot = new Vector2(0.5f, 0f);
-            ruleRect.sizeDelta = new Vector2(0f, 2f);
-            ruleRect.anchoredPosition = Vector2.zero;
-            var sub = VaultTheme.MakeText(header.transform, "Sub", VaultTheme.SmallSize, VaultTheme.Muted, FontStyle.Italic, VaultTheme.BodyFont);
-            sub.text = "  living world engine · unity client";
-            sub.alignment = TextAnchor.LowerLeft;
-            VaultTheme.Stretch(sub.GetComponent<RectTransform>(), 8, 8, 4, 26);
-
-            var exit = VaultTheme.MakeButton(header.transform, "Exit", "Exit", 13);
-            exit.GetComponent<LayoutElement>().ignoreLayout = true;
-            var exitRect = exit.GetComponent<RectTransform>();
-            exitRect.anchorMin = exitRect.anchorMax = exitRect.pivot = new Vector2(1f, 1f);
-            exitRect.sizeDelta = new Vector2(72f, 30f);
-            exitRect.anchoredPosition = new Vector2(-12f, -12f);
-            exit.onClick.AddListener(QuitApp);
-
-            var tabRow = VaultTheme.Row(root.transform, "Tabs", 6);
-            tabRow.AddComponent<LayoutElement>().minHeight = 44;
-            foreach (string tab in Tabs)
-            {
-                string captured = tab;
-                var button = VaultTheme.MakeButton(tabRow.transform, "Tab" + tab, tab, 13);
-                button.GetComponent<LayoutElement>().flexibleWidth = 1;
-                button.onClick.AddListener(delegate { ShowTab(captured); });
-                var underline = new GameObject("Underline");
-                underline.transform.SetParent(button.transform, false);
-                var underlineImage = underline.AddComponent<Image>();
-                underlineImage.color = VaultTheme.Gold;
-                underlineImage.raycastTarget = false;
-                var underlineRect = underline.GetComponent<RectTransform>();
-                underlineRect.anchorMin = new Vector2(0.15f, 0f);
-                underlineRect.anchorMax = new Vector2(0.85f, 0f);
-                underlineRect.pivot = new Vector2(0.5f, 0f);
-                underlineRect.sizeDelta = new Vector2(0f, 2f);
-                underline.SetActive(false);
-                _tabButtons[tab] = button;
-            }
+            BuildHeader(root.transform);
 
             var content = new GameObject("Content");
             content.transform.SetParent(root.transform, false);
@@ -338,11 +300,50 @@ namespace CampaignVault.UnityClient.UI
             contentLayout.flexibleHeight = 1;
             contentLayout.flexibleWidth = 1;
 
-            foreach (string tab in Tabs)
+            // Stage: the chat (always the centerpiece) with the party rail docked
+            // to its right. Pages (Campaigns/Events/Settings/...) cover both.
+            _chatHost = NewStretch(content.transform, "ChatHost");
+            _rail = VaultTheme.PanelBox(content.transform, "PartyRail", VaultTheme.Panel);
+            var railRect = _rail.GetComponent<RectTransform>();
+            railRect.anchorMin = new Vector2(1f, 0f);
+            railRect.anchorMax = new Vector2(1f, 1f);
+            railRect.pivot = new Vector2(1f, 0.5f);
+            railRect.sizeDelta = new Vector2(RailWidth, 0f);
+            railRect.anchoredPosition = Vector2.zero;
+            var railSwitch = VaultTheme.Row(_rail.transform, "RailTabs", 4);
+            var railSwitchRect = railSwitch.GetComponent<RectTransform>();
+            railSwitchRect.anchorMin = new Vector2(0f, 1f);
+            railSwitchRect.anchorMax = new Vector2(1f, 1f);
+            railSwitchRect.pivot = new Vector2(0.5f, 1f);
+            railSwitchRect.offsetMin = new Vector2(8f, -44f);
+            railSwitchRect.offsetMax = new Vector2(-8f, -8f);
+            var railLayout = railSwitch.GetComponent<HorizontalLayoutGroup>();
+            railLayout.childControlWidth = true;
+            railLayout.childForceExpandWidth = true;
+            railLayout.childControlHeight = true;
+            railLayout.childForceExpandHeight = true;
+            foreach (string tab in RailTabs)
             {
+                string captured = tab;
+                var button = VaultTheme.MakeButton(railSwitch.transform, "Rail" + tab, RailLabel(tab), 12);
+                button.onClick.AddListener(delegate { ShowTab(captured); });
+                _tabButtons[tab] = button;
+            }
+            var railBody = NewStretch(_rail.transform, "RailBody");
+            VaultTheme.Stretch(railBody.GetComponent<RectTransform>(), 0, 0, 52, 0);
+
+            _pagesHost = VaultTheme.PanelBox(content.transform, "Pages", VaultTheme.Ink);
+            VaultTheme.Stretch(_pagesHost.GetComponent<RectTransform>(), 0, 0, 0, 0);
+
+            foreach (string tab in AllTabs)
+            {
+                Transform host = tab == "Chat" ? _chatHost.transform
+                    : Array.IndexOf(RailTabs, tab) >= 0 ? railBody.transform
+                    : _pagesHost.transform;
                 var panel = new GameObject("Panel" + tab);
-                panel.transform.SetParent(content.transform, false);
+                panel.transform.SetParent(host, false);
                 VaultTheme.Stretch(panel.AddComponent<RectTransform>(), 0, 0, 0, 0);
+                if (host == _pagesHost.transform) { panel.AddComponent<CapWidth>().Init(PageMaxWidth, 20f); }
                 _panels[tab] = panel;
             }
 
@@ -359,21 +360,117 @@ namespace CampaignVault.UnityClient.UI
             BuildSettingsPanel(_panels["Settings"].transform);
         }
 
+        private static GameObject NewStretch(Transform parent, string name)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            VaultTheme.Stretch(go.AddComponent<RectTransform>(), 0, 0, 0, 0);
+            return go;
+        }
+
+        private static string RailLabel(string tab)
+        {
+            switch (tab)
+            {
+                case "Dashboard": return "Overview";
+                case "Character": return "Sheet";
+                case "Inventory": return "Pack";
+                case "Companions": return "Allies";
+                default: return tab;
+            }
+        }
+
+        /// <summary>A slim bar: title, active campaign, and the few places you actually go.</summary>
+        private void BuildHeader(Transform root)
+        {
+            var header = VaultTheme.PanelBox(root, "Header", VaultTheme.Panel);
+            header.AddComponent<LayoutElement>().minHeight = 48;
+            var row = VaultTheme.Row(header.transform, "HeaderRow", 8);
+            VaultTheme.Stretch(row.GetComponent<RectTransform>(), 14, 12, 6, 6);
+            var rowLayout = row.GetComponent<HorizontalLayoutGroup>();
+            rowLayout.childControlWidth = true;
+            rowLayout.childControlHeight = true;
+            rowLayout.childForceExpandHeight = true;
+
+            var title = VaultTheme.MakeText(row.transform, "Title", 20, VaultTheme.Gold, FontStyle.Bold, VaultTheme.DisplayFont);
+            title.text = "✦ CAMPAIGN VAULT";
+            title.alignment = TextAnchor.MiddleLeft;
+            title.horizontalOverflow = HorizontalWrapMode.Overflow;
+            var shimmer = title.gameObject.AddComponent<Breathe>();
+            shimmer.Target = title;
+            shimmer.From = VaultTheme.Gold;
+            shimmer.To = new Color(1f, 0.86f, 0.45f);
+            shimmer.Period = 5f;
+
+            _campaignLabel = VaultTheme.MakeText(row.transform, "Campaign", VaultTheme.SmallSize + 1, VaultTheme.Muted, FontStyle.Italic, VaultTheme.BodyFont);
+            _campaignLabel.alignment = TextAnchor.MiddleLeft;
+            _campaignLabel.horizontalOverflow = HorizontalWrapMode.Overflow;
+            _campaignLabel.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1;
+
+            foreach (string tab in new[] { "Campaigns", "Events", "Settings" })
+            {
+                string captured = tab;
+                var button = VaultTheme.MakeButton(row.transform, "Nav" + tab, tab, 14);
+                button.GetComponent<LayoutElement>().preferredWidth = 104;
+                button.onClick.AddListener(delegate { ShowTab(_activeTab == captured ? "Chat" : captured); });
+                _tabButtons[tab] = button;
+            }
+            _partyToggle = VaultTheme.MakeButton(row.transform, "NavParty", "Party", 14);
+            _partyToggle.GetComponent<LayoutElement>().preferredWidth = 90;
+            _partyToggle.onClick.AddListener(delegate { SetRailOpen(!_railOpen); });
+            var exit = VaultTheme.MakeButton(row.transform, "Exit", "Exit", 13);
+            exit.GetComponent<LayoutElement>().preferredWidth = 64;
+            exit.onClick.AddListener(QuitApp);
+        }
+
+        private void SetRailOpen(bool open)
+        {
+            _railOpen = open;
+            if (open && Array.IndexOf(RailTabs, _railTab) < 0) { _railTab = "Dashboard"; }
+            if (_activeTab != "Chat" && Array.IndexOf(RailTabs, _activeTab) < 0) { _activeTab = "Chat"; }
+            ApplyView();
+        }
+
         public void ShowTab(string tab)
         {
             bool switching = tab != _activeTab;
             _activeTab = tab;
+            if (Array.IndexOf(RailTabs, tab) >= 0)
+            {
+                _railTab = tab;
+                _railOpen = true;
+            }
+            ApplyView();
+            if (switching && _panels.ContainsKey(tab)) { VaultFx.FadeIn(_panels[tab], 0.22f, 0.985f); }
+        }
+
+        private void ApplyView()
+        {
+            bool page = Array.IndexOf(PageTabs, _activeTab) >= 0;
+            _pagesHost.SetActive(page);
+            _rail.SetActive(_railOpen);
+            var chatRect = _chatHost.GetComponent<RectTransform>();
+            chatRect.offsetMax = new Vector2(_railOpen ? -RailWidth : 0f, 0f);
             foreach (var kv in _panels)
             {
-                kv.Value.SetActive(kv.Key == tab);
-                if (switching && kv.Key == tab) { VaultFx.FadeIn(kv.Value, 0.22f, 0.985f); }
+                if (kv.Key == "Chat") { kv.Value.SetActive(true); }
+                else if (Array.IndexOf(RailTabs, kv.Key) >= 0) { kv.Value.SetActive(kv.Key == _railTab); }
+                else { kv.Value.SetActive(page && kv.Key == _activeTab); }
             }
             foreach (var kv in _tabButtons)
             {
-                bool active = kv.Key == tab;
+                bool railTab = Array.IndexOf(RailTabs, kv.Key) >= 0;
+                bool active = railTab ? kv.Key == _railTab : kv.Key == _activeTab;
                 kv.Value.GetComponentInChildren<Text>().color = active ? VaultTheme.Gold : VaultTheme.Parchment;
-                kv.Value.transform.Find("Underline").gameObject.SetActive(active);
             }
+            _partyToggle.GetComponentInChildren<Text>().color = _railOpen ? VaultTheme.Gold : VaultTheme.Parchment;
+            string slug = _ctx.Prompts != null ? _ctx.Prompts.CampaignSlug : string.Empty;
+            _campaignLabel.text = string.IsNullOrEmpty(slug) ? "no campaign — open Campaigns" : "·  " + slug;
+        }
+
+        private void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.Escape) && Array.IndexOf(PageTabs, _activeTab) >= 0) { ShowTab("Chat"); }
         }
 
         // ---- Chat ----
@@ -382,6 +479,7 @@ namespace CampaignVault.UnityClient.UI
         {
             var column = VaultTheme.Column(parent, "ChatCol", 8);
             VaultTheme.Stretch(column.GetComponent<RectTransform>(), 8, 8, 8, 8);
+            column.AddComponent<CapWidth>().Init(ChatMaxWidth, 8f);
 
             _chatScroll = VaultTheme.MakeScrollView(column.transform, "ChatScroll");
             _chatScroll.GetComponent<LayoutElement>().flexibleHeight = 1;
@@ -698,6 +796,10 @@ namespace CampaignVault.UnityClient.UI
                 skillsLabel.text = "Prompt/skills not staged. Re-run the StreamingAssets copy in the client README, then reopen.";
                 skillsLabel.color = VaultTheme.Blood;
             }
+
+            AddSection(col.transform, "Advanced");
+            var pluginsButton = VaultTheme.MakeButton(col.transform, "OpenPlugins", "Plugins & tool access\u2026", 14);
+            pluginsButton.onClick.AddListener(delegate { ShowTab("Plugins"); });
         }
 
         private void BuildEmbeddedSection(Transform col)

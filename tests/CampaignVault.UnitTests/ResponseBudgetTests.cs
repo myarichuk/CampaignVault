@@ -130,7 +130,12 @@ public class ResponseBudgetTests : IClassFixture<RavenDBFixture>
         Assert.Equal(4, arrival.Data.FullScene!.PresentNPCs.Count());
         Assert.Equal(2, arrival.Data.Cards!.Count); // the two with an opinion of Tamsin
 
-        Task<ToolResult<TurnResult>> TalkTo(string npc, string line) => tools.TakeTurn(new TakeTurnRequest
+        // Each scripted call stands for a separate player beat; the cadence advisor would otherwise see
+        // them seconds apart and add its warning to the measured response.
+        Task<ToolResult<TurnResult>> TalkTo(string npc, string line)
+        {
+            TurnCadenceAdvisor.ClearForTests();
+            return tools.TakeTurn(new TakeTurnRequest
         {
             Changes =
             [
@@ -140,6 +145,7 @@ public class ResponseBudgetTests : IClassFixture<RavenDBFixture>
             Narrative = line,
             ClientPartyFingerprint = fingerprint
         }, slug);
+        }
 
         var firstContact = await TalkTo(Npc("jory"), "Tamsin asks Old Jory about the lamp oil.");
         Assert.True(firstContact.Success, firstContact.Summary);
@@ -149,6 +155,7 @@ public class ResponseBudgetTests : IClassFixture<RavenDBFixture>
 
         var rest = await tools.AdvanceWorld(1, 7, "Tamsin sleeps at the inn.", slug);
         Assert.True(rest.Success, rest.Summary);
+        TurnCadenceAdvisor.ClearForTests();
         var afterRest = await tools.TakeTurn(new TakeTurnRequest
         {
             Changes = [new EventOccurred { Summary = "Tamsin wakes to gulls.", Category = EventCategory.Discovery, Involved = [pc] }],

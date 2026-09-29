@@ -307,6 +307,29 @@ namespace CampaignVault.UnityClient.UI
     }
 
     /// <summary>
+    /// Caps a stretched panel to a readable column, centered. Only touches the
+    /// horizontal offsets, so the panel's own vertical stretch is preserved.
+    /// </summary>
+    public class CapWidth : MonoBehaviour
+    {
+        private float _max = 900f;
+        private float _margin = 8f;
+        private RectTransform _rect;
+
+        public void Init(float max, float margin) { _max = max; _margin = margin; }
+
+        private void LateUpdate()
+        {
+            if (_rect == null) { _rect = (RectTransform)transform; }
+            var parent = _rect.parent as RectTransform;
+            if (parent == null) { return; }
+            float side = Mathf.Max(_margin, (parent.rect.width - _max) * 0.5f);
+            _rect.offsetMin = new Vector2(side, _rect.offsetMin.y);
+            _rect.offsetMax = new Vector2(-side, _rect.offsetMax.y);
+        }
+    }
+
+    /// <summary>
     /// "The DM is weaving the tale…" line under the chat while a turn resolves:
     /// pulsing rune, cycling dots. Polls a predicate so it needs no wiring.
     /// </summary>

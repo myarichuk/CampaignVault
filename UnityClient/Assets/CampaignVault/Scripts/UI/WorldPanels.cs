@@ -29,6 +29,9 @@ namespace CampaignVault.UnityClient.UI
             VaultTheme.FitVertical(title);
             var refresh = VaultTheme.GoldButton(topRow.transform, "Refresh", "Refresh", 14);
             refresh.GetComponent<LayoutElement>().minWidth = 100;
+            var guided = VaultTheme.MakeButton(topRow.transform, "NewGuided", "New campaign\u2026", 14);
+            guided.GetComponent<LayoutElement>().minWidth = 150;
+            guided.onClick.AddListener(delegate { ui.ShowTab("Onboard"); });
 
             var active = VaultTheme.MakeText(col.transform, "Active", VaultTheme.BodySize - 1, VaultTheme.Parchment, FontStyle.Italic, VaultTheme.BodyFont);
             VaultTheme.FitVertical(active);

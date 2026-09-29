@@ -352,6 +352,8 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
         }
 
         var commitTokenConsumed = false;
+        var cadenceWarning = hasChanges ? TurnCadenceAdvisor.Evaluate(effective, request.Changes!) : null;
+        var cadenceRecorded = false;
 
         // saveChanges: true so pressure-cooldown state mutated by world-state/pressure evaluation is
         // persisted even on pure-query turns (FilterAndCapAsync requires the caller to save).
@@ -390,6 +392,17 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                     }
 
                     commitTokenConsumed = true;
+                }
+
+                if (cadenceWarning != null)
+                {
+                    Warn(ctx, cadenceWarning);
+                }
+
+                if (!cadenceRecorded)
+                {
+                    TurnCadenceAdvisor.Record(effective, request.Changes!, ctx.Result.Summary);
+                    cadenceRecorded = true;
                 }
 
                 await DetectAndApplyReseedTriggersAsync(ctx);

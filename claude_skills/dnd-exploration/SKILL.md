@@ -157,7 +157,11 @@ Two different moves depending on how far/long/exposed the departure is — don't
 Travel and rest advance time via their own hour fields (not `minutesElapsed` — that's for other changes, set on the top-level `take_turn` request). Hunger/thirst/tiredness advance immediately:
 - Short travel (2–4 hours): minor need ticks
 - Long travel (8+ hours): significant need progression
-- Rest recovers pools and clears tiredness instantly
+- Rest recovers pools and clears tiredness instantly — **only if it completes**
+
+**Interrupted rests:** the encounter roll runs per 4-hour bucket. If it fires, the clock advances only by the hours slept so far, nothing recovers, and the engine spawns an encounter NPC. The rest is not done and the rest of the night has not passed. Resolve the encounter, then commit a new `rest` for the remaining hours (or `advance_world`) before narrating morning — never narrate a completed rest the engine did not complete, and never log "morning" as an `event` with `minutesElapsed` (that does not finish a rest).
+
+**Guarded rests:** the engine cannot see a watchman, a garrison or a Tiny Hut. Set a positive `securityModifier` (safer, fewer interruptions; e.g. +20 hidden camp, +100 Tiny Hut; negative = more exposed) when someone is actually keeping watch; otherwise the rest rolls raw location danger. A wilderness node stays dangerous however many NPCs are narrated nearby.
 
 ## Exploration Checklist
 

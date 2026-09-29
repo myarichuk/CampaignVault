@@ -145,6 +145,7 @@ namespace CampaignVault.UnityClient.UI
             button.colors = colors;
             var layout = go.AddComponent<LayoutElement>();
             layout.minHeight = 34;
+            layout.minWidth = 80;
             go.AddComponent<HoverGlow>();
             return button;
         }
@@ -209,7 +210,9 @@ namespace CampaignVault.UnityClient.UI
             var layout = go.AddComponent<HorizontalLayoutGroup>();
             layout.spacing = spacing;
             layout.childAlignment = TextAnchor.MiddleLeft;
-            layout.childControlWidth = false;
+            // Controlled width so LayoutElement min/flexible widths actually apply
+            // (uncontrolled rows left inputs and labels at the 100px default).
+            layout.childControlWidth = true;
             layout.childControlHeight = true;
             layout.childForceExpandWidth = false;
             layout.childForceExpandHeight = false;

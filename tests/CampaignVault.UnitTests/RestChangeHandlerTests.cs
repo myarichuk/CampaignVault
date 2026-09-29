@@ -24,7 +24,7 @@ public class RestChangeHandlerTests
             CharacterId = "chars/1",
             LocationId = "loc/1",
             IntendedHours = 8,
-            SecurityModifier = -50 // Ensure max danger
+            SecurityModifier = -50 // less safe than baseline
         };
 
         var context = ChangeContextTestHelper.Create(
@@ -46,6 +46,32 @@ public class RestChangeHandlerTests
         // And it should NOT produce an HpChange or NeedChange for recovery since it's the engine's job to block it.
         // Wait, the engine doesn't block LLM's separate HpChange commit (that's by design).
         // It just doesn't issue any success narratives itself.
+    }
+
+    [Theory]
+    [InlineData(100, false)] // guarded camp: chance falls to the 1% floor, a 0.02 roll passes
+    [InlineData(-100, true)] // exposed camp: chance rises well above 2%, the same roll interrupts
+    public async Task ApplyAsync_SecurityModifier_IsSafety_PositiveMeansFewerInterrupts(int securityModifier, bool expectInterrupted)
+    {
+        var handler = new RestChangeHandler(new EncounterResolver(() => 0.02), RulesetDataTestHelper.CreateConditionProvider());
+        var context = ChangeContextTestHelper.Create(
+            characters: new Dictionary<string, Character> { ["chars/1"] = new Character { Id = "chars/1", CurrentLocationId = "loc/1" } },
+            locations: new Dictionary<string, Location> { ["loc/1"] = new Location { Id = "loc/1", Type = LocationType.Wilderness } },
+            factions: new Dictionary<string, Faction>(),
+            quests: new Dictionary<string, Quest>(),
+            logger: NullLogger.Instance,
+            summary: []);
+
+        var result = await handler.ApplyAsync(new RestChange
+        {
+            CharacterId = "chars/1",
+            LocationId = "loc/1",
+            IntendedHours = 4,
+            SecurityModifier = securityModifier
+        }, context, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(expectInterrupted, result.Message!.Contains("INTERRUPTED", StringComparison.Ordinal));
     }
 
     [Fact]

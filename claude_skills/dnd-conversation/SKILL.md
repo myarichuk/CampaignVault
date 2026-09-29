@@ -54,7 +54,7 @@ Show, don't tell. Weave in ONE visual/voice detail per NPC mention — see `dnd-
 
 ### Dialogue Authenticity
 
-Same rule as `dnd-narration`'s Prompt Discipline section — psychology is the dialogue, not courtesy.
+Same rule as `dnd-narration`'s Dialogue section — psychology is the dialogue, not courtesy.
 
 ## Time During Conversation
 

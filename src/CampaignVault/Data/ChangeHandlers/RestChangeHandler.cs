@@ -61,7 +61,7 @@ public class RestChangeHandler : IWorldChangeHandler
             location,
             CalculateRestHours(rc),
             4, // bucket size 4 hours
-            rc.SecurityModifier,
+            -rc.SecurityModifier, // security is safety (+ = safer); the resolver's modifier is risk (+ = more encounters)
             "Rest");
 
         // Advance time

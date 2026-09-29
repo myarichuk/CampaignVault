@@ -30,7 +30,7 @@ namespace CampaignVault.UnityClient.UI
         {
             if (_card != null) { return; }
             VaultTheme.EnsureFonts();
-            var canvas = Object.FindFirstObjectByType<Canvas>();
+            var canvas = Object.FindAnyObjectByType<Canvas>();
             _card = new GameObject("Tooltip");
             _card.transform.SetParent(canvas != null ? canvas.transform : null, false);
             var image = _card.AddComponent<Image>();
