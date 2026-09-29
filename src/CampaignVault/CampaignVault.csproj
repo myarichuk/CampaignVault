@@ -64,10 +64,13 @@
     <ProjectReference Include="..\..\plugins\TrailAndHearth\TrailAndHearth.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
-  <!-- Copy plugin DLLs and static files to bin/Plugins folder after build -->
+  <!-- Copy plugin DLLs and static files to bin/Plugins folder after build.
+       During `dotnet publish` the inner build sees PublishDir, so the same
+       target stages plugins straight into the publish folder. -->
   <Target Name="CopyPluginsToOutput" AfterTargets="Build">
     <PropertyGroup>
-      <PluginsOutputDir>$(OutDir)Plugins</PluginsOutputDir>
+      <PluginsOutputDir Condition="'$(PublishDir)' == ''">$(OutDir)Plugins</PluginsOutputDir>
+      <PluginsOutputDir Condition="'$(PublishDir)' != ''">$(PublishDir)/Plugins</PluginsOutputDir>
     </PropertyGroup>
 
     <Message Text="Copying plugins to $(PluginsOutputDir)" Importance="High" />

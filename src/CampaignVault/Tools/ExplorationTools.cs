@@ -326,7 +326,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
             var config = await _repository.GetCampaignConfigAsync(new CampaignSession(session, effective));
-            var effectiveLimit = limit ?? config.EventContextBudgetRecall;
+            var effectiveLimit = Math.Clamp(limit ?? config.EventContextBudgetRecall, 1, 50);
 
             // Empty query: pure browse, ranked by importance then recency (same as ambient context).
             // Non-empty query: unchanged keyword-priority-then-vector relevance via QueryEventsAsync/Hybrid.

@@ -30,7 +30,7 @@ internal static class ToolProfiles
 
     public static readonly IReadOnlySet<string> BuildTools = new HashSet<string>(StringComparer.Ordinal)
     {
-        "create_campaign", "list_campaigns", "get_config",
+        "create_campaign", "list_campaigns", "delete_campaign", "get_config",
         "start_campaign_onboarding", "submit_onboarding_answer", "finalize_campaign_onboarding",
         "world_build", "get_entity", "search_world", "lookup",
     };

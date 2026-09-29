@@ -243,7 +243,7 @@ public class LlmToolingRegressionTests
     {
         var expected = new[]
         {
-            "advance_world", "combat", "create_campaign", "end_session", "finalize_campaign_onboarding",
+            "advance_world", "combat", "create_campaign", "delete_campaign", "end_session", "finalize_campaign_onboarding",
             "get_config", "get_entity", "list_campaigns", "lookup",
             "recall_history", "search_world", "start_campaign_onboarding", "start_session", "submit_onboarding_answer", "take_turn", "world_build",
         };

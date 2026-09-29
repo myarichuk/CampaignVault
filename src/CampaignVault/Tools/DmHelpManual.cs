@@ -178,6 +178,8 @@ When a scene pressure says a party member looks vulnerable in a crowd, pick one:
 **Skip straight to `create_campaign` + `world_build`** when the user has ALREADY given you the substance in their own words — a plot outline, a PC character sheet, a named antagonist, an inciting incident, a specific ruleset. Onboarding's questions only collect abstract preference flags (system/tone/era/solo-vs-party/plot-source); it has no field for verbatim content like a full stat block or a named villain. Re-asking questions the user already answered unprompted is a laziness trap, not thoroughness — extract the ruleset/tone/era straight from what they gave you, call `create_campaign` with it, then seed the PCs/antagonist/plot via `world_build` directly. If they mentioned some things but left real gaps (e.g. gave you a plot but not a ruleset), ask only about the gaps in plain conversation, or run onboarding only for the unanswered questions — don't restart the full Q&A sequence over information already on the table.
 
 Onboarding state is per-campaign-slug and resumable: calling `start_campaign_onboarding` again on an in-progress slug resumes where it left off instead of restarting.
+
+Removing a campaign: `delete_campaign` needs `confirmName` equal to the slug and removes every document in it. No undo — never call it on a slug the user didn't name for deletion.
 ";
 
     internal const string WorldBuildingSection = @"# Initial World-Building (Session 0)

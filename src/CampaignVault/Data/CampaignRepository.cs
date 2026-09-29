@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Data.Initiative;
 using CampaignVault.Data.Pressure;
@@ -3199,5 +3200,90 @@ public class CampaignRepository
         var effective = ResolveCampaign(campaignName);
         var id = _keys.StateOnboarding(effective);
         session.Delete(id);
+    }
+
+    /// <summary>
+    /// Deletes every document belonging to a campaign, using only point reads
+    /// and freshness-forced typed queries — no collection scans, so a delete
+    /// either removes everything known or fails loudly. Steps: exact-ID
+    /// singletons (mode docs via the config's enabled modes), then one sweep
+    /// per entity type. Returns the number of documents deleted. Used only by
+    /// delete_campaign, which guards with an exact-slug confirmation first.
+    /// </summary>
+    public async Task<int> DeleteCampaignDocumentsAsync(
+        IAsyncDocumentSession session, string campaignName, CancellationToken ct = default)
+    {
+        if (!CampaignSlug.TryCanonicalize(campaignName, out var effective))
+        {
+            throw new CampaignNotSelectedException();
+        }
+        var deleted = 0;
+
+        var config = await session.LoadAsync<CampaignConfig>(_keys.Config(effective), ct);
+        var singletonIds = new List<string>
+        {
+            _keys.Meta(effective),
+            _keys.Config(effective),
+            _keys.CombatCurrent(effective),
+            _keys.StateTime(effective),
+            _keys.NeedDescriptors(effective),
+            _keys.StateOnboarding(effective),
+            _keys.StateGuidance(effective),
+            _keys.StateTurnCursor(effective),
+        };
+        if (config?.EnabledModeIds != null)
+        {
+            foreach (var modeId in config.EnabledModeIds)
+            {
+                if (!string.IsNullOrWhiteSpace(modeId))
+                {
+                    singletonIds.Add(_keys.ModeCurrent(effective, modeId.Trim()));
+                }
+            }
+        }
+        foreach (var id in singletonIds)
+        {
+            var doc = await session.LoadAsync<object>(id, ct);
+            if (doc != null)
+            {
+                session.Delete(doc);
+                deleted++;
+            }
+        }
+
+        deleted += await DeleteWhereAsync<Character>(session, effective, c => c.CampaignName == effective, ct);
+        deleted += await DeleteWhereAsync<Location>(session, effective, c => c.CampaignName == effective, ct);
+        deleted += await DeleteWhereAsync<Item>(session, effective, c => c.CampaignName == effective, ct);
+        deleted += await DeleteWhereAsync<Faction>(session, effective, c => c.CampaignName == effective, ct);
+        deleted += await DeleteWhereAsync<Quest>(session, effective, c => c.CampaignName == effective, ct);
+        deleted += await DeleteWhereAsync<Rumor>(session, effective, c => c.CampaignName == effective, ct);
+        deleted += await DeleteWhereAsync<PlotThread>(session, effective, c => c.CampaignName == effective, ct);
+        deleted += await DeleteWhereAsync<WorldEvent>(session, effective, c => c.CampaignName == effective, ct);
+        deleted += await DeleteWhereAsync<Event>(session, effective, c => c.CampaignName == effective, ct);
+        deleted += await DeleteWhereAsync<Lore>(session, effective, c => c.CampaignName == effective, ct);
+        deleted += await DeleteWhereAsync<CustomSpell>(session, effective, c => c.CampaignName == effective, ct);
+        deleted += await DeleteWhereAsync<CustomFeat>(session, effective, c => c.CampaignName == effective, ct);
+        deleted += await DeleteWhereAsync<CustomCreature>(session, effective, c => c.CampaignName == effective, ct);
+        deleted += await DeleteWhereAsync<SessionLog>(session, effective, c => c.CampaignName == effective, ct);
+        deleted += await DeleteWhereAsync<GuidanceLedger>(session, effective, c => c.CampaignName == effective, ct);
+        deleted += await DeleteWhereAsync<TurnCursor>(session, effective, c => c.CampaignName == effective, ct);
+        return deleted;
+    }
+
+    private static async Task<int> DeleteWhereAsync<T>(
+        IAsyncDocumentSession session,
+        string effective,
+        Expression<Func<T, bool>> predicate,
+        CancellationToken ct)
+    {
+        var matches = await session.Query<T>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(5)))
+            .Where(predicate)
+            .ToListAsync(ct);
+        foreach (var entity in matches)
+        {
+            session.Delete(entity);
+        }
+        return matches.Count;
     }
 }

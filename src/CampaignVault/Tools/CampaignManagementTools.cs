@@ -214,6 +214,62 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
         }, saveChanges: false);
     }
 
+    [ToolCategory("Campaign management")]
+    [McpServerTool(UseStructuredContent = true)]
+    [Description(@"CAMPAIGN TOOL: Irreversibly deletes a campaign and all its documents. Requires confirmName equal to the slug, else nothing happens and the confirmation string is returned. Example: delete_campaign(""dragon-heist"", ""dragon-heist"")")]
+    public async Task<ToolResult<DeleteCampaignResult>> DeleteCampaign(
+        [Description(ToolParameterDescriptions.CampaignSlugRequired)]
+        string campaignName,
+        [Description("Type the campaign slug again to confirm irreversible deletion.")]
+        string? confirmName = null)
+    {
+        if (!TryGetEffectiveCampaign(campaignName, out var effective))
+        {
+            return new ToolResult<DeleteCampaignResult>(
+                false,
+                Error: ToolErrors.NoCampaignSelected,
+                Summary: NoCampaignSelectedSummary);
+        }
+        if (!string.Equals(confirmName?.Trim(), effective, StringComparison.Ordinal))
+        {
+            return new ToolResult<DeleteCampaignResult>(
+                false,
+                Error: ToolErrors.InvalidArgument,
+                Summary: $"Deletion NOT performed. Re-call delete_campaign with confirmName=\"{effective}\" to irreversibly delete campaign '{effective}' and all its documents.");
+        }
+        var outcome = await ExecuteAsync(async session =>
+        {
+            var meta = await session.LoadAsync<Campaign>(_keys.Meta(effective));
+            if (meta == null)
+            {
+                return new ToolResult<DeleteCampaignResult>(
+                    false,
+                    Error: ToolErrors.SlugNotFound,
+                    Summary: $"Campaign '{effective}' does not exist. Call list_campaigns to see existing campaigns.");
+            }
+            var deleted = await _repository.DeleteCampaignDocumentsAsync(session, effective);
+            return new ToolResult<DeleteCampaignResult>(
+                true,
+                new DeleteCampaignResult(effective, deleted),
+                $"Campaign '{effective}' deleted ({deleted} documents).");
+        }, saveChanges: true);
+        if (!outcome.Success)
+        {
+            return outcome;
+        }
+        // A delete that cannot prove itself reports failure instead of false success.
+        using var verify = _repository.OpenSession();
+        var remaining = await verify.LoadAsync<Campaign>(_keys.Meta(effective));
+        if (remaining != null)
+        {
+            return new ToolResult<DeleteCampaignResult>(
+                false,
+                Error: ToolErrors.InvalidArgument,
+                Summary: $"Campaign '{effective}' is still present after deletion was attempted. Re-call delete_campaign to retry.");
+        }
+        return outcome;
+    }
+
     [ToolCategory("System")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(
@@ -564,4 +620,20 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
                 $"Campaign context for '{explicitName}' ({posture.EntryHint}).");
         }, saveChanges: false);
     }
+}
+
+/// <summary>
+/// Response from delete_campaign.
+/// </summary>
+public class DeleteCampaignResult
+{
+    public DeleteCampaignResult(string slug, int deletedDocuments)
+    {
+        Slug = slug;
+        DeletedDocuments = deletedDocuments;
+    }
+
+    public string Slug { get; set; }
+
+    public int DeletedDocuments { get; set; }
 }
