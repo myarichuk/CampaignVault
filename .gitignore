@@ -69,3 +69,26 @@ agent-tools/
 **/.claude/agent-memory-local
 **/.claude/first-run
 **/.claude/assistant-daemon-state.json.opencode-agents.md
+
+# Unity client (generated, per-project)
+UnityClient/Library/
+UnityClient/Temp/
+UnityClient/Logs/
+UnityClient/UserSettings/
+UnityClient/MemoryCaptures/
+UnityClient/*.csproj
+UnityClient/*.slnx
+UnityClient/Assets/StreamingAssets/CampaignVault/system-prompt*.md
+UnityClient/Assets/StreamingAssets/CampaignVault/skills/
+UnityClient/Assets/StreamingAssets/CampaignVault/plugin-skills/
+UnityClient/Assets/StreamingAssets/CampaignVault/Server/
+UnityClient/Builds/
+
+# Grok Web kit output (scripts/pack-grok.sh)
+/dist/
+/grok-skills-*/
+/grok-skills-*.json
+
+# Unity test runner leftovers
+/UnityClient/Assets/InitTestScene*.unity
+/UnityClient/Assets/InitTestScene*.unity.meta

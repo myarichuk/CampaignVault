@@ -1,0 +1,113 @@
+# Manual release: Actions → Release → Run workflow, give a tag.
+# Runs CI, builds the Unity client for Windows, Linux and macOS (all on Linux
+# runners through GameCI; the macOS build is unsigned), each with its embedded
+# server, and publishes them as a GitHub Release.
+#
+# Secrets (Settings → Secrets and variables → Actions):
+#   UNITY_LICENSE   contents of Unity_lic.ulf (Personal license)
+#   UNITY_EMAIL     Unity account email
+#   UNITY_PASSWORD  Unity account password
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to create, e.g. v0.1.0
+        required: true
+      prerelease:
+        description: Mark as a pre-release
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: StandaloneWindows64, method: BuildStandaloneWindows64, rid: win-x64,   name: windows-x64 }
+          - { target: StandaloneLinux64,   method: BuildStandaloneLinux64,   rid: linux-x64, name: linux-x64 }
+          - { target: StandaloneOSX,       method: BuildStandaloneOSX,       rid: osx-arm64, name: macos-arm64 }
+    steps:
+      # Unity editor images are large; the default runner is tight on disk.
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+
+      - uses: actions/checkout@v7
+      - id: lfs
+        run: echo "id=$(git lfs ls-files -l | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: .git/lfs
+          key: lfs-${{ steps.lfs.outputs.id }}
+      - run: git lfs pull
+
+      # The GameCI container has no dotnet SDK, so the server is published here
+      # and the build picks it up via -vaultPrestagedServer.
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - run: tools/embed-server.sh ${{ matrix.rid }}
+
+      - uses: actions/cache@v6
+        with:
+          path: UnityClient/Library
+          key: Library-${{ matrix.target }}-${{ hashFiles('UnityClient/Packages/packages-lock.json', 'UnityClient/ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: Library-${{ matrix.target }}-
+
+      - uses: game-ci/unity-builder@v6
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: UnityClient
+          targetPlatform: ${{ matrix.target }}
+          buildMethod: CampaignVault.UnityClient.Editor.BuildTools.${{ matrix.method }}
+          customParameters: -vaultPrestagedServer
+          versioning: None
+
+      - name: Package
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" UnityClient/Builds
+          cd "UnityClient/Builds/${{ matrix.target }}"
+          rm -rf ./*_BurstDebugInformation_DoNotShip ./*_BackUpThisFolder_ButDontShipItWithYourGame
+          zip -qry "$GITHUB_WORKSPACE/CampaignVault-$TAG-${{ matrix.name }}.zip" .
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.name }}
+          path: CampaignVault-${{ inputs.tag }}-${{ matrix.name }}.zip
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          gh release create "$TAG" dist/*.zip \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "$TAG" \
+            --generate-notes \
+            ${{ inputs.prerelease && '--prerelease' || '' }}

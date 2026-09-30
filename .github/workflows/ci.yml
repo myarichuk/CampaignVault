@@ -1,0 +1,63 @@
+# .NET unit tests on every push to master and every PR, plus the Docker
+# integration tests. No Unity license needed. release.yml calls this first.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      # The embedding model is LFS; cache it by object id so LFS bandwidth is
+      # only spent when the model changes (LocalEmbeddingServiceTests need it).
+      - id: lfs
+        run: echo "id=$(git lfs ls-files -l | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: .git/lfs
+          key: lfs-${{ steps.lfs.outputs.id }}
+      - run: git lfs pull
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - run: dotnet build CampaignVault.slnx -c Debug
+
+      # xunit v3 executables directly (dotnet test exits 5 with this runner setup).
+      - name: Unit tests
+        run: tests/CampaignVault.UnitTests/bin/Debug/net10.0/CampaignVault.UnitTests -parallel none
+
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - id: lfs
+        run: echo "id=$(git lfs ls-files -l | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: .git/lfs
+          key: lfs-${{ steps.lfs.outputs.id }}
+      - run: git lfs pull
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - run: docker build -t campaignvault:latest -f Dockerfile .
+      - run: dotnet build tests/CampaignVault.IntegrationTests -c Debug
+      - name: Integration tests
+        run: tests/CampaignVault.IntegrationTests/bin/Debug/net10.0/CampaignVault.IntegrationTests -parallel none
