@@ -17,6 +17,8 @@ public class McpServerIntegrationTests : IAsyncLifetime
     private HttpClient? _httpClient;
     private const int MCP_PORT = 8080;
     private const string CONTAINER_IMAGE = "campaignvault:latest";
+    // The server refuses to bind 0.0.0.0 (MCP_BIND_ANY=1) without a token.
+    private const string BEARER_TOKEN = "integration-test-token";
 
     public async ValueTask InitializeAsync()
     {
@@ -27,6 +29,9 @@ public class McpServerIntegrationTests : IAsyncLifetime
                 .WithPortBinding(MCP_PORT, assignRandomHostPort: true)
                 .WithEnvironment("CAMPAIGN_DB_PATH", "/app/data/campaign.db")
                 .WithEnvironment("MCP_BIND_ANY", "1")
+                .WithEnvironment("BEARER_TOKEN", BEARER_TOKEN)
+                // One-shot tools/call posts below, with no initialize handshake or session id.
+                .WithEnvironment("MCP_STATELESS", "1")
                 .WithWaitStrategy(Wait.ForUnixContainer()
                     .UntilHttpRequestIsSucceeded(
                         r => r
@@ -37,7 +42,9 @@ public class McpServerIntegrationTests : IAsyncLifetime
                 )
                 .Build();
 
-            await _container.StartAsync();
+            // Fail in minutes, not at the CI job limit, if the server exits at startup.
+            using var startup = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+            await _container.StartAsync(startup.Token);
 
             var mappedPort = _container.GetMappedPublicPort(MCP_PORT);
             _httpClient = new HttpClient
@@ -45,6 +52,10 @@ public class McpServerIntegrationTests : IAsyncLifetime
                 BaseAddress = new Uri($"http://localhost:{mappedPort}"),
                 Timeout = TimeSpan.FromSeconds(30)
             };
+            _httpClient.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", BEARER_TOKEN);
+            _httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+            _httpClient.DefaultRequestHeaders.Accept.ParseAdd("text/event-stream");
         }
         catch (Exception ex)
         {
@@ -104,7 +115,7 @@ public class McpServerIntegrationTests : IAsyncLifetime
             }
         };
 
-        var response = await _httpClient!.PostAsJsonAsync("/mcp", request);
+        var response = await _httpClient!.PostAsJsonAsync("/", request);
         var content = await response.Content.ReadAsStringAsync();
 
         // Verify no DI resolution errors occurred
@@ -117,7 +128,7 @@ public class McpServerIntegrationTests : IAsyncLifetime
     }
 
     [DockerFact]
-    public async Task GetCurrentCampaign_ShouldResolveWithoutDiErrors()
+    public async Task StartSession_ShouldResolveWithoutDiErrors()
     {
         var request = new
         {
@@ -126,7 +137,7 @@ public class McpServerIntegrationTests : IAsyncLifetime
             method = "tools/call",
             @params = new
             {
-                name = "get_current_campaign",
+                name = "start_session",
                 arguments = new
                 {
                     campaignName = "test-campaign"
@@ -134,7 +145,7 @@ public class McpServerIntegrationTests : IAsyncLifetime
             }
         };
 
-        var response = await _httpClient!.PostAsJsonAsync("/mcp", request);
+        var response = await _httpClient!.PostAsJsonAsync("/", request);
         var content = await response.Content.ReadAsStringAsync();
 
         // Should not have DI resolution errors (may have domain errors like "campaign not found")
