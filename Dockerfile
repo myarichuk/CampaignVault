@@ -5,7 +5,10 @@ WORKDIR /source
 # Copy solution and project files, then restore
 COPY CampaignVault.slnx .
 COPY src/ ./src/
+COPY plugins/ ./plugins/
 COPY tests/ ./tests/
+# Imported by CampaignVault.csproj; the model itself arrives with the full copy below.
+COPY models/EmbeddingModels.props ./models/
 RUN dotnet restore
 
 # Copy everything else and build

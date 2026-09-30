@@ -60,6 +60,7 @@
     <!-- Plugin references: build DLLs but don't reference them in host assembly -->
     <ProjectReference Include="..\..\plugins\CraftingMode\CraftingMode.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\plugins\MedievalWeapons\MedievalWeapons.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\plugins\NecromancersGrimoire\NecromancersGrimoire.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\plugins\ShadowAndSteel\ShadowAndSteel.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\plugins\TrailAndHearth\TrailAndHearth.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
