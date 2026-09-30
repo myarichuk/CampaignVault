@@ -494,7 +494,9 @@ namespace CampaignVault.UnityClient.UI
         public override void OnOpen()
         {
             _state.Changed += OnChanged;
-            Go(0);
+            // Sent here to fix the provider with the server already fine: skip straight to it.
+            string reason;
+            Go(_state.Connection == ConnectionStatus.Healthy && !_state.ProviderReady(out reason) ? 1 : 0);
         }
 
         public override void OnClose() { _state.Changed -= OnChanged; }
@@ -502,7 +504,7 @@ namespace CampaignVault.UnityClient.UI
         private void OnChanged(StateArea area)
         {
             if ((area & StateArea.Providers) != 0 && _provider != null) { _provider.Refresh(); PaintNav(); }
-            if ((area & StateArea.Connection) != 0 && _step == 0) { Render(); }
+            if ((area & (StateArea.Connection | StateArea.Embedded)) != 0 && _step == 0) { Render(); }
         }
 
         private void Go(int step)
@@ -536,13 +538,17 @@ namespace CampaignVault.UnityClient.UI
                 _content.Add(Ui.Text("Your game is run by an AI Dungeon Master that plays through the CampaignVault server, which keeps every campaign safe. Desktop builds start a server on this machine automatically; if you host one elsewhere, enter its address.", "cv-body"));
                 var url = Ui.LabeledField(_content, "Server URL", "http://localhost:5275", _state.Config.ServerUrl);
                 _content.Add(Ui.Button("SAVE AND CHECK", "refresh", null, delegate { _controller.SetServerUrl(url.value); _controller.Run(_controller.CheckConnection()); }));
-                string message = _state.Connection == ConnectionStatus.Healthy ? "The server is healthy."
+                bool booting = _state.IsBusy("embedded") || !_controller.AutostartSettled;
+                string message = booting && _state.Connection != ConnectionStatus.Healthy
+                    ? (_state.EmbeddedMessage.Length > 0 ? _state.EmbeddedMessage : "Starting the built-in server…")
+                    : _state.Connection == ConnectionStatus.Healthy ? "The server is healthy."
                     : _state.Connection == ConnectionStatus.Down ? "Not reachable yet (" + _state.ConnectionMessage + "). The embedded server can take a few seconds to start: check again, or continue and fix it later in Settings."
                     : _state.Connection == ConnectionStatus.Checking ? "Checking…" : string.Empty;
                 var status = Ui.Text(message, "cv-body " + (_state.Connection == ConnectionStatus.Healthy ? "cv-text-leaf" : "cv-muted"));
                 status.style.marginTop = 10;
                 _content.Add(status);
-                if (_state.Connection == ConnectionStatus.Unknown) { _controller.Run(_controller.CheckConnection()); }
+                // While autostart is still booting the server, checking now would only say "unreachable".
+                if (_state.Connection == ConnectionStatus.Unknown && !booting) { _controller.Run(_controller.CheckConnection()); }
                 if (_state.Server != null && _controller.RavenLicenseHolder() == null)
                 {
                     var license = Ui.Text("The built-in server stores campaigns in RavenDB, which asks for a license key. The Community key is free: add it any time under Settings → Embedded.", "cv-body cv-muted");

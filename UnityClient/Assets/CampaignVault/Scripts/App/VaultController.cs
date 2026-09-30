@@ -140,6 +140,7 @@ namespace CampaignVault.UnityClient.App
                 _s.Prompts.PartyFingerprint = string.Empty;
                 _s.Session = null;
                 _s.SessionStatus = string.Empty;
+                _s.SetupPending = false;
                 _s.Pc = null;
                 _s.PcEntity = null;
                 _s.PcError = string.Empty;
@@ -361,7 +362,13 @@ namespace CampaignVault.UnityClient.App
         }
 
         /// <param name="soft">A failure is a warning, not an error (the player's line still goes to the DM).</param>
-        private IEnumerator OpenSession(string title, string busyKey, bool announce, bool soft)
+        /// <summary>start_session's refusal for a campaign that has no player character yet.</summary>
+        internal static bool IsNoPartyError(string message)
+        {
+            return (message ?? string.Empty).IndexOf("no party members", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private IEnumerator OpenSession(string title, string busyKey, bool announce, bool soft, bool quiet = false)
         {
             if (!RequireCampaign(delegate (string m) { _s.SessionStatus = m; _s.Notify(StateArea.Session); })) { yield break; }
             if (!_s.TryBeginBusy(busyKey)) { yield break; }
@@ -374,13 +381,24 @@ namespace CampaignVault.UnityClient.App
                 if (result == null || !result.Ok)
                 {
                     string error = "start_session failed: " + (result != null ? result.ErrorMessage : "no response");
+                    if (result != null && IsNoPartyError(result.ErrorMessage))
+                    {
+                        // Not an error to shout about: the campaign is waiting for its characters.
+                        _s.SetupPending = true;
+                        _s.SessionStatus = "No player characters yet. Tell the DM about yours and they'll be created before the first scene.";
+                        _s.Notify(StateArea.Session);
+                        if (!quiet) { _s.RaiseToast(_s.SessionStatus, ToastKind.Info); }
+                        yield break;
+                    }
                     _s.SessionStatus = error;
                     _s.Notify(StateArea.Session);
+                    if (quiet) { yield break; }
                     _s.RaiseToast(soft ? "Couldn't open the session first (" + (result != null ? result.ErrorMessage : "no response") + "); the DM will try." : error,
                         soft ? ToastKind.Warning : ToastKind.Error);
                     yield break;
                 }
                 ApplySession(SessionDigest.FromResult(result.Data.Data));
+                _s.SetupPending = false;
                 if (announce)
                 {
                     _s.RaiseToast("Session " + _s.Session.SessionNumber + " open" + (_s.Session.Resumed ? " (resumed)." : "."), ToastKind.Success);
@@ -464,35 +482,63 @@ namespace CampaignVault.UnityClient.App
         /// then the DM's turn; then the turn is saved to the chronicle and, if
         /// it changed the world, the table (HP, quests, time) is re-read.
         /// </summary>
-        public IEnumerator SendPlayerTextRoutine(string text)
+        public IEnumerator SendPlayerTextRoutine(string text) { return SendPlayerTextRoutine(text, null); }
+
+        /// <param name="shown">What the player's bubble says, when it differs from what the DM is sent.</param>
+        private IEnumerator SendPlayerTextRoutine(string text, string shown)
         {
             if (!CanSend(text)) { yield break; }
             string line = text.Trim();
             string slug = _s.CampaignSlug;
             _turnActive = false;
-            if (_s.Session == null && !Storyteller.IsOocPlayer(line))
+            if (_s.Session == null && !_s.SetupPending && !Storyteller.IsOocPlayer(line))
             {
                 yield return OpenSession(null, "session", false, true);
                 if (_s.Driver.IsBusy || _s.CampaignSlug != slug) { yield break; }
             }
-            var player = new TranscriptSegment { Kind = SegmentKind.Player, Text = line };
+            // Before the party exists there's no scene to play: everything is setup talk.
+            bool setup = _s.SetupPending && _s.Session == null;
+            string sent = setup && !Storyteller.IsOocPlayer(line) ? Storyteller.OocPrefix + " " + line : line;
+            var player = new TranscriptSegment { Kind = SegmentKind.Player, Text = shown ?? line };
             _turnActive = true;
             try
             {
                 _s.Transcript.Add(player);
                 _s.Notify(StateArea.Driver);
-                yield return _s.Driver.SendPlayerText(line, _s.Transcript, delegate { _s.Notify(StateArea.Driver); });
+                yield return _s.Driver.SendPlayerText(sent, _s.Transcript, delegate { _s.Notify(StateArea.Driver); });
             }
             finally
             {
                 _turnActive = false;
                 SaveTurn(slug, player);
             }
+            if (setup && _s.CampaignSlug == slug && ChangedTheWorld(_s.Driver.CurrentTurn))
+            {
+                yield return BeginFirstScene(slug);
+                yield break;
+            }
             if (_s.Session != null && _s.CampaignSlug == slug && ChangedTheWorld(_s.Driver.CurrentTurn))
             {
                 yield return RefreshTable();
             }
         }
+
+        /// <summary>
+        /// The setup turn wrote to the world: if the party now exists, open session 1
+        /// and ask for its opening scene (setup turns are out of character, so the
+        /// storyteller never narrates them).
+        /// </summary>
+        private IEnumerator BeginFirstScene(string slug)
+        {
+            yield return OpenSession(null, "session", false, true, true);
+            if (_s.Session == null || _s.CampaignSlug != slug || _s.Driver.IsBusy) { yield break; }
+            _s.RaiseToast("The party is ready. Session " + _s.Session.SessionNumber + " begins.", ToastKind.Success);
+            yield return SendPlayerTextRoutine(OpeningSceneLine, "▸ The first session begins.");
+        }
+
+        internal const string OpeningSceneLine =
+            "The first session begins. Set the opening scene where the party stands: get_entity the party's location and whoever is there, "
+            + "commit nothing that hasn't happened yet, then DONE.";
 
         private void SaveTurn(string slug, TranscriptSegment player)
         {
@@ -517,9 +563,9 @@ namespace CampaignVault.UnityClient.App
         {
             if (string.IsNullOrWhiteSpace(text)) { return false; }
             string notReady;
-            if (!_s.Byok.Validate(out notReady))
+            if (!_s.ProviderReady(out notReady))
             {
-                _s.RaiseToast("Chat needs an AI provider: " + notReady, ToastKind.Warning);
+                _s.RaiseToast("Chat needs a working AI provider: " + notReady, ToastKind.Warning);
                 _s.RequestSetup();
                 return false;
             }
@@ -920,6 +966,7 @@ namespace CampaignVault.UnityClient.App
                     || payload.Get("state").GetBool("isComplete", false);
                 ob.Answered = (int)payload.Get("state").GetNumber("currentQuestionIndex", ob.Answered);
                 ob.Progress = TextSanitizer.Clean(payload.GetString("summary", string.Empty), 160);
+                ReadAnswers(payload.Get("state"), ob.Answers);
                 if (ready || question.IsNull)
                 {
                     ob.Question = null;
@@ -930,6 +977,12 @@ namespace CampaignVault.UnityClient.App
                 string prefilled;
                 if (!ob.Prefilled.TryGetValue(parsed.Key, out prefilled))
                 {
+                    if (ob.Question == null || ob.Question.Key != parsed.Key)
+                    {
+                        // A new question: last question's draft and brainstorm don't carry over.
+                        ob.Draft = string.Empty;
+                        ob.ClearBrainstorm();
+                    }
                     ob.Question = parsed;
                     ob.Error = string.Empty;
                     SetOnboarding(OnboardingPhase.Question, string.Empty);
@@ -940,6 +993,19 @@ namespace CampaignVault.UnityClient.App
                 yield return PostAnswer(prefilled, delegate (JsonValue p) { next = p; });
                 if (next == null) { yield break; }
                 payload = next;
+            }
+        }
+
+        /// <summary>state.collectedAnswers → key/answer strings, for the brainstorm prompt and the party line.</summary>
+        internal static void ReadAnswers(JsonValue state, Dictionary<string, string> into)
+        {
+            var answers = Pick(state, "collectedAnswers", "CollectedAnswers");
+            if (answers.Kind != JsonKind.Object || answers.ObjectValue == null) { return; }
+            into.Clear();
+            foreach (var kv in answers.ObjectValue)
+            {
+                if (kv.Value.Kind == JsonKind.String) { into[kv.Key] = TextSanitizer.Clean(kv.Value.StringValue, 3000); }
+                else if (kv.Value.Kind == JsonKind.Number) { into[kv.Key] = kv.Value.NumberValue.ToString(System.Globalization.CultureInfo.InvariantCulture); }
             }
         }
 
@@ -963,12 +1029,14 @@ namespace CampaignVault.UnityClient.App
                 if (text.Contains("enum") || text.Contains("option") || text.Contains("choice")) { n = 1; }
                 else if (text.Contains("bool")) { n = 2; }
                 else if (text.Contains("list") || text.Contains("array")) { n = 3; }
+                else if (text.Contains("number") || text.Contains("int")) { n = 4; }
             }
             switch (n)
             {
                 case 1: q.Type = q.Options.Count > 0 ? AnswerType.Choice : AnswerType.Text; break;
                 case 2: q.Type = AnswerType.YesNo; break;
                 case 3: q.Type = AnswerType.List; break;
+                case 4: q.Type = AnswerType.Number; break;
                 default: q.Type = AnswerType.Text; break;
             }
             return q;
@@ -1016,6 +1084,11 @@ namespace CampaignVault.UnityClient.App
                 yield return FetchOnboarding();
                 yield break;
             }
+            // The player characters as the DM prompt's party line, until the party exists on the server.
+            if (ob.Question != null && ob.Question.Key == "pc_roster" && _s.Prompts != null && _s.Prompts.PartyLine.Length == 0)
+            {
+                _s.Prompts.PartyLine = TextSanitizer.Clean(answer.Replace("\n", "; "), 600);
+            }
             done(result.Data.Data);
         }
 
@@ -1035,20 +1108,120 @@ namespace CampaignVault.UnityClient.App
             }
             var finalized = result.Data.Data;
             ob.DoneSummary = TextSanitizer.Clean(finalized.GetString("summary", result.Data.Summary), 1200);
+            ob.SeedBrief = finalized.GetString("seedBrief", string.Empty).Trim();
             ob.NextSteps.Clear();
             foreach (var step in finalized.GetArray("nextSteps"))
             {
                 if (step.Kind == JsonKind.String) { ob.NextSteps.Add(TextSanitizer.Clean(step.StringValue, 300)); }
             }
+            // SelectCampaign resets the party line for a new table; this one comes from the answers just given.
+            string partyLine = _s.Prompts.PartyLine;
             SelectCampaign(ob.Slug, finalized.GetString("system", ob.System));
+            _s.Prompts.PartyLine = partyLine;
+            _s.SetupPending = true;
+            _s.Notify(StateArea.Session | StateArea.Campaign);
             SetOnboarding(OnboardingPhase.Done, string.Empty);
         }
 
         /// <summary>After finalize: the DM seeds the world with world_build and opens the first session.</summary>
         public bool SeedWorldThroughDm()
         {
-            return SendPlayerText("OOC: seed the starter world for \"" + _s.Onboarding.Slug
-                + "\" with world_build from the onboarding answers, then start_session. Narrate the opening.");
+            return SendPlayerText(SeedMessage(_s.Onboarding.Slug, _s.Onboarding.SeedBrief));
+        }
+
+        /// <summary>
+        /// The OOC line that seeds a fresh campaign. It carries the onboarding brief
+        /// itself: the DM has no tool that reads the answers back, so a line that only
+        /// mentioned them left it asking the player to repeat everything.
+        /// </summary>
+        internal static string SeedMessage(string slug, string brief)
+        {
+            if (string.IsNullOrEmpty(brief))
+            {
+                // An older server without a brief: start_session repeats it, or the DM asks.
+                return "OOC: seed the starter world for \"" + slug + "\" from its onboarding answers: create the player characters "
+                    + "(world_build, isPc=true) and the opening location. Skip start_session; this client opens the session once they exist.";
+            }
+            return "OOC: set up the campaign \"" + slug + "\" from its onboarding brief below. Do its character and world steps with world_build. "
+                + "Where it says to show me options or walk me through making characters, ask me here and wait for my answers. "
+                + "Skip start_session and the opening scene: this client opens the session and asks for the first scene once the player characters exist.\n\n"
+                + brief;
+        }
+
+        // ---- brainstorming the current question with the model ----
+
+        public void OpenBrainstorm()
+        {
+            var ob = _s.Onboarding;
+            if (!OnboardingBrainstorm.Supports(ob.Question)) { return; }
+            string notReady;
+            if (!_s.ProviderReady(out notReady))
+            {
+                _s.RaiseToast("Brainstorming needs a working AI provider: " + notReady, ToastKind.Warning);
+                return;
+            }
+            ob.Brainstorming = true;
+            ob.BrainstormError = string.Empty;
+            _s.Notify(StateArea.Onboarding);
+        }
+
+        /// <summary>Back to the question; the conversation is kept until the question changes.</summary>
+        public void CloseBrainstorm()
+        {
+            _s.Onboarding.Brainstorming = false;
+            _s.Notify(StateArea.Onboarding);
+        }
+
+        public IEnumerator SendBrainstorm(string text)
+        {
+            var ob = _s.Onboarding;
+            text = TextSanitizer.Clean(text, 2000).Trim();
+            if (text.Length == 0 || ob.BrainstormBusy || ob.Question == null) { yield break; }
+            ob.BrainstormChat.Add(new KeyValuePair<string, string>("user", text));
+            yield return BrainstormTurn(null);
+        }
+
+        /// <summary>The model writes the settled answer up; it lands in the question's field to edit and submit.</summary>
+        public IEnumerator WriteUpBrainstorm()
+        {
+            var ob = _s.Onboarding;
+            if (ob.BrainstormBusy || ob.Question == null || ob.BrainstormChat.Count == 0) { yield break; }
+            yield return BrainstormTurn(OnboardingBrainstorm.FinalizeInstruction(ob.Question));
+        }
+
+        private IEnumerator BrainstormTurn(string finalizeInstruction)
+        {
+            var ob = _s.Onboarding;
+            var question = ob.Question;
+            ob.BrainstormBusy = true;
+            ob.BrainstormError = string.Empty;
+            _s.Notify(StateArea.Onboarding);
+            var messages = new List<KeyValuePair<string, string>>
+            {
+                new KeyValuePair<string, string>("system", OnboardingBrainstorm.SystemPrompt(question, ob.Answers)),
+            };
+            messages.AddRange(ob.BrainstormChat);
+            if (finalizeInstruction != null) { messages.Add(new KeyValuePair<string, string>("user", finalizeInstruction)); }
+            string reply = null;
+            string error = null;
+            // Not streamed: the overlay re-renders on every change, which would drop what the player is typing.
+            yield return _s.Driver.Brainstorm(messages, null, delegate (string r, string e) { reply = r; error = e; });
+            ob.BrainstormBusy = false;
+            if (ob.Question != question) { yield break; }
+            if (error != null)
+            {
+                ob.BrainstormError = TextSanitizer.Clean(error, 400);
+            }
+            else if (finalizeInstruction == null)
+            {
+                ob.BrainstormChat.Add(new KeyValuePair<string, string>("assistant", TextSanitizer.Clean(reply, 6000)));
+            }
+            else
+            {
+                ob.Draft = OnboardingBrainstorm.CleanAnswer(TextSanitizer.Clean(reply, 6000));
+                ob.Brainstorming = false;
+            }
+            _s.Notify(StateArea.Onboarding);
         }
 
         public void ResetOnboarding()
@@ -1060,6 +1233,10 @@ namespace CampaignVault.UnityClient.App
             ob.Error = string.Empty;
             ob.DoneSummary = string.Empty;
             ob.NextSteps.Clear();
+            ob.SeedBrief = string.Empty;
+            ob.Answers.Clear();
+            ob.Draft = string.Empty;
+            ob.ClearBrainstorm();
             SetOnboarding(OnboardingPhase.Idle, string.Empty);
         }
 
@@ -1232,7 +1409,9 @@ namespace CampaignVault.UnityClient.App
                 if (_s.Server == null || !_s.Server.AutoStart || !ServerHostManager.IsLoopbackUrl(_s.Config.ServerUrl)) { yield break; }
                 bool healthy = false;
                 yield return _s.Config.CheckHealth(delegate (bool ok, string msg) { healthy = ok; });
-                if (healthy) { yield break; }
+                // Healthy and not ours (a server you run yourself): use it. Healthy but an orphan
+                // of an earlier session: StartEmbedded stops it and starts a fresh, owned one.
+                if (healthy && !_s.Server.HasOrphan) { yield break; }
                 yield return StartEmbedded(_s.Server.Port);
             }
             finally { AutostartSettled = true; }
@@ -1263,6 +1442,9 @@ namespace CampaignVault.UnityClient.App
                 _s.RaiseToast(started ? "Embedded server started." : "The built-in server didn't start. " + message, started ? ToastKind.Success : ToastKind.Error);
             }
             finally { _s.EndBusy("embedded"); }
+            // A (re)start can move the port and drops every MCP session: re-check so the
+            // status and the tool list match the new server instead of the last check.
+            if (_s.Server.IsRunning) { yield return CheckConnection(); }
         }
 
         public void StopEmbedded()
@@ -1578,7 +1760,8 @@ namespace CampaignVault.UnityClient.App
         {
             _s.Byok.ActiveIndex = Mathf.Clamp(index, 0, _s.Byok.Profiles.Count - 1);
             _s.Byok.Save();
-            _s.Notify(StateArea.Providers);
+            _s.Driver.ClearProviderProblem();
+            _s.Notify(StateArea.Providers | StateArea.Driver);
         }
 
         public void AddProfile(string presetId)
@@ -1608,14 +1791,42 @@ namespace CampaignVault.UnityClient.App
             p.SinglePass = edited.SinglePass;
             if (!string.IsNullOrEmpty((newKey ?? string.Empty).Trim())) { _s.Byok.SetApiKey(newKey); }
             _s.Byok.Save();
+            // New settings deserve a fresh try: the old refusal was about the old ones.
+            _s.Driver.ClearProviderProblem();
             bool ok = _s.Byok.Validate(out reason);
             _s.Notify(StateArea.Providers | StateArea.Driver);
             return ok;
         }
 
+        /// <summary>
+        /// Tests the active profile and records the verdict: a rejected key or an
+        /// unknown model blocks play until fixed; an unreachable provider doesn't
+        /// (networks blip), it only shows in the result.
+        /// </summary>
         public IEnumerator TestProvider(Action<bool, string> done)
         {
-            yield return _s.Byok.TestConnection(done);
+            yield return _s.Byok.TestConnection(delegate (bool ok, string message)
+            {
+                if (ok) { _s.Driver.ClearProviderProblem(); }
+                else if (IsSettingsProblem(message)) { _s.Driver.ReportProviderProblem(message); }
+                _s.Notify(StateArea.Providers | StateArea.Driver);
+                if (done != null) { done(ok, message); }
+            });
+        }
+
+        /// <summary>Startup: a configured provider is tested once, quietly, so a dead key shows before the first turn.</summary>
+        public IEnumerator CheckProvider()
+        {
+            string reason;
+            if (!_s.Byok.Validate(out reason)) { yield break; }
+            yield return TestProvider(null);
+        }
+
+        internal static bool IsSettingsProblem(string testMessage)
+        {
+            string m = testMessage ?? string.Empty;
+            return m.IndexOf("rejected the API key", StringComparison.Ordinal) >= 0
+                || m.IndexOf("not in the provider's model list", StringComparison.Ordinal) >= 0;
         }
 
         public void ForgetProviderKey()

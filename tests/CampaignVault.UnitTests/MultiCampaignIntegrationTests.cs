@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -410,6 +411,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
                 OnboardingQuestionCatalog.PlotSource => "generated-surprise",
                 OnboardingQuestionCatalog.SideQuestGeneration => "on-the-fly",
                 _ when current.AnswerType == OnboardingAnswerType.Enum => current.EnumOptions![0],
+                _ when current.AnswerType == OnboardingAnswerType.Number => "3",
                 _ => "A reasonable free-text answer for this question."
             };
 
@@ -436,5 +438,85 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
 
         // The formatted date should always be a usable sentence carrying the same Year.
         Assert.Contains($"Year {expectedYear}", worldState.Data.Time.FormattedDate);
+    }
+
+    [Theory]
+    [InlineData("party-homebrew", OnboardingQuestionCatalog.PcCreationDescribeNow, true, true)]
+    [InlineData("party-existing", OnboardingQuestionCatalog.PcCreationDmPregenerates, true, false)]
+    [InlineData("solo", OnboardingQuestionCatalog.PcCreationBuildAtTable, false, false)]
+    public async Task Onboarding_EveryPath_AsksAboutTheWorldAndPlayerCharacters(
+        string worldSetting, string pcCreation, bool expectPartyQuestion, bool expectRoster)
+    {
+        var repo = _fixture.CreateRepository();
+        var onboarding = TestCampaignToolsFactory.CreateTool<OnboardingTools>(_fixture, repo);
+        var sessions = TestCampaignToolsFactory.CreateTool<SessionTools>(_fixture, repo);
+        var slug = "onboard-path-" + Guid.NewGuid().ToString("N")[..8];
+
+        var start = await onboarding.StartCampaignOnboarding(slug);
+        Assert.True(start.Success);
+
+        var asked = new List<string>();
+        OnboardingQuestion? current = start.Data!.CurrentQuestion;
+        while (current != null)
+        {
+            Assert.True(asked.Count < 30, "Onboarding question loop did not terminate.");
+            asked.Add(current.Key);
+            string answer = current.Key switch
+            {
+                OnboardingQuestionCatalog.System => "Dnd5e",
+                OnboardingQuestionCatalog.WorldSetting => worldSetting,
+                OnboardingQuestionCatalog.PcCreation => pcCreation,
+                OnboardingQuestionCatalog.PcRoster => "Lyra — elf ranger, exiled scout; Bram — dwarf cleric, lapsed priest",
+                OnboardingQuestionCatalog.StartingLevel => "3",
+                OnboardingQuestionCatalog.PlotSource => "user-provided",
+                OnboardingQuestionCatalog.PlotDirection => "A stolen crown and a drowned city",
+                OnboardingQuestionCatalog.OpeningScene => "The docks of Saltmere at dawn",
+                OnboardingQuestionCatalog.SoloCompanions => "yes",
+                _ when current.AnswerType == OnboardingAnswerType.Enum => current.EnumOptions![0],
+                _ => "A reasonable free-text answer for this question."
+            };
+            var submit = await onboarding.SubmitOnboardingAnswer(slug, answer);
+            Assert.True(submit.Success, submit.Summary);
+            current = submit.Data!.CurrentQuestion;
+        }
+
+        Assert.Contains(OnboardingQuestionCatalog.HomebrewWorldDetails, asked);
+        Assert.Contains(OnboardingQuestionCatalog.PcCreation, asked);
+        Assert.Contains(OnboardingQuestionCatalog.StartingLevel, asked);
+        Assert.Contains(OnboardingQuestionCatalog.PlotDirection, asked);
+        Assert.Contains(OnboardingQuestionCatalog.OpeningScene, asked);
+        Assert.Equal(expectPartyQuestion, asked.Contains(OnboardingQuestionCatalog.PartyComposition));
+        Assert.Equal(!expectPartyQuestion, asked.Contains(OnboardingQuestionCatalog.SoloCompanions));
+        Assert.Equal(expectRoster, asked.Contains(OnboardingQuestionCatalog.PcRoster));
+
+        var finalize = await onboarding.FinalizeCampaignOnboarding(slug);
+        Assert.True(finalize.Success, finalize.Summary);
+        var brief = finalize.Data!.SeedBrief;
+        Assert.Contains("isPc=true", brief);
+        Assert.Contains("level 3", brief);
+        Assert.Contains("The docks of Saltmere at dawn", brief);
+        Assert.Contains("A stolen crown and a drowned city", brief);
+        if (expectRoster)
+        {
+            Assert.Contains("Lyra — elf ranger, exiled scout", brief);
+            Assert.Contains("Bram — dwarf cleric, lapsed priest", brief);
+        }
+
+        // Until the party exists, start_session hands the brief back instead of just refusing.
+        var session = await sessions.StartSession(slug);
+        Assert.False(session.Success);
+        Assert.Contains("CAMPAIGN SETUP BRIEF", session.Summary);
+    }
+
+    [Fact]
+    public async Task Onboarding_StartingLevel_RejectsOutOfRangeAndNonNumbers()
+    {
+        var question = OnboardingQuestionCatalog.GetQuestionSequence().Single(q => q.Key == OnboardingQuestionCatalog.StartingLevel);
+        Assert.NotNull(OnboardingQuestionCatalog.ValidateAnswer(question, "0"));
+        Assert.NotNull(OnboardingQuestionCatalog.ValidateAnswer(question, "21"));
+        Assert.NotNull(OnboardingQuestionCatalog.ValidateAnswer(question, "three"));
+        Assert.Null(OnboardingQuestionCatalog.ValidateAnswer(question, "1"));
+        Assert.Null(OnboardingQuestionCatalog.ValidateAnswer(question, "20"));
+        await Task.CompletedTask;
     }
 }

@@ -109,7 +109,7 @@ public class McpServerIntegrationTests : IAsyncLifetime
         response.EnsureSuccessStatusCode();
 
         var content = await response.Content.ReadAsStringAsync();
-        Assert.Contains("Campaign Vault", content, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("CampaignVault", content, StringComparison.OrdinalIgnoreCase);
     }
 
     [DockerFact]

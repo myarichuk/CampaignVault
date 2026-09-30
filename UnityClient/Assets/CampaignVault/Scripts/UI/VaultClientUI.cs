@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using CampaignVault.UnityClient.App;
 using CampaignVault.UnityClient.Diagnostics;
+using CampaignVault.UnityClient.Server;
 
 namespace CampaignVault.UnityClient.UI
 {
@@ -129,8 +130,17 @@ namespace CampaignVault.UnityClient.UI
         private IEnumerator FirstLook()
         {
             yield return null;
-            if (_boot.NeedsSetup) { OpenSetup(); yield break; }
-            float waitUntil = Time.realtimeSinceStartup + 180f;
+            float waitUntil = Time.realtimeSinceStartup + ServerHostManager.HealthBudgetSeconds + 60f;
+            if (_boot.NeedsSetup)
+            {
+                // Setup opens at once; the server check waits for autostart so it doesn't
+                // report "unreachable" about a server that is still booting.
+                OpenSetup();
+                while (!_controller.AutostartSettled && Time.realtimeSinceStartup < waitUntil) { yield return null; }
+                yield return _controller.CheckConnection();
+                yield break;
+            }
+            _controller.Run(_controller.CheckProvider());
             while (!_controller.AutostartSettled && Time.realtimeSinceStartup < waitUntil) { yield return null; }
             yield return _controller.CheckConnection();
             if (!_state.HasCampaign)
@@ -219,7 +229,7 @@ namespace CampaignVault.UnityClient.UI
         private string ModelTooltip()
         {
             string reason;
-            if (!_state.Byok.Validate(out reason)) { return "No Dungeon Master yet: " + reason + " Click to set one up."; }
+            if (!_state.ProviderReady(out reason)) { return "No working Dungeon Master: " + reason + " Click to set one up."; }
             var driver = _state.Driver;
             string state = driver.IsBusy ? "thinking…" : !string.IsNullOrEmpty(driver.LastError) ? "last turn failed: " + driver.LastError : "ready";
             return "Dungeon Master: " + _state.Byok.Model + ", " + state + ". Click to change it.";
@@ -273,7 +283,7 @@ namespace CampaignVault.UnityClient.UI
         {
             var driver = _state.Driver;
             string reason;
-            bool ready = _state.Byok.Validate(out reason);
+            bool ready = _state.ProviderReady(out reason);
             _modelSigil.EnableInClassList("cv-sigil--busy", driver.IsBusy);
             _modelSigil.EnableInClassList("cv-sigil--bad", !ready || (!driver.IsBusy && !string.IsNullOrEmpty(driver.LastError)));
             _modelSigil.EnableInClassList("cv-sigil--ok", ready && !driver.IsBusy && string.IsNullOrEmpty(driver.LastError));

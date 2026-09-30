@@ -54,6 +54,26 @@ namespace CampaignVault.UnityClient.AI
         /// <summary>Last failure text, kept after IsBusy clears so the UI can show it.</summary>
         public string LastError { get; private set; }
 
+        /// <summary>
+        /// Set when the provider refused outright (key rejected, model or endpoint
+        /// unknown): retrying can't help until the settings change. Cleared by the
+        /// next successful reply or by <see cref="ClearProviderProblem"/>.
+        /// </summary>
+        public string ProviderProblem { get; private set; } = string.Empty;
+
+        public void ClearProviderProblem() { ProviderProblem = string.Empty; }
+
+        /// <summary>A failed provider check (Settings → test, or the one at startup) counts too.</summary>
+        public void ReportProviderProblem(string problem) { ProviderProblem = problem ?? string.Empty; }
+
+        /// <summary>What an HTTP status means for the provider's setup; empty when a retry could still work.</summary>
+        internal static string ProviderProblemFor(long status, string model)
+        {
+            if (status == 401 || status == 403) { return "the provider rejected the API key (HTTP " + status + ")."; }
+            if (status == 404) { return "the provider doesn't know model \"" + model + "\" or this endpoint (HTTP 404)."; }
+            return string.Empty;
+        }
+
         /// <summary>One-line summary of the last request (model, message/tool counts) for the Inspect panel.</summary>
         public string LastRequestMeta = string.Empty;
 
@@ -233,7 +253,8 @@ namespace CampaignVault.UnityClient.AI
                 }
 
                 CompactFinishedTurns();
-                string cleanPlayer = TextSanitizer.Clean(playerText, 4000);
+                // OOC lines may carry the onboarding brief, which runs past a normal turn's length.
+                string cleanPlayer = TextSanitizer.Clean(playerText, Storyteller.IsOocPlayer(playerText) ? 12000 : 4000);
                 userMessage = RoleMessage("user", twoPass ? Storyteller.LoopUserMessage(LastPassage, cleanPlayer) : cleanPlayer);
                 _history.Add(userMessage);
                 TrimToBudget();
@@ -598,6 +619,48 @@ namespace CampaignVault.UnityClient.AI
             done(true);
         }
 
+        /// <summary>
+        /// A tool-free side conversation (onboarding brainstorming): the caller
+        /// owns the messages; nothing touches the play history or the server.
+        /// done(reply, error) — exactly one of them is non-null.
+        /// </summary>
+        public IEnumerator Brainstorm(IList<KeyValuePair<string, string>> roleMessages, Action<string> onDelta, Action<string, string> done)
+        {
+            string reason;
+            if (!Byok.Validate(out reason)) { done(null, reason); yield break; }
+            if (IsBusy) { done(null, "The DM is busy with a turn. Try again when it finishes."); yield break; }
+            IsBusy = true;
+            _cancelRequested = false;
+            try
+            {
+                var messages = JsonValue.NewArray();
+                foreach (var m in roleMessages) { messages.ArrayValue.Add(RoleMessage(m.Key, m.Value)); }
+                string model = Byok.Model.Trim();
+                JsonValue response = null;
+                string failure = null;
+                yield return RequestReply(
+                    delegate (bool stream, bool usageOptions)
+                    {
+                        var request = NewRequest(model, stream, usageOptions);
+                        request.ObjectValue["messages"] = messages;
+                        return request;
+                    },
+                    onDelta ?? delegate { },
+                    delegate (JsonValue r, string err) { response = r; failure = err; });
+                if (failure != null) { done(null, failure); yield break; }
+                SessionUsage.Add(TokenUsage.FromJson(response.Get("usage")));
+                var choices = response.GetArray("choices");
+                JsonValue message = choices.Count > 0 ? choices[0].Get("message") : JsonValue.Null;
+                string content = string.Empty;
+                string reasoning;
+                if (!message.IsNull) { ExtractContent(message, out content, out reasoning); }
+                content = content.Trim();
+                if (content.Length == 0) { done(null, model + " returned an empty reply."); yield break; }
+                done(content, null);
+            }
+            finally { IsBusy = false; }
+        }
+
         internal JsonValue BuildNarrationMessages(string playerText, TurnBrief brief)
         {
             string skill;
@@ -660,6 +723,12 @@ namespace CampaignVault.UnityClient.AI
                 yield return PostChat(request, false, onDelta,
                     delegate (JsonValue r, string err, long code) { response = r; failure = err; status = code; });
                 if (failure == null) { _noStreamEndpoints.Add(endpoint); }
+            }
+            if (failure == null) { ProviderProblem = string.Empty; }
+            else if (!_cancelRequested)
+            {
+                string problem = ProviderProblemFor(status, Byok.Model.Trim());
+                if (problem.Length > 0) { ProviderProblem = problem; }
             }
             done(response, failure);
         }

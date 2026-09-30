@@ -55,9 +55,11 @@ namespace CampaignVault.UnityClient.UI
                 }
                 else if (session == null)
                 {
+                    // One OPEN SESSION lives in the Journal; the first line sent opens it too.
                     bool busy = _state.IsBusy("refresh") || _state.IsBusy("session");
-                    _list.Add(Ui.Empty("party", busy ? "Gathering the party…" : "The party gathers when the session opens."));
-                    if (!busy) { _list.Add(Ui.Button("OPEN SESSION", "d20", "cv-btn--primary cv-btn--small", delegate { _controller.Run(_controller.StartSession(null)); })); }
+                    _list.Add(Ui.Empty("party", busy ? "Gathering the party…"
+                        : _state.SetupPending ? "No player characters yet. The DM creates them from your answers."
+                        : "The party gathers when the session opens."));
                 }
                 else
                 {
@@ -215,8 +217,9 @@ namespace CampaignVault.UnityClient.UI
         private bool NeedSession()
         {
             if (_state.Session != null) { return true; }
-            _body.Add(Ui.Empty("journal", "Open the session to read the table."));
-            _body.Add(Ui.Button("OPEN SESSION", "d20", "cv-btn--primary cv-btn--small", delegate { _controller.Run(_controller.StartSession(null)); }));
+            _body.Add(Ui.Empty("journal", _state.SetupPending
+                ? "Nothing to read yet: the table fills in once the party exists."
+                : "Open the session (Journal) or send your first line to read the table."));
             return false;
         }
 
@@ -386,7 +389,8 @@ namespace CampaignVault.UnityClient.UI
                 _controller.Run(_state.Session == null ? _controller.StartSession(null) : _controller.RefreshTable());
             });
             open.SetEnabled(!busy);
-            session.Add(open);
+            // start_session refuses a campaign with no party: don't offer it until there is one.
+            if (!(_state.SetupPending && _state.Session == null)) { session.Add(open); }
             _body.Add(session);
 
             var digest = _state.Session;

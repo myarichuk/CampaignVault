@@ -37,6 +37,17 @@ namespace CampaignVault.UnityClient.Server
         private volatile string _copyStatus;
 
         public bool IsRunning { get { return _server != null && !_server.HasExited; } }
+
+        /// <summary>
+        /// How long a starting server may take to answer /health before it's given up
+        /// on. Generous on purpose: the first launch after an unpack pays for the OS
+        /// scanning the fresh binaries and RavenDB creating its database, and giving
+        /// up kills a server that was about to come up.
+        /// </summary>
+        public const float HealthBudgetSeconds = 180f;
+
+        /// <summary>A server of ours from an earlier session is still running (see <see cref="EmbeddedServerSupport.OrphanAlive"/>).</summary>
+        public bool HasOrphan { get { return !IsRunning && EmbeddedServerSupport.OrphanAlive(PidFile); } }
         /// <summary>The port the running server listens on (0 when stopped).</summary>
         public int ActivePort { get; private set; }
         /// <summary>The version the running server reported on /health (empty for older servers).</summary>
@@ -227,9 +238,16 @@ namespace CampaignVault.UnityClient.Server
             if (status != null) { status("Starting the server on 127.0.0.1:" + port + "…"); }
             bool healthy = false;
             string version = string.Empty;
-            for (int i = 0; i < 90 && IsRunning; i++)
+            float began = Time.realtimeSinceStartup;
+            float nextNote = began + 10f;
+            while (IsRunning && Time.realtimeSinceStartup - began < HealthBudgetSeconds)
             {
                 yield return new WaitForSeconds(0.5f);
+                if (status != null && Time.realtimeSinceStartup >= nextNote)
+                {
+                    nextNote += 10f;
+                    status("Waiting for the server to answer (" + (int)(Time.realtimeSinceStartup - began) + "s; the first start can take a minute or two)…");
+                }
                 using (UnityWebRequest probe = UnityWebRequest.Get("http://127.0.0.1:" + port + "/health"))
                 {
                     probe.timeout = 2;
@@ -250,7 +268,7 @@ namespace CampaignVault.UnityClient.Server
                 string why;
                 lock (errLines) { why = EmbeddedServerSupport.StartupFailure(errLines); }
                 StopEmbedded();
-                done(false, (exited ? "The server stopped during startup" : "The server did not answer /health within 45s")
+                done(false, (exited ? "The server stopped during startup" : "The server did not answer /health within " + (int)HealthBudgetSeconds + "s")
                     + (why != null ? ": " + TextSanitizer.Clean(why, 300) : ".") + " Log: " + logPath);
                 yield break;
             }

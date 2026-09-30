@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
+using CampaignVault.UnityClient.AI;
 using CampaignVault.UnityClient.App;
 using CampaignVault.UnityClient.Flows;
 
@@ -183,7 +184,9 @@ namespace CampaignVault.UnityClient.UI
             {
                 case OnboardingPhase.Idle: RenderStart(ob); break;
                 case OnboardingPhase.Working: _content.Add(Ui.Empty("seal", string.IsNullOrEmpty(ob.Status) ? "Working…" : ob.Status)); break;
-                case OnboardingPhase.Question: RenderQuestion(ob); break;
+                case OnboardingPhase.Question:
+                    if (ob.Brainstorming) { RenderBrainstorm(ob); } else { RenderQuestion(ob); }
+                    break;
                 case OnboardingPhase.ReadyToFinalize: RenderFinalize(ob); break;
                 case OnboardingPhase.Done: RenderDone(ob); break;
                 default:
@@ -260,7 +263,7 @@ namespace CampaignVault.UnityClient.UI
                     foreach (string option in q.Options)
                     {
                         string captured = option;
-                        var b = Ui.Button(option, null, null, delegate { Submit(captured); });
+                        var b = Ui.Button(ChoiceLabel(option), null, null, delegate { Submit(captured); });
                         b.style.marginBottom = 8;
                         answer.Add(b);
                     }
@@ -275,12 +278,23 @@ namespace CampaignVault.UnityClient.UI
                     break;
                 default:
                     bool list = q.Type == AnswerType.List;
-                    var field = Ui.Field(list ? "one entry per line" : "your answer", null, list);
+                    bool number = q.Type == AnswerType.Number;
+                    // A brainstormed write-up can run to a paragraph: give it room.
+                    bool multiline = list || ob.Draft.Length > 80;
+                    var field = Ui.Field(list ? "one entry per line" : number ? "a number" : "your answer", ob.Draft, multiline);
                     answer.Add(field);
                     field.schedule.Execute(() => { field.Focus(); }).StartingIn(50);
+                    if (OnboardingBrainstorm.Supports(q))
+                    {
+                        var brainstorm = Ui.Button(ob.BrainstormChat.Count > 0 ? "CONTINUE BRAINSTORMING" : "BRAINSTORM WITH THE DM", "spark", "cv-btn--small",
+                            delegate { _controller.OpenBrainstorm(); });
+                        brainstorm.style.marginTop = 8;
+                        answer.Add(brainstorm);
+                        TooltipLayer.Attach(brainstorm, "Talk the idea through with the model. When you're happy, it writes the answer into this field for you to edit.");
+                    }
                     Foot.Add(Ui.Button("ANSWER", "chevron", "cv-btn--primary", delegate
                     {
-                        Submit(list ? VaultController.FormatListAnswer(field.value) : field.value);
+                        Submit(list ? VaultController.FormatListAnswer(field.value) : field.value.Trim());
                     }));
                     break;
             }
@@ -307,9 +321,72 @@ namespace CampaignVault.UnityClient.UI
             _content.Add(roster);
         }
 
+        /// <summary>A side chat with the model about the current question; its write-up becomes the draft answer.</summary>
+        private void RenderBrainstorm(OnboardingState ob)
+        {
+            var q = ob.Question;
+            _content.Add(Ui.Text("BRAINSTORMING", "cv-caption"));
+            _content.Add(Ui.Text(q.Text, "cv-question"));
+            if (ob.BrainstormChat.Count == 0)
+            {
+                _content.Add(Ui.Text("Say what you have in mind, even half an idea, or ask for suggestions. Nothing is saved until you answer the question.", "cv-body cv-muted cv-italic"));
+            }
+            foreach (var message in ob.BrainstormChat)
+            {
+                bool mine = message.Key == "user";
+                var bubble = Ui.El();
+                bubble.style.marginTop = 12;
+                bubble.Add(Ui.Text(mine ? "YOU" : "THE DM", "cv-caption"));
+                bubble.Add(Ui.Rich(message.Value, mine ? "cv-body cv-muted" : "cv-body"));
+                _content.Add(bubble);
+            }
+            if (ob.BrainstormBusy)
+            {
+                var thinking = Ui.Text("The DM is thinking…", "cv-body cv-muted cv-italic");
+                thinking.style.marginTop = 12;
+                _content.Add(thinking);
+            }
+            if (ob.BrainstormError.Length > 0) { _content.Add(Ui.Text(ob.BrainstormError, "cv-body cv-text-blood")); }
+
+            var field = Ui.Field(ob.BrainstormChat.Count == 0 ? "e.g. something with sea caves and smugglers" : "reply", null, true);
+            field.style.marginTop = 16;
+            field.SetEnabled(!ob.BrainstormBusy);
+            _content.Add(field);
+            field.schedule.Execute(() => { field.Focus(); }).StartingIn(50);
+            // Keep the newest message in view.
+            _content.schedule.Execute(() => { var scroll = _content.GetFirstAncestorOfType<ScrollView>(); if (scroll != null) { scroll.scrollOffset = new Vector2(0, float.MaxValue); } }).StartingIn(30);
+
+            Foot.Add(Ui.Button("BACK TO THE QUESTION", "chevron", "cv-btn--ghost", delegate { _controller.CloseBrainstorm(); }));
+            var writeUp = Ui.Button("WRITE IT UP", "check", null, delegate { _controller.Run(_controller.WriteUpBrainstorm()); });
+            writeUp.SetEnabled(!ob.BrainstormBusy && ob.BrainstormChat.Count > 0);
+            TooltipLayer.Attach(writeUp, "The DM turns what you settled on into the answer, ready for you to edit and submit.");
+            Foot.Add(writeUp);
+            var send = Ui.Button("SEND", "chevron", "cv-btn--primary", delegate { _controller.Run(_controller.SendBrainstorm(field.value)); });
+            send.SetEnabled(!ob.BrainstormBusy);
+            Foot.Add(send);
+        }
+
+        /// <summary>Server option ids read as plain words on the buttons.</summary>
+        internal static string ChoiceLabel(string option)
+        {
+            switch (option)
+            {
+                case "describe-now": return "I'll describe them";
+                case "dm-pregenerates": return "The DM makes them, I approve";
+                case "build-at-table": return "Build them with the DM, step by step";
+                case "user-provided": return "I have a plot idea";
+                case "generated-surprise": return "Surprise me";
+                case "generated-with-direction": return "Generate it, with my direction";
+                case "party-existing": return "Party, existing world";
+                case "party-homebrew": return "Party, homebrew world";
+                default: return option;
+            }
+        }
+
         /// <summary>Only party questions get the roster helper.</summary>
         private static bool AboutTheParty(OnboardingQuestion q)
         {
+            if (q.Type != AnswerType.Text && q.Type != AnswerType.List) { return false; }
             string text = (q.Key + " " + q.Text).ToLowerInvariant();
             foreach (string word in new[] { "party", "roster", "character", "companion", "hero", "player" })
             {
@@ -340,7 +417,7 @@ namespace CampaignVault.UnityClient.UI
             {
                 if (_controller.SeedWorldThroughDm()) { Close(); }
             }));
-            TooltipLayer.Attach(Foot[Foot.childCount - 1], "The Dungeon Master builds starter places, people and quests from your answers, then opens the first session.");
+            TooltipLayer.Attach(Foot[Foot.childCount - 1], "The Dungeon Master creates your characters and the starter places, people and quests from your answers. The first session opens as soon as the party exists.");
         }
     }
 }

@@ -43,6 +43,9 @@ namespace CampaignVault.UnityClient.UI
 
         private readonly VaultAppState _state;
         private readonly VaultController _controller;
+        private readonly VisualElement _gate;
+        private readonly Label _gateText;
+        private readonly VisualElement _quick;
         private readonly TextField _input;
         private readonly Button _act;
         private readonly VisualElement _thinking;
@@ -67,15 +70,27 @@ namespace CampaignVault.UnityClient.UI
             column.Add(_thinking);
 
             var bar = Ui.Frame(Ui.El("cv-command"));
-            var quick = Ui.El("cv-command__quick");
+
+            // Without a working provider nothing here can do anything: say why and where to fix it.
+            _gate = Ui.El("cv-row");
+            _gate.style.alignItems = Align.Center;
+            _gate.style.marginBottom = 8;
+            _gateText = Ui.Text(string.Empty, "cv-body cv-text-blood cv-grow");
+            _gate.Add(_gateText);
+            var fix = Ui.Button("SET UP THE DM", "settings", "cv-btn--small cv-btn--primary", delegate { _state.RequestSetup(); });
+            fix.style.marginLeft = 8;
+            _gate.Add(fix);
+            bar.Add(_gate);
+
+            _quick = Ui.El("cv-command__quick");
             foreach (var q in Quick)
             {
                 var captured = q;
                 var b = Ui.Button(q.Label, q.Icon, "cv-btn--small cv-btn--ghost", delegate { UseQuick(captured); });
                 TooltipLayer.Attach(b, q.Tooltip);
-                quick.Add(b);
+                _quick.Add(b);
             }
-            bar.Add(quick);
+            bar.Add(_quick);
 
             var row = Ui.El("cv-command__row");
             _input = Ui.Field("What do you do?", null, true, "cv-command__input");
@@ -98,17 +113,35 @@ namespace CampaignVault.UnityClient.UI
             {
                 if ((area & (StateArea.Driver | StateArea.Busy)) != 0) { PaintBusy(); }
                 if ((area & (StateArea.Campaign | StateArea.Session)) != 0) { PaintPlaceholder(); }
+                if ((area & (StateArea.Providers | StateArea.Driver)) != 0) { PaintGate(); }
             };
             // The driver's status text changes between Notify calls: poll it while busy.
             _thinking.schedule.Execute(Tick).Every(33);
             PaintBusy();
+            PaintPlaceholder();
+            PaintGate();
+        }
+
+        private void PaintGate()
+        {
+            string reason;
+            bool ready = _state.ProviderReady(out reason);
+            _gate.style.display = ready ? DisplayStyle.None : DisplayStyle.Flex;
+            if (!ready) { Ui.SetText(_gateText, "The Dungeon Master isn't set up: " + reason); }
+            _input.SetEnabled(ready);
+            _quick.SetEnabled(ready);
+            // STOP must stay reachable mid-turn even if the provider just failed.
+            _act.SetEnabled(ready || Working);
             PaintPlaceholder();
         }
 
         /// <summary>The empty box says what the next line will do: nothing yet, open the session, or play.</summary>
         private void PaintPlaceholder()
         {
-            string text = !_state.HasCampaign ? "Choose a campaign to begin (the campaign book, top right)…"
+            string notReady;
+            string text = !_state.ProviderReady(out notReady) ? "Set up the Dungeon Master's AI provider to play."
+                : !_state.HasCampaign ? "Choose a campaign to begin (the campaign book, top right)…"
+                : _state.SetupPending && _state.Session == null ? "Tell the DM about your characters, or answer their questions…"
                 : _state.Session == null ? "What do you do? Your first line opens the session."
                 : "What do you do?";
             _input.textEdition.placeholder = text;

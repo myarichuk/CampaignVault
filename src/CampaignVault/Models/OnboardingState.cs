@@ -104,6 +104,15 @@ public class OnboardingQuestion
     public string? HelpText { get; set; }
 
     /// <summary>
+    /// If AnswerType is Number, the inclusive range of valid values.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? MinValue { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? MaxValue { get; set; }
+
+    /// <summary>
     /// If true, this question should be skipped based on prior answers.
     /// Determined by branching rules.
     /// </summary>
@@ -122,7 +131,8 @@ public enum OnboardingAnswerType
     Text,
     Enum,
     Boolean,
-    List
+    List,
+    Number
 }
 
 /// <summary>

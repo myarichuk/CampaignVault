@@ -38,7 +38,7 @@ Example: start_campaign_onboarding('dragon-heist')")]
                     {
                         State = existingState,
                         CurrentQuestion = existingState.NextQuestion,
-                        Summary = $"Resuming onboarding for '{effective}'. Current progress: {existingState.CurrentQuestionIndex}/{OnboardingQuestionCatalog.GetQuestionSequence().Count} questions answered."
+                        Summary = $"Resuming onboarding for '{effective}'. Current progress: {existingState.CurrentQuestionIndex}/{OnboardingQuestionCatalog.GetQuestionsForPath(existingState).Count} questions answered."
                     },
                     $"Onboarding for '{effective}' resumed.");
             }
@@ -135,15 +135,13 @@ Example: submit_onboarding_answer('dragon-heist', 'Dnd5e')")]
 
             // Apply branching rules
             var questionsToSkip = OnboardingQuestionCatalog.ApplyBranchingRules(state, state.NextQuestion.Key, answer);
-            if (questionsToSkip.Count > 0)
+            state.SkippedQuestions.AddRange(questionsToSkip.Except(state.SkippedQuestions));
+
+            // Flags come from non-branching answers too (side quests), so refresh them on every answer.
+            state.BranchingPath = DetermineBranchingPath(state);
+            foreach (var kvp in ExtractWorldBuildingFlags(state))
             {
-                state.SkippedQuestions.AddRange(questionsToSkip);
-                state.BranchingPath = DetermineBranchingPath(state);
-                var flags = ExtractWorldBuildingFlags(state);
-                foreach (var kvp in flags)
-                {
-                    state.WorldBuildingFlags[kvp.Key] = kvp.Value;
-                }
+                state.WorldBuildingFlags[kvp.Key] = kvp.Value;
             }
 
             // Get next question
@@ -173,7 +171,7 @@ Example: submit_onboarding_answer('dragon-heist', 'Dnd5e')")]
                     IsReadyToBuild = state.IsComplete,
                     Summary = state.IsComplete
                         ? "Onboarding complete! Call finalize_campaign_onboarding to build the world."
-                        : $"Answer recorded. {OnboardingQuestionCatalog.GetQuestionSequence().Count - state.CurrentQuestionIndex} questions remaining."
+                        : $"Answer recorded. {OnboardingQuestionCatalog.GetQuestionsForPath(state).Count(q => !state.CollectedAnswers.ContainsKey(q.Key))} questions remaining."
                 },
                 state.IsComplete ? "Onboarding complete." : "Answer recorded.");
         });
@@ -183,8 +181,7 @@ Example: submit_onboarding_answer('dragon-heist', 'Dnd5e')")]
     [McpServerTool(UseStructuredContent = true)]
     [Description(@"ONBOARDING TOOL: Finalize onboarding — locks in campaign settings, does NOT seed the world.
 Creates/locks the campaign meta from the collected answers (system, tone, setting, factions, etc.).
-Does not call world_build and does not return world state. The response's NextSteps tells you to call
-world_build yourself next to seed starter entities (locations, NPCs, factions, quests), then start_session.
+The response's SeedBrief lists the answers and next steps: create the PCs and seed the world with world_build, then start_session.
 
 Example: finalize_campaign_onboarding('dragon-heist')")]
     public Task<ToolResult<OnboardingFinalizeResponse>> FinalizeCampaignOnboarding(
@@ -283,6 +280,11 @@ Example: finalize_campaign_onboarding('dragon-heist')")]
             // Save collected answers for reference
             campaign.Metadata["onboarding_answers"] = System.Text.Json.JsonSerializer.Serialize(state.CollectedAnswers);
 
+            // The DM seeds the world (and the player characters) from this; start_session repeats it
+            // while the campaign still has no party.
+            var seedBrief = OnboardingBrief.Build(effective, campaignNameFromAnswer, system, state.CollectedAnswers);
+            campaign.Metadata[OnboardingBrief.MetadataKey] = seedBrief;
+
             // Delete the onboarding state (it's no longer needed)
             await _repository.DeleteOnboardingStateAsync(session, effective);
 
@@ -296,11 +298,12 @@ Example: finalize_campaign_onboarding('dragon-heist')")]
                     NarrativeFocus = narrativeFocus,
                     CollectedAnswers = state.CollectedAnswers,
                     WorldBuildingFlags = state.WorldBuildingFlags,
+                    SeedBrief = seedBrief,
                     NextSteps =
                     [
                         "Campaign meta created and system locked.",
-                        "Ready for world_build to seed starter entities (locations, NPCs, factions, quests, plot threads).",
-                        "After world seeding, start_session can be called to begin session 1.",
+                        "Follow SeedBrief: create the player characters (isPc=true) and seed the starter world with world_build.",
+                        "Then call start_session to begin session 1; it refuses to open while the campaign has no player character.",
                         .. startingEraHadNoYearDigit
                             ? new[]
                             {
@@ -414,6 +417,10 @@ public class OnboardingFinalizeResponse
     public List<string> NarrativeFocus { get; set; } = [];
     public Dictionary<string, object> CollectedAnswers { get; set; } = [];
     public Dictionary<string, string> WorldBuildingFlags { get; set; } = [];
+
+    /// <summary>The onboarding answers as step-by-step seeding instructions for the DM.</summary>
+    public string SeedBrief { get; set; } = "";
+
     public List<string> NextSteps { get; set; } = [];
     public string Summary { get; set; } = null!;
 }

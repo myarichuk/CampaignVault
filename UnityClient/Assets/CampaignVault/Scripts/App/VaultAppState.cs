@@ -68,7 +68,7 @@ namespace CampaignVault.UnityClient.App
 
     public enum OnboardingPhase { Idle, Working, Question, ReadyToFinalize, Done, Failed }
 
-    public enum AnswerType { Text, Choice, YesNo, List }
+    public enum AnswerType { Text, Choice, YesNo, List, Number }
 
     public sealed class OnboardingQuestion
     {
@@ -97,6 +97,29 @@ namespace CampaignVault.UnityClient.App
         public string Error = string.Empty;
         public string DoneSummary = string.Empty;
         public readonly List<string> NextSteps = new List<string>();
+        /// <summary>The server's written-up answers and seeding steps, sent to the DM with "seed the world".</summary>
+        public string SeedBrief = string.Empty;
+        /// <summary>Answers recorded so far (question key → answer), as the server reports them.</summary>
+        public readonly Dictionary<string, string> Answers = new Dictionary<string, string>();
+        /// <summary>Pre-fills the current question's field (a brainstormed write-up); cleared per question.</summary>
+        public string Draft = string.Empty;
+
+        // Brainstorming the current question with the model (a side chat; nothing reaches the server).
+        public bool Brainstorming;
+        public bool BrainstormBusy;
+        /// <summary>(role, text): "user" or "assistant".</summary>
+        public readonly List<KeyValuePair<string, string>> BrainstormChat = new List<KeyValuePair<string, string>>();
+        public string BrainstormLive = string.Empty;
+        public string BrainstormError = string.Empty;
+
+        public void ClearBrainstorm()
+        {
+            Brainstorming = false;
+            BrainstormBusy = false;
+            BrainstormChat.Clear();
+            BrainstormLive = string.Empty;
+            BrainstormError = string.Empty;
+        }
     }
 
     /// <summary>The fields of an end-of-session handoff, as typed.</summary>
@@ -132,8 +155,30 @@ namespace CampaignVault.UnityClient.App
         public string CampaignSlug { get { return Prompts != null ? Prompts.CampaignSlug : string.Empty; } }
         public string Ruleset { get { return Prompts != null ? Prompts.Ruleset : string.Empty; } }
         public bool HasCampaign { get { return !string.IsNullOrEmpty(CampaignSlug); } }
+
+        /// <summary>
+        /// Settings look complete and the provider hasn't refused them. Play (the
+        /// command bar, brainstorming) waits on this; reason says what to fix.
+        /// </summary>
+        public bool ProviderReady(out string reason)
+        {
+            if (Byok == null) { reason = "No AI provider settings loaded."; return false; }
+            if (!Byok.Validate(out reason)) { return false; }
+            if (Driver != null && !string.IsNullOrEmpty(Driver.ProviderProblem))
+            {
+                reason = char.ToUpperInvariant(Driver.ProviderProblem[0]) + Driver.ProviderProblem.Substring(1);
+                return false;
+            }
+            return true;
+        }
         public SessionDigest Session;
         public string SessionStatus = string.Empty;
+        /// <summary>
+        /// The campaign has no player character yet (fresh from onboarding): lines go
+        /// to the DM as out-of-character setup talk, and the first session opens once
+        /// the party exists.
+        /// </summary>
+        public bool SetupPending;
         public List<string> HandoffIssues = new List<string>();
 
         // ---- party ----

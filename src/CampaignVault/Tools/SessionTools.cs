@@ -73,8 +73,12 @@ public class SessionTools : CampaignToolBase, IMcpServerTool
 
             if (party.Count == 0)
             {
+                // A campaign fresh out of onboarding: hand the DM the player's answers so it seeds the
+                // party and world from them instead of asking the player to repeat everything.
+                var brief = existingCampaign.Metadata.TryGetValue(OnboardingBrief.MetadataKey, out var b) ? b : null;
                 return new ToolResult<SessionStartView>(false, Error: ToolErrors.InvalidArgument,
-                    Summary: $"Campaign '{effective}' has no party members. Seed at least one character with IsPc via world_build before start_session.");
+                    Summary: $"Campaign '{effective}' has no party members. Seed at least one character with IsPc via world_build before start_session."
+                        + (string.IsNullOrWhiteSpace(brief) ? "" : "\n\nThis campaign came from onboarding and hasn't been seeded yet. Follow its setup brief:\n" + brief));
             }
 
             var sessionLog = await _repo.GetSessionLogAsync(new CampaignSession(session, effective));

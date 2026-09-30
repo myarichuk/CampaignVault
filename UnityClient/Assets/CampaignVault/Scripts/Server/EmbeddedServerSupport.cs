@@ -87,6 +87,30 @@ namespace CampaignVault.UnityClient.Server
         /// call it off the main thread. Returns what happened, or null when
         /// there was nothing to do.
         /// </summary>
+        /// <summary>
+        /// True when the pidfile names a live server of ours that no running client
+        /// owns (an earlier session crashed or was killed). Autostart restarts it
+        /// rather than adopting it: nobody would stop it on quit, and after a client
+        /// update it would still be the old version.
+        /// </summary>
+        public static bool OrphanAlive(string pidFile)
+        {
+            if (!File.Exists(pidFile)) { return false; }
+            string text;
+            try { text = File.ReadAllText(pidFile); }
+            catch (IOException) { return false; }
+            int pid, port;
+            string exe;
+            if (!TryParsePidFile(text, out pid, out port, out exe)) { return false; }
+            try
+            {
+                using (Process p = Process.GetProcessById(pid)) { return !p.HasExited && IsSameBinary(p, exe); }
+            }
+            catch (ArgumentException) { return false; }
+            catch (InvalidOperationException) { return false; }
+            catch (System.ComponentModel.Win32Exception) { return false; }
+        }
+
         public static string KillOrphan(string pidFile)
         {
             if (!File.Exists(pidFile)) { return null; }

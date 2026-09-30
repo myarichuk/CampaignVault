@@ -18,6 +18,15 @@ public static class OnboardingQuestionCatalog
     public const string SideQuestGeneration = "side_quest_generation";
     public const string Factions = "factions";
     public const string HomebrewWorldDetails = "homebrew_world_details";
+    public const string PcCreation = "pc_creation";
+    public const string PcRoster = "pc_roster";
+    public const string StartingLevel = "starting_level";
+    public const string OpeningScene = "opening_scene";
+
+    // pc_creation options
+    public const string PcCreationDescribeNow = "describe-now";
+    public const string PcCreationDmPregenerates = "dm-pregenerates";
+    public const string PcCreationBuildAtTable = "build-at-table";
 
     /// <summary>
     /// Get the full question sequence with branching logic.
@@ -71,7 +80,7 @@ public static class OnboardingQuestionCatalog
                     "Sets the campaign's starting in-world date (epoch name and year). Free text — a leading number is parsed as the starting year; the rest is kept as the epoch label."
             },
 
-            // Q3: World Setting (Solo vs Party, Existing vs Homebrew)
+            // Q3: Solo vs party, existing vs homebrew world
 
             new OnboardingQuestion
             {
@@ -87,40 +96,48 @@ public static class OnboardingQuestionCatalog
                         "solo", new OnboardingBranchingRule
                         {
                             TriggerValue = "solo",
-                            SkipQuestions = [PartyComposition, Factions],
-                            JumpToQuestion = SoloCompanions
+                            SkipQuestions = [PartyComposition]
                         }
                     },
                     {
                         "party-existing", new OnboardingBranchingRule
                         {
                             TriggerValue = "party-existing",
-                            SkipQuestions = [HomebrewWorldDetails, SoloCompanions],
-                            JumpToQuestion = PartyComposition
+                            SkipQuestions = [SoloCompanions]
                         }
                     },
                     {
                         "party-homebrew", new OnboardingBranchingRule
                         {
                             TriggerValue = "party-homebrew",
-                            SkipQuestions = [PartyComposition, SoloCompanions],
-                            JumpToQuestion = HomebrewWorldDetails
+                            SkipQuestions = [SoloCompanions]
                         }
                     }
                 }
             },
 
-            // Q4: Party Composition (skipped for solo)
+            // Q4: The world itself (every path — an existing setting still needs a name and region)
+
+            new OnboardingQuestion
+            {
+                Key = HomebrewWorldDetails,
+                Text =
+                    "Describe the world. For an existing setting, name it and the region you start in (e.g. 'Forgotten Realms — the Sword Coast'); for a homebrew world, give its climate, geography and history (e.g. 'Temperate forests with mountain kingdoms, 2000-year history, a tyranny rising').",
+                AnswerType = OnboardingAnswerType.Text,
+                HelpText = "Grounds the world-building in your vision."
+            },
+
+            // Q5: Party composition (party only)
 
             new OnboardingQuestion
             {
                 Key = PartyComposition,
-                Text = "Describe your party composition (e.g., '2 rogues, 1 cleric, 1 wizard level 5').",
+                Text = "How many player characters are in the party, and which roles should it cover? (e.g. 'four players — we need a healer', or '2 rogues, 1 cleric, 1 wizard')",
                 AnswerType = OnboardingAnswerType.Text,
-                HelpText = "Helps with encounter difficulty and NPC interaction design."
+                HelpText = "Helps with encounter difficulty and with generating characters if you let the DM make them."
             },
 
-            // Q4b: Solo - Offer to generate companions
+            // Q5b: Solo companions (solo only)
 
             new OnboardingQuestion
             {
@@ -128,10 +145,62 @@ public static class OnboardingQuestionCatalog
                 Text = "Would you like the system to generate companion NPCs for the solo player? (yes/no)",
                 AnswerType = OnboardingAnswerType.Enum,
                 EnumOptions = ["yes", "no"],
-                HelpText = "If yes, you can choose to see them first (with spoilers) or be surprised."
+                HelpText = "Companions travel with the player character and can fight alongside them."
             },
 
-            // Q5: Plot Source
+            // Q6: How the player characters come to be
+
+            new OnboardingQuestion
+            {
+                Key = PcCreation,
+                Text = "How should the player characters be made?",
+                AnswerType = OnboardingAnswerType.Enum,
+                EnumOptions = [PcCreationDescribeNow, PcCreationDmPregenerates, PcCreationBuildAtTable],
+                HelpText =
+                    "'describe-now': you describe each character next. 'dm-pregenerates': the DM invents characters that fit and shows them to you before play. 'build-at-table': the DM walks you through character creation, one choice at a time, before the first scene.",
+                BranchingRules = new Dictionary<string, OnboardingBranchingRule>
+                {
+                    {
+                        PcCreationDmPregenerates, new OnboardingBranchingRule
+                        {
+                            TriggerValue = PcCreationDmPregenerates,
+                            SkipQuestions = [PcRoster]
+                        }
+                    },
+                    {
+                        PcCreationBuildAtTable, new OnboardingBranchingRule
+                        {
+                            TriggerValue = PcCreationBuildAtTable,
+                            SkipQuestions = [PcRoster]
+                        }
+                    }
+                }
+            },
+
+            // Q6b: The player characters themselves (describe-now only)
+
+            new OnboardingQuestion
+            {
+                Key = PcRoster,
+                Text =
+                    "Describe each player character, one per line: Name — ancestry and class, plus a line of concept (e.g. 'Lyra — elf ranger, exiled scout hunting her brother's killer').",
+                AnswerType = OnboardingAnswerType.List,
+                HelpText = "The DM builds full character sheets from these. Anything you leave out, the DM fills in to fit."
+            },
+
+            // Q7: Starting level
+
+            new OnboardingQuestion
+            {
+                Key = StartingLevel,
+                Text = "What level do the player characters start at? (1–20)",
+                AnswerType = OnboardingAnswerType.Number,
+                MinValue = 1,
+                MaxValue = 20,
+                HelpText = "Level 1 is a fresh start; 3 gives everyone their subclass."
+            },
+
+            // Q8: Plot Source
 
             new OnboardingQuestion
             {
@@ -143,27 +212,38 @@ public static class OnboardingQuestionCatalog
                 BranchingRules = new Dictionary<string, OnboardingBranchingRule>
                 {
                     {
-                        "generated-with-direction", new OnboardingBranchingRule
+                        "generated-surprise", new OnboardingBranchingRule
                         {
-                            TriggerValue = "generated-with-direction",
-                            JumpToQuestion = PlotDirection
+                            TriggerValue = "generated-surprise",
+                            SkipQuestions = [PlotDirection]
                         }
                     }
                 }
             },
 
-            // Q5b: Plot Direction (if user wants generated plot with direction)
+            // Q8b: The plot idea or its direction (skipped for a surprise plot)
 
             new OnboardingQuestion
             {
                 Key = PlotDirection,
                 Text =
-                    "What direction should the plot take? (e.g., 'murder mystery', 'grand adventure', 'traveling scholars discovering ancient ruins')",
+                    "Describe your plot idea, or the direction it should take (e.g. 'murder mystery', 'grand adventure', 'traveling scholars discovering ancient ruins').",
                 AnswerType = OnboardingAnswerType.Text,
-                HelpText = "The system will use this to seed a plot that surprises you."
+                HelpText = "The DM seeds the opening quests and plot threads from this."
             },
 
-            // Q6: Side Quests & NPC Stories
+            // Q9: Opening scene
+
+            new OnboardingQuestion
+            {
+                Key = OpeningScene,
+                Text =
+                    "Where and how does the first session open? (e.g. 'a rain-soaked caravan stop on the Trade Way, just after an ambush', or 'surprise me')",
+                AnswerType = OnboardingAnswerType.Text,
+                HelpText = "The DM seeds this place first and puts the player characters in it."
+            },
+
+            // Q10: Side Quests & NPC Stories
 
             new OnboardingQuestion
             {
@@ -175,18 +255,7 @@ public static class OnboardingQuestionCatalog
                 HelpText = "Pre-generate = faster start, more structure. On-the-fly = more spontaneity."
             },
 
-            // Q7: Homebrew World Details (for party-homebrew only)
-
-            new OnboardingQuestion
-            {
-                Key = HomebrewWorldDetails,
-                Text =
-                    "Describe your world's climate, geography, and history. (e.g., 'Temperate forests with mountain kingdoms, established world with 2000-year history, central conflict is a tyranny rising')",
-                AnswerType = OnboardingAnswerType.Text,
-                HelpText = "Helps ground the world-building in your vision."
-            },
-
-            // Q8: Factions (minimal for existing world, extensive for homebrew)
+            // Q11: Factions
 
             new OnboardingQuestion
             {
@@ -299,6 +368,18 @@ public static class OnboardingQuestionCatalog
                 if (string.IsNullOrWhiteSpace(answerStr))
                 {
                     return "Please provide at least one item.";
+                }
+                break;
+
+            case OnboardingAnswerType.Number:
+                if (!int.TryParse(answerStr.Trim(), out var number))
+                {
+                    return "Answer must be a whole number.";
+                }
+                if ((question.MinValue.HasValue && number < question.MinValue.Value)
+                    || (question.MaxValue.HasValue && number > question.MaxValue.Value))
+                {
+                    return $"Answer must be between {question.MinValue} and {question.MaxValue}.";
                 }
                 break;
         }
