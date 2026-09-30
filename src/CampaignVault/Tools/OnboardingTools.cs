@@ -236,8 +236,8 @@ Example: finalize_campaign_onboarding('dragon-heist')")]
                 ? factionsObj?.ToString() ?? ""
                 : "";
 
-            // Validate system id (accept user input as-is, or default to Dnd5e)
-            var system = string.IsNullOrWhiteSpace(systemStr) ? RulesetSystem.Dnd5e : systemStr;
+            // The catalog offers member names ("Dnd5e", "Pathfinder2e"); store the canonical id.
+            var system = string.IsNullOrWhiteSpace(systemStr) ? RulesetSystem.Dnd5e : RulesetSystem.Canonicalize(systemStr);
 
             // Build narrative focus from collected answers
             var narrativeFocus = new List<string>();

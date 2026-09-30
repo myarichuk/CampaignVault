@@ -1,8 +1,14 @@
 using CampaignVault.Models;
+using CampaignVault.Services;
 
 namespace CampaignVault.Rulesets.Bootstrap;
 
-public sealed class Pf2eDeriveSpellcastingStep : IBootstrapStep, ILevelGainStep
+/// <summary>
+/// Spell DC for PF2e casters. The casting ability comes from the stats when set explicitly (a feat or
+/// archetype, or the model), else from the class YAML's <c>spellcastingAbility</c>; a character with
+/// neither is not a caster and gets no spell DC.
+/// </summary>
+public sealed class Pf2eDeriveSpellcastingStep(ClassDefinitionProvider? classProvider = null) : IBootstrapStep, ILevelGainStep
 {
     public string Name => "pf2e.derive_spellcasting";
 
@@ -15,7 +21,7 @@ public sealed class Pf2eDeriveSpellcastingStep : IBootstrapStep, ILevelGainStep
     public Task<BootstrapStepResult?> ApplyLevelGainAsync(BootstrapContext context, CancellationToken ct = default) =>
         Task.FromResult(ApplySpellcasting(context));
 
-    private static BootstrapStepResult? ApplySpellcasting(BootstrapContext context)
+    private BootstrapStepResult? ApplySpellcasting(BootstrapContext context)
     {
         var stats = (Pf2eExtension)context.Character.SystemStats;
 
@@ -26,9 +32,11 @@ public sealed class Pf2eDeriveSpellcastingStep : IBootstrapStep, ILevelGainStep
 
         var level = stats.Level.Value;
 
-        var ability = stats.SpellcastingAbility
-            ?? InferSpellcastingAbility(context.Character.ClassLevel)
-            ?? "Wisdom";
+        var ability = stats.SpellcastingAbility ?? ClassSpellcastingAbility(context.Character);
+        if (string.IsNullOrWhiteSpace(ability))
+        {
+            return null;
+        }
 
         stats.SpellcastingAbility ??= ability;
 
@@ -70,20 +78,13 @@ public sealed class Pf2eDeriveSpellcastingStep : IBootstrapStep, ILevelGainStep
         };
     }
 
-    private static string? InferSpellcastingAbility(string? classLevel)
+    private string? ClassSpellcastingAbility(Character character)
     {
-        if (string.IsNullOrWhiteSpace(classLevel))
-        {
-            return null;
-        }
+        var classDefs = (classProvider ?? ClassAliasMatcher.DefaultProvider)
+            .GetClassesForSystem(RulesetSystem.Pathfinder2e);
 
-        var lower = classLevel.ToLower();
-        return lower switch
-        {
-            var s when s.Contains("wizard") || s.Contains("alchemist") => "Intelligence",
-            var s when s.Contains("cleric") || s.Contains("druid") || s.Contains("ranger") || s.Contains("monk") => "Wisdom",
-            var s when s.Contains("bard") || s.Contains("sorcerer") || s.Contains("champion") => "Charisma",
-            _ => null
-        };
+        return CharacterClassResolver.ResolveClassLevels(character)
+            .Select(entry => ClassAliasMatcher.Resolve(entry.Class, classDefs)?.SpellcastingAbility)
+            .FirstOrDefault(a => !string.IsNullOrWhiteSpace(a));
     }
 }

@@ -28,6 +28,7 @@ public class Character_Search : AbstractIndexCreationTask<Character>
                 c.KeepAlive,
                 c.MaxHp,
                 c.IsPc,
+                IsDead = c.Death != null,
                 c.IsPartyCompanion,
                 HasSchedule = c.Schedule != null
 ,

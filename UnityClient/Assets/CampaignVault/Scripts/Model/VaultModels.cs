@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using CampaignVault.UnityClient.Json;
 
@@ -8,13 +9,29 @@ namespace CampaignVault.UnityClient.Model
     /// treatment: only Tool-sourced segments may render roll chips, so narration
     /// can never spoof a game roll no matter what the model writes.
     /// </summary>
-    public enum SegmentKind { Narration, NpcVoice, Roll, System, ToolData, Player }
+    /// <summary>
+    /// Aside = text the model sent alongside tool calls ("let me check the
+    /// rules…"): shown muted, never as story narration.
+    /// </summary>
+    public enum SegmentKind { Narration, NpcVoice, Roll, System, ToolData, Player, Aside }
+
+    /// <summary>The server's own verdict, never recomputed client-side (nat 20s and PF2e degrees shift it).</summary>
+    public enum RollOutcome { CriticalSuccess, Success, Failure, CriticalFailure }
 
     public sealed class RollInfo
     {
+        /// <summary>What was rolled: "Perception", "Dexterity Save", "Longsword vs Goblin".</summary>
         public string Label = string.Empty;
+        /// <summary>"17 vs DC 14", "21 vs AC 15".</summary>
         public string Detail = string.Empty;
-        public bool Success;
+        /// <summary>The server's word for the result ("Success", "CriticalFailure", "Hit", "Saved"…).</summary>
+        public string Verdict = string.Empty;
+        public RollOutcome Outcome;
+        public int Total;
+        public int Target;
+
+        public bool Success { get { return Outcome == RollOutcome.Success || Outcome == RollOutcome.CriticalSuccess; } }
+        public bool Critical { get { return Outcome == RollOutcome.CriticalSuccess || Outcome == RollOutcome.CriticalFailure; } }
     }
 
     public sealed class TranscriptSegment
@@ -23,8 +40,15 @@ namespace CampaignVault.UnityClient.Model
         public string Speaker = string.Empty;
         public string Text = string.Empty;
         public RollInfo Roll;
+        /// <summary>True while a streamed reply is still arriving into Text.</summary>
+        public bool Streaming;
     }
 
+    /// <summary>
+    /// The story log. Views follow it through the events (append, remove at
+    /// index, in-place update) instead of diffing, so trimming the cap never
+    /// forces a full rebuild.
+    /// </summary>
     public sealed class VaultTranscript
     {
         public const int MaxSegments = 400;
@@ -33,10 +57,40 @@ namespace CampaignVault.UnityClient.Model
 
         public IReadOnlyList<TranscriptSegment> Segments { get { return _segments; } }
 
+        /// <summary>A segment was appended at the end.</summary>
+        public event Action<TranscriptSegment> Added;
+        /// <summary>The segment at this index was removed (cap trim, streamed reply re-split).</summary>
+        public event Action<int, TranscriptSegment> Removed;
+        /// <summary>A segment's content or kind changed in place (streaming delta, aside promotion).</summary>
+        public event Action<TranscriptSegment> Updated;
+        /// <summary>Everything went (campaign switch).</summary>
+        public event Action Cleared;
+
         public void Add(TranscriptSegment segment)
         {
             _segments.Add(segment);
+            if (Added != null) { Added(segment); }
             EnforceCap();
+        }
+
+        public bool Remove(TranscriptSegment segment)
+        {
+            int index = _segments.IndexOf(segment);
+            if (index < 0) { return false; }
+            RemoveAt(index);
+            return true;
+        }
+
+        public void NotifyUpdated(TranscriptSegment segment)
+        {
+            if (Updated != null && _segments.Contains(segment)) { Updated(segment); }
+        }
+
+        private void RemoveAt(int index)
+        {
+            var segment = _segments[index];
+            _segments.RemoveAt(index);
+            if (Removed != null) { Removed(index, segment); }
         }
 
         private void EnforceCap()
@@ -48,11 +102,15 @@ namespace CampaignVault.UnityClient.Model
                 {
                     if (_segments[i].Kind == SegmentKind.ToolData) { drop = i; break; }
                 }
-                _segments.RemoveAt(drop >= 0 ? drop : 0);
+                RemoveAt(drop >= 0 ? drop : 0);
             }
         }
 
-        public void Clear() { _segments.Clear(); }
+        public void Clear()
+        {
+            _segments.Clear();
+            if (Cleared != null) { Cleared(); }
+        }
     }
 
     /// <summary>PC character sheet, tolerant best-effort parse of get_entity output.</summary>

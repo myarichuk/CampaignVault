@@ -1,0 +1,207 @@
+/*
+ * Character sheet (player characters) and parchment stat block (companions,
+ * NPCs). The sheet stays in the ink-and-gold register; the stat block is the
+ * one light surface in the client, like a page pulled from a bestiary.
+ */
+
+.cv-modal--sheet { width: 1180px; max-width: 94%; height: 90%; }
+.cv-modal--sheet.cv-modal--statblock { width: 820px; }
+
+/* ------------------------------------------------------------------ hero */
+
+.cv-sheet__hero { flex-direction: row; align-items: center; margin-bottom: var(--sp-5); }
+.cv-sheet__crest {
+    width: 96px; height: 96px; flex-shrink: 0; margin-right: var(--sp-5);
+    align-items: center; justify-content: center;
+    background-color: var(--ink-0);
+    border-width: 2px; border-color: var(--gold-dim);
+    border-radius: 48px;
+    -unity-font-definition: url("../Fonts/SDF/Cinzel-Bold.asset"); font-size: 38px; color: var(--gold);
+    -unity-text-align: middle-center;
+}
+.cv-sheet__identity { flex-grow: 1; flex-shrink: 1; }
+.cv-sheet__lineage {
+    -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset");
+    font-size: var(--fs-lg); color: var(--text-1);
+}
+.cv-sheet__where { font-size: var(--fs-sm); color: var(--text-3); margin-top: 2px; white-space: normal; }
+.cv-sheet__badges { flex-direction: row; flex-wrap: wrap; margin-top: var(--sp-2); }
+.cv-sheet__badges .cv-chip { margin-right: var(--sp-1); margin-bottom: var(--sp-1); }
+.cv-sheet__looks {
+    -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset");
+    font-size: var(--fs-md); color: var(--text-2); white-space: normal;
+    margin-bottom: var(--sp-4);
+}
+
+/* ------------------------------------------------------------ vital strip */
+
+.cv-vitals { flex-direction: row; margin-bottom: var(--sp-5); }
+.cv-vital {
+    width: 128px; flex-shrink: 0;
+    margin-right: var(--sp-3);
+    padding: 10px 8px 8px 8px;
+    align-items: center;
+    background-color: var(--ink-2);
+    border-width: 1px; border-color: var(--line);
+}
+.cv-vital__value {
+    -unity-font-definition: url("../Fonts/SDF/Cinzel-Bold.asset");
+    font-size: 30px; color: var(--text-1);
+    -unity-text-align: middle-center;
+}
+.cv-vital__caption { margin-top: 2px; -unity-text-align: middle-center; }
+.cv-vital__sub { font-size: 12px; color: var(--text-3); -unity-text-align: middle-center; }
+.cv-vital--hp { flex-grow: 1; width: auto; align-items: stretch; padding: 10px 16px 12px 16px; }
+.cv-vital--hp .cv-vital__row { flex-direction: row; align-items: flex-end; justify-content: space-between; margin-bottom: 8px; }
+.cv-vital--hp .cv-vital__value { font-size: 34px; -unity-text-align: lower-left; }
+.cv-vital--hp .cv-vital__max { font-size: var(--fs-md); color: var(--text-3); margin-left: 6px; margin-bottom: 4px; }
+.cv-vital--hp .cv-bar { height: 12px; }
+/* A heater shield behind the AC number. */
+.cv-vital--ac { border-color: var(--line-strong); }
+.cv-vital--ac .cv-vital__value { color: var(--arcane); }
+.cv-vital--spell .cv-vital__value { color: var(--arcane); }
+
+/* ------------------------------------------------------- ability medallions */
+
+.cv-abilities { flex-direction: row; justify-content: space-between; margin-bottom: var(--sp-5); }
+.cv-ability {
+    width: 15.5%;
+    align-items: center;
+    padding: 10px 0 12px 0;
+    background-color: var(--ink-0);
+    border-width: 1px; border-color: var(--gold-dim);
+    border-top-left-radius: 40px; border-top-right-radius: 40px;
+    border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;
+}
+.cv-ability__name { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: 13px; letter-spacing: 3px; color: var(--gold); }
+.cv-ability__mod { -unity-font-definition: url("../Fonts/SDF/Cinzel-Bold.asset"); font-size: 34px; color: var(--text-1); margin-top: 2px; }
+.cv-ability__score {
+    margin-top: 4px; padding: 1px 12px;
+    background-color: var(--ink-3);
+    border-width: 1px; border-color: var(--line-strong); border-radius: 10px;
+    font-size: var(--fs-sm); color: var(--text-2);
+}
+.cv-ability__full { font-size: 12px; color: var(--text-3); margin-top: 2px; -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); }
+
+/* --------------------------------------------------------------- columns */
+
+.cv-sheet__cols { flex-direction: row; align-items: flex-start; }
+.cv-sheet__col { flex-grow: 1; flex-basis: 0; }
+.cv-sheet__col--left { margin-right: var(--sp-5); }
+.cv-sheet__section { margin-bottom: var(--sp-5); }
+.cv-sheet__heading {
+    flex-direction: row; align-items: center;
+    padding-bottom: 6px; margin-bottom: 6px;
+    border-bottom-width: 1px; border-color: var(--line-strong);
+}
+.cv-sheet__heading .cv-caption { color: var(--gold); }
+
+/* saves and skills: pip · name · (ability) · modifier */
+.cv-check { flex-direction: row; align-items: center; padding: 3px 0; }
+.cv-check__pip {
+    width: 10px; height: 10px; margin-right: 10px; flex-shrink: 0;
+    border-width: 1px; border-color: var(--text-4); border-radius: 5px;
+}
+.cv-check--proficient .cv-check__pip { background-color: var(--gold); border-color: var(--gold); }
+.cv-check__rank {
+    width: 20px; height: 20px; margin-right: 8px; flex-shrink: 0;
+    border-width: 1px; border-color: var(--text-4); border-radius: 3px;
+    -unity-font-definition: url("../Fonts/SDF/Cinzel-Bold.asset"); font-size: 11px; color: var(--text-4);
+    -unity-text-align: middle-center;
+}
+.cv-check--rank1 .cv-check__rank { border-color: var(--text-2); color: var(--text-1); }
+.cv-check--rank2 .cv-check__rank { border-color: var(--arcane-dim); color: var(--arcane); }
+.cv-check--rank3 .cv-check__rank { border-color: var(--gold-dim); color: var(--gold); }
+.cv-check--rank4 .cv-check__rank { border-color: var(--gold); color: var(--gold-bright); background-color: var(--gold-deep); }
+.cv-check__name { flex-grow: 1; font-size: var(--fs-md); color: var(--text-2); }
+.cv-check--proficient .cv-check__name { color: var(--text-1); }
+.cv-check__ability { font-size: 11px; color: var(--text-4); letter-spacing: 1.5px; margin-right: 12px; -unity-font-definition: url("../Fonts/SDF/Cinzel-Regular.asset"); }
+.cv-check__mod { width: 40px; -unity-text-align: middle-right; -unity-font-definition: url("../Fonts/SDF/EBGaramond-SemiBold.asset"); font-size: var(--fs-md); color: var(--text-1); }
+.cv-checks--two { flex-direction: row; flex-wrap: wrap; }
+.cv-checks--two .cv-check { width: 50%; padding-right: 14px; }
+
+/* resources as pips */
+.cv-resource { flex-direction: row; align-items: center; padding: 4px 0; }
+.cv-resource__name { flex-grow: 1; font-size: var(--fs-md); color: var(--text-1); }
+.cv-resource__pips { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; max-width: 60%; }
+.cv-pip {
+    width: 14px; height: 14px; margin-left: 5px;
+    border-width: 1px; border-color: var(--arcane-dim);
+    rotate: 45deg;
+}
+.cv-pip--full { background-color: var(--arcane); border-color: var(--arcane); }
+.cv-resource__count { font-size: var(--fs-sm); color: var(--text-2); margin-left: 8px; }
+
+/* features */
+.cv-features { flex-direction: row; flex-wrap: wrap; }
+.cv-feature {
+    margin: 0 6px 6px 0; padding: 3px 10px;
+    border-width: 1px; border-color: var(--line-strong);
+    background-color: var(--ink-2);
+    font-size: var(--fs-sm); color: var(--text-1);
+}
+
+/* gear */
+.cv-gear { flex-direction: row; align-items: center; padding: 5px 0; border-bottom-width: 1px; border-color: var(--line-faint); }
+.cv-gear .cv-icon { width: 18px; height: 18px; margin-right: 10px; -unity-background-image-tint-color: var(--gold-dim); }
+.cv-gear__name { flex-grow: 1; flex-shrink: 1; font-size: var(--fs-md); color: var(--text-1); white-space: normal; }
+.cv-gear__qty { font-size: var(--fs-sm); color: var(--text-3); margin-left: 8px; }
+.cv-gear__detail { font-size: 13px; color: var(--text-3); -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); white-space: normal; }
+.cv-gear--equipped .cv-icon { -unity-background-image-tint-color: var(--gold); }
+
+/* condition & needs: a word and a slim gauge */
+.cv-gauge { flex-direction: row; align-items: center; padding: 3px 0; }
+.cv-gauge__name { width: 34%; font-size: var(--fs-sm); color: var(--text-3); }
+.cv-gauge__word { width: 30%; font-size: var(--fs-md); color: var(--text-1); -unity-font-definition: url("../Fonts/SDF/EBGaramond-SemiBold.asset"); }
+.cv-gauge .cv-bar { flex-grow: 1; height: 5px; }
+.cv-gauge--noticeable .cv-gauge__word { color: var(--ember); }
+.cv-gauge--pressing .cv-gauge__word { color: var(--blood); }
+
+/* recent: a short ledger */
+.cv-ledger { flex-direction: row; padding: 5px 0; border-bottom-width: 1px; border-color: var(--line-faint); }
+.cv-ledger__day { width: 56px; flex-shrink: 0; font-size: 12px; color: var(--text-4); letter-spacing: 1px; -unity-font-definition: url("../Fonts/SDF/Cinzel-Regular.asset"); padding-top: 3px; }
+.cv-ledger__text { flex-grow: 1; flex-shrink: 1; font-size: var(--fs-md); color: var(--text-2); white-space: normal; }
+
+/* -------------------------------------------------------------- stat block */
+
+.cv-statblock {
+    background-color: #EFE4C9;
+    border-top-width: 5px; border-bottom-width: 5px;
+    border-color: #9C2B1B;
+    padding: 18px 24px 20px 24px;
+    color: #2B1D12;
+}
+.cv-statblock__name {
+    -unity-font-definition: url("../Fonts/SDF/Cinzel-Bold.asset");
+    font-size: 30px; color: #7A200D; letter-spacing: 1px;
+}
+.cv-statblock__type {
+    -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset");
+    font-size: var(--fs-md); color: #2B1D12; margin-bottom: 4px;
+}
+.cv-statblock__rule { height: 3px; background-color: #9C2B1B; margin: 8px 0; opacity: 0.85; }
+.cv-statblock__line { flex-direction: row; flex-wrap: wrap; padding: 1px 0; }
+.cv-statblock__key {
+    -unity-font-definition: url("../Fonts/SDF/EBGaramond-Bold.asset");
+    font-size: var(--fs-md); color: #7A200D; margin-right: 6px;
+}
+.cv-statblock__value { font-size: var(--fs-md); color: #2B1D12; flex-shrink: 1; white-space: normal; }
+.cv-statblock__abilities { flex-direction: row; justify-content: space-around; }
+.cv-statblock__ability { align-items: center; width: 15%; }
+.cv-statblock__ability-name { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Bold.asset"); font-size: var(--fs-md); color: #7A200D; }
+.cv-statblock__ability-value { font-size: var(--fs-md); color: #2B1D12; }
+.cv-statblock__section {
+    -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset");
+    font-size: 17px; color: #7A200D; letter-spacing: 1px;
+    border-bottom-width: 1px; border-color: #9C2B1B;
+    margin-top: 12px; margin-bottom: 4px; padding-bottom: 2px;
+}
+.cv-statblock__para { font-size: var(--fs-md); color: #2B1D12; white-space: normal; padding: 2px 0; }
+.cv-statblock__para--italic { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); color: #4A3826; }
+.cv-statblock .cv-bar { height: 8px; margin: 4px 0 2px 0; background-color: #D8C9A6; border-color: #B8A47A; }
+.cv-statblock__badges { flex-direction: row; flex-wrap: wrap; margin-top: 6px; }
+.cv-statblock__badge {
+    margin: 0 6px 4px 0; padding: 1px 8px;
+    border-width: 1px; border-color: #9C2B1B; background-color: #F6EBD3;
+    -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: 12px; color: #7A200D; letter-spacing: 1px;
+}

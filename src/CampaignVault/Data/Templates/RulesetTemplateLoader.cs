@@ -99,18 +99,30 @@ public class RulesetTemplateLoader<T> where T : RulesetTemplate
             }
         }
 
-        // 3. Extract embedded defaults to disk where files are absent
+        // 3. Extract embedded defaults to disk where files are absent, and refresh extracted copies the DM
+        //    never edited (disk hash still equals the hash recorded at extraction) when the shipped
+        //    version changed. Without the refresh, a data fix in a new build never reaches an install
+        //    that extracted the old file, because disk wins below.
         if (embeddedFiles.Count > 0)
         {
             Directory.CreateDirectory(_diskDirectory);
             foreach (var (fileName, yaml) in embeddedFiles)
             {
                 var diskPath = Path.Combine(_diskDirectory, fileName);
+                var shippedHash = ComputeHash(yaml);
                 if (!File.Exists(diskPath))
                 {
                     File.WriteAllText(diskPath, yaml);
-                    manifest[fileName] = ComputeHash(yaml);
+                    manifest[fileName] = shippedHash;
                     _logger?.LogInformation("Extracted default template: {FileName} → {Path}", fileName, diskPath);
+                }
+                else if (manifest.TryGetValue(fileName, out var extractedHash)
+                         && extractedHash != shippedHash
+                         && ComputeHash(File.ReadAllText(diskPath)) == extractedHash)
+                {
+                    File.WriteAllText(diskPath, yaml);
+                    manifest[fileName] = shippedHash;
+                    _logger?.LogInformation("Updated unedited default template: {FileName} → {Path}", fileName, diskPath);
                 }
             }
         }

@@ -170,6 +170,36 @@ public class RulesetTemplateLoaderTests : IDisposable
         Assert.Equal("dm_customized_value", t!.Value);
     }
 
+    // ── Refreshing extractions from an older build ────────────────────────────
+
+    [Fact]
+    public void Load_RefreshesUneditedExtraction_WhenShippedVersionChanged()
+    {
+        // An older build extracted sample_template.yaml with different content; nobody edited it.
+        WriteYaml(_tempDir, "sample_template.yaml", "sample", "old_shipped_value");
+        SeedManifestEntry("sample_template.yaml", File.ReadAllText(Path.Combine(_tempDir, "sample_template.yaml")));
+
+        var result = BuildLoader(prefix: "CampaignVault.Tests.TestData").Load();
+
+        Assert.True(result.TryGetValue("sample", out var t));
+        Assert.Equal("embedded_value", t!.Value);
+        Assert.Contains("embedded_value", File.ReadAllText(Path.Combine(_tempDir, "sample_template.yaml")));
+    }
+
+    [Fact]
+    public void Load_KeepsEditedExtraction_WhenShippedVersionChanged()
+    {
+        WriteYaml(_tempDir, "sample_template.yaml", "sample", "old_shipped_value");
+        SeedManifestEntry("sample_template.yaml", File.ReadAllText(Path.Combine(_tempDir, "sample_template.yaml")));
+        // The DM edited the extracted copy afterwards.
+        WriteYaml(_tempDir, "sample_template.yaml", "sample", "dm_customized_value");
+
+        var result = BuildLoader(prefix: "CampaignVault.Tests.TestData").Load();
+
+        Assert.True(result.TryGetValue("sample", out var t));
+        Assert.Equal("dm_customized_value", t!.Value);
+    }
+
     // ── Cross-file name collisions ────────────────────────────────────────────
 
     [Fact]

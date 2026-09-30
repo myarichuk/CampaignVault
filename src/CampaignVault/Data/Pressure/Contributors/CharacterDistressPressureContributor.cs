@@ -42,6 +42,12 @@ public sealed class CharacterDistressPressureContributor : IPressureContributor
 
         foreach (var c in characters)
         {
+            // A recorded death is resolved: no HP/needs/status pressure for the dead.
+            if (c.IsDead)
+            {
+                continue;
+            }
+
             // MaxHp == 0 means the character was created without HP — the LLM must fix this.
             // D&D 5e PCs: max hit die + CON modifier. NPCs/creatures: use stat block value.
             if (c.MaxHp <= 0)
@@ -65,7 +71,7 @@ public sealed class CharacterDistressPressureContributor : IPressureContributor
             }
             else if (c.MaxHp > 0 && c.CurrentHp <= 0)
             {
-                pressure.Add(new(PressureSeverity.EngineWarning, c.Id, $"{c.Name} is dying or dead ({c.CurrentHp}/{c.MaxHp} HP). Resolve this: stabilize, death save, or mark as deceased.", DyingGroupingKey) { EntityName = c.Name });
+                pressure.Add(new(PressureSeverity.EngineWarning, c.Id, $"{c.Name} is dying or dead ({c.CurrentHp}/{c.MaxHp} HP). Resolve this: heal/stabilize them, or if they are dead commit {{\"$type\": \"death\", \"characterId\": \"{c.Id}\", \"cause\": \"...\"}}.", DyingGroupingKey) { EntityName = c.Name });
             }
 
             if (c.SystemStats?.StatusEffects != null)

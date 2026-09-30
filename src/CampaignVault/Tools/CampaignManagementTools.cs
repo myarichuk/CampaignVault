@@ -44,6 +44,7 @@ public class CampaignManagementTools(
         string campaignName,
         Dictionary<string, string>? systemOptions = null)
     {
+        activeSystem = RulesetSystem.Canonicalize(activeSystem);
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
             var campaign = await GetOrCreateCampaignMetaAsync(session, effective, activeSystem, forceLock: false);

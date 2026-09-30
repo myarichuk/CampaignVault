@@ -1576,7 +1576,7 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         Assert.Single(npc.SystemStats.StatusEffects);
         var effect = npc.SystemStats.StatusEffects[0];
         Assert.Equal("Fatigued", effect.Name);
-        Assert.Equal("Legacy", effect.Category);
+        Assert.Equal("Condition", effect.Category);
         Assert.Equal("legacy-status-change", effect.AppliedBy);
         Assert.Null(effect.AffectedPart);
         Assert.Empty(effect.StatModifiers);

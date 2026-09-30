@@ -27,6 +27,12 @@ This section is for someone installing a plugin *someone else wrote*. If you're 
 3. Verify it loaded: check startup logs for `Loaded plugin assembly: ...` (code plugins) or call `lookup(kind: 'items' | 'spells' | ...)` / `get_config` and confirm the new system, content, or `campaignOptions`-declared keys show up.
 4. If nothing shows up, see [Troubleshooting](#troubleshooting) below (`"Failed to load plugin assembly"`, `"DLL loads but module is not registered"`, `"YAML data not loading"`).
 
+**From the Unity client (built-in server):** Settings → Plugins lists every package the server found (`GET /plugins`, a plain HTTP endpoint that costs the model nothing), installs a `.zip` into your app data's `Plugins/` folder (a code plugin asks for an explicit trust confirmation first), uninstalls user-installed plugins, and enables/disables any plugin; changes apply after **Restart server**. The zip holds one package: `plugin.json` at the top or in one folder, plus its `RulesetData/`, `skills/` and DLLs. Zips with `..`/absolute paths, more than one `plugin.json`, or an id that's already installed are refused.
+
+**Server switches:** `CAMPAIGN_PLUGIN_DIRS` adds folders scanned after the bundled `Plugins/` (a package there can't take a bundled plugin's id); `CAMPAIGN_PLUGINS_DISABLED` lists ids not to load. `GET /plugins` reports each package's id, name, version, author, description, kind (`code`/`data`), source (`bundled`/`user`), enabled/loaded state, systems, modes, campaign options and load errors. `plugin.json` accepts optional `author` and `description` fields for that listing.
+
+**Data-only packages:** a `Plugins/<Name>/` folder with a `plugin.json` and a `RulesetData/` but no DLL is loaded as data: its YAML joins the ruleset roots, and its `campaignOptions` defaults apply, with no code run.
+
 Uninstalling: delete the plugin's folder/files and restart. Data-only content simply stops resolving; any campaign `SystemOptions` keys the plugin had defaulted are left as-is on existing campaigns (they were copied into the campaign's config, not referenced live).
 
 ## Quick Start

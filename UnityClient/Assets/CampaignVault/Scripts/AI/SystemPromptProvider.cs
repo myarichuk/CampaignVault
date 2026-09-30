@@ -44,21 +44,41 @@ namespace CampaignVault.UnityClient.AI
             public string Body = string.Empty;
         }
 
-        private string _basePrompt;
-        private List<Skill> _skills;
+        /// <summary>Tests point this at a scratch folder; empty = StreamingAssets/CampaignVault.</summary>
+        [NonSerialized] public string ContentRoot = string.Empty;
 
-        public string BuildSystemPrompt()
+        private string _skillIndex;
+        private List<Skill> _skills;
+        // Prompt file name -> prompt body (fence extracted), read once each.
+        private readonly Dictionary<string, string> _prompts = new Dictionary<string, string>();
+
+        public string BuildSystemPrompt() { return BuildSystemPrompt(null); }
+
+        /// <summary>
+        /// Prompt, skill index, then extra (a static contract, kept in the
+        /// cacheable prefix), then the per-campaign line last.
+        /// </summary>
+        public string BuildSystemPrompt(string extra)
         {
             EnsureLoaded();
-            var sb = new StringBuilder(_basePrompt);
-            sb.Append("\n\nCAMPAIGN: campaignName=\"").Append(CampaignSlug.Trim()).Append('"');
+            var sb = new StringBuilder(PromptFor(Ruleset));
+            sb.Append(_skillIndex);
+            if (!string.IsNullOrEmpty(extra)) { sb.Append("\n\n").Append(extra.Trim()); }
+            sb.Append("\n\n").Append(CampaignLine()).Append('\n');
+            return sb.ToString();
+        }
+
+        /// <summary>The per-campaign line: slug, PCs, ruleset, party fingerprint.</summary>
+        public string CampaignLine()
+        {
+            var sb = new StringBuilder("CAMPAIGN: campaignName=\"");
+            sb.Append(CampaignSlug.Trim()).Append('"');
             sb.Append(" | PCs: ").Append(PartyLine.Trim());
             sb.Append(" | Ruleset: ").Append(string.IsNullOrEmpty(Ruleset) ? "(unknown: read it from start_session)" : Ruleset.Trim());
             if (!string.IsNullOrEmpty(PartyFingerprint))
             {
                 sb.Append(" | clientPartyFingerprint=\"").Append(PartyFingerprint.Trim()).Append('"');
             }
-            sb.Append('\n');
             return sb.ToString();
         }
 
@@ -104,10 +124,78 @@ namespace CampaignVault.UnityClient.AI
             return count > 0;
         }
 
+        private string Root() { return string.IsNullOrEmpty(ContentRoot) ? StreamingRoot() : ContentRoot; }
+
+        /// <summary>The staged prompt file for a ruleset: system-prompt.RULESET.md when staged, else system-prompt.md.</summary>
+        public static string PromptFileFor(string ruleset, Func<string, bool> exists)
+        {
+            string key = (ruleset ?? string.Empty).Trim().ToLowerInvariant();
+            if (key.Length > 0)
+            {
+                string specific = "system-prompt." + key + ".md";
+                if (exists(specific)) { return specific; }
+            }
+            return "system-prompt.md";
+        }
+
+        private string PromptFor(string ruleset)
+        {
+            string root = Root();
+            string file = PromptFileFor(ruleset, delegate (string f) { return File.Exists(Path.Combine(root, f)); });
+            string body;
+            if (!_prompts.TryGetValue(file, out body))
+            {
+                body = ExtractPromptBody(ReadFile(root, file));
+                _prompts[file] = body;
+            }
+            return body;
+        }
+
+        /// <summary>
+        /// The model-facing prompt out of a recommended-system-prompt*.md file:
+        /// only the ```text fence (the text around it is installer notes), and
+        /// without the template "CAMPAIGN: …&lt;slug&gt;…" line, since the client
+        /// appends the real one. A file with no fence is taken whole (already
+        /// extracted at staging time).
+        /// </summary>
+        public static string ExtractPromptBody(string markdown)
+        {
+            string text = (markdown ?? string.Empty).Replace("\r\n", "\n");
+            string[] lines = text.Split('\n');
+            int open = -1;
+            int close = -1;
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string t = lines[i].Trim();
+                if (open < 0 && t == "```text") { open = i; continue; }
+                if (open >= 0 && t == "```") { close = i; break; }
+            }
+            int from = 0;
+            int to = lines.Length;
+            if (open >= 0 && close > open)
+            {
+                from = open + 1;
+                to = close;
+            }
+            var sb = new StringBuilder();
+            bool lastBlank = true;
+            for (int i = from; i < to; i++)
+            {
+                string line = lines[i];
+                string t = line.Trim();
+                if (t.StartsWith("CAMPAIGN:", StringComparison.Ordinal) || t.StartsWith("**CAMPAIGN:**", StringComparison.Ordinal)) { continue; }
+                bool blank = t.Length == 0;
+                if (blank && lastBlank) { continue; }
+                sb.Append(line.TrimEnd()).Append('\n');
+                lastBlank = blank;
+            }
+            return sb.ToString().Trim();
+        }
+
         private void EnsureLoaded()
         {
-            if (_basePrompt != null) { return; }
-            string root = StreamingRoot();
+            if (_skillIndex != null) { return; }
+            string root = Root();
             _skills = LoadSkills(Path.Combine(root, "skills"), string.Empty);
             string pluginRoot = Path.Combine(root, "plugin-skills");
             try
@@ -125,7 +213,7 @@ namespace CampaignVault.UnityClient.AI
                 Debug.LogWarning("[Vault] Plugin skill load hit: " + ex.GetType().Name);
             }
             _skills.Sort(delegate (Skill a, Skill b) { return string.CompareOrdinal(a.Name, b.Name); });
-            var sb = new StringBuilder(ReadFile(root, "system-prompt.md"));
+            var sb = new StringBuilder();
             if (_skills.Count > 0)
             {
                 sb.Append("\n\n# SKILLS (load on demand)\n");
@@ -138,7 +226,7 @@ namespace CampaignVault.UnityClient.AI
                     sb.Append('\n');
                 }
             }
-            _basePrompt = sb.ToString();
+            _skillIndex = sb.ToString();
         }
 
         /// <summary>Every NAME/SKILL.md under skillsDir; a plugin prefix namespaces the names.</summary>

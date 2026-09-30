@@ -4,4 +4,7 @@ name: spell_slots_2
 description: 2nd-level spell slots (recovers on long rest)
 applicableSystems: [pf2e]
 recovery: LongRest
-defaultMax: 1
+# Full casters (Player Core): 2 slots when the rank opens, 3 from the next level (rank 10: one slot). Keys are character level.
+levelToMaxMap:
+  "3": 2
+  "4": 3

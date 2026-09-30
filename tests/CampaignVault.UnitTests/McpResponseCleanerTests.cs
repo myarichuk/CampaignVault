@@ -197,4 +197,20 @@ public class McpResponseCleanerTests
         Assert.DoesNotContain("\n", text.Text);
         Assert.DoesNotContain("  ", text.Text);
     }
+
+    [Fact]
+    public void WithoutOutputSchema_ClonesTool_LeavingTheOriginalSchemaIntact()
+    {
+        var schema = JsonDocument.Parse("""{"type":"object"}""").RootElement.Clone();
+        var tool = new Tool { Name = "list_campaigns", Description = "d", OutputSchema = schema };
+
+        var listed = McpResponseCleaner.WithoutOutputSchema(tool);
+
+        Assert.Null(listed.OutputSchema);
+        Assert.Equal("list_campaigns", listed.Name);
+        Assert.Equal("d", listed.Description);
+        // The collection's tool must keep its schema: the SDK needs it to populate StructuredContent.
+        Assert.NotNull(tool.OutputSchema);
+        Assert.NotSame(tool, listed);
+    }
 }

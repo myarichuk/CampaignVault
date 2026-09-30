@@ -39,7 +39,7 @@ function formatTime(time: Record<string, unknown> | undefined): string {
 }
 
 /**
- * Builds the 3-line STATUS BAR block described in recommended-system-prompt.md:
+ * Builds the 3-line STATUS BAR block described in the PLUGIN section of recommended-system-prompt.opencode.md:
  *   SCENE | {location} · {zone} | {time}
  *   YOU   | {appearance}; tags: {tags}
  *   NEAR  | {positions/engagements}

@@ -18,16 +18,31 @@ public class CampaignVaultModule : Autofac.Module
 {
     private readonly string _rulesetDataDirectory;
     private readonly string? _pluginDirectory;
+    private readonly IReadOnlyList<string> _userPluginDirectories;
+    private readonly IReadOnlySet<string> _disabledPluginIds;
     private readonly ILogger _pluginLogger;
 
-    public CampaignVaultModule() : this(null, null, null) { }
+    /// <summary>The host's module: bundled Plugins beside the binary, plus CAMPAIGN_PLUGIN_DIRS and CAMPAIGN_PLUGINS_DISABLED.</summary>
+    public CampaignVaultModule() : this(
+        null, null, null,
+        PluginCatalog.ParseDirectories(Environment.GetEnvironmentVariable(PluginCatalog.DirsVariable)),
+        PluginCatalog.ParseDisabled(Environment.GetEnvironmentVariable(PluginCatalog.DisabledVariable)))
+    {
+    }
 
-    public CampaignVaultModule(string? rulesetDataDirectory, string? pluginDirectory = null, ILogger? pluginLogger = null)
+    public CampaignVaultModule(
+        string? rulesetDataDirectory,
+        string? pluginDirectory = null,
+        ILogger? pluginLogger = null,
+        IReadOnlyList<string>? userPluginDirectories = null,
+        IReadOnlySet<string>? disabledPluginIds = null)
     {
         _rulesetDataDirectory = rulesetDataDirectory
             ?? Path.Combine(AppContext.BaseDirectory, "RulesetData");
         _pluginDirectory = pluginDirectory
             ?? Path.Combine(AppContext.BaseDirectory, "Plugins");
+        _userPluginDirectories = userPluginDirectories ?? [];
+        _disabledPluginIds = disabledPluginIds ?? new HashSet<string>();
         // Autofac modules are constructed before the host ILoggerFactory is available.
         _pluginLogger = pluginLogger ?? PluginBootstrapLogger.Instance;
     }
@@ -38,10 +53,21 @@ public class CampaignVaultModule : Autofac.Module
         var assemblies = new List<Assembly> { mainAssembly };
         var eventSources = PluginEventSources.CoreOnly;
 
-        // Load plugin assemblies from the plugin directory
-        if (_pluginDirectory != null && Directory.Exists(_pluginDirectory))
+        // Bundled plugins first, then user folders: a user package can't take a bundled plugin's id.
+        var folders = new List<PluginAssemblyLoader.PluginFolder>();
+        if (_pluginDirectory != null)
+            folders.Add(new PluginAssemblyLoader.PluginFolder(_pluginDirectory, Bundled: true));
+        folders.AddRange(_userPluginDirectories.Select(d => new PluginAssemblyLoader.PluginFolder(d, Bundled: false)));
+        PluginCatalog.BundledDirectories = _pluginDirectory != null ? [_pluginDirectory] : [];
+        PluginCatalog.UserDirectories = _userPluginDirectories;
+        PluginCatalog.Entries = [];
+
+        if (folders.Any(f => Directory.Exists(f.Path)))
         {
-            var plugins = PluginAssemblyLoader.LoadPluginsFromDirectory(_pluginDirectory, _pluginLogger);
+            var result = PluginAssemblyLoader.LoadPlugins(folders, _disabledPluginIds, _pluginLogger);
+            PluginCatalog.Entries = result.Catalog;
+            var plugins = result.Code;
+            var dataPlugins = result.Data;
             var pluginAssemblies = plugins.Select(p => p.Assembly).ToList();
             assemblies.AddRange(pluginAssemblies);
 
@@ -64,6 +90,7 @@ public class CampaignVaultModule : Autofac.Module
             [
                 .. plugins
                     .SelectMany(p => p.RulesetDataRoots)
+                    .Concat(dataPlugins.SelectMany(p => p.RulesetDataRoots))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
             ];
 
@@ -71,6 +98,7 @@ public class CampaignVaultModule : Autofac.Module
             [
                 .. plugins
                     .SelectMany(p => p.CampaignOptions)
+                    .Concat(dataPlugins.SelectMany(p => p.CampaignOptions))
                     .Where(o => !string.IsNullOrWhiteSpace(o.Key))
                     .GroupBy(o => o.Key, StringComparer.OrdinalIgnoreCase)
                     .Select(g => g.Last())
@@ -80,6 +108,7 @@ public class CampaignVaultModule : Autofac.Module
 
             PluginDataRoots.LoadedPluginIds = plugins
                 .Select(p => p.Manifest?.Id)
+                .Concat(dataPlugins.Select(p => (string?)p.Manifest.Id))
                 .Where(id => !string.IsNullOrWhiteSpace(id))
                 .Select(id => id!)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);

@@ -293,6 +293,162 @@ public class WorldBuildToolsTests : IClassFixture<RavenDBFixture>
         Assert.True(stored.MaxHp > 0, "Bootstrap should have derived MaxHp from systemStats.");
     }
 
+    [Theory]
+    [InlineData("Dnd5e", "dnd5e")]
+    [InlineData(" DND5E ", "dnd5e")]
+    [InlineData("Pathfinder2e", "pf2e")]
+    [InlineData("PF2E", "pf2e")]
+    [InlineData("Narrative", "narrative")]
+    [InlineData("shadow-and-steel", "shadow-and-steel")]
+    [InlineData(null, "")]
+    public void RulesetSystem_Canonicalize_MapsLegacyNamesAndCasing(string? input, string expected)
+    {
+        Assert.Equal(expected, RulesetSystem.Canonicalize(input));
+    }
+
+    [Fact]
+    public async Task WorldBuild_SeededArmorSetsAc_AndClassPoolsExistFromTheStart()
+    {
+        var worldBuilder = TestCampaignToolsFactory.CreateWorldBuilderTools(_fixture);
+        var tools = TestCampaignToolsFactory.Create(_fixture);
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var slug = "world-build-kit-" + tag;
+        var fighter = "chars/wb-kit-fighter-" + tag;
+        var cleric = "chars/wb-kit-cleric-" + tag;
+
+        // As clients and the tool's own example spell it ("Dnd5e"), not the canonical "dnd5e".
+        await tools.CreateCampaign(slug, "Dnd5e");
+
+        // Characters dispatch before items: the armor below only exists after the fighter was bootstrapped.
+        var batch = new WorldBuildBatch
+        {
+            Characters =
+            [
+                new CharacterUpsertRequest
+                {
+                    Id = fighter, Name = "Kit Fighter", IsPc = true,
+                    SystemStats = new Dnd5eExtension { Level = 5, ClassLevels = [new ClassLevelEntry { Class = "Fighter", Level = 5 }], HitDie = "d10", Dexterity = 14, Constitution = 15 },
+                },
+                new CharacterUpsertRequest
+                {
+                    Id = cleric, Name = "Kit Cleric", IsPartyCompanion = true,
+                    SystemStats = new Dnd5eExtension { Level = 3, ClassLevels = [new ClassLevelEntry { Class = "Cleric", Level = 3 }], HitDie = "d8", Wisdom = 16, SpellcastingAbility = "wisdom" },
+                },
+            ],
+            Items =
+            [
+                new ItemUpsertRequest { Id = "items/wb-kit-mail-" + tag, Name = "Chain Mail", DefinitionName = "chain_mail", HolderId = fighter, IsEquipped = true },
+                new ItemUpsertRequest { Id = "items/wb-kit-shield-" + tag, Name = "Shield", DefinitionName = "shield", HolderId = fighter, IsEquipped = true },
+                new ItemUpsertRequest { Id = "items/wb-kit-rope-" + tag, Name = "Rope", HolderId = cleric },
+            ],
+        };
+
+        var result = await worldBuilder.WorldBuild(batch, slug);
+
+        Assert.True(result.Success, result.Summary);
+        using var session = _fixture.Store.OpenAsyncSession();
+        var ct = TestContext.Current.CancellationToken;
+        var storedFighter = await session.LoadAsync<Character>(fighter, ct);
+        var storedCleric = await session.LoadAsync<Character>(cleric, ct);
+        // Chain mail 16 (no Dex) + shield 2.
+        Assert.Equal(18, ((Dnd5eExtension)storedFighter.SystemStats).ArmorClass);
+        Assert.Contains("action_surge", storedFighter.SystemStats.ResourcePools.Keys);
+        Assert.Contains("second_wind", storedFighter.SystemStats.ResourcePools.Keys);
+        Assert.Equal(4, storedCleric.SystemStats.ResourcePools["spell_slots_1"].Max);
+        Assert.Equal(2, storedCleric.SystemStats.ResourcePools["spell_slots_2"].Max);
+        // Unarmored and untouched by the armor pass: 10 + Dex (10).
+        Assert.Equal(10, ((Dnd5eExtension)storedCleric.SystemStats).ArmorClass);
+    }
+
+    [Fact]
+    public async Task WorldBuild_Race_AppliesOnCreate_AndReupsertDoesNotStackBonuses()
+    {
+        var worldBuilder = TestCampaignToolsFactory.CreateWorldBuilderTools(_fixture);
+        var tools = TestCampaignToolsFactory.Create(_fixture);
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var slug = "world-build-race-" + tag;
+        var dwarf = "chars/wb-race-dwarf-" + tag;
+        await tools.CreateCampaign(slug, "dnd5e");
+
+        var first = await worldBuilder.WorldBuild(new WorldBuildBatch
+        {
+            Characters =
+            [
+                new CharacterUpsertRequest
+                {
+                    Id = dwarf, Name = "Brom", IsPc = true,
+                    SystemStats = new Dnd5eExtension { Race = "Dwarf", Level = 2, ClassLevels = [new ClassLevelEntry { Class = "Fighter", Level = 2 }], HitDie = "d10", Constitution = 14 },
+                },
+            ],
+        }, slug);
+        Assert.True(first.Success, first.Summary);
+
+        // A later, unrelated upsert of the same character (as the DM does to move someone).
+        var second = await worldBuilder.WorldBuild(new WorldBuildBatch
+        {
+            Characters = [new CharacterUpsertRequest { Id = dwarf, Name = "Brom", CurrentActivity = "Sharpening an axe" }],
+        }, slug);
+        Assert.True(second.Success, second.Summary);
+
+        using var session = _fixture.Store.OpenAsyncSession();
+        var stored = await session.LoadAsync<Character>(dwarf, TestContext.Current.CancellationToken);
+        var stats = (Dnd5eExtension)stored.SystemStats;
+        Assert.Equal(16, stats.Constitution);
+        Assert.Equal(25, stats.Movement);
+        Assert.Contains("Darkvision", stored.DistinctiveFeatures);
+        Assert.Single(stored.DistinctiveFeatures, f => f == "Darkvision");
+    }
+
+    [Fact]
+    public async Task WorldBuild_Pf2e_SlotsFollowLevel_AndNonCastersHaveNoSpellDc()
+    {
+        var worldBuilder = TestCampaignToolsFactory.CreateWorldBuilderTools(_fixture);
+        var tools = TestCampaignToolsFactory.Create(_fixture);
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var slug = "world-build-pf2e-" + tag;
+        var wizard = "chars/wb-pf2e-wizard-" + tag;
+        var fighter = "chars/wb-pf2e-fighter-" + tag;
+        await tools.CreateCampaign(slug, "pf2e");
+
+        var result = await worldBuilder.WorldBuild(new WorldBuildBatch
+        {
+            Characters =
+            [
+                new CharacterUpsertRequest
+                {
+                    Id = wizard, Name = "Liesl", ClassLevel = "Wizard 4", IsPc = true,
+                    SystemStats = new Pf2eExtension { Level = 4, Ancestry = "Elf", IntelligenceMod = 4 },
+                },
+                new CharacterUpsertRequest
+                {
+                    Id = fighter, Name = "Brakk", ClassLevel = "Fighter 3", IsPartyCompanion = true,
+                    SystemStats = new Pf2eExtension { Level = 3, StrengthMod = 4 },
+                },
+            ],
+        }, slug);
+        Assert.True(result.Success, result.Summary);
+
+        using var session = _fixture.Store.OpenAsyncSession();
+        var ct = TestContext.Current.CancellationToken;
+        var storedWizard = await session.LoadAsync<Character>(wizard, ct);
+        var storedFighter = await session.LoadAsync<Character>(fighter, ct);
+        var wizardStats = (Pf2eExtension)storedWizard.SystemStats;
+        var fighterStats = (Pf2eExtension)storedFighter.SystemStats;
+
+        // Level 4 full caster: rank 1 and rank 2 at 3 slots each, nothing higher yet.
+        Assert.Equal(3, wizardStats.ResourcePools["spell_slots_1"].Max);
+        Assert.Equal(3, wizardStats.ResourcePools["spell_slots_2"].Max);
+        Assert.DoesNotContain("spell_slots_3", wizardStats.ResourcePools.Keys);
+        Assert.DoesNotContain("spell_slots_4", wizardStats.ResourcePools.Keys);
+        Assert.Equal("Intelligence", wizardStats.SpellcastingAbility);
+        Assert.NotNull(wizardStats.SpellDc);
+        Assert.Equal(30, wizardStats.Movement);
+
+        Assert.Null(fighterStats.SpellDc);
+        Assert.Null(fighterStats.SpellcastingAbility);
+        Assert.DoesNotContain(fighterStats.ResourcePools.Keys, k => k.StartsWith("spell_slots_", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task WorldBuild_NoCampaignConfig_DoesNotPersistDefaultConfig_AndSurfacesNote()
     {

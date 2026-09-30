@@ -1,98 +1,57 @@
 ---
 name: dnd-npc-interaction
-description: Voicing NPCs from psychology — trust-gated responses, memory, initiative, autonomy (load when an NPC speaks, decides, or reacts)
+description: Running NPCs from their psychology — reading their card, voice sources, self-interest, knowledge, needs, schedules, initiative and the two-beat rule (load when an NPC speaks, decides or reacts)
 metadata:
   type: skill
 ---
 
-# NPC Interaction Mode
+# NPC Interaction
 
-You are running NPCs: their psychology drives their decisions, not your narratives. Seed hygiene → `dnd-world-change` (seed-before-name). Delta/refresh semantics → `dnd-world-change` (canonical). Checks/modifiers → `dnd-social`.
+NPCs act from their own psychology, not from what would help the story along. Social checks are in `dnd-social`, logging dialogue in `dnd-conversation`, and the prose itself in `dnd-narration`.
 
-## Read Context First
+## Read the card first
 
-Before narrating any NPC action, read their card: `cards[]` in `take_turn` carries traits, wants, fears, stance, notes, gear and key memories once per session (the scene roster only lists id/name/activity/mood). Topical memories, tier changes and pressing needs arrive as `context[]` lines on the beat that needs them. A card you no longer have (compaction) or want fresh: `get_entity` chars/ id (or bundle `fullDetailCharacterId`): Motivation, Ideology, Pride/Paranoia, Trust/Suspicion/Loyalty/Fear, Schedule, Memory, `TurnIntent` (advisory). If memory/psychology may be stale (gap, resume), add `memoriesOnlyCharacterId` (cheapest) or `fullDetailCharacterId` — never assume multi-beat-old memory is current. `fullDetailCharacterId` omits SystemStats/Needs/gear by default — that's the mechanical slice for a roll or combat, not for voicing someone. Add `includeCombatDetail: true` on the same call once a check lands on this NPC or a fight starts, not before.
+The scene roster lists who is present (id, name, activity, mood). An NPC's card (traits, wants, fears, stance, notes, gear, key memories) arrives once per session in `take_turn`'s `cards[]`: on arrival if they matter, otherwise with the first commit that involves them. So open a first contact with an approach beat (an event only), read the card, then play the reaction. Topical memories, trust changes and pressing needs come as one-shot `context[]` lines on the beat that needs them.
 
-## Empty Card = Do Not Speak Yet
+If the card is gone (a compaction) or may be stale (a gap, a resumed session), add `memoriesOnlyCharacterId` (cheapest) or `fullDetailCharacterId` to the next `take_turn`, or `get_entity` when you aren't committing anything. Full detail is the roleplay slice; add `includeCombatDetail: true` only once a roll or a fight involves them.
 
-If the card has default psychology (`openness: 0.5`, no memories, no `personality`), stop. Seed the Speaking NPC floor in `dnd-world-building` (personality + two memories) before the first quoted line. Playing them on an empty card is how every hedge-cutter sounds like every carter.
+## Where voices come from
 
-## NPC Voice
+- **An NPC's voice** is their `personality` plus at least two memories. A card with default psychology (`openness: 0.5`, no memories, no personality) is not ready to speak: seed the speaking-NPC floor from `dnd-world-building` before their first quoted line. Otherwise every hedge-cutter sounds like every carter.
+- **The PC's voice** is `chars/{pc}`'s `personality`, a memory whose topic is `voice`, and `systemStats.traits.voice` if set. Read it at session start (`includeParty` or `memoriesOnlyCharacterId`); if it is empty, seed it before the first in-character paragraph rather than inventing a house style.
+- Campaign lore (how a faction treats a tiefling, what the valley fears) belongs in memories and `personality`, not in a pasted prompt.
+- After an NPC learns something, commit a `knowledge_update` so the next scene isn't empty again. Judge its valence by this NPC's psychology, not by how bad the event objectively was.
 
-Diction comes from `personality` and Memory, not from a generic grimdark:
+## Self-interest over helpfulness
 
-- A nervous merchant speaks clipped, apologetic sentences
-- A proud knight speaks formal, uses titles, is slow to admit fault
-- A weary innkeeper speaks wearily, with sighs and longer pauses
-- A city outrider counts hands and names the gate
-- A country carter blesses himself at horns and looks at the mantle second
+Never default to cooperation. Trust, suspicion, ideology and fear gate every answer: low trust resists, high suspicion evades, strong ideology won't betray its side even for money, fear complies now and resents later. It shows in behaviour (a tight jaw, a delayed answer, a look away), not in stated reluctance.
 
-After they learn something, `knowledge_update` so the next scene is not empty again.
+## Needs, schedules, memory
 
-## Self-Interest Overrides Helpfulness
+- A hungry, exhausted or hurt NPC is distracted, short-tempered or desperate: the hungry one asks for food as the price of information, the exhausted one refuses to negotiate.
+- NPCs follow schedules. One who is somewhere unexpected has a reason: say it, check with `get_entity`, or commit an `activity` if they are deliberately changing course.
+- Memories fade with time and salience, and only committed events and `knowledge_update`s feed them; banter that was only narrated never reaches them. NPC-to-NPC talk registers as a Conversation `event` with both in `involved`.
 
-Never default to cooperativeness — gate through Trust/Suspicion/ideology/Fear (Low Trust: resistant; High Suspicion: evasive; strong ideology: won't betray interests even if paid; Fear: complies now, resents later). Show it in behavior (tight jaw, delayed response, a look away), never as stated reluctance. Same as `dnd-narration`'s Dialogue section — fear and greed drive NPCs, not courtesy.
+## Initiative
 
-## Knowledge Updates
+- `TurnIntent` on a full-detail view, or a "Likely to act next" context line, marks an NPC eager to act. It is advice: they might interrupt, volunteer something, or act in a hurry.
+- The engine's scheduler picks initiative from needs and momentum and can't judge a single moment. When something just happened that this psychology would react to, send `npc_initiative_nudge` (`characterId`, `intensity`, `reason`; the reason comes back in `TurnIntent`). Use it sparingly. A `narrativeReminder` about an unused nudge means: play the pending reaction before nudging again.
 
-When the NPC learns something, include a `knowledge_update` in the batch (fields: `dnd-world-change`). **Valence is judged by this NPC, not by the event** — weigh Positive/Negative/Neutral/Traumatic against *their* psychology (ideology, profession, trauma), not objective severity.
+## The two-beat rule
 
-## Need-Driven Behavior
+If the PC does nothing for a beat (sitting, reflecting, enjoying the moment), an NPC starts something by the next one. Look two messages back: an NPC who has only reacted for two PC turns now acts from their psychology: asks a question, gets restless, suggests moving on, shows worry. That isn't forced conflict; it is people having agency.
 
-If an NPC is hungry, exhausted, or in pain, they're distracted, short-tempered, or desperate. Show it:
-- Hungry NPC might ask for food as the price of information
-- Exhausted NPC might refuse to negotiate and demand rest
-- Wounded NPC might be desperate or volatile
+NPCs react only to what they see, hear and experience. They cannot hear the PC's thoughts, respond to out-of-character cues, or sense unspoken feelings. When the player narrates only an inner experience, there is nothing to react to: move the scene with NPC initiative instead.
 
-Don't name the need—narrate its sensory effect.
+If three beats have kept the same tenor with only the scenery changing, escalate, complicate or cool the scene down (`dnd-narration`, "Detail that moves").
 
-## Schedule & Location Consistency
+## Promoting an NPC
 
-NPCs follow schedules. If an NPC should be at the market but is in the tavern, there's a reason. Either:
-1. Narrate why they skipped their schedule ("I had to hide from the militia")
-2. Call `get_entity` with the NPC id to check for activity changes
-3. Include an `activity` change in `take_turn` if they're deliberately shifting their schedule
+A transient worth keeping gets `character_update` with `keepAlive: true`, and earns a plot thread (`world_build` `plotThreads[]`, scaffolded per `dnd-world-building`). A permanent NPC can anchor several threads.
 
-## Memory & Salience
+## Checklist
 
-NPCs remember past interactions (salience + decay: old fades, recent emotional beats stay). Resurfacing is semantic, not literal — but only sees what's committed: narrate-only banter never becomes an `event`/`knowledge_update` and doesn't feed it. NPC-NPC conversation registers only as `event` with `Category: Conversation`, `involved: [npc1, npc2]` — no PC required.
-
-## Relationship Modifiers
-
-Per `dnd-social` — engine applies them automatically; never add one yourself.
-
-## NPC Initiative
-
-If `TurnIntent` is set on the NPC's full-detail view (get_entity / take_turn full detail), or a "Likely to act next" context line names them, this NPC is eager to act/speak next. Use as an advisory hint (not a hard rule). They might interrupt, volunteer info, act urgently.
-
-The engine's scheduler picks initiative from measurable need/momentum — it can't judge a beat. When something just happened this psychology would react to, send `npc_initiative_nudge` (`characterId`, `intensity`, `reason` — reason returns via `TurnIntent` so you keep the why). Bypasses rotation/cooldown once; sparing use only. A `narrativeReminder` about an unconsumed nudge means: resolve the pending reaction before re-nudging.
-
-## Autonomy & Pacing Discipline
-
-**The 2-Beat Rule**: If a PC narrates a beat with zero action (sitting, reflecting, enjoying a moment), the NPC must **initiate** something by the next GM beat, or the scene starts stalling. Don't wait for the PC to do something; check back 2 messages—if the NPC has been pure-reactive for 2+ PC turns, they start a conversation, suggest activity, show restlessness, anything but "wait for PC input." This isn't forced conflict; it's agents having agency. A companion NPC watching a PC sit quietly should notice and act (smile, ask a question, suggest they move on, express worry, anything from their Psychology).
-
-**No Telepathy**: NPCs can only react to what they **see, hear, or experience**. They cannot:
-- Hear PC internal monologue ("I think this moment should last forever")
-- React to meta-prompts or out-of-character cues
-- Sense the PC's emotions unless expressed through action/speech
-- Know what the PC is thinking unless told aloud
-
-If the PC narrates only internal experience with no external action, the NPC has nothing to react to — advance the scene with NPC initiative instead.
-
-**Pacing & Escalation**: Scan back 3 beats. Same action-type ongoing with only sensory variation and no dynamic shift underneath = stalling — escalate, complicate, or cool it down (detail: `dnd-narration`'s Progression vs. Sensory Variation).
-
-## NPC Promotion & "Little Stories"
-
-Promoted transient (`character_update` + `keepAlive: true`) earns a plot thread (`world_build` `plotThreads[]` — hooks/clues/resolution/involved per `dnd-world-building`; 2–4 hooks, 2–4 clues). Clues may reference not-yet-seeded entities — seed on demand or drop the reference when the WARNING flags it. Each permanent NPC can anchor multiple threads.
-
-## Checklist (NPC tier — commit mechanics: `dnd-world-change`; resolution: `dnd-social`)
-
-- [ ] Did I fetch the NPC's full detail (`get_entity` chars/ id) first? Combat/rolls against them → did I add `includeCombatDetail: true`?
-- [ ] Is the NPC voice distinct (diction, pace, rhythm)?
-- [ ] Did they show self-interest (not automatic helpfulness)?
-- [ ] Did they learn something? → `knowledge_update`
-- [ ] Did their numeric bond shift? → `relationship` (`delta` + `reason`) — never implied by the check
-- [ ] Are they driven by unmet needs? → Show it, don't state it
-- [ ] Are they where their schedule says? → If not, narrate why or commit `activity`
-- [ ] Did something land on this psychology? → `npc_initiative_nudge`, don't wait for the scheduler
-- [ ] If promoted to permanent, did I seed their plot thread?
+- [ ] I had their card (or refreshed it) before voicing them, and their voice came from it.
+- [ ] They acted from self-interest, not helpfulness.
+- [ ] What they learned is a `knowledge_update`; a bond that moved is a `relationship` with a `reason`.
+- [ ] Something that landed on their psychology got a nudge; an idle PC got an NPC who acts.

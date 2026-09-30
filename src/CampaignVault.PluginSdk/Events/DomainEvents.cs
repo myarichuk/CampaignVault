@@ -153,6 +153,12 @@ public static class CoreEvents
     /// <summary>A character's HP went from above 0 to 0. Fields: characterId, maxHp, actorId (as for damage).</summary>
     public const string CharacterDowned = "core.character_downed.v1";
 
+    /// <summary>
+    /// A character died (<c>death</c> verb). Fields: characterId, cause, killerId, bodyLocationId, day.
+    /// Published once per death, not on revive.
+    /// </summary>
+    public const string CharacterDied = "core.character_died.v1";
+
     /// <summary>A character arrived at a destination. Fields: characterId, fromLocationId, locationId, hours.</summary>
     public const string Traveled = "core.traveled.v1";
 
@@ -205,7 +211,7 @@ public static class CoreEvents
     /// <summary>Every topic core publishes.</summary>
     public static IReadOnlyList<string> All { get; } =
     [
-        ModeEntered, ModeExited, ModeJoined, ModeLeft, ModeTurnStarted, CharacterDamaged, CharacterDowned, Traveled, Rested, EncounterInterrupted,
+        ModeEntered, ModeExited, ModeJoined, ModeLeft, ModeTurnStarted, CharacterDamaged, CharacterDowned, CharacterDied, Traveled, Rested, EncounterInterrupted,
         EventLogged, CombatStarted, CombatTurnStarted, CombatEnded, Soiled, Pierced, PluginFaulted
     ];
 
@@ -221,6 +227,10 @@ public static class CoreEvents
         public const string CurrentHp = "currentHp";
         public const string MaxHp = "maxHp";
         public const string ActorId = "actorId";
+        public const string Cause = "cause";
+        public const string KillerId = "killerId";
+        public const string BodyLocationId = "bodyLocationId";
+        public const string Day = "day";
         public const string FromLocationId = "fromLocationId";
         public const string Hours = "hours";
         public const string RestType = "restType";

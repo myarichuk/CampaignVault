@@ -1,4 +1,4 @@
-// Covers Rule 5 of recommended-system-prompt.md: "Persisted state is ground truth, not your memory —
+// Covers the ENGINE IS AUTHORITATIVE rule of recommended-system-prompt*.md: "Persisted state is ground truth, not your memory —
 // trust the latest scene/NPC query over recollection, especially after any gap or summarization."
 // After a session.compacted/session.idle gap, re-inject the CAMPAIGN line and a nudge to re-verify
 // state via start_session/get_entity rather than trusting recollection.

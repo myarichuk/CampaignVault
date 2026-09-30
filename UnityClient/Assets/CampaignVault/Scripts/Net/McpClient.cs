@@ -77,8 +77,22 @@ namespace CampaignVault.UnityClient.Net
         private readonly Dictionary<string, McpSession> _sessions = new Dictionary<string, McpSession>();
         private readonly HashSet<string> _opening = new HashSet<string>();
 
+        // Requests on the wire, so Stop can cut them instead of waiting out the timeout.
+        private readonly HashSet<UnityWebRequest> _inFlight = new HashSet<UnityWebRequest>();
+
         /// <summary>Drop every negotiated session (server URL or token changed).</summary>
         public void ResetSessions() { _sessions.Clear(); }
+
+        /// <summary>
+        /// Cuts every in-flight request (the player pressed Stop). Callers see a
+        /// transport failure. A tools/call the server already received may still
+        /// commit, which the driver says out loud.
+        /// </summary>
+        public void AbortAll()
+        {
+            foreach (var request in new List<UnityWebRequest>(_inFlight)) { request.Abort(); }
+            _inFlight.Clear();
+        }
 
         public IEnumerator ListTools(
             VaultClientConfig config, string connector, Action<McpOutcome<List<McpToolInfo>>> done)
@@ -282,12 +296,13 @@ namespace CampaignVault.UnityClient.Net
             return body;
         }
 
-        private static IEnumerator Send(
+        private IEnumerator Send(
             VaultClientConfig config, string url, JsonValue body, McpSession session, Action<RawReply> done)
         {
             byte[] payload = Encoding.UTF8.GetBytes(body.ToJson());
             using (UnityWebRequest request = new UnityWebRequest(url, "POST"))
             {
+                _inFlight.Add(request);
                 request.uploadHandler = new UploadHandlerRaw(payload);
                 request.downloadHandler = new DownloadHandlerBuffer();
                 request.SetRequestHeader("Content-Type", "application/json");
@@ -297,10 +312,12 @@ namespace CampaignVault.UnityClient.Net
                     if (!string.IsNullOrEmpty(session.Id)) { request.SetRequestHeader("Mcp-Session-Id", session.Id); }
                     request.SetRequestHeader("MCP-Protocol-Version", session.Protocol);
                 }
-                request.timeout = Math.Max(5, config.TimeoutSeconds);
+                bool toolCall = body.GetString("method", string.Empty) == "tools/call";
+                request.timeout = Math.Max(5, toolCall ? config.ToolTimeoutSeconds : config.TimeoutSeconds);
                 config.ApplyAuth(request);
 
                 yield return request.SendWebRequest();
+                _inFlight.Remove(request);
 
                 done(new RawReply
                 {
@@ -367,15 +384,33 @@ namespace CampaignVault.UnityClient.Net
             {
                 return raw;
             }
+            // One event = consecutive data: lines (joined with \n, per the SSE
+            // spec) up to a blank line. The last complete event wins.
             string last = null;
-            string[] lines = raw.Split('\n');
-            for (int i = 0; i < lines.Length; i++)
+            var current = new StringBuilder();
+            bool inEvent = false;
+            string[] lines = raw.Replace("\r\n", "\n").Split('\n');
+            for (int i = 0; i <= lines.Length; i++)
             {
-                string line = lines[i].Trim();
+                string line = i < lines.Length ? lines[i] : string.Empty;
+                if (line.Trim().Length == 0)
+                {
+                    if (inEvent)
+                    {
+                        string data = current.ToString();
+                        if (data.Trim() != "[DONE]") { last = data; }
+                    }
+                    current.Length = 0;
+                    inEvent = false;
+                    continue;
+                }
                 if (line.StartsWith("data:", StringComparison.Ordinal))
                 {
-                    string data = line.Substring(5).Trim();
-                    if (data != "[DONE]") { last = data; }
+                    string data = line.Substring(5);
+                    if (data.StartsWith(" ", StringComparison.Ordinal)) { data = data.Substring(1); }
+                    if (inEvent) { current.Append('\n'); }
+                    current.Append(data);
+                    inEvent = true;
                 }
             }
             return last ?? raw;

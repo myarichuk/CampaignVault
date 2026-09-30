@@ -17,6 +17,14 @@ public sealed class PluginManifest
     [JsonPropertyName("version")]
     public string Version { get; set; } = "0.0.0";
 
+    /// <summary>Who wrote it (shown by the client's plugin manager; informational).</summary>
+    [JsonPropertyName("author")]
+    public string? Author { get; set; }
+
+    /// <summary>One or two sentences on what the plugin adds (shown by the client's plugin manager).</summary>
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
     [JsonPropertyName("minEngineVersion")]
     public string? MinEngineVersion { get; set; }
 

@@ -4,6 +4,7 @@ name: spell_slots_5
 description: 5th-rank spell slots (recovers on long rest)
 applicableSystems: [pf2e]
 recovery: LongRest
-defaultMax: 1
+# Full casters (Player Core): 2 slots when the rank opens, 3 from the next level (rank 10: one slot). Keys are character level.
 levelToMaxMap:
-  "9": 1
+  "9": 2
+  "10": 3

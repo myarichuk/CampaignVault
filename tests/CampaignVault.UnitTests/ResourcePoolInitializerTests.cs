@@ -25,7 +25,9 @@ public class ResourcePoolInitializerTests
         Assert.True(character.SystemStats.ResourcePools.ContainsKey("spell_slots_1"));
         Assert.True(character.SystemStats.ResourcePools.ContainsKey("spell_slots_2"));
         Assert.True(character.SystemStats.ResourcePools.ContainsKey("focus_points"));
-        Assert.Equal(1, character.SystemStats.ResourcePools["spell_slots_1"].Max);
+        // Player Core full caster at level 3: rank 1 at 3 slots, rank 2 just opened at 2.
+        Assert.Equal(3, character.SystemStats.ResourcePools["spell_slots_1"].Max);
+        Assert.Equal(2, character.SystemStats.ResourcePools["spell_slots_2"].Max);
     }
 
     [Fact]
@@ -56,7 +58,8 @@ public class ResourcePoolInitializerTests
 
         _sut.InitializePools(character, RulesetSystem.Pathfinder2e, null);
 
-        Assert.Equal(1, character.SystemStats.ResourcePools["spell_slots_5"].Max);
+        // Rank 5 opens at level 9 with 2 slots.
+        Assert.Equal(2, character.SystemStats.ResourcePools["spell_slots_5"].Max);
         Assert.False(character.SystemStats.ResourcePools.ContainsKey("spell_slots_6"));
     }
 

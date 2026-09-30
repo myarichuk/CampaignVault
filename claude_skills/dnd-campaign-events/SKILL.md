@@ -1,112 +1,56 @@
 ---
 name: dnd-campaign-events
-description: Quests, rumors, factions, pressures, time advancement, and campaign-level events
+description: Campaign-level state — ENGINE WARNINGs and world pressure, quests, rumors, factions, plot-thread progress, and skipping time with advance_world
 metadata:
   type: skill
 ---
 
-# Campaign-Events Mode
+# Campaign Events
 
-You are managing campaign-level state: quests, rumors, factions, pressures, and world time.
+Quests, rumors, factions, plot threads, pressure and the passing of days. Change syntax is `dnd-world-change`; seeding them is `dnd-world-building`.
 
-## World Pressure (ENGINE WARNINGs)
+## ENGINE WARNINGs come first
 
-Whenever a response carries `WorldPressure` (start_session, a scene fetch via get_entity, take_turn with includeWorldState, advance_world), check it immediately. If there's an `ENGINE WARNING`, resolve it atomically **before continuing**:
+`WorldPressure` arrives on `start_session`, on a location's `fullScene.scenePressure`, on `take_turn` with `includeWorldState: true`, and on `advance_world`. An ENGINE WARNING is resolved before the story moves on:
 
-```json
-// Example ENGINE WARNING
-{
-  "severity": "WARNING",
-  "text": "Rumor about bandits is stale; faction morale is low",
-  "suggestedResolve": {
-    "$type": "rumor",
-    "rumorId": "rumor/bandits-growing",
-    "newState": "Peak"
-  }
-}
-```
+1. Put its suggested fix into the `take_turn` you are already sending for this beat, never a call of its own.
+2. Add `includeWorldState: true` to that call; without it the response carries no pressure, so the fix is unconfirmed.
+3. Check `WorldPressure` in the response. A warning still listed means the fix didn't land: find out why now.
 
-Include the suggested resolution in the same `take_turn` batch **and always pass `includeWorldState: true`** to verify the warning is resolved. After the response, **check `WorldPressure` again** — still listed means the fix didn't land; investigate, don't defer. Without `includeWorldState: true` the response carries no WorldPressure, so an unverified "fix" is unconfirmed. 5+ unresolved warnings cap progress; `lookup kind=help topic=world-pressure` drains the backlog.
+Five or more unresolved warnings hold progress back, so clear the backlog before anything else.
 
 ```json
 {
   "campaignName": "kael-quest",
   "request": {
-    "changes": [ { "$type":"rumor", "rumorId":"rumor/bandits-growing", "newState":"Peak" } ],
-    "narrative": "The rumor about bandits reached peak intensity in the community.",
+    "changes": [ { "$type": "rumor", "rumorId": "rumors/bandits-growing", "newState": "Peak" } ],
+    "narrative": "Talk of the bandits is everywhere in the market now.",
     "includeWorldState": true
   }
 }
 ```
 
-## Quest Progress
+Pressure also paces the story: low pressure lets the party breathe and plan, rising pressure stacks unresolved problems, and at the peak factions move, deadlines land and the weather turns.
 
-Track quest milestones: `quest_progress.newState` is `Open` → `InProgress` → `Complete` / `Failed` / `Skipped`, plus `objectiveIndex`/`objectiveName` (required — fields: `dnd-world-change`).
+## Quests, rumors, factions, plot threads
 
-## Rumor Evolution
+- **Quests:** `quest_progress` with `newState` (Open, InProgress, Complete, Failed, Skipped) and `objectiveIndex` or `objectiveName`.
+- **Rumors** move through Nascent, Spreading, Peak, Fading, Resolved (or Forgotten) with a `rumor` change; new ones come from `world_build`. On a delta turn only changed rumors come back; an empty list means none changed.
+- **Factions:** `faction_state` (`factionId` is the subject, `targetFactionId` only for a stance toward another faction); `faction_reputation` for the party's standing. A faction's `EconomicDemand` lists goods it wants, and carrying them shows up as opportunities in `WorldPressure`.
+- **Plot threads** advance with `plot_thread_progress` and `plot_thread_clue`. `get_entity` on the thread validates it; a warning about missing entities means seed them or drop the stale reference.
 
-Rumors progress through lifecycle:
+## Skipping time
 
-```json
-{
-  "$type": "rumor",
-  "rumorId": "rumor/bandits-recruiting",
-  "newState": "Spreading"
-}
-```
-
-States: Nascent → Spreading → Peak → Fading → Resolved (or Forgotten). New rumors are seeded via `world_build`; existing ones evolve via a `rumor` change in `take_turn` (on a delta turn only changed rumors resurface — an empty list means none changed, not that they died; full picture via `includeWorldState: true` / `get_entity`).
-
-## Faction State & Economy
-
-Track faction stance changes: `faction_state` with `factionId` (the subject) and `targetFactionId` only for a stance *toward* another faction (fields: `dnd-world-change`).
-
-Factions have `EconomicDemand` (items they want). If the party carries demanded items, `FactionEconomyPressureContributor` surfaces opportunities in `WorldPressure`.
-
-## Time Advancement
-
-Use `advance_world` to skip uneventful time (e.g., "three weeks pass peacefully"):
+`advance_world` skips uneventful time: `hours`, or `days` with `resultingHour`, and a `narrative` (always required).
 
 ```json
-{
-  "narrative": "Three uneventful weeks pass at the keep.",
-  "campaignName": "<current-campaign>",
-  "hours": 504
-}
+{ "campaignName": "kael-quest", "hours": 504, "narrative": "Three quiet weeks pass at the keep." }
 ```
 
-(There's no `skipEvaluateSchedules` param — `narrative` is required on every call.)
+It runs needs, rumors, status expiry and schedules, and returns what happened. On its own it rolls no encounters: pass `partyLocationId` to roll them for the elapsed span, and leave it out only when the skip really carries no risk. For one dangerous night or journey, `rest` or `travel` (`dnd-exploration`) fit better.
 
-This rolls simulation rules (needs, rumors, status expiry, NPC schedules) and returns `SimulatorEvents` + any pressures. By itself it has **zero encounter/interruption mechanic** — pass `partyLocationId` to get the same encounter/ambient-crowd rolls `rest`/`travel` get for that elapsed span.
+## Checklist
 
-**For dangerous travel or an overnight span with real stakes**, prefer `rest` (immediate recovery + interruption rolls) or `travel` (encounters) — or `advance_world` with `partyLocationId` set if a multi-day skip still needs to carry risk.
-
-## Plot Thread Progression & Scaffolding
-
-Scaffolding fields are canonical in `dnd-world-building` (2–4 `foreshadowingHooks`, 2–4 `clues` with `id`/`description`/`involvedEntityIds`, testable `resolutionCondition`, `involvedEntityIds`). Progress in play via `plot_thread_progress`; escalate per pressure below.
-
-**Clue materialization:** a clue referencing a physical object needs a matching `world_build` `items[]` entry (`holderId` set; clue's `involvedEntityIds` includes the item; item tagged `tags: ["clue:plot-threads/..."]`) — otherwise searches find nothing. **Validation:** `get_entity(plot-threads/...)`; an ENGINE WARNING means missing entities — seed on demand or drop the stale reference.
-
-## Campaign Time
-
-Campaign has a clock: `start_session` (and `take_turn` with `includeWorldState: true`) returns current campaign time (day, hour, weather, season). Set `minutesElapsed` on the top-level `take_turn` request to tick the clock (rest/travel use their own hour fields instead). Use `advance_world` for larger skips.
-
-## Pressure-Driven Pacing
-
-Read `WorldPressure` after every major scene:
-- **Low pressure** → party can breathe, plan, recover
-- **Rising pressure** → multiple unresolved nags, stakes climbing
-- **Peak pressure** → faction moves, quest deadlines, weather shifts, ENGINE WARNINGs escalate
-
-Use pressure as a narrative cue: when pressure peaks, events accelerate.
-
-## Campaign Checklist (session tier — per-beat mechanics: `dnd-world-change`; prose: `dnd-narration`)
-
-- [ ] Did I read campaign time + pressure (start_session at kickoff; take_turn includeWorldState mid-play)?
-- [ ] Are there ENGINE WARNINGs? → Resolve atomically before continuing
-- [ ] Did a quest milestone complete? → `quest_progress` commit
-- [ ] Did the party's relationship with a faction shift? → `faction_state`
-- [ ] Did significant time pass (hours/days)? → `advance_world` or `minutesElapsed` on the take_turn request
-- [ ] Did a rumor evolve? → `rumor` commit with newState
-- [ ] Did a plot thread escalate? → `plot_thread_progress`
-- [ ] Is pressure climbing? → Narrate mounting stakes, escalate NPC actions
+- [ ] ENGINE WARNINGs resolved in the current beat and verified with `includeWorldState`.
+- [ ] Quest milestones, rumor changes, faction shifts and plot-thread steps committed when they happen.
+- [ ] Long skips go through `advance_world`, with `partyLocationId` unless risk-free.

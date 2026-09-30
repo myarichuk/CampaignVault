@@ -1,0 +1,69 @@
+/*
+ * Campaign Vault design tokens: refined dark fantasy. Ink and gold,
+ * parchment text, one accent per meaning (blood = harm/failure, leaf =
+ * health/success, arcane = the player's own voice and magic, ember = warning).
+ * Reference resolution is 1920x1080 (PanelSettings scales from there).
+ */
+:root {
+    /* surfaces, darkest to lightest */
+    --ink-0: #06070A;
+    --ink-1: #0B0D12;
+    --ink-2: #12151C;
+    --ink-3: #191D26;
+    --ink-4: #222835;
+    --scrim: rgba(3, 4, 6, 0.78);
+
+    /* hairlines */
+    --line: rgba(201, 162, 39, 0.16);
+    --line-strong: rgba(201, 162, 39, 0.42);
+    --line-faint: rgba(233, 220, 195, 0.07);
+
+    /* metal */
+    --gold: #C9A227;
+    --gold-bright: #F0CF6A;
+    --gold-dim: #8C7119;
+    --gold-deep: #2E250B;
+    --gold-deep-hover: #3F3210;
+
+    /* text */
+    --text-1: #E9DCC3;
+    --text-2: #BBAF97;
+    --text-3: #7F7768;
+    --text-4: #58534A;
+
+    /* meaning */
+    --blood: #D64545;
+    --blood-dim: #6E1F1F;
+    --blood-deep: #241012;
+    --leaf: #6FCF7C;
+    --leaf-dim: #2F6B3A;
+    --arcane: #7FB2FF;
+    --arcane-dim: #2C4670;
+    --ember: #E8833A;
+    --crit: #FFE08A;
+
+    /* type: faces are referenced by url() in the component sheets (USS
+       variables do not resolve font asset references) */
+
+    --fs-xs: 13px;
+    --fs-sm: 15px;
+    --fs-md: 18px;
+    --fs-story: 21px;
+    --fs-lg: 23px;
+    --fs-xl: 30px;
+    --fs-xxl: 44px;
+
+    /* space */
+    --sp-1: 4px;
+    --sp-2: 8px;
+    --sp-3: 12px;
+    --sp-4: 16px;
+    --sp-5: 24px;
+    --sp-6: 32px;
+    --sp-7: 48px;
+
+    --radius: 2px;
+    --motion-fast: 120ms;
+    --motion: 200ms;
+    --motion-slow: 420ms;
+}

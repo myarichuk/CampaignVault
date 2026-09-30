@@ -20,6 +20,16 @@ CampaignVault install, and restart the host.
 See [PLUGINS.md](https://github.com/myarichuk/CampaignVault/blob/master/PLUGINS.md) in
 the main repository for the full plugin architecture, trust model, and quick-start guide.
 
+## Unreleased
+
+- **Death** (`death`, `DeathChange`, `Character.Death` / `IsDead`, `DeathRecord`): explicit character death, since 0 HP
+  is only downed. Records day, cause, killer and body location; clears an NPC's location, schedule and companion flag
+  (a dead PC keeps its location), lapses its minions, and rejects positive `hp` deltas on the dead. `revive:true`
+  undoes it. Publishes `core.character_died.v1` (`characterId`, `cause`, `killerId`, `bodyLocationId`, `day`).
+  5e player characters also get automatic dying rules: `Character.DeathSaves` (`DeathSaveTally`), the `death_save`
+  verb (`DeathSaveChange`), a death-save failure per hit at 0 HP, and instant death on massive damage. NPCs never
+  auto-die.
+
 ## 0.12.0
 
 - **Piercings** (`piercing`, `PiercingChange`, `Character.Piercings`): SFW body adornment (earrings, septum, navel, …).

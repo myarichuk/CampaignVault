@@ -1,7 +1,9 @@
 using System.ComponentModel;
 using CampaignVault.Data;
 using CampaignVault.Models;
+using CampaignVault.Rulesets;
 using CampaignVault.Rulesets.Bootstrap;
+using CampaignVault.Services;
 using ModelContextProtocol.Server;
 using Raven.Client.Documents.Session;
 
@@ -11,15 +13,18 @@ namespace CampaignVault.Tools;
 public class WorldBuilderTools : CampaignToolBase, IMcpServerTool
 {
     private readonly CharacterBootstrapOrchestrator _bootstrap;
+    private readonly ResourcePoolInitializer? _poolInitializer;
 
     public WorldBuilderTools(
         CampaignRepository repository,
         CampaignDocumentKeys keys,
         CharacterBootstrapOrchestrator bootstrap,
+        ResourcePoolInitializer? poolInitializer = null,
         ILogger<WorldBuilderTools>? logger = null)
         : base(repository, keys, logger)
     {
         _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
+        _poolInitializer = poolInitializer;
     }
 
     [ToolCategory("World builder")]
@@ -58,6 +63,7 @@ public class WorldBuilderTools : CampaignToolBase, IMcpServerTool
             await ProcessKindAsync(batch.Feats, "feats", CanonicalId.Feats, r => r.Id, ApplyFeatUpsertAsync, s, effective, result, warnings);
             await ProcessKindAsync(batch.Characters, "characters", CanonicalId.Characters, r => r.Id, ApplyCharacterUpsertAsync, s, effective, result, warnings);
             await ProcessKindAsync(batch.Items, "items", CanonicalId.Items, r => r.Id, ApplyItemUpsertAsync, s, effective, result, warnings);
+            await ApplyArmorFromBatchItemsAsync(batch, s);
             await WarnOnUnequippedCharactersAsync(batch, s, effective, warnings);
             await ProcessKindAsync(batch.Quests, "quests", CanonicalId.Quests, r => r.Id, ApplyQuestUpsertAsync, s, effective, result, warnings);
             await ProcessKindAsync(batch.PlotThreads, "plotThreads", CanonicalId.PlotThreads, r => r.Id, ApplyPlotThreadUpsertAsync, s, effective, result, warnings);
@@ -164,6 +170,56 @@ public class WorldBuilderTools : CampaignToolBase, IMcpServerTool
             {
                 warnings.Add($"{kind}[{i}]: {res.Summary}");
             }
+        }
+    }
+
+    /// <summary>
+    /// Characters dispatch before items, so the bootstrap defense step can't see armor seeded in the same
+    /// batch (and the item index hasn't caught up either). Once items are in, re-derive AC/warmth/movement
+    /// for each character that just had armor put on or taken off here.
+    /// </summary>
+    private static async Task ApplyArmorFromBatchItemsAsync(WorldBuildBatch batch, IAsyncDocumentSession s)
+    {
+        if (batch.Items is not { Count: > 0 })
+        {
+            return;
+        }
+
+        var batchItems = new List<Item>();
+        foreach (var request in batch.Items)
+        {
+            if (string.IsNullOrWhiteSpace(request.Id))
+            {
+                continue;
+            }
+
+            // Session-tracked: the merged state this batch just stored, before SaveChanges.
+            var item = await s.LoadAsync<Item>(CanonicalId.Normalize(request.Id, CanonicalId.Items));
+            if (item != null)
+            {
+                batchItems.Add(item);
+            }
+        }
+
+        var wearers = batchItems
+            .Where(i => i.CoreCategory == ItemCategories.Armor && i.HolderId != null && i.HolderId.StartsWith(CanonicalId.Characters, StringComparison.Ordinal))
+            .Select(i => i.HolderId)
+            .Distinct(StringComparer.Ordinal);
+        var access = new SessionEquipmentAccess(s);
+        foreach (var wearerId in wearers)
+        {
+            var wearer = await s.LoadAsync<Character>(wearerId);
+            if (wearer?.SystemStats == null)
+            {
+                continue;
+            }
+
+            var batchIds = batchItems.Select(i => i.Id).ToHashSet(StringComparer.Ordinal);
+            var equipped = (await access.GetEquippedItemsAsync(wearerId))
+                .Where(i => !batchIds.Contains(i.Id))
+                .Concat(batchItems.Where(i => i.HolderId == wearerId && i.IsEquipped))
+                .ToList();
+            ArmorParameterResolver.Apply(wearer, equipped);
         }
     }
 
@@ -315,10 +371,19 @@ Omitted fields are preserved: on an existing character, omitting psychology/soci
             ActiveSystem = activeSystem,
             ExplicitMaxHp = hp.ExplicitMaxHp,
             ExplicitCurrentHp = hp.ExplicitCurrentHp,
-            Trigger = BootstrapTrigger.Upsert,
+            // A new character is created like character_create (race/ancestry ability bonuses included);
+            // re-upserting an existing one mustn't stack those bonuses again.
+            Trigger = existedBefore ? BootstrapTrigger.Upsert : BootstrapTrigger.Create,
             EquipmentAccess = new SessionEquipmentAccess(s),
             CampaignName = effective,
         });
+
+        // Class pools (spell slots, action_surge, ...) exist from the first turn, as with character_create.
+        // Spent amounts are kept, so a re-upsert doesn't refill anything.
+        if (merged.SystemStats != null)
+        {
+            _poolInitializer?.InitializePools(merged, activeSystem, noConfigYet ? null : config);
+        }
 
         var extras = report.Messages
             .Concat(report.LlmHints.Select(h => $"[BOOTSTRAP HINT] {h}"))

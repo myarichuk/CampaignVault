@@ -1,8 +1,10 @@
 using System;
 using System.Collections;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.Networking;
 using CampaignVault.UnityClient.Net;
@@ -12,22 +14,44 @@ namespace CampaignVault.UnityClient.Server
     /// <summary>
     /// Runs the embedded CampaignVault server (staged under StreamingAssets by
     /// tools/embed-server.sh or the build processor) as a child process and
-    /// points the client at it. Loopback only, no token: the child starts with
-    /// ASPNETCORE_ENVIRONMENT=Development so the server binds localhost, and a
-    /// blank BEARER_TOKEN so no host-provided token leaks in. Killed on quit.
+    /// points the client at it. The child runs as Production but loopback-only
+    /// over plain HTTP (MCP_BIND_ANY=0, HTTPS_ENABLED=0), with a blank
+    /// BEARER_TOKEN so no host-provided token leaks in. If the preferred port
+    /// is taken it picks a free one; a pidfile lets the next launch stop a
+    /// server a crashed session left behind. Killed on quit.
     /// Desktop only — WebGL cannot launch subprocesses.
     /// </summary>
     public class ServerHostManager : MonoBehaviour
     {
         public VaultClientConfig Config;
         public bool AutoStart;
+        /// <summary>Preferred port; the one actually used is ActivePort.</summary>
         public int Port = 5275;
+        /// <summary>Where the deployed server, pidfile, license and campaign data live. Defaults to persistentDataPath; tests point it at a temp folder.</summary>
+        public string DataRoot;
 
         private Process _server;
+        private StreamWriter _log;
+        private Thread _stopping;
         private string _deployedDir = string.Empty;
+        private volatile string _copyStatus;
 
         public bool IsRunning { get { return _server != null && !_server.HasExited; } }
+        /// <summary>The port the running server listens on (0 when stopped).</summary>
+        public int ActivePort { get; private set; }
+        /// <summary>The version the running server reported on /health (empty for older servers).</summary>
+        public string ReportedVersion { get; private set; }
 
+        private string Root { get { return string.IsNullOrEmpty(DataRoot) ? Application.persistentDataPath : DataRoot; } }
+        private string PidFile { get { return Path.Combine(Root, "Server", EmbeddedServerSupport.PidFileName); } }
+        public string LicensePath { get { return Path.Combine(Root, EmbeddedServerSupport.LicenseFileName); } }
+        /// <summary>User-installed plugins: outside Server/, so client updates and payload re-syncs never touch them.</summary>
+        public string UserPluginsDir { get { return Path.Combine(Root, PluginPackages.FolderName); } }
+        /// <summary>Plugin ids the server is started without (one per line).</summary>
+        public string DisabledPluginsFile { get { return Path.Combine(Root, PluginPackages.DisabledFileName); } }
+
+        // On quit, only ask the server to stop: it finishes shutting RavenDB down by itself, and the
+        // pidfile lets the next launch clean up if it didn't.
         private void OnApplicationQuit() { StopEmbedded(); }
         private void OnDisable() { StopEmbedded(); }
 
@@ -60,7 +84,11 @@ namespace CampaignVault.UnityClient.Server
                 || host == "127.0.0.1" || host == "::1";
         }
 
-        public IEnumerator StartEmbedded(Action<bool, string> done)
+        /// <summary>
+        /// Starts the server. status gets progress lines while it works (the
+        /// first-run unpack can take a while); done gets the outcome.
+        /// </summary>
+        public IEnumerator StartEmbedded(Action<bool, string> done, Action<string> status = null)
         {
 #if UNITY_WEBGL
             done(false, "Embedded server is not available in WebGL builds.");
@@ -90,15 +118,42 @@ namespace CampaignVault.UnityClient.Server
                 yield break;
             }
 
-            _deployedDir = Path.Combine(Application.persistentDataPath, "Server", rid);
-            string syncFailure = SyncPayload(sourceDir, _deployedDir, exeName);
+            while (_stopping != null && _stopping.IsAlive)
+            {
+                if (status != null) { status("Waiting for the previous server to shut down…"); }
+                yield return new WaitForSeconds(0.25f);
+            }
+
+            _deployedDir = Path.Combine(Root, "Server", rid);
+            string syncFailure = null;
+            string deployedDir = _deployedDir;
+            string pidFile = PidFile;
+            _copyStatus = null;
+            var sync = new Thread(delegate ()
+            {
+                // A server an earlier session left running holds the port and the database lock.
+                string orphan = EmbeddedServerSupport.KillOrphan(pidFile);
+                if (orphan != null) { _copyStatus = orphan; Thread.Sleep(50); }
+                syncFailure = SyncPayload(sourceDir, deployedDir, exeName, delegate (string line) { _copyStatus = line; });
+            }) { IsBackground = true, Name = "vault-server-sync" };
+            sync.Start();
+            string shown = null;
+            while (sync.IsAlive)
+            {
+                string line = _copyStatus;
+                if (line != null && line != shown && status != null) { status(line); shown = line; }
+                yield return null;
+            }
+            sync.Join();
             if (syncFailure != null)
             {
                 done(false, syncFailure);
                 yield break;
             }
 
-            Config.ServerUrl = "http://127.0.0.1:" + Port;
+            int port = EmbeddedServerSupport.PickPort(Port, EmbeddedServerSupport.IsPortFree, EmbeddedServerSupport.FreePort);
+            if (port != Port && status != null) { status("Port " + Port + " is in use; starting on " + port + " instead."); }
+            Config.ServerUrl = "http://127.0.0.1:" + port;
 
             var start = new ProcessStartInfo
             {
@@ -109,33 +164,32 @@ namespace CampaignVault.UnityClient.Server
                 RedirectStandardError = true,
                 CreateNoWindow = true,
             };
-            // Loopback-only bind; blank the token so host env never leaks in.
-            start.EnvironmentVariables["ASPNETCORE_ENVIRONMENT"] = "Development";
-            start.EnvironmentVariables["MCP_PORT"] = Port.ToString();
-            start.EnvironmentVariables["MCP_BIND_ANY"] = string.Empty;
+            // Production, but loopback-only over HTTP; blank the token and license vars so host env never leaks in.
+            start.EnvironmentVariables["ASPNETCORE_ENVIRONMENT"] = "Production";
+            start.EnvironmentVariables["MCP_BIND_ANY"] = "0";
+            start.EnvironmentVariables["HTTPS_ENABLED"] = "0";
+            start.EnvironmentVariables["MCP_PORT"] = port.ToString(CultureInfo.InvariantCulture);
+            // The client never uses gRPC sync; any free port keeps 50051 from blocking a start.
+            start.EnvironmentVariables["GRPC_PORT"] = EmbeddedServerSupport.FreePort().ToString(CultureInfo.InvariantCulture);
             start.EnvironmentVariables["BEARER_TOKEN"] = string.Empty;
-            start.EnvironmentVariables["CAMPAIGN_DB_PATH"] = Path.Combine(Application.persistentDataPath, "CampaignData");
+            start.EnvironmentVariables["CAMPAIGN_DB_PATH"] = Path.Combine(Root, "CampaignData");
+            start.EnvironmentVariables["CAMPAIGN_RAVEN_LICENSE"] = string.Empty;
+            start.EnvironmentVariables["CAMPAIGN_RAVEN_LICENSE_PATH"] = File.Exists(LicensePath) ? LicensePath : string.Empty;
+            try { Directory.CreateDirectory(UserPluginsDir); }
+            catch (IOException) { }
+            start.EnvironmentVariables["CAMPAIGN_PLUGIN_DIRS"] = UserPluginsDir;
+            start.EnvironmentVariables["CAMPAIGN_PLUGINS_DISABLED"] = PluginPackages.DisabledEnv(DisabledPluginsFile);
 
             string logPath = Path.Combine(_deployedDir, "server.log");
-            StreamWriter log = null;
             int loggedLines = 0;
             try
             {
                 _server = new Process { StartInfo = start, EnableRaisingEvents = true };
-                log = new StreamWriter(logPath, false) { AutoFlush = true };
-                StreamWriter logRef = log;
-                _server.OutputDataReceived += delegate (object sender, DataReceivedEventArgs e)
-                {
-                    if (e.Data == null || loggedLines >= 5000) { return; }
-                    loggedLines++;
-                    try { logRef.WriteLine(e.Data); } catch (IOException) { }
-                };
-                _server.ErrorDataReceived += delegate (object sender, DataReceivedEventArgs e)
-                {
-                    if (e.Data == null || loggedLines >= 5000) { return; }
-                    loggedLines++;
-                    try { logRef.WriteLine("ERR " + e.Data); } catch (IOException) { }
-                };
+                // Open until StopEmbedded, so what the server logs after startup lands in the file too.
+                _log = new StreamWriter(new FileStream(logPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete)) { AutoFlush = true };
+                StreamWriter logRef = _log;
+                _server.OutputDataReceived += delegate (object sender, DataReceivedEventArgs e) { WriteLog(logRef, e.Data, ref loggedLines); };
+                _server.ErrorDataReceived += delegate (object sender, DataReceivedEventArgs e) { WriteLog(logRef, e.Data == null ? null : "ERR " + e.Data, ref loggedLines); };
                 if (!_server.Start())
                 {
                     StopEmbedded();
@@ -144,54 +198,87 @@ namespace CampaignVault.UnityClient.Server
                 }
                 _server.BeginOutputReadLine();
                 _server.BeginErrorReadLine();
+                ActivePort = port;
+                File.WriteAllText(PidFile, EmbeddedServerSupport.FormatPidFile(_server.Id, port, start.FileName));
             }
             catch (Exception ex)
             {
-                if (log != null) { log.Dispose(); }
                 StopEmbedded();
                 done(false, "Launch failed: " + ex.GetType().Name);
                 yield break;
             }
 
+            if (status != null) { status("Starting the server on 127.0.0.1:" + port + "…"); }
             bool healthy = false;
-            for (int i = 0; i < 60 && IsRunning; i++)
+            string version = string.Empty;
+            for (int i = 0; i < 90 && IsRunning; i++)
             {
                 yield return new WaitForSeconds(0.5f);
-                using (UnityWebRequest probe = UnityWebRequest.Get("http://127.0.0.1:" + Port + "/health"))
+                using (UnityWebRequest probe = UnityWebRequest.Get("http://127.0.0.1:" + port + "/health"))
                 {
                     probe.timeout = 2;
                     yield return probe.SendWebRequest();
-                    if (probe.result == UnityWebRequest.Result.Success) { healthy = true; break; }
+                    if (probe.result == UnityWebRequest.Result.Success
+                        && EmbeddedServerSupport.ParseHealth(probe.downloadHandler.text, out version))
+                    {
+                        healthy = true;
+                        break;
+                    }
                 }
             }
-            if (log != null) { log.Dispose(); }
             if (!healthy)
             {
                 StopEmbedded();
-                done(false, "Server did not answer /health within 30s. See " + logPath);
+                done(false, "Server did not answer /health within 45s. See " + logPath);
                 yield break;
             }
-            done(true, "Embedded server healthy on 127.0.0.1:" + Port);
+            ReportedVersion = version;
+            done(true, "Embedded server healthy on 127.0.0.1:" + port + (version.Length > 0 ? " (version " + version + ")" : string.Empty));
 #endif
         }
 
+        /// <summary>
+        /// Asks the server to stop and returns at once; a background thread
+        /// waits for RavenDB to shut down (several seconds), forces it if it
+        /// hangs, then removes the pidfile. A start meanwhile waits for it.
+        /// </summary>
         public void StopEmbedded()
         {
+            ActivePort = 0;
             if (_server == null) { return; }
-            try
-            {
-                if (!_server.HasExited)
-                {
-                    _server.Kill();
-                    _server.WaitForExit(3000);
-                }
-            }
-            catch (Exception ex)
-            {
-                UnityEngine.Debug.LogWarning("[Vault] Server stop: " + ex.GetType().Name);
-            }
-            try { _server.Dispose(); } catch (Exception) { }
+            Process server = _server;
             _server = null;
+            StreamWriter log = _log;
+            _log = null;
+            string pidFile = PidFile;
+            EmbeddedServerSupport.BeginStop(server);
+            _stopping = new Thread(delegate ()
+            {
+                EmbeddedServerSupport.FinishStop(server, 15000);
+                try { server.Dispose(); } catch (Exception) { }
+                if (log != null) { lock (log) { try { log.Dispose(); } catch (Exception) { } } }
+                EmbeddedServerSupport.TryDelete(pidFile);
+            }) { IsBackground = true, Name = "vault-server-stop" };
+            _stopping.Start();
+        }
+
+        /// <summary>Blocks until a stop in progress has finished (tests, and anything that must see the process gone).</summary>
+        public bool WaitForStopped(int milliseconds)
+        {
+            Thread stopping = _stopping;
+            return stopping == null || stopping.Join(milliseconds);
+        }
+
+        private static void WriteLog(StreamWriter log, string line, ref int count)
+        {
+            if (line == null || count >= 5000) { return; }
+            count++;
+            lock (log)
+            {
+                try { log.WriteLine(line); }
+                catch (IOException) { }
+                catch (ObjectDisposedException) { }
+            }
         }
 
         private static string PayloadRoot()
@@ -199,24 +286,58 @@ namespace CampaignVault.UnityClient.Server
             return Path.Combine(Application.streamingAssetsPath, "CampaignVault");
         }
 
-        /// <summary>Copies the staged payload next to first use or when the staged exe is newer.</summary>
-        private static string SyncPayload(string sourceDir, string deployedDir, string exeName)
+        /// <summary>The server version this build staged (StreamingAssets/CampaignVault/Server/version.txt), or null.</summary>
+        public static string ExpectedVersion()
+        {
+            try
+            {
+                string path = Path.Combine(PayloadRoot(), "Server", EmbeddedServerSupport.VersionFileName);
+                return File.Exists(path) ? File.ReadAllText(path).Trim() : null;
+            }
+            catch (IOException) { return null; }
+        }
+
+        /// <summary>
+        /// Copies the staged payload into the data folder on first use or when
+        /// the staged exe is newer. Runs off the main thread; status gets
+        /// progress lines. The marker is written last, so an interrupted copy
+        /// starts over next time.
+        /// </summary>
+        private static string SyncPayload(string sourceDir, string deployedDir, string exeName, Action<string> status)
         {
             try
             {
                 string sourceExe = Path.Combine(sourceDir, exeName);
                 string deployedExe = Path.Combine(deployedDir, exeName);
+                string marker = Path.Combine(deployedDir, "vault-sync.txt");
                 DateTime sourceTime = File.GetLastWriteTimeUtc(sourceExe);
                 bool fresh = File.Exists(deployedExe)
-                    && File.Exists(Path.Combine(deployedDir, "vault-sync.txt"))
-                    && File.ReadAllText(Path.Combine(deployedDir, "vault-sync.txt")) == sourceTime.Ticks.ToString();
+                    && File.Exists(marker)
+                    && File.ReadAllText(marker) == sourceTime.Ticks.ToString(CultureInfo.InvariantCulture);
                 if (!fresh)
                 {
+                    long total = EmbeddedServerSupport.DirectorySize(sourceDir);
                     if (Directory.Exists(deployedDir)) { Directory.Delete(deployedDir, true); }
-                    CopyDirectory(sourceDir, deployedDir);
-                    File.WriteAllText(Path.Combine(deployedDir, "vault-sync.txt"), sourceTime.Ticks.ToString());
+                    Directory.CreateDirectory(deployedDir);
+                    long free = EmbeddedServerSupport.FreeBytes(deployedDir);
+                    const long margin = 256L * 1024 * 1024;
+                    if (free >= 0 && free < total + margin)
+                    {
+                        return "Not enough disk space to unpack the server: it needs " + EmbeddedServerSupport.Megabytes(total + margin)
+                            + " and " + EmbeddedServerSupport.Megabytes(free) + " is free.";
+                    }
+                    string totalText = EmbeddedServerSupport.Megabytes(total);
+                    int lastPercent = -1;
+                    EmbeddedServerSupport.CopyTree(sourceDir, deployedDir, total, delegate (long copied, long all)
+                    {
+                        int percent = all > 0 ? (int)(copied * 100 / all) : 100;
+                        if (percent == lastPercent) { return; }
+                        lastPercent = percent;
+                        status("Unpacking the server (first run or update): " + percent + "% of " + totalText + "…");
+                    });
+                    File.WriteAllText(marker, sourceTime.Ticks.ToString(CultureInfo.InvariantCulture));
                 }
-#if UNITY_STANDALONE_OSX || UNITY_STANDALONE_LINUX
+#if UNITY_STANDALONE_OSX || UNITY_STANDALONE_LINUX || UNITY_EDITOR_OSX || UNITY_EDITOR_LINUX
                 RunChmod(deployedExe);
 #endif
                 return null;
@@ -227,20 +348,7 @@ namespace CampaignVault.UnityClient.Server
             }
         }
 
-        private static void CopyDirectory(string source, string target)
-        {
-            Directory.CreateDirectory(target);
-            foreach (string file in Directory.GetFiles(source))
-            {
-                File.Copy(file, Path.Combine(target, Path.GetFileName(file)), true);
-            }
-            foreach (string dir in Directory.GetDirectories(source))
-            {
-                CopyDirectory(dir, Path.Combine(target, Path.GetFileName(dir)));
-            }
-        }
-
-#if UNITY_STANDALONE_OSX || UNITY_STANDALONE_LINUX
+#if UNITY_STANDALONE_OSX || UNITY_STANDALONE_LINUX || UNITY_EDITOR_OSX || UNITY_EDITOR_LINUX
         private static void RunChmod(string exePath)
         {
             try

@@ -125,7 +125,7 @@ public class ResourcePoolStage2Tests
 
     [Theory]
     [InlineData(RulesetSystem.Dnd5e, 4, 3)]   // wizard 5: 4×1st, 3×2nd
-    [InlineData(RulesetSystem.Pathfinder2e, 1, 1)]
+    [InlineData(RulesetSystem.Pathfinder2e, 3, 3)] // wizard 5: 3×rank 1, 3×rank 2 (rank 3 just opened at 2)
     public void Initializer_YamlPools_WizardLevel5_CreatesExpectedSpellSlots(
         string system, int expectedSlots1, int expectedSlots2)
     {

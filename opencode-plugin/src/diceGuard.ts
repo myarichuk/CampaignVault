@@ -1,4 +1,4 @@
-// Enforces Rule 6 of recommended-system-prompt.md at the tool layer: "never invent a roll yourself,
+// Enforces the ENGINE IS AUTHORITATIVE rule of recommended-system-prompt*.md at the tool layer: "never invent a roll yourself,
 // mentally or via any script/tool." This targets bash/script-execution tool calls that look like an
 // attempt to fake a die roll (RNG calls, literal dice notation, shell dice utilities) instead of using
 // CampaignVault's own resolution flow (take_turn). Heuristic by nature — expect to tune after real

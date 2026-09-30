@@ -27,9 +27,8 @@ public class TakeTurnRequest
     public WorldChange[]? Changes { get; set; }
 
     [Description(
-        "One-sentence LOG entry for the vault, required if Changes is provided; omit for pure queries. This is a record, " +
-        "not your prose to the player: write the actual scene separately after the commit, with place, body, and what " +
-        "the outcome did, including on a miss.")]
+        "One-sentence vault LOG entry, required with Changes; omit for pure queries. Not your prose to the player: " +
+        "write the scene separately, even for a miss.")]
     [JsonPropertyName("narrative")]
     public string? Narrative { get; set; }
 

@@ -7,7 +7,7 @@ metadata:
 
 # Pathfinder 2e Combat
 
-Applies **only when the campaign's ruleset is `pf2e`**. Everything in `dnd-combat` about starting combat, turn order, PC turns being a hard stop, and the checklist is the same here; this skill covers what differs. If the campaign is D&D 5e, ignore this file.
+Applies **only when the campaign's ruleset is `pf2e`**. The flow in `dnd-combat` (start, turns, a PC's turn as a hard stop, the checklist) is the same here; this skill covers what differs. If the campaign is D&D 5e, ignore this file.
 
 ## The turn: three actions
 
@@ -26,7 +26,7 @@ Applies **only when the campaign's ruleset is `pf2e`**. Everything in `dnd-comba
 
 ## Checks, saves, spells
 
-- **SkillCheck**: `skill`, `dc`. A skill with no recorded modifier rolls as *untrained* (ability modifier only). Perception uses Wisdom.
+- **SkillCheck**: `actionName` is the skill; `parameters.dc`. A skill with no recorded modifier rolls as *untrained* (ability modifier only). Perception uses Wisdom.
 - **SavingThrow**: `save` (Fortitude, Reflex, Will), `dc`. Spells with a save use the caster's spell DC if you omit `dc`.
 - **Spell**: `resolution` attack / save / check / heal / utility, as in `dnd-combat`. Damage from a save is basic-save style: critical success none, success half (`halfOnSave: "false"` for full), failure full, critical failure double — the engine applies it.
 - **Grapple / Escape**: `ContestedCheck` with `skill` (default Athletics). Grapple is against Fortitude DC, Escape against 10 + the grabber's bonus in the same `skill`; success auto-applies the engagement. Pass `dc` to override.

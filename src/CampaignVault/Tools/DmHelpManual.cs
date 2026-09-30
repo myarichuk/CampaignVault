@@ -99,9 +99,10 @@ When calling `take_turn`, each change in the array must specify a `$type` discri
 ## Key Rules
 
 - All `$type` values are strings (exact case-sensitive match).
-- `characterId`, `locationId`, `questId`, etc. are required where indicated — omitting them will hard-fail the batch.
+- `characterId`, `locationId`, `questId`, etc. are required where indicated — omitting hard-fails the batch.
 - Omitting a field that is optional means the engine preserves its current value (no blank-out).
-- Some `$type`s have automatic side effects (marked in `lookup kind=commit_schema`) — do not duplicate them in a single batch (e.g., do not include both `rest` and a separate `hp` for HP recovery; `rest` auto-applies).
+- Some `$type`s have automatic side effects (marked in `lookup kind=commit_schema`) — do not duplicate them in a single batch (e.g. `rest` already heals: no separate `hp`).
+- A character dies via `$type death` (+`cause`); never `archive_entity` one.
 
 For more details, call `lookup kind=commit_schema` (optional category filter: Combat, Narrative, World, PlotThread).
 

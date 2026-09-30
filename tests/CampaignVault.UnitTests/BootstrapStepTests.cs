@@ -343,6 +343,56 @@ public class BootstrapStepTests
         Assert.Equal(10 + 4 + expectedProficiencyBonus, stats.SpellDc);
     }
 
+    [Theory]
+    [InlineData("Fighter 3", null, null)]
+    [InlineData("Wizard 3", "Intelligence", 10 + 4 + 3 + 2)]
+    [InlineData("Fighter 3", "Charisma", 10 + 0 + 3 + 2)] // an explicit ability (feat, archetype) still casts
+    public async Task Pf2eDeriveSpellcastingStep_OnlyCastersGetASpellDc(string classLevel, string? explicitAbility, int? expectedDc)
+    {
+        var profStep = new Pf2eDeriveProficiencyStep();
+        var spellStep = new Pf2eDeriveSpellcastingStep();
+        var character = new Character
+        {
+            Id = "chars/pf2e-dc",
+            Name = "Someone",
+            ClassLevel = classLevel,
+            SystemStats = new Pf2eExtension { Level = 3, IntelligenceMod = 4, SpellcastingAbility = explicitAbility },
+        };
+        var context = CreateContext(character, RulesetSystem.Pathfinder2e);
+
+        await profStep.ApplyAsync(context, TestContext.Current.CancellationToken);
+        await spellStep.ApplyAsync(context, TestContext.Current.CancellationToken);
+        var stats = Assert.IsType<Pf2eExtension>(character.SystemStats);
+
+        Assert.Equal(expectedDc, stats.SpellDc);
+        Assert.Equal(explicitAbility ?? (expectedDc is null ? null : "Intelligence"), stats.SpellcastingAbility);
+    }
+
+    [Theory]
+    [InlineData(BootstrapTrigger.Create, 16)]
+    [InlineData(BootstrapTrigger.Upsert, 14)]
+    public async Task Dnd5eDeriveRaceStep_BonusesOnlyOnCreate_TraitsAlways(BootstrapTrigger trigger, int expectedCon)
+    {
+        var step = new Dnd5eDeriveRaceStep(new RaceDefinitionProvider(
+            Path.Combine(Path.GetTempPath(), "cv_race_test_" + Guid.NewGuid()),
+            typeof(RaceDefinitionProvider).Assembly));
+        var character = new Character
+        {
+            Id = "chars/dwarf",
+            Name = "Brom",
+            SystemStats = new Dnd5eExtension { Race = "Dwarf", Constitution = 14 },
+        };
+        var context = new BootstrapContext { Character = character, ActiveSystem = RulesetSystem.Dnd5e, Trigger = trigger };
+
+        Assert.True(step.CanApply(context));
+        await step.ApplyAsync(context, TestContext.Current.CancellationToken);
+        var stats = Assert.IsType<Dnd5eExtension>(character.SystemStats);
+
+        Assert.Equal(expectedCon, stats.Constitution);
+        Assert.Equal(25, stats.Movement);
+        Assert.Contains("Darkvision", character.DistinctiveFeatures);
+    }
+
     [Fact]
     public async Task Pf2eDeriveSpellcastingStep_ExplicitSpellcastingProficiency_IsRespectedNotOverwritten()
     {

@@ -9,7 +9,7 @@ public sealed class Pf2eDeriveAncestryStep(RaceDefinitionProvider raceProvider) 
     public string Name => "pf2e.derive_ancestry";
 
     public bool CanApply(BootstrapContext context) =>
-        context.Trigger == BootstrapTrigger.Create
+        context.Trigger is BootstrapTrigger.Create or BootstrapTrigger.Upsert
         && context.Character.SystemStats is Pf2eExtension { Ancestry.Length: > 0 };
 
     public Task<BootstrapStepResult?> ApplyAsync(BootstrapContext context, CancellationToken ct = default)
@@ -20,7 +20,9 @@ public sealed class Pf2eDeriveAncestryStep(RaceDefinitionProvider raceProvider) 
             return Task.FromResult<BootstrapStepResult?>(null);
         }
 
-        ApplyAncestryTraits(context.Character, stats, ancestry);
+        // Speed, size and traits are idempotent, so world_build upserts get them too; ability bonuses are
+        // additive and only land once, when the character is created.
+        ApplyAncestryTraits(context.Character, stats, ancestry, context.Trigger == BootstrapTrigger.Create);
 
         return Task.FromResult<BootstrapStepResult?>(new BootstrapStepResult
         {
@@ -29,11 +31,11 @@ public sealed class Pf2eDeriveAncestryStep(RaceDefinitionProvider raceProvider) 
         });
     }
 
-    internal static void ApplyAncestryTraits(Character character, Pf2eExtension stats, RaceDefinition ancestry)
+    internal static void ApplyAncestryTraits(Character character, Pf2eExtension stats, RaceDefinition ancestry, bool applyAbilityBonuses = true)
     {
         // PF2e tracks ability modifiers directly (no raw ability score), so ancestry ability
         // boosts are applied as direct modifier deltas rather than raw-score bonuses.
-        foreach (var (ability, bonus) in ancestry.AbilityBonuses)
+        foreach (var (ability, bonus) in applyAbilityBonuses ? ancestry.AbilityBonuses : [])
         {
             switch (ability.ToLowerInvariant())
             {

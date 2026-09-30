@@ -149,8 +149,9 @@ public class CharacterCreateHandler : IWorldChangeHandler
 
             var activeSystemForExisting =
                 await CharacterHandlerHelpers.ResolveActiveSystemAsync(ctx, _keys, ct);
+            // Upsert, not Create: the character already had its race/ancestry bonuses applied once.
             await ApplyBootstrapAsync(existing, activeSystemForExisting, cc.MaxHp, cc.CurrentHp, null,
-                BootstrapTrigger.Create, ctx, ct);
+                BootstrapTrigger.Upsert, ctx, ct);
 
             // Reinitialize resource pools if needed (in case level/class changed)
             var campaignConfigExisting = !string.IsNullOrEmpty(ctx.CampaignName)

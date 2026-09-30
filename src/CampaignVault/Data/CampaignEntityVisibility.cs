@@ -25,7 +25,7 @@ public static class CampaignEntityVisibility
     }
 
     public static bool IsCombatantAllowed(Character character, string effectiveCampaign) =>
-        character.CurrentHp > 0 && IsVisibleInCampaign(character.CampaignName, effectiveCampaign);
+        character.CurrentHp > 0 && !character.IsDead && IsVisibleInCampaign(character.CampaignName, effectiveCampaign);
 
     public static bool IsPartyMember(Character character, string effectiveCampaign) =>
         !string.IsNullOrEmpty(character.CampaignName)

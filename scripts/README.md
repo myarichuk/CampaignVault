@@ -157,3 +157,25 @@ generated as ordinary `MainHand` weapons since this engine has no "attached
 to another equipped item" concept — harmless for attack resolution, but
 `item_equip`-ing one while a real weapon is already in `MainHand` will
 report a conflict that doesn't match pf2e's actual "costs no hand" rule.
+
+# Other scripts
+
+## `pack-grok.sh` (Grok Web kit)
+
+```
+scripts/pack-grok.sh [--campaign <slug>] [--pcs "chars/id — Name, ..."] [--ruleset dnd5e|pf2e|narrative] [--copy] [--dry-run]
+```
+
+Builds `dist/grok/` (gitignored): the Grok project instructions (`project-prompt.txt`, from the
+recommended system prompt plus `grok/project-prompt.md`), the knowledge files with stable names
+(`00-style-anchor.md`, `skill-<name>.md` from `claude_skills/` or a `grok/skills/` variant), a
+`MANIFEST.json` of hashes, `changed/` with only the files that differ from the previous pack, and
+`grok-kit.zip` with the full set. Logic lives in `pack_grok.py` (plain Python 3, no packages). See
+the "Grok Web" section of `INSTALLATION.md` for the upload flow. Replaces the old root
+`pack-skills-for-grok.sh`.
+
+## `measure/` (narration measurement)
+
+`measure/prose_stats.py` reads a transcript exported from the Unity client (F12 Inspector →
+EXPORT TRANSCRIPT) and reports prose statistics per turn, or compares two runs.
+`measure/narration-beats.md` is the fixed 8-beat script to play for those runs.

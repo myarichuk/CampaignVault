@@ -59,6 +59,8 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(TetherChange), "tether")]
 [JsonDerivedType(typeof(SoilChange), "soil")]
 [JsonDerivedType(typeof(PiercingChange), "piercing")]
+[JsonDerivedType(typeof(DeathChange), "death")]
+[JsonDerivedType(typeof(DeathSaveChange), "death_save")]
 [JsonDerivedType(typeof(XpGrantChange), "xp_grant")]
 [JsonDerivedType(typeof(NpcInitiativeNudge), "npc_initiative_nudge")]
 [JsonDerivedType(typeof(ModeTransitionChange), "mode_transition")]
@@ -328,6 +330,56 @@ public class SoilChange : WorldChange
     [Description("Optional provenance for who/what applied the dirt (character id, verb id, pluginId:cause). Audit only; does not split stacks. On worsen, a new value replaces the previous.")]
     [JsonPropertyName("appliedBy")]
     public string? AppliedBy { get; set; }
+}
+
+/// <summary>
+/// Records a character's death (or, with <see cref="Revive"/>, undoes it). This is the only way to mark someone dead:
+/// 0 HP alone means downed/dying, not dead. Fiction commits the change; it publishes <c>core.character_died.v1</c>.
+/// </summary>
+[CommitCategory("World")]
+[Description("Record that a character has died (or revive:true to undo it). Dead characters leave the scene, stop needing/scheduling and can't be healed by hp — 0 HP alone is only downed. Works for PCs, NPCs and companions; the body stays at bodyLocationId with its gear.")]
+public class DeathChange : WorldChange
+{
+    [Description("Character ID who died (or is being revived).")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = null!;
+
+    [Description("What killed them, in a phrase (e.g. 'goblin arrow', 'starved in the gorse'). Recorded on the character.")]
+    [JsonPropertyName("cause")]
+    public string? Cause { get; set; }
+
+    [Description("Character ID of the killer, if someone did it.")]
+    [JsonPropertyName("killerId")]
+    public string? KillerId { get; set; }
+
+    [Description("revive:true undoes a recorded death (Revivify, Raise Dead, a false death). Restores the character to hp (default 1) at bodyLocationId, or newLocationId when given.")]
+    [JsonPropertyName("revive")]
+    public bool Revive { get; set; }
+
+    [Description("revive only: HP to return with (default 1, capped at maxHp).")]
+    [JsonPropertyName("hp")]
+    public int? Hp { get; set; }
+
+    [Description("revive only: where they wake. Defaults to where the body lay.")]
+    [JsonPropertyName("newLocationId")]
+    public string? NewLocationId { get; set; }
+}
+
+/// <summary>
+/// One 5e death saving throw for a player character at 0 HP. The engine rolls the d20 unless a roll is supplied
+/// (an in-person roll). Three failures kill via the same path as <see cref="DeathChange"/>.
+/// </summary>
+[CommitCategory("Combat")]
+[Description("Roll one D&D 5e death saving throw for a PC at 0 HP (engine rolls d20; or pass roll). 10+ success, <10 failure, nat 1 = two failures, nat 20 = back at 1 HP. 3 successes = stable, 3 failures = dead. Damage at 0 HP already adds a failure via hp; massive damage kills outright.")]
+public class DeathSaveChange : WorldChange
+{
+    [Description("Character ID making the save (must be a 5e PC at 0 HP).")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = null!;
+
+    [Description("Optional d20 value (1-20) rolled elsewhere. Omit to let the engine roll.")]
+    [JsonPropertyName("roll")]
+    public int? Roll { get; set; }
 }
 
 /// <summary>
@@ -1724,7 +1776,7 @@ public enum ArchivableEntityType
 [Description("Soft-archive (or restore) an entity, hiding it from default search/scene/list results.")]
 public class ArchiveEntityChange : WorldChange
 {
-    [Description("The kind of entity being archived/restored (required). Character is not supported — Character has no IsArchived field; use keepAlive:false instead.")]
+    [Description("The kind of entity being archived/restored (required). Character is not supported — a dead character is recorded with the death verb ($type:\"death\"); to make a living NPC leave the scene use an activity change with newLocationId:null, updateLocation:true.")]
     [JsonPropertyName("entityType")]
     public ArchivableEntityType? EntityType { get; set; }
 

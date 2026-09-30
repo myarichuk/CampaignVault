@@ -128,7 +128,12 @@ All configuration is via environment variables. No config files are needed for b
 | `BEARER_TOKEN` | Optional auth token (env only) | unset = no auth |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated origins, or `*` | `*` (allow any) |
 | `MCP_PORT` | HTTP MCP + health listener port | `5275` (Fly: `8080`) |
-| `MCP_BIND_ANY` | Bind `0.0.0.0` instead of `localhost` | `1` in Docker/Fly; `0` in local dev |
+| `MCP_BIND_ANY` | `1` binds `0.0.0.0`; `0` binds `localhost` even outside Development (the Unity client's embedded server) | on unless `ASPNETCORE_ENVIRONMENT=Development` |
+| `HTTPS_ENABLED` | `1`/`0` turns the HTTPS listeners on/off | on unless `ASPNETCORE_ENVIRONMENT=Development` |
+| `CAMPAIGN_RAVEN_LICENSE` | RavenDB license JSON, inline (see [COMMERCIAL.md](COMMERCIAL.md)) | unset |
+| `CAMPAIGN_RAVEN_LICENSE_PATH` | Path to a RavenDB license file; ignored when `CAMPAIGN_RAVEN_LICENSE` is set | unset |
+| `CAMPAIGN_PLUGIN_DIRS` | Extra plugin folders (user-installed plugins), separated by `:` (`;` on Windows); scanned after the bundled `Plugins/`, whose ids they can't take | unset |
+| `CAMPAIGN_PLUGINS_DISABLED` | Plugin ids not to load (comma/semicolon/space separated); still listed by `GET /plugins` | unset |
 | `MCP_STDIO` | Enable stdio MCP transport | unset |
 | `GRPC_PORT` | gRPC sync port for authoring UI | `50051` |
 | `MCP_STATELESS` | `1` = stateless HTTP (no `Mcp-Session-Id`; any instance serves any request). Use for multi-instance hosting or a client that mishandles session ids | unset = stateful |
@@ -305,6 +310,22 @@ CampaignVault ships with a dedicated opencode plugin and setup script:
 (Assumes the MCP server is already running on port 5275.)
 
 See [README.md](./README.md#opencode-integration) for details.
+
+### Grok Web
+
+Grok Web reaches the server through a tunnel (see ngrok above: add the `/play` URL as a connector). The rest of the setup is a Grok **project**: its instructions box plus its knowledge files. `scripts/pack-grok.sh` builds both from the repo, so Grok gets the same prompt and skills as every other client:
+
+```bash
+scripts/pack-grok.sh --campaign my-campaign --pcs "chars/valen — Valen, chars/nia — Nia" --ruleset dnd5e --copy
+```
+
+- `dist/grok/project-prompt.txt` holds the project instructions: the recommended system prompt with your CAMPAIGN line filled in, followed by the Grok section (`grok/project-prompt.md`: the reply shape of tool calls, then a ROLL SUMMARY, then `---`, then the scene). `--copy` also puts it on the clipboard.
+- Knowledge files have stable names (`00-style-anchor.md`, `skill-dnd-narration.md`, …), so each one replaces the Grok file with the same name.
+- On every run the script compares the new pack with the previous one (`dist/grok/MANIFEST.json`). It prints only the files that changed and copies them to `dist/grok/changed/`, and it tells you which Grok files to delete first. `grok-kit.zip` has the full set for a first upload.
+- Upload the changed files before you pack again: the next run compares with the latest pack, not with what Grok holds.
+- `--dry-run` reports changes without writing; `--ruleset narrative` uses the Narrative prompt.
+
+The first time, create the project, paste the instructions, and upload everything in `dist/grok/changed/` (or the zip's contents). After that, run the script whenever the skills or prompt change and follow its checklist. `grok/skills/<name>.md` can hold a Grok-only variant of a skill; there are none today. Grok projects' files can't be uploaded by API: the xAI Collections API belongs to the separate developer platform, not to grok.com projects.
 
 ---
 

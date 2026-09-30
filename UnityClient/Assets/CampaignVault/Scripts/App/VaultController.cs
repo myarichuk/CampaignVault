@@ -1,0 +1,1402 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using CampaignVault.UnityClient.AI;
+using CampaignVault.UnityClient.Flows;
+using CampaignVault.UnityClient.Json;
+using CampaignVault.UnityClient.Model;
+using CampaignVault.UnityClient.Net;
+using CampaignVault.UnityClient.Server;
+
+namespace CampaignVault.UnityClient.App
+{
+    /// <summary>
+    /// Every player-facing command, UI-free. Commands that talk to the server
+    /// are IEnumerators, so a view fires them with Run(...) while the smoke
+    /// scenario and tests yield them directly (no play mode needed). All
+    /// writes to VaultAppState happen here and are announced via Notify.
+    /// </summary>
+    public sealed class VaultController
+    {
+        private readonly VaultAppState _s;
+        private readonly MonoBehaviour _host;
+        private readonly IVaultPrefs _prefs;
+
+        public VaultController(VaultAppState state, MonoBehaviour host, IVaultPrefs prefs)
+        {
+            _s = state;
+            _host = host;
+            _prefs = prefs;
+        }
+
+        public VaultAppState State { get { return _s; } }
+
+        /// <summary>Fire-and-forget for views.</summary>
+        public Coroutine Run(IEnumerator routine) { return _host.StartCoroutine(routine); }
+
+        // =====================================================================
+        // Persistence
+        // =====================================================================
+
+        public void LoadPreferences()
+        {
+            _s.Config.ServerUrl = _prefs.GetString(PrefKeys.Server, _s.Config.ServerUrl);
+            _s.Config.Connector = _prefs.GetString(PrefKeys.Connector, "play");
+            _s.Prompts.CampaignSlug = _prefs.GetString(PrefKeys.Campaign, string.Empty);
+            _s.PcId = _prefs.GetString(PrefKeys.PcId, string.Empty);
+            _s.FxEnabled = _prefs.GetInt(PrefKeys.Fx, 1) == 1;
+            _s.SfxMuted = _prefs.GetInt(PrefKeys.Sfx, 1) == 0;
+            if (_s.Server != null)
+            {
+                _s.Server.Config = _s.Config;
+                _s.Server.Port = _prefs.GetInt(PrefKeys.EmbeddedPort, 5275);
+                _s.Server.AutoStart = _prefs.GetInt(PrefKeys.EmbeddedAutostart, 1) == 1;
+            }
+            _s.CompanionIds.Clear();
+            foreach (string id in _prefs.GetString(PrefKeys.Companions, string.Empty).Split(';'))
+            {
+                string clean = id.Trim();
+                if (clean.Length > 0 && !_s.CompanionIds.Contains(clean)) { _s.CompanionIds.Add(clean); }
+            }
+        }
+
+        private void SaveCompanionIds()
+        {
+            _prefs.SetString(PrefKeys.Companions, string.Join(";", _s.CompanionIds.ToArray()));
+            _prefs.Save();
+        }
+
+        private void SavePcId()
+        {
+            if (string.IsNullOrEmpty(_s.PcId)) { _prefs.Delete(PrefKeys.PcId); }
+            else { _prefs.SetString(PrefKeys.PcId, _s.PcId); }
+            _prefs.Save();
+        }
+
+        public void SetFx(bool enabled)
+        {
+            _s.FxEnabled = enabled;
+            _prefs.SetInt(PrefKeys.Fx, enabled ? 1 : 0);
+            _prefs.Save();
+            _s.Notify(StateArea.Preferences);
+        }
+
+        public void SetSfxMuted(bool muted)
+        {
+            _s.SfxMuted = muted;
+            _prefs.SetInt(PrefKeys.Sfx, muted ? 0 : 1);
+            _prefs.Save();
+            _s.Notify(StateArea.Preferences);
+        }
+
+        // =====================================================================
+        // Campaign + session
+        // =====================================================================
+
+        /// <summary>
+        /// The one place the active campaign changes. Everything scoped to the
+        /// old campaign goes with it: chat history (so the model never carries
+        /// one table's context into another), session digest, PC/companion ids.
+        /// Empty slug = no active campaign (e.g. after deleting it).
+        /// </summary>
+        public void SelectCampaign(string slug, string system)
+        {
+            slug = (slug ?? string.Empty).Trim();
+            bool changed = slug != _s.Prompts.CampaignSlug;
+            _s.Prompts.CampaignSlug = slug;
+            if (!string.IsNullOrEmpty(system)) { _s.Prompts.Ruleset = system; }
+            if (slug.Length == 0) { _prefs.Delete(PrefKeys.Campaign); }
+            else { _prefs.SetString(PrefKeys.Campaign, slug); }
+            if (changed)
+            {
+                if (string.IsNullOrEmpty(system)) { _s.Prompts.Ruleset = string.Empty; }
+                _s.Prompts.PartyLine = string.Empty;
+                _s.Prompts.PartyFingerprint = string.Empty;
+                _s.Session = null;
+                _s.SessionStatus = string.Empty;
+                _s.Pc = null;
+                _s.PcEntity = null;
+                _s.PcError = string.Empty;
+                _s.PcId = string.Empty;
+                _s.CompanionIds.Clear();
+                _s.Companions.Clear();
+                _s.SearchResults.Clear();
+                SavePcId();
+                SaveCompanionIds();
+                _s.Driver.ResetConversation();
+                if (slug.Length > 0)
+                {
+                    _s.Transcript.Add(new TranscriptSegment
+                    {
+                        Kind = SegmentKind.System,
+                        Text = "Campaign “" + slug + "” is now active. The DM starts this table with a fresh conversation.",
+                    });
+                }
+            }
+            _prefs.Save();
+            _s.Notify(StateArea.Campaign | StateArea.Session | StateArea.Pc | StateArea.Companions | StateArea.Search | StateArea.Campaigns | StateArea.Driver);
+        }
+
+        /// <summary>
+        /// Folds a start_session digest in: ruleset, PC roster and party
+        /// fingerprint for the DM prompt, companions to track, and a default PC.
+        /// </summary>
+        public void ApplySession(SessionDigest digest)
+        {
+            _s.Session = digest;
+            _s.Prompts.PartyFingerprint = digest.Fingerprint;
+            if (!string.IsNullOrEmpty(digest.System)) { _s.Prompts.Ruleset = digest.System; }
+            var roster = new List<string>();
+            bool pcStillInParty = false;
+            foreach (var pc in digest.Pcs)
+            {
+                roster.Add(pc.Id + " — " + pc.Name);
+                if (pc.Id == _s.PcId) { pcStillInParty = true; }
+            }
+            if (roster.Count > 0) { _s.Prompts.PartyLine = string.Join("; ", roster.ToArray()); }
+            bool trackedNew = false;
+            foreach (var companion in digest.Companions)
+            {
+                if (!_s.CompanionIds.Contains(companion.Id)) { _s.CompanionIds.Add(companion.Id); trackedNew = true; }
+            }
+            if (trackedNew) { SaveCompanionIds(); }
+            if (!pcStillInParty && digest.Pcs.Count > 0)
+            {
+                _s.PcId = digest.Pcs[0].Id;
+                _s.Pc = null;
+                _s.PcEntity = null;
+                SavePcId();
+            }
+            _s.SessionStatus = DescribeSession(digest);
+            _s.Notify(StateArea.Session | StateArea.Pc | StateArea.Companions);
+        }
+
+        public static string DescribeSession(SessionDigest digest)
+        {
+            if (digest == null) { return string.Empty; }
+            var parts = new List<string> { "Session " + digest.SessionNumber + (digest.Resumed ? " (resumed)" : string.Empty) };
+            if (!string.IsNullOrEmpty(digest.CampaignDisplay)) { parts.Add(digest.CampaignDisplay); }
+            if (!string.IsNullOrEmpty(digest.Time)) { parts.Add(digest.Time); }
+            return string.Join(" · ", parts.ToArray());
+        }
+
+        private bool RequireCampaign(Action<string> onMissing)
+        {
+            if (_s.HasCampaign) { return true; }
+            onMissing("Pick a campaign first.");
+            return false;
+        }
+
+        /// <summary>Opens (or resumes) the session. Title only matters for a brand-new one.</summary>
+        public IEnumerator StartSession(string title)
+        {
+            yield return OpenSession(title, "session", true);
+        }
+
+        /// <summary>
+        /// Re-reads start_session for fresh HP, quests and pressures. The server
+        /// resumes the open session; it never forks a second one.
+        /// </summary>
+        public IEnumerator RefreshTable()
+        {
+            yield return OpenSession(null, "refresh", false);
+        }
+
+        private IEnumerator OpenSession(string title, string busyKey, bool announce)
+        {
+            if (!RequireCampaign(delegate (string m) { _s.SessionStatus = m; _s.Notify(StateArea.Session); })) { yield break; }
+            if (!_s.TryBeginBusy(busyKey)) { yield break; }
+            try
+            {
+                var args = CampaignArgs();
+                if (!string.IsNullOrEmpty(title)) { args.ObjectValue["title"] = JsonValue.FromString(title.Trim()); }
+                McpOutcome<ToolPayload> result = null;
+                yield return _s.Mcp.CallToolData(_s.Config, "play", "start_session", args, delegate (McpOutcome<ToolPayload> o) { result = o; });
+                if (result == null || !result.Ok)
+                {
+                    string error = "start_session failed: " + (result != null ? result.ErrorMessage : "no response");
+                    _s.SessionStatus = error;
+                    _s.Notify(StateArea.Session);
+                    _s.RaiseToast(error, ToastKind.Error);
+                    yield break;
+                }
+                ApplySession(SessionDigest.FromResult(result.Data.Data));
+                if (announce)
+                {
+                    _s.RaiseToast("Session " + _s.Session.SessionNumber + " open" + (_s.Session.Resumed ? " (resumed)." : "."), ToastKind.Success);
+                }
+            }
+            finally { _s.EndBusy(busyKey); }
+        }
+
+        /// <summary>
+        /// Checkpoint stores the handoff and keeps the session open; end closes
+        /// it. Validation problems land in HandoffIssues without a server call.
+        /// </summary>
+        public IEnumerator EndSession(HandoffDraft draft, bool checkpoint)
+        {
+            _s.HandoffIssues.Clear();
+            if (!_s.HasCampaign)
+            {
+                _s.HandoffIssues.Add("Pick a campaign first.");
+                _s.Notify(StateArea.Session);
+                yield break;
+            }
+            var threads = RosterParser.ParseLines(draft.Threads);
+            var npcs = RosterParser.ParseStances(draft.Npcs);
+            var issues = HandoffBuilder.Validate(draft.StorySoFar, draft.LastSession, threads, npcs, draft.Intent, draft.Tone);
+            if (issues.Count > 0)
+            {
+                _s.HandoffIssues.AddRange(issues);
+                _s.Notify(StateArea.Session);
+                yield break;
+            }
+            if (!_s.TryBeginBusy("handoff")) { yield break; }
+            try
+            {
+                var args = HandoffBuilder.BuildArgs(_s.CampaignSlug, draft.StorySoFar, draft.LastSession, threads, npcs, draft.Intent, draft.Tone, checkpoint);
+                McpOutcome<ToolPayload> result = null;
+                yield return _s.Mcp.CallToolData(_s.Config, "play", "end_session", args, delegate (McpOutcome<ToolPayload> o) { result = o; });
+                if (result == null || !result.Ok)
+                {
+                    _s.HandoffIssues.Add("end_session failed: " + (result != null ? result.ErrorMessage : "no response"));
+                    _s.Notify(StateArea.Session);
+                    yield break;
+                }
+                if (checkpoint)
+                {
+                    _s.SessionStatus = "Checkpoint stored — session still open.";
+                    _s.RaiseToast("Checkpoint stored.", ToastKind.Success);
+                }
+                else
+                {
+                    _s.Session = null;
+                    _s.SessionStatus = "Session ended. The handoff carries the story forward.";
+                    _s.RaiseToast("Session ended with handoff.", ToastKind.Success);
+                }
+                _s.Notify(StateArea.Session);
+            }
+            finally { _s.EndBusy("handoff"); }
+        }
+
+        /// <summary>Downtime goes through the DM so it's committed and narrated, not silently applied.</summary>
+        public bool AdvanceDays(int days)
+        {
+            if (days < 1) { days = 1; }
+            return SendPlayerText("[Table action] Advance the calendar " + days + " days, then tell what changes.");
+        }
+
+        // =====================================================================
+        // Chat
+        // =====================================================================
+
+        /// <summary>Starts a DM turn. False (with a toast) when it can't: no provider, or a turn is running.</summary>
+        public bool SendPlayerText(string text)
+        {
+            if (!CanSend(text)) { return false; }
+            Run(SendPlayerTextRoutine(text));
+            return true;
+        }
+
+        public IEnumerator SendPlayerTextRoutine(string text)
+        {
+            if (!CanSend(text)) { yield break; }
+            _s.Transcript.Add(new TranscriptSegment { Kind = SegmentKind.Player, Text = text.Trim() });
+            _s.Notify(StateArea.Driver);
+            yield return _s.Driver.SendPlayerText(text.Trim(), _s.Transcript, delegate { _s.Notify(StateArea.Driver); });
+        }
+
+        private bool CanSend(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) { return false; }
+            string notReady;
+            if (!_s.Byok.Validate(out notReady))
+            {
+                _s.RaiseToast("Chat needs an AI provider: " + notReady, ToastKind.Warning);
+                _s.RequestSetup();
+                return false;
+            }
+            if (_s.Driver.IsBusy)
+            {
+                _s.RaiseToast("The DM is still resolving the last action.", ToastKind.Info);
+                return false;
+            }
+            return true;
+        }
+
+        public void CancelTurn()
+        {
+            _s.Driver.Cancel();
+            _s.Notify(StateArea.Driver);
+        }
+
+        /// <summary>The turn ledger as markdown (see TranscriptExport), for measurement.</summary>
+        public string TranscriptMarkdown()
+        {
+            return TranscriptExport.ToMarkdown(_s.CampaignSlug, _s.Ruleset, _s.Driver.Turns, _s.Driver.SessionUsage);
+        }
+
+        /// <summary>Writes the transcript under dir (default: persistentDataPath/Exports); returns the file path, or null.</summary>
+        public string ExportTranscript(string dir = null)
+        {
+            try
+            {
+                dir = dir ?? System.IO.Path.Combine(Application.persistentDataPath, "Exports");
+                System.IO.Directory.CreateDirectory(dir);
+                string slug = string.IsNullOrEmpty(_s.CampaignSlug) ? "no-campaign" : _s.CampaignSlug;
+                string path = System.IO.Path.Combine(dir, "transcript-" + slug + "-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".md");
+                System.IO.File.WriteAllText(path, TranscriptMarkdown());
+                return path;
+            }
+            catch (Exception ex)
+            {
+                _s.RaiseToast("Export failed: " + ex.Message, ToastKind.Error);
+                return null;
+            }
+        }
+
+        // =====================================================================
+        // Party
+        // =====================================================================
+
+        public void SetPcId(string id)
+        {
+            id = (id ?? string.Empty).Trim();
+            if (id.Length == 0 || id == _s.PcId) { return; }
+            _s.PcId = id;
+            _s.Pc = null;
+            _s.PcEntity = null;
+            SavePcId();
+            _s.Notify(StateArea.Pc);
+        }
+
+        public IEnumerator LoadPc()
+        {
+            if (!_s.TryBeginBusy("pc")) { yield break; }
+            try
+            {
+                McpOutcome<JsonValue> result = null;
+                yield return GetCharacter(_s.PcId, delegate (McpOutcome<JsonValue> o) { result = o; });
+                if (!result.Ok)
+                {
+                    _s.PcError = result.ErrorMessage;
+                    _s.Pc = null;
+                    _s.Notify(StateArea.Pc);
+                    yield break;
+                }
+                _s.PcEntity = result.Data;
+                _s.Driver.PcCard = Storyteller.PcCard(result.Data);
+                var sheet = PcSheet.FromEntity(result.Data);
+                if (string.IsNullOrEmpty(sheet.Ruleset)) { sheet.Ruleset = _s.Ruleset; }
+                _s.Pc = sheet;
+                _s.PcError = string.Empty;
+                _s.Notify(StateArea.Pc);
+            }
+            finally { _s.EndBusy("pc"); }
+        }
+
+        /// <summary>get_entity for a character in the active campaign: the character entity alone. Bare ids get the chars/ prefix.</summary>
+        public IEnumerator GetCharacter(string id, Action<McpOutcome<JsonValue>> done)
+        {
+            yield return GetCharacterDetail(id, delegate (McpOutcome<JsonValue> o)
+            {
+                if (!o.Ok) { done(o); return; }
+                var character = o.Data.Get("character");
+                done(McpOutcome<JsonValue>.Success(character.Kind == JsonKind.Object ? character : o.Data));
+            });
+        }
+
+        /// <summary>
+        /// get_entity's whole answer for a character: the entity plus equipped/carried gear, recent
+        /// interactions and needs, which the sheet shows.
+        /// </summary>
+        public IEnumerator GetCharacterDetail(string id, Action<McpOutcome<JsonValue>> done)
+        {
+            if (!_s.HasCampaign)
+            {
+                done(McpOutcome<JsonValue>.Fail("NO_CAMPAIGN", "pick a campaign first."));
+                yield break;
+            }
+            string entityId = (id ?? string.Empty).Trim();
+            if (entityId.Length == 0)
+            {
+                done(McpOutcome<JsonValue>.Fail("NO_ID", "no character selected."));
+                yield break;
+            }
+            if (entityId.IndexOf('/') < 0) { entityId = "chars/" + entityId; }
+            var args = CampaignArgs();
+            args.ObjectValue["entityId"] = JsonValue.FromString(entityId);
+            McpOutcome<ToolPayload> result = null;
+            yield return _s.Mcp.CallToolData(_s.Config, _s.Config.ActiveConnector(), "get_entity", args,
+                delegate (McpOutcome<ToolPayload> o) { result = o; });
+            if (result == null || !result.Ok)
+            {
+                done(McpOutcome<JsonValue>.Fail(result != null ? result.ErrorCode : "MCP", result != null ? result.ErrorMessage : "no response"));
+                yield break;
+            }
+            if (result.Data.Data.Kind != JsonKind.Object)
+            {
+                done(McpOutcome<JsonValue>.Fail("PROTOCOL", entityId + " is not a character."));
+                yield break;
+            }
+            done(McpOutcome<JsonValue>.Success(result.Data.Data));
+        }
+
+        public bool UseItem(InventoryItem item)
+        {
+            return SendPlayerText("[Table action] " + _s.PcId + " uses " + ItemRef(item) + ". Commit it.");
+        }
+
+        public bool ToggleEquip(InventoryItem item)
+        {
+            string verb = item.Equipped ? "unequips" : "equips";
+            return SendPlayerText("[Table action] " + _s.PcId + " " + verb + " " + ItemRef(item) + ". Commit it.");
+        }
+
+        private static string ItemRef(InventoryItem item)
+        {
+            return item.Name + (string.IsNullOrEmpty(item.Id) ? string.Empty : " (" + item.Id + ")");
+        }
+
+        public IEnumerator TrackCompanion(string id)
+        {
+            id = (id ?? string.Empty).Trim();
+            if (id.Length == 0 || _s.CompanionIds.Contains(id)) { yield break; }
+            _s.CompanionIds.Add(id);
+            SaveCompanionIds();
+            yield return LoadCompanions();
+        }
+
+        public void UntrackCompanion(string id)
+        {
+            if (!_s.CompanionIds.Remove(id)) { return; }
+            _s.Companions.RemoveAll(delegate (CompanionEntry e) { return e.Id == id; });
+            SaveCompanionIds();
+            _s.Notify(StateArea.Companions);
+        }
+
+        public IEnumerator LoadCompanions()
+        {
+            if (!_s.TryBeginBusy("companions")) { yield break; }
+            try
+            {
+                var entries = new List<CompanionEntry>();
+                foreach (string id in _s.CompanionIds.ToArray())
+                {
+                    McpOutcome<JsonValue> result = null;
+                    yield return GetCharacter(id, delegate (McpOutcome<JsonValue> o) { result = o; });
+                    entries.Add(new CompanionEntry
+                    {
+                        Id = id,
+                        Companion = result.Ok ? Companion.FromEntity(result.Data) : null,
+                        Error = result.Ok ? string.Empty : result.ErrorMessage,
+                    });
+                }
+                _s.Companions.Clear();
+                _s.Companions.AddRange(entries);
+                _s.Notify(StateArea.Companions);
+            }
+            finally { _s.EndBusy("companions"); }
+        }
+
+        // =====================================================================
+        // Campaigns + world
+        // =====================================================================
+
+        public IEnumerator ListCampaigns()
+        {
+            if (!_s.TryBeginBusy("campaigns")) { yield break; }
+            try
+            {
+                McpOutcome<ToolPayload> result = null;
+                yield return _s.Mcp.CallToolData(_s.Config, "build", "list_campaigns", JsonValue.NewObject(),
+                    delegate (McpOutcome<ToolPayload> o) { result = o; });
+                _s.CampaignsLoaded = true;
+                if (result == null || !result.Ok)
+                {
+                    _s.CampaignsError = result != null ? result.ErrorMessage : "no response";
+                    _s.Notify(StateArea.Campaigns);
+                    yield break;
+                }
+                _s.CampaignsError = string.Empty;
+                _s.Campaigns.Clear();
+                _s.Campaigns.AddRange(ExtractCampaigns(result.Data.Data));
+                _s.Notify(StateArea.Campaigns);
+            }
+            finally { _s.EndBusy("campaigns"); }
+        }
+
+        /// <summary>list_campaigns data: [{name (the slug), displayName, system, createdAt}].</summary>
+        internal static List<CampaignRow> ExtractCampaigns(JsonValue data)
+        {
+            var rows = new List<CampaignRow>();
+            if (data.Kind != JsonKind.Array || data.ArrayValue == null) { return rows; }
+            foreach (var entry in data.ArrayValue)
+            {
+                string slug = entry.GetStringAny(new[] { "name", "slug" }, string.Empty);
+                if (string.IsNullOrEmpty(slug)) { continue; }
+                rows.Add(new CampaignRow
+                {
+                    Slug = slug,
+                    Display = entry.GetString("displayName", slug),
+                    System = entry.GetString("system", string.Empty),
+                });
+            }
+            return rows;
+        }
+
+        /// <summary>Irreversible. The view owns the confirmation; the server requires the slug echoed back.</summary>
+        public IEnumerator DeleteCampaign(string slug)
+        {
+            if (!_s.TryBeginBusy("delete:" + slug)) { yield break; }
+            try
+            {
+                var args = JsonValue.NewObject();
+                args.ObjectValue["campaignName"] = JsonValue.FromString(slug);
+                args.ObjectValue["confirmName"] = JsonValue.FromString(slug);
+                McpOutcome<ToolPayload> result = null;
+                yield return _s.Mcp.CallToolData(_s.Config, "build", "delete_campaign", args, delegate (McpOutcome<ToolPayload> o) { result = o; });
+                if (result != null && result.Ok)
+                {
+                    if (_s.CampaignSlug == slug) { SelectCampaign(string.Empty, null); }
+                    _s.RaiseToast("Campaign “" + slug + "” deleted.", ToastKind.Success);
+                }
+                else
+                {
+                    _s.RaiseToast("Delete failed: " + (result != null ? result.ErrorMessage : "no response"), ToastKind.Error);
+                }
+            }
+            finally { _s.EndBusy("delete:" + slug); }
+            yield return ListCampaigns();
+        }
+
+        private const int MaxSearchHits = 12;
+
+        public IEnumerator SearchWorld(string query)
+        {
+            if (!RequireCampaign(delegate (string m) { _s.SearchError = m; _s.Notify(StateArea.Search); })) { yield break; }
+            if (!_s.TryBeginBusy("search")) { yield break; }
+            try
+            {
+                var args = CampaignArgs();
+                args.ObjectValue["query"] = JsonValue.FromString(query ?? string.Empty);
+                McpOutcome<ToolPayload> result = null;
+                yield return _s.Mcp.CallToolData(_s.Config, _s.Config.ActiveConnector(), "search_world", args,
+                    delegate (McpOutcome<ToolPayload> o) { result = o; });
+                _s.SearchResults.Clear();
+                if (result == null || !result.Ok)
+                {
+                    _s.SearchError = result != null ? result.ErrorMessage : "no response";
+                    _s.SearchSummary = string.Empty;
+                    _s.Notify(StateArea.Search);
+                    yield break;
+                }
+                _s.SearchError = string.Empty;
+                _s.SearchSummary = result.Data.Summary;
+                foreach (var match in result.Data.Data.GetArray("matches"))
+                {
+                    if (_s.SearchResults.Count >= MaxSearchHits) { break; }
+                    if (match.Kind != JsonKind.Object)
+                    {
+                        _s.SearchResults.Add(new SearchHit { Title = match.ToJson() });
+                        continue;
+                    }
+                    _s.SearchResults.Add(new SearchHit
+                    {
+                        Title = match.GetStringAny(new[] { "name", "title", "subject", "id" }, "(untitled)"),
+                        Id = match.GetString("id", string.Empty),
+                        Detail = match.GetStringAny(new[] { "description", "summary", "content", "text", "details" }, string.Empty),
+                    });
+                }
+                _s.Notify(StateArea.Search);
+            }
+            finally { _s.EndBusy("search"); }
+        }
+
+        private JsonValue CampaignArgs()
+        {
+            var args = JsonValue.NewObject();
+            args.ObjectValue["campaignName"] = JsonValue.FromString(_s.CampaignSlug);
+            return args;
+        }
+
+        // =====================================================================
+        // Onboarding
+        // =====================================================================
+
+        /// <summary>Client-side preview of the server's slug rule ("Dragon Heist" → dragon-heist).</summary>
+        public static string Slugify(string name)
+        {
+            var sb = new System.Text.StringBuilder();
+            bool dash = false;
+            foreach (char c in (name ?? string.Empty).Trim().ToLowerInvariant())
+            {
+                if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) { sb.Append(c); dash = false; }
+                else if (!dash && sb.Length > 0) { sb.Append('-'); dash = true; }
+            }
+            return sb.ToString().TrimEnd('-');
+        }
+
+        /// <summary>
+        /// Opens the questionnaire. Name, display name and system are answered
+        /// up front and submitted automatically when their questions come up.
+        /// </summary>
+        public IEnumerator BeginOnboarding(string name, string displayName, string system)
+        {
+            string slug = Slugify(name);
+            var ob = _s.Onboarding;
+            if (slug.Length == 0)
+            {
+                ob.Error = "Give the campaign a name.";
+                _s.Notify(StateArea.Onboarding);
+                yield break;
+            }
+            ob.Prefilled.Clear();
+            ob.Slug = slug;
+            ob.System = string.IsNullOrEmpty(system) ? OnboardingState.SystemOptions[0] : system;
+            ob.Prefilled["campaign_name"] = string.IsNullOrEmpty((displayName ?? string.Empty).Trim()) ? name.Trim() : displayName.Trim();
+            ob.Prefilled["system"] = ob.System;
+            yield return FetchOnboarding();
+        }
+
+        public IEnumerator ResumeOnboarding(string slug)
+        {
+            slug = (slug ?? string.Empty).Trim();
+            if (slug.Length == 0) { yield break; }
+            _s.Onboarding.Prefilled.Clear();
+            _s.Onboarding.Slug = slug;
+            yield return FetchOnboarding();
+        }
+
+        private IEnumerator FetchOnboarding()
+        {
+            var ob = _s.Onboarding;
+            SetOnboarding(OnboardingPhase.Working, "Opening onboarding…");
+            var args = JsonValue.NewObject();
+            args.ObjectValue["campaignName"] = JsonValue.FromString(ob.Slug);
+            McpOutcome<ToolPayload> result = null;
+            yield return _s.Mcp.CallToolData(_s.Config, "build", "start_campaign_onboarding", args, delegate (McpOutcome<ToolPayload> o) { result = o; });
+            if (result == null || !result.Ok)
+            {
+                ob.Error = "Onboarding failed: " + (result != null ? result.ErrorMessage : "no response");
+                SetOnboarding(OnboardingPhase.Failed, string.Empty);
+                yield break;
+            }
+            // The server's normalized slug is authoritative for every later call.
+            string serverSlug = result.Data.Data.Get("state").GetString("campaignSlug", string.Empty);
+            if (!string.IsNullOrEmpty(serverSlug)) { ob.Slug = serverSlug; }
+            yield return AdvanceOnboarding(result.Data.Data);
+        }
+
+        /// <summary>Shows the next question, auto-answering prefilled ones.</summary>
+        private IEnumerator AdvanceOnboarding(JsonValue payload)
+        {
+            var ob = _s.Onboarding;
+            while (true)
+            {
+                var question = Pick(payload, "currentQuestion", "CurrentQuestion");
+                bool ready = payload.GetBool("isReadyToBuild", payload.GetBool("IsReadyToBuild", false))
+                    || payload.Get("state").GetBool("isComplete", false);
+                ob.Answered = (int)payload.Get("state").GetNumber("currentQuestionIndex", ob.Answered);
+                ob.Progress = TextSanitizer.Clean(payload.GetString("summary", string.Empty), 160);
+                if (ready || question.IsNull)
+                {
+                    ob.Question = null;
+                    SetOnboarding(OnboardingPhase.ReadyToFinalize, string.Empty);
+                    yield break;
+                }
+                var parsed = ParseQuestion(question);
+                string prefilled;
+                if (!ob.Prefilled.TryGetValue(parsed.Key, out prefilled))
+                {
+                    ob.Question = parsed;
+                    ob.Error = string.Empty;
+                    SetOnboarding(OnboardingPhase.Question, string.Empty);
+                    yield break;
+                }
+                ob.Prefilled.Remove(parsed.Key);
+                JsonValue next = null;
+                yield return PostAnswer(prefilled, delegate (JsonValue p) { next = p; });
+                if (next == null) { yield break; }
+                payload = next;
+            }
+        }
+
+        internal static OnboardingQuestion ParseQuestion(JsonValue question)
+        {
+            var q = new OnboardingQuestion
+            {
+                Key = question.GetString("key", string.Empty),
+                Text = TextSanitizer.Clean(question.GetStringAny(new[] { "text", "Text" }, string.Empty), 800),
+                Help = TextSanitizer.Clean(question.GetStringAny(new[] { "helpText", "HelpText" }, string.Empty), 800),
+            };
+            var options = question.GetArray("enumOptions");
+            if (options.Count == 0) { options = question.GetArray("EnumOptions"); }
+            foreach (var o in options) { if (o.Kind == JsonKind.String) { q.Options.Add(o.StringValue); } }
+            var raw = Pick(question, "answerType", "AnswerType");
+            int n = -1;
+            if (raw.Kind == JsonKind.Number) { n = (int)raw.NumberValue; }
+            else if (raw.Kind == JsonKind.String)
+            {
+                string text = raw.StringValue.ToLowerInvariant();
+                if (text.Contains("enum") || text.Contains("option") || text.Contains("choice")) { n = 1; }
+                else if (text.Contains("bool")) { n = 2; }
+                else if (text.Contains("list") || text.Contains("array")) { n = 3; }
+            }
+            switch (n)
+            {
+                case 1: q.Type = q.Options.Count > 0 ? AnswerType.Choice : AnswerType.Text; break;
+                case 2: q.Type = AnswerType.YesNo; break;
+                case 3: q.Type = AnswerType.List; break;
+                default: q.Type = AnswerType.Text; break;
+            }
+            return q;
+        }
+
+        /// <summary>A list answer typed one entry per line, in the server's "a; b; c" form.</summary>
+        public static string FormatListAnswer(string lines)
+        {
+            return string.Join("; ", RosterParser.ParseLines(lines).ToArray());
+        }
+
+        public IEnumerator SubmitOnboardingAnswer(string answer)
+        {
+            answer = (answer ?? string.Empty).Trim();
+            if (answer.Length == 0 || _s.Onboarding.Phase == OnboardingPhase.Working) { yield break; }
+            JsonValue next = null;
+            yield return PostAnswer(answer, delegate (JsonValue p) { next = p; });
+            if (next != null) { yield return AdvanceOnboarding(next); }
+        }
+
+        /// <summary>"Name — detail" lines as one party answer; also primes the DM prompt's party line.</summary>
+        public IEnumerator SubmitRosterAnswer(string rosterText)
+        {
+            var entries = RosterParser.Parse(rosterText);
+            if (entries.Count == 0) { yield break; }
+            string answer = RosterParser.FormatPartyLine(entries);
+            _s.Prompts.PartyLine = answer;
+            yield return SubmitOnboardingAnswer(answer);
+        }
+
+        private IEnumerator PostAnswer(string answer, Action<JsonValue> done)
+        {
+            var ob = _s.Onboarding;
+            SetOnboarding(OnboardingPhase.Working, "Answering…");
+            var args = JsonValue.NewObject();
+            args.ObjectValue["campaignName"] = JsonValue.FromString(ob.Slug);
+            args.ObjectValue["answer"] = JsonValue.FromString(answer);
+            McpOutcome<ToolPayload> result = null;
+            yield return _s.Mcp.CallToolData(_s.Config, "build", "submit_onboarding_answer", args, delegate (McpOutcome<ToolPayload> o) { result = o; });
+            if (result == null || !result.Ok)
+            {
+                // Re-fetch the current question so the player can correct the answer.
+                _s.RaiseToast("Answer rejected: " + (result != null ? result.ErrorMessage : "no response"), ToastKind.Warning);
+                done(null);
+                yield return FetchOnboarding();
+                yield break;
+            }
+            done(result.Data.Data);
+        }
+
+        public IEnumerator FinalizeOnboarding()
+        {
+            var ob = _s.Onboarding;
+            SetOnboarding(OnboardingPhase.Working, "Finalizing…");
+            var args = JsonValue.NewObject();
+            args.ObjectValue["campaignName"] = JsonValue.FromString(ob.Slug);
+            McpOutcome<ToolPayload> result = null;
+            yield return _s.Mcp.CallToolData(_s.Config, "build", "finalize_campaign_onboarding", args, delegate (McpOutcome<ToolPayload> o) { result = o; });
+            if (result == null || !result.Ok)
+            {
+                ob.Error = "Finalize failed: " + (result != null ? result.ErrorMessage : "no response");
+                SetOnboarding(OnboardingPhase.ReadyToFinalize, string.Empty);
+                yield break;
+            }
+            var finalized = result.Data.Data;
+            ob.DoneSummary = TextSanitizer.Clean(finalized.GetString("summary", result.Data.Summary), 1200);
+            ob.NextSteps.Clear();
+            foreach (var step in finalized.GetArray("nextSteps"))
+            {
+                if (step.Kind == JsonKind.String) { ob.NextSteps.Add(TextSanitizer.Clean(step.StringValue, 300)); }
+            }
+            SelectCampaign(ob.Slug, finalized.GetString("system", ob.System));
+            SetOnboarding(OnboardingPhase.Done, string.Empty);
+        }
+
+        /// <summary>After finalize: the DM seeds the world with world_build and opens the first session.</summary>
+        public bool SeedWorldThroughDm()
+        {
+            return SendPlayerText("OOC: seed the starter world for \"" + _s.Onboarding.Slug
+                + "\" with world_build from the onboarding answers, then start_session. Narrate the opening.");
+        }
+
+        public void ResetOnboarding()
+        {
+            var ob = _s.Onboarding;
+            ob.Prefilled.Clear();
+            ob.Slug = string.Empty;
+            ob.Question = null;
+            ob.Error = string.Empty;
+            ob.DoneSummary = string.Empty;
+            ob.NextSteps.Clear();
+            SetOnboarding(OnboardingPhase.Idle, string.Empty);
+        }
+
+        private void SetOnboarding(OnboardingPhase phase, string status)
+        {
+            _s.Onboarding.Phase = phase;
+            _s.Onboarding.Status = status;
+            if (phase != OnboardingPhase.Failed && phase != OnboardingPhase.ReadyToFinalize) { _s.Onboarding.Error = string.Empty; }
+            _s.Notify(StateArea.Onboarding);
+        }
+
+        private static JsonValue Pick(JsonValue obj, string camel, string pascal)
+        {
+            var v = obj.Get(camel);
+            return v.IsNull ? obj.Get(pascal) : v;
+        }
+
+        // =====================================================================
+        // Tools (plugin allowlist)
+        // =====================================================================
+
+        public IEnumerator LoadTools()
+        {
+            if (!_s.TryBeginBusy("tools")) { yield break; }
+            try
+            {
+                var tools = new List<ToolToggle>();
+                _s.ToolsErrors.Clear();
+                foreach (string connector in new[] { "play", "build" })
+                {
+                    McpOutcome<List<McpToolInfo>> listed = null;
+                    string captured = connector;
+                    yield return _s.Mcp.ListTools(_s.Config, captured, delegate (McpOutcome<List<McpToolInfo>> o) { listed = o; });
+                    if (listed == null || !listed.Ok)
+                    {
+                        _s.ToolsErrors[captured] = listed != null ? listed.ErrorMessage : "no response";
+                        continue;
+                    }
+                    foreach (var t in listed.Data)
+                    {
+                        tools.Add(new ToolToggle { Name = t.Name, Description = t.Description, Connector = captured });
+                    }
+                }
+                _s.Tools.Clear();
+                _s.Tools.AddRange(tools);
+                _s.Notify(StateArea.Tools);
+            }
+            finally { _s.EndBusy("tools"); }
+        }
+
+        public IEnumerator ReloadTools()
+        {
+            _s.Driver.InvalidateTools();
+            yield return LoadTools();
+        }
+
+        public void ToggleTool(string name)
+        {
+            var allowed = _s.Driver.AllowedTools;
+            if (allowed.Count == 0)
+            {
+                // Empty means "everything on": seed the full list first so this
+                // toggle disables just one tool.
+                foreach (var t in _s.Tools) { allowed.Add(t.Name); }
+            }
+            if (!allowed.Remove(name)) { allowed.Add(name); }
+            _s.Notify(StateArea.Tools);
+        }
+
+        public void EnableAllTools()
+        {
+            _s.Driver.AllowedTools.Clear();
+            _s.Notify(StateArea.Tools);
+        }
+
+        // =====================================================================
+        // Server connection + embedded server
+        // =====================================================================
+
+        /// <summary>
+        /// /health alone only proves the process is up; healthy here also
+        /// requires an MCP session and a tools/list on /play, which is what
+        /// everything else depends on.
+        /// </summary>
+        public IEnumerator CheckConnection()
+        {
+            if (!_s.TryBeginBusy("connection")) { yield break; }
+            try
+            {
+                _s.Connection = ConnectionStatus.Checking;
+                _s.ConnectionMessage = "Checking…";
+                _s.Notify(StateArea.Connection);
+                bool healthy = false;
+                string message = string.Empty;
+                yield return _s.Config.CheckHealth(delegate (bool ok, string msg) { healthy = ok; message = msg; });
+                if (!healthy)
+                {
+                    SetConnection(ConnectionStatus.Down, "Server: " + message);
+                    yield break;
+                }
+                _s.Mcp.ResetSessions();
+                McpOutcome<List<McpToolInfo>> tools = null;
+                yield return _s.Mcp.ListTools(_s.Config, "play", delegate (McpOutcome<List<McpToolInfo>> o) { tools = o; });
+                if (tools == null || !tools.Ok)
+                {
+                    SetConnection(ConnectionStatus.Down, "Server is up, but MCP failed: " + (tools != null ? tools.ErrorMessage : "no response"));
+                    yield break;
+                }
+                string versionWarning = EmbeddedServerSupport.VersionWarning(ServerHostManager.ExpectedVersion(), _s.Config.ReportedServerVersion);
+                SetConnection(ConnectionStatus.Healthy, "Healthy · MCP connected (" + tools.Data.Count + " play tools)"
+                    + (versionWarning != null ? " · " + versionWarning : string.Empty));
+                if (versionWarning != null) { _s.RaiseToast(versionWarning, ToastKind.Warning); }
+            }
+            finally { _s.EndBusy("connection"); }
+        }
+
+        private void SetConnection(ConnectionStatus status, string message)
+        {
+            _s.Connection = status;
+            _s.ConnectionMessage = message;
+            _s.Notify(StateArea.Connection);
+        }
+
+        public void SetServerUrl(string url)
+        {
+            _s.Config.ServerUrl = (url ?? string.Empty).Trim();
+            _prefs.SetString(PrefKeys.Server, _s.Config.ServerUrl);
+            _prefs.Save();
+            _s.Mcp.ResetSessions();
+            _s.Driver.InvalidateTools();
+            _s.PluginsLoaded = false;
+            SetConnection(ConnectionStatus.Unknown, string.Empty);
+        }
+
+        public void SetConnector(string connector)
+        {
+            _s.Config.Connector = connector == "build" ? "build" : "play";
+            _prefs.SetString(PrefKeys.Connector, _s.Config.Connector);
+            _prefs.Save();
+            _s.Driver.InvalidateTools();
+            _s.Notify(StateArea.Connection);
+        }
+
+        public void SetBearerToken(string token)
+        {
+            _s.Config.SetBearerToken(token);
+            _s.Mcp.ResetSessions();
+            _s.RaiseToast("Bearer token kept in memory only.", ToastKind.Info);
+        }
+
+        public void ClearBearerToken()
+        {
+            _s.Config.ClearSecrets();
+            _s.Mcp.ResetSessions();
+            _s.RaiseToast("Bearer token cleared.", ToastKind.Info);
+        }
+
+        /// <summary>Autostart only ever hijacks a loopback URL, never a remote server.</summary>
+        public IEnumerator AutostartEmbedded()
+        {
+            if (_s.Server == null || !_s.Server.AutoStart || !ServerHostManager.IsLoopbackUrl(_s.Config.ServerUrl)) { yield break; }
+            bool healthy = false;
+            yield return _s.Config.CheckHealth(delegate (bool ok, string msg) { healthy = ok; });
+            if (healthy) { yield break; }
+            yield return StartEmbedded(_s.Server.Port);
+        }
+
+        public IEnumerator StartEmbedded(int port)
+        {
+            if (_s.Server == null || _s.Server.IsRunning) { yield break; }
+            if (!_s.TryBeginBusy("embedded")) { yield break; }
+            try
+            {
+                _s.Server.Port = port;
+                _prefs.SetInt(PrefKeys.EmbeddedPort, port);
+                _prefs.Save();
+                _s.EmbeddedMessage = "Starting embedded server…";
+                _s.Notify(StateArea.Embedded);
+                bool started = false;
+                string message = string.Empty;
+                yield return _s.Server.StartEmbedded(delegate (bool ok, string msg) { started = ok; message = msg; }, delegate (string line)
+                {
+                    _s.EmbeddedMessage = line;
+                    _s.Notify(StateArea.Embedded);
+                });
+                _s.EmbeddedMessage = message;
+                if (started) { _s.PluginsLoaded = false; }
+                _s.Notify(StateArea.Embedded);
+                _s.RaiseToast(started ? "Embedded server started." : "Embedded server: " + message, started ? ToastKind.Success : ToastKind.Warning);
+            }
+            finally { _s.EndBusy("embedded"); }
+        }
+
+        public void StopEmbedded()
+        {
+            if (_s.Server == null) { return; }
+            _s.Server.StopEmbedded();
+            _s.EmbeddedMessage = "Embedded server stopped.";
+            _s.Notify(StateArea.Embedded);
+        }
+
+        /// <summary>
+        /// Saves the RavenDB license the embedded server starts with: input is
+        /// the license JSON itself or a path to a file holding it. Takes effect
+        /// on the next server start.
+        /// </summary>
+        public bool SaveRavenLicense(string input)
+        {
+            if (_s.Server == null) { return false; }
+            string text = (input ?? string.Empty).Trim();
+            if (text.Length == 0) { _s.RaiseToast("Paste the license, or the path to its file.", ToastKind.Warning); return false; }
+            if (!text.StartsWith("{", StringComparison.Ordinal))
+            {
+                string path = text.Trim('"');
+                if (!System.IO.File.Exists(path)) { _s.RaiseToast("No license file at " + path, ToastKind.Warning); return false; }
+                try { text = System.IO.File.ReadAllText(path); }
+                catch (System.IO.IOException ex) { _s.RaiseToast("Couldn't read the license file: " + ex.Message, ToastKind.Warning); return false; }
+            }
+            string name, error;
+            if (!EmbeddedServerSupport.ValidateLicense(text, out name, out error)) { _s.RaiseToast(error, ToastKind.Warning); return false; }
+            try
+            {
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(_s.Server.LicensePath));
+                System.IO.File.WriteAllText(_s.Server.LicensePath, text.Trim());
+            }
+            catch (Exception ex) when (ex is System.IO.IOException || ex is UnauthorizedAccessException)
+            {
+                _s.RaiseToast("Couldn't save the license: " + ex.Message, ToastKind.Warning);
+                return false;
+            }
+            _s.RaiseToast("RavenDB license saved" + (name.Length > 0 ? " (" + name + ")" : string.Empty)
+                + (_s.Server.IsRunning ? ". Restart the server to apply it." : "."), ToastKind.Success);
+            _s.Notify(StateArea.Embedded);
+            return true;
+        }
+
+        public void RemoveRavenLicense()
+        {
+            if (_s.Server == null) { return; }
+            EmbeddedServerSupport.TryDelete(_s.Server.LicensePath);
+            _s.RaiseToast("RavenDB license removed" + (_s.Server.IsRunning ? ". Restart the server to apply it." : "."), ToastKind.Info);
+            _s.Notify(StateArea.Embedded);
+        }
+
+        /// <summary>Who the saved license is for, "" when it has no name, or null when none is saved.</summary>
+        public string RavenLicenseHolder()
+        {
+            if (_s.Server == null || !System.IO.File.Exists(_s.Server.LicensePath)) { return null; }
+            string name, error;
+            try
+            {
+                return EmbeddedServerSupport.ValidateLicense(System.IO.File.ReadAllText(_s.Server.LicensePath), out name, out error) ? name : string.Empty;
+            }
+            catch (System.IO.IOException) { return string.Empty; }
+        }
+
+        public void SetEmbeddedAutostart(bool autostart)
+        {
+            if (_s.Server == null) { return; }
+            _s.Server.AutoStart = autostart;
+            _prefs.SetInt(PrefKeys.EmbeddedAutostart, autostart ? 1 : 0);
+            _prefs.Save();
+            _s.Notify(StateArea.Embedded);
+        }
+
+        // =====================================================================
+        // Plugins (N6): listed from any server, managed only on the embedded one
+        // =====================================================================
+
+        /// <summary>
+        /// Install, uninstall and enable/disable change the built-in server's
+        /// folders, so they're offered only while connected to it (or to the
+        /// loopback address it will run on, when it's stopped).
+        /// </summary>
+        public bool CanManagePlugins
+        {
+            get
+            {
+                if (_s.Server == null || !ServerHostManager.IsLoopbackUrl(_s.Config.ServerUrl)) { return false; }
+                if (!_s.Server.IsRunning) { return true; }
+                return string.Equals(_s.Config.ServerUrl.TrimEnd('/'), "http://127.0.0.1:" + _s.Server.ActivePort, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        public IEnumerator LoadPlugins()
+        {
+            if (!_s.TryBeginBusy("plugins")) { yield break; }
+            try
+            {
+                bool ok = false;
+                string body = string.Empty;
+                yield return _s.Config.GetText("/plugins", delegate (bool o, string b) { ok = o; body = b; });
+                List<PluginEntry> plugins;
+                string engine;
+                if (!ok)
+                {
+                    _s.PluginsError = body.Contains("404") ? "This server is older than the plugin manager (no /plugins)." : "Couldn't read the server's plugins: " + body;
+                }
+                else if (!PluginPackages.TryParseListing(body, out plugins, out engine))
+                {
+                    _s.PluginsError = "The server's /plugins reply wasn't understood.";
+                }
+                else
+                {
+                    _s.Plugins.Clear();
+                    _s.Plugins.AddRange(plugins);
+                    _s.PluginsEngineVersion = engine;
+                    _s.PluginsError = string.Empty;
+                }
+                _s.PluginsLoaded = true;
+                _s.Notify(StateArea.Plugins);
+            }
+            finally { _s.EndBusy("plugins"); }
+        }
+
+        /// <summary>Enables or disables a plugin id for the next embedded server start.</summary>
+        public void SetPluginEnabled(string id, bool enabled)
+        {
+            if (!CanManagePlugins) { return; }
+            try
+            {
+                if (PluginPackages.SetDisabled(_s.Server.DisabledPluginsFile, id, !enabled)) { MarkPluginsChanged(id, enabled); }
+            }
+            catch (Exception ex) when (ex is System.IO.IOException || ex is UnauthorizedAccessException)
+            {
+                _s.RaiseToast("Couldn't save the plugin list: " + ex.Message, ToastKind.Warning);
+            }
+        }
+
+        public bool IsPluginDisabled(string id)
+        {
+            return _s.Server != null && PluginPackages.ReadDisabled(_s.Server.DisabledPluginsFile).Contains(id);
+        }
+
+        /// <summary>User-installed packages on disk (id to folder), including ones the server hasn't loaded yet.</summary>
+        public Dictionary<string, string> InstalledPlugins()
+        {
+            return _s.Server != null ? PluginPackages.ScanInstalled(_s.Server.UserPluginsDir) : new Dictionary<string, string>();
+        }
+
+        /// <summary>
+        /// Checks a zip for install: a readable package, no unsafe paths, an
+        /// id not already on the server or in the plugins folder, a server
+        /// new enough. Toasts the reason and returns null when it can't go in.
+        /// </summary>
+        public PluginZipInfo CheckPluginZip(string path)
+        {
+            if (!CanManagePlugins) { _s.RaiseToast("Plugins can only be installed on the built-in server.", ToastKind.Warning); return null; }
+            string zip = (path ?? string.Empty).Trim().Trim('"');
+            if (zip.Length == 0) { _s.RaiseToast("Enter the path to the plugin's .zip file.", ToastKind.Warning); return null; }
+            PluginZipInfo info;
+            string error;
+            if (!PluginPackages.Inspect(zip, out info, out error)) { _s.RaiseToast(error, ToastKind.Warning); return null; }
+            var known = new List<string>(InstalledPlugins().Keys);
+            foreach (var p in _s.Plugins) { known.Add(p.Id); }
+            string engine = _s.PluginsEngineVersion.Length > 0 ? _s.PluginsEngineVersion : ServerHostManager.ExpectedVersion();
+            string blocker = PluginPackages.InstallBlocker(info, known, engine);
+            if (blocker != null) { _s.RaiseToast(blocker, ToastKind.Warning); return null; }
+            return info;
+        }
+
+        /// <summary>Extracts a checked zip into the user plugins folder; it loads on the next server start.</summary>
+        public bool InstallPlugin(PluginZipInfo info)
+        {
+            if (info == null || !CanManagePlugins) { return false; }
+            try
+            {
+                PluginPackages.Install(info, _s.Server.UserPluginsDir);
+            }
+            catch (Exception ex) when (ex is System.IO.IOException || ex is UnauthorizedAccessException || ex is System.IO.InvalidDataException)
+            {
+                _s.RaiseToast("Couldn't install " + info.Name + ": " + ex.Message, ToastKind.Warning);
+                return false;
+            }
+            _s.RaiseToast(info.Name + " " + info.Version + " installed" + (_s.Server.IsRunning ? ". Restarting the server to load it…" : "; it loads when the server starts."), ToastKind.Success);
+            MarkPluginsChanged(info.Id, true);
+            return true;
+        }
+
+        public bool UninstallPlugin(string id)
+        {
+            if (!CanManagePlugins) { return false; }
+            string error;
+            if (!PluginPackages.Uninstall(_s.Server.UserPluginsDir, id, out error)) { _s.RaiseToast(error, ToastKind.Warning); return false; }
+            try { PluginPackages.SetDisabled(_s.Server.DisabledPluginsFile, id, false); }
+            catch (System.IO.IOException) { }
+            _s.RaiseToast("Plugin removed" + (_s.Server.IsRunning ? ". Restarting the server to unload it…" : "."), ToastKind.Info);
+            MarkPluginsChanged(id, false);
+            return true;
+        }
+
+        /// <summary>
+        /// Quiet time after the last plugin change before the automatic
+        /// restart, so flipping several switches restarts the server once.
+        /// </summary>
+        public float PluginRestartDelay = 1.5f;
+
+        private bool _pluginRestartScheduled;
+        private float _pluginRestartDue;
+        // What each changed plugin should look like after the restart: true = loaded.
+        private readonly Dictionary<string, bool> _pluginExpectations = new Dictionary<string, bool>(StringComparer.Ordinal);
+
+        private void MarkPluginsChanged(string id, bool expectLoaded)
+        {
+            bool running = _s.Server != null && _s.Server.IsRunning;
+            _s.PluginsRestartNeeded = running;
+            if (!string.IsNullOrEmpty(id)) { _pluginExpectations[id] = expectLoaded; }
+            _s.Notify(StateArea.Plugins);
+            if (!running) { return; }
+            _pluginRestartDue = Time.realtimeSinceStartup + PluginRestartDelay;
+            if (!_pluginRestartScheduled)
+            {
+                _pluginRestartScheduled = true;
+                Run(RestartWhenQuiet());
+            }
+        }
+
+        /// <summary>
+        /// The automatic restart: waits out the debounce, any turn in flight
+        /// (a restart mid-turn would fail its tool calls) and any other server
+        /// start/stop, then restarts unless someone already pressed the button.
+        /// </summary>
+        private IEnumerator RestartWhenQuiet()
+        {
+            try
+            {
+                while (Time.realtimeSinceStartup < _pluginRestartDue || _s.Driver.IsBusy || _s.IsBusy("embedded"))
+                {
+                    yield return null;
+                }
+                if (!_s.PluginsRestartNeeded) { yield break; }
+                yield return RestartEmbedded();
+            }
+            finally { _pluginRestartScheduled = false; }
+        }
+
+        /// <summary>
+        /// Stops and starts the embedded server so plugin changes apply, then
+        /// re-reads the list, runs the health check (/health plus an MCP
+        /// tools/list) and checks each changed plugin landed as expected.
+        /// </summary>
+        public IEnumerator RestartEmbedded()
+        {
+            if (_s.Server == null) { yield break; }
+            int port = _s.Server.Port;
+            StopEmbedded();
+            yield return StartEmbedded(port);
+            if (!_s.Server.IsRunning)
+            {
+                _s.RaiseToast("The server didn't come back after the restart: " + _s.EmbeddedMessage, ToastKind.Warning);
+                yield break;
+            }
+            _s.PluginsRestartNeeded = false;
+            _s.Driver.InvalidateTools();
+            _s.Mcp.ResetSessions();
+            yield return LoadPlugins();
+            yield return CheckConnection();
+            if (_s.Connection != ConnectionStatus.Healthy)
+            {
+                _s.RaiseToast("The server restarted but failed its health check: " + _s.ConnectionMessage, ToastKind.Warning);
+                yield break;
+            }
+            string problems = PluginExpectationProblems(_pluginExpectations, _s.Plugins);
+            _pluginExpectations.Clear();
+            _s.RaiseToast(problems ?? "Server restarted; plugin changes applied.", problems == null ? ToastKind.Success : ToastKind.Warning);
+        }
+
+        /// <summary>Null when every changed plugin is loaded (or gone) as intended, else what went wrong.</summary>
+        public static string PluginExpectationProblems(IDictionary<string, bool> expectations, IList<PluginEntry> listed)
+        {
+            var problems = new List<string>();
+            foreach (var pair in expectations)
+            {
+                PluginEntry entry = null;
+                foreach (var p in listed) { if (p.Id == pair.Key) { entry = p; break; } }
+                bool loaded = entry != null && entry.Loaded;
+                if (pair.Value && !loaded)
+                {
+                    string why = entry == null ? "the server didn't find it"
+                        : entry.Errors.Count > 0 ? string.Join("; ", entry.Errors.ToArray()) : "no error reported";
+                    problems.Add((entry != null && entry.Name.Length > 0 ? entry.Name : pair.Key) + " didn't load: " + why);
+                }
+                else if (!pair.Value && loaded)
+                {
+                    problems.Add((entry.Name.Length > 0 ? entry.Name : pair.Key) + " is still loaded");
+                }
+            }
+            return problems.Count == 0 ? null : string.Join(". ", problems.ToArray()) + ".";
+        }
+
+        public void OpenPluginsFolder()
+        {
+            if (_s.Server == null) { return; }
+            try { System.IO.Directory.CreateDirectory(_s.Server.UserPluginsDir); }
+            catch (System.IO.IOException) { }
+            Application.OpenURL(new Uri(_s.Server.UserPluginsDir).AbsoluteUri);
+        }
+
+        // =====================================================================
+        // AI provider profiles (one source of truth for Settings and Setup)
+        // =====================================================================
+
+        public void SelectProfile(int index)
+        {
+            _s.Byok.ActiveIndex = Mathf.Clamp(index, 0, _s.Byok.Profiles.Count - 1);
+            _s.Byok.Save();
+            _s.Notify(StateArea.Providers);
+        }
+
+        public void AddProfile(string presetId)
+        {
+            _s.Byok.AddProfile(presetId);
+            _s.Byok.Save();
+            _s.Notify(StateArea.Providers);
+        }
+
+        public void ApplyPreset(string presetId)
+        {
+            _s.Byok.ApplyPreset(_s.Byok.Active, presetId);
+            _s.Notify(StateArea.Providers);
+        }
+
+        /// <summary>Copies the edited fields into the active profile. A blank key keeps the saved one.</summary>
+        public bool SaveProfile(ProviderProfile edited, string newKey, out string reason)
+        {
+            var p = _s.Byok.Active;
+            if (!string.IsNullOrEmpty((edited.Name ?? string.Empty).Trim())) { p.Name = edited.Name.Trim(); }
+            p.BaseUrl = (edited.BaseUrl ?? string.Empty).Trim();
+            p.Model = (edited.Model ?? string.Empty).Trim();
+            p.Temperature = Mathf.Clamp(edited.Temperature, 0f, 2f);
+            p.MaxTokens = Math.Max(0, edited.MaxTokens);
+            p.ReasoningEffort = edited.ReasoningEffort ?? string.Empty;
+            p.DisableStreaming = edited.DisableStreaming;
+            p.SinglePass = edited.SinglePass;
+            if (!string.IsNullOrEmpty((newKey ?? string.Empty).Trim())) { _s.Byok.SetApiKey(newKey); }
+            _s.Byok.Save();
+            bool ok = _s.Byok.Validate(out reason);
+            _s.Notify(StateArea.Providers | StateArea.Driver);
+            return ok;
+        }
+
+        public IEnumerator TestProvider(Action<bool, string> done)
+        {
+            yield return _s.Byok.TestConnection(done);
+        }
+
+        public void ForgetProviderKey()
+        {
+            _s.Byok.ClearSecrets();
+            _s.Notify(StateArea.Providers);
+        }
+
+        public void DeleteProfile()
+        {
+            _s.Byok.DeleteActive();
+            _s.Byok.Save();
+            _s.Notify(StateArea.Providers | StateArea.Driver);
+        }
+    }
+}

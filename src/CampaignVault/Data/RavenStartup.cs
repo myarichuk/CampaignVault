@@ -9,13 +9,18 @@ namespace CampaignVault.Data;
 
 public static class RavenStartup
 {
-    public static IDocumentStore Initialize(string dbPath)
+    public static IDocumentStore Initialize(string dbPath, ServerOptions.LicensingOptions? licensing = null)
     {
-        EmbeddedServer.Instance.StartServer(new ServerOptions
+        var serverOptions = new ServerOptions
         {
             DataDirectory = dbPath,
             ServerUrl = "http://127.0.0.1:0" // Use a random port
-        });
+        };
+        if (licensing is not null)
+        {
+            serverOptions.Licensing = licensing;
+        }
+        EmbeddedServer.Instance.StartServer(serverOptions);
 
         // AdvanceWorld/pressure evaluation are composed of many independent, small per-rule and
         // per-contributor queries (deliberately isolated/pluggable rather than batched into one big

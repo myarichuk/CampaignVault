@@ -1,0 +1,43 @@
+{
+  "locations": [
+    { "id": "locations/salt-archive", "name": "The Salt Archive", "description": "A library cut into a salt cliff; the shelves sweat in the heat of the lamps.", "climateZone": "Temperate", "ambientCrowd": "two sleepy archivists", "dangerModifier": 0 }
+  ],
+  "characters": [
+    {
+      "id": "chars/liesl", "name": "Liesl Varn", "isPc": true, "classLevel": "Wizard 4",
+      "currentLocationId": "locations/salt-archive", "currentActivity": "Copying a salt-stained map",
+      "currentAppearance": "A thin elf with ink on her cuffs and a staff of pale driftwood.",
+      "systemStats": {
+        "$system": "pf2e", "level": 4, "ancestry": "Elf", "heritage": "Ancient Elf", "background": "Scholar",
+        "classHpPerLevel": 6, "ancestryHp": 6,
+        "strengthMod": 0, "dexterityMod": 2, "constitutionMod": 1, "intelligenceMod": 4, "wisdomMod": 1, "charismaMod": 0,
+        "skillProficiencies": { "arcana": "Expert", "society": "Trained", "occultism": "Trained", "crafting": "Trained" },
+        "saveProficiencies": { "fortitude": "Trained", "reflex": "Trained", "will": "Expert" },
+        "spellcastingAbility": "intelligence", "spellcastingProficiency": "Trained"
+      }
+    },
+    {
+      "id": "chars/brakk", "name": "Brakk", "isPartyCompanion": true, "classLevel": "Fighter 3",
+      "currentLocationId": "locations/salt-archive", "currentActivity": "Guarding the door",
+      "currentAppearance": "A half-orc sellsword with a salt-crusted greataxe.",
+      "systemStats": {
+        "$system": "pf2e", "level": 3, "ancestry": "Orc", "background": "Guard",
+        "classHpPerLevel": 10, "ancestryHp": 10,
+        "strengthMod": 4, "dexterityMod": 1, "constitutionMod": 2, "intelligenceMod": -1, "wisdomMod": 1, "charismaMod": 0,
+        "skillProficiencies": { "athletics": "Expert", "intimidation": "Trained" },
+        "saveProficiencies": { "fortitude": "Expert", "reflex": "Trained", "will": "Trained" }
+      }
+    },
+    { "id": "chars/archivist-orla", "name": "Archivist Orla", "currentLocationId": "locations/salt-archive", "currentActivity": "Pretending not to watch", "notes": "Keeps the restricted stacks. Sells secrets." }
+  ],
+  "items": [
+    { "id": "items/liesl-staff", "name": "Driftwood Staff", "holderId": "chars/liesl", "isEquipped": true },
+    { "id": "items/liesl-spellbook", "name": "Spellbook", "holderId": "chars/liesl", "description": "Salt-warped vellum." },
+    { "id": "items/liesl-map", "name": "Salt-stained Map", "holderId": "chars/liesl" },
+    { "id": "items/brakk-axe", "name": "Greataxe", "definitionName": "greataxe", "holderId": "chars/brakk", "isEquipped": true }
+  ],
+  "quests": [
+    { "id": "quests/missing-folio", "title": "The Missing Folio", "giverId": "chars/archivist-orla", "relatedLocationIds": [ "locations/salt-archive" ], "deadlineDay": 2,
+      "objectives": [ { "description": "Find who took the folio from the restricted stacks" } ] }
+  ]
+}

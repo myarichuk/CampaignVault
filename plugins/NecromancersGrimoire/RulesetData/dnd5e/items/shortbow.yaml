@@ -10,6 +10,7 @@ properties:
   weight: 2
   costGp: 25
   range: Near
+  ammoType: arrow
 equipZones: [MainHand]
 equipLayer: Held
 twoHanded: true

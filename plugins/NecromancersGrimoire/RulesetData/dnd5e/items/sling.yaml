@@ -10,6 +10,7 @@ properties:
   weight: 0
   costGp: 0.1
   range: Close
+  ammoType: bullet
 equipZones: [MainHand]
 equipLayer: Held
 twoHanded: false

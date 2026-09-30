@@ -60,6 +60,14 @@ internal static partial class ModelEnumErrorHints
             hint += $" Did you mean '{alias}'?";
         }
 
+        // The value is usually unknown here (the filter has no source JSON), and "Character" is by far the most
+        // likely bad entityType, so the pointer is unconditional for this enum.
+        if (enumType == typeof(ArchivableEntityType))
+        {
+            hint += " Characters can't be archived. If they died, commit {\"$type\": \"death\", \"characterId\": \"chars/...\", \"cause\": \"...\"}; " +
+                    "to make an NPC leave the scene alive use an activity change with newLocationId:null, updateLocation:true.";
+        }
+
         return $"{message} {hint}";
     }
 

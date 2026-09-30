@@ -1,0 +1,323 @@
+/*
+ * The table: the play screen's shell, story log, command bar, party frames
+ * and codex drawer. Layout: top bar / [party | story + command | codex].
+ */
+
+/* -------------------------------------------------------------------- shell */
+
+.cv-shell { flex-grow: 1; flex-direction: column; }
+
+.cv-backdrop {
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+    background-color: var(--ink-1);
+}
+.cv-vignette {
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+    background-image: url("../Frames/vignette.svg");
+    -unity-background-scale-mode: stretch-to-fill;
+}
+
+.cv-topbar {
+    flex-direction: row; align-items: center;
+    height: 60px; flex-shrink: 0;
+    padding: 0 20px;
+    background-color: rgba(6, 7, 10, 0.92);
+    border-bottom-width: 1px; border-color: var(--line);
+}
+.cv-brand { flex-direction: row; align-items: center; margin-right: 28px; }
+.cv-brand .cv-icon { width: 26px; height: 26px; margin-right: 10px; -unity-background-image-tint-color: var(--gold); }
+.cv-brand__name { font-size: 19px; }
+.cv-context { flex-direction: column; justify-content: center; padding-left: 20px; border-left-width: 1px; border-color: var(--line); flex-shrink: 1; min-width: 0; overflow: hidden; }
+.cv-context__title { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: 16px; color: var(--gold-bright); letter-spacing: 1.5px; }
+.cv-context__meta { font-size: var(--fs-sm); color: var(--text-3); -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cv-topbar .cv-btn { margin-left: 6px; }
+
+/* Status sigils: an icon in a gilt lozenge with a gem that carries the state. */
+.cv-sigil {
+    width: 38px; height: 38px; margin-left: 10px;
+    align-items: center; justify-content: center;
+    border-width: 1px; border-color: var(--line); border-radius: 19px;
+    background-color: var(--ink-1);
+    transition-property: border-color, background-color; transition-duration: var(--motion-fast);
+}
+.cv-sigil:hover { border-color: var(--line-strong); background-color: var(--ink-3); }
+.cv-sigil .cv-icon { width: 20px; height: 20px; -unity-background-image-tint-color: var(--text-3); }
+.cv-sigil__gem {
+    position: absolute; right: 1px; bottom: 1px;
+    width: 10px; height: 10px; rotate: 45deg;
+    background-color: var(--text-4);
+    border-width: 1px; border-color: var(--ink-0);
+}
+.cv-sigil--ok .cv-icon { -unity-background-image-tint-color: var(--gold); }
+.cv-sigil--ok .cv-sigil__gem { background-color: var(--leaf); }
+.cv-sigil--bad { border-color: var(--blood-dim); }
+.cv-sigil--bad .cv-icon { -unity-background-image-tint-color: var(--blood); }
+.cv-sigil--bad .cv-sigil__gem { background-color: var(--blood); }
+.cv-sigil--busy .cv-icon { -unity-background-image-tint-color: var(--ember); }
+.cv-sigil--busy .cv-sigil__gem { background-color: var(--ember); }
+.cv-topbar__divider { width: 1px; height: 28px; margin: 0 6px 0 16px; background-color: var(--line); }
+
+.cv-stage { flex-grow: 1; flex-direction: row; min-height: 0; }
+
+.cv-center { flex-grow: 1; flex-shrink: 1; align-items: center; padding: 0 24px; min-width: 0; }
+.cv-center__column { flex-grow: 1; width: 100%; max-width: 860px; min-height: 0; }
+
+/* --------------------------------------------------------------- story log */
+
+.cv-log { flex-grow: 1; }
+.cv-log .unity-scroll-view__content-container { padding: 36px 8px 24px 8px; }
+
+.cv-seg { margin-bottom: 16px; }
+.cv-seg--narration { font-size: var(--fs-story); color: var(--text-1); white-space: normal; }
+.cv-seg--streaming { color: var(--text-2); }
+
+.cv-voice { flex-direction: row; margin-bottom: 16px; }
+.cv-voice__bar { width: 3px; margin-right: 14px; background-color: var(--text-3); }
+.cv-voice__body { flex-grow: 1; flex-shrink: 1; }
+.cv-nameplate { -unity-font-definition: url("../Fonts/SDF/Cinzel-Bold.asset"); font-size: var(--fs-xs); letter-spacing: 2.5px; margin-bottom: 2px; color: var(--text-3); }
+.cv-voice__line { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); font-size: var(--fs-story); color: var(--text-1); white-space: normal; }
+
+.cv-player { flex-direction: row; justify-content: flex-end; margin: 10px 0 20px 0; }
+.cv-player__bubble {
+    max-width: 78%; flex-direction: row;
+    padding: 10px 14px;
+    background-color: rgba(127, 178, 255, 0.06);
+    border-right-width: 2px; border-color: var(--arcane-dim);
+}
+.cv-player__bubble .cv-icon { width: 16px; height: 16px; margin-right: 10px; margin-top: 3px; -unity-background-image-tint-color: var(--arcane); }
+.cv-player__text { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); font-size: var(--fs-md); color: #C9DBFF; white-space: normal; flex-shrink: 1; }
+
+.cv-aside { font-size: var(--fs-sm); -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); color: var(--text-3); white-space: normal; padding-left: 12px; border-left-width: 1px; border-color: var(--line-faint); margin-bottom: 12px; }
+
+.cv-system { flex-direction: row; align-items: flex-start; margin: 4px 0 14px 0; padding: 6px 10px; }
+.cv-system .cv-icon { width: 15px; height: 15px; margin-right: 10px; margin-top: 2px; -unity-background-image-tint-color: var(--text-4); }
+.cv-system__text { font-size: var(--fs-sm); color: var(--text-3); white-space: normal; flex-shrink: 1; -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); }
+.cv-system--error { background-color: var(--blood-deep); border-left-width: 2px; border-color: var(--blood); }
+.cv-system--error .cv-icon { -unity-background-image-tint-color: var(--blood); }
+.cv-system--error .cv-system__text { color: #F2A0A0; -unity-font-definition: url("../Fonts/SDF/EBGaramond-Regular.asset"); }
+
+/* A turn's tool activity, folded into one strip. */
+.cv-activity { margin: 2px 0 12px 0; }
+.cv-activity__head { flex-direction: row; align-items: center; padding: 4px 0; }
+.cv-activity__head .cv-icon { width: 14px; height: 14px; margin-right: 8px; -unity-background-image-tint-color: var(--text-4); }
+.cv-activity__chevron { rotate: 0deg; transition-property: rotate; transition-duration: var(--motion-fast); }
+.cv-activity--open .cv-activity__chevron { rotate: 90deg; }
+.cv-activity__title { font-size: var(--fs-xs); -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); letter-spacing: 2px; color: var(--text-4); }
+.cv-activity__head:hover .cv-activity__title { color: var(--text-2); }
+.cv-activity__items { display: none; padding-left: 22px; }
+.cv-activity--open .cv-activity__items { display: flex; }
+.cv-activity__item { -unity-font-definition: url("../Fonts/SDF/JetBrainsMono-Regular.asset"); font-size: 12px; color: var(--text-3); white-space: normal; }
+
+/* Roll cards: a die showing the total, and the server's verdict on a ribbon (never recomputed). */
+.cv-roll {
+    flex-direction: row; align-items: stretch; align-self: flex-start;
+    width: 560px; max-width: 100%;
+    margin: 4px 0 16px 0;
+    background-color: var(--ink-3);
+    border-width: 1px; border-color: var(--line-strong);
+    opacity: 1; scale: 1 1;
+    transition-property: opacity, scale, border-color, background-color; transition-duration: 280ms; transition-timing-function: ease-out-back;
+}
+.cv-roll--enter { opacity: 0; scale: 0.92 0.92; }
+.cv-roll__die { width: 64px; height: 64px; margin: 8px 6px 8px 12px; align-items: center; justify-content: center; }
+.cv-roll__face {
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0; width: auto; height: auto;
+    -unity-background-image-tint-color: rgba(201, 162, 39, 0.2);
+    rotate: 0deg; transition-property: rotate; transition-duration: 520ms; transition-timing-function: ease-out-cubic;
+}
+.cv-roll--enter .cv-roll__face { rotate: -200deg; }
+.cv-roll__total {
+    -unity-font-definition: url("../Fonts/SDF/Cinzel-Bold.asset"); font-size: 32px; color: var(--text-1);
+    -unity-text-align: middle-center;
+    text-shadow: 0 0 8px rgba(0, 0, 0, 1);
+    opacity: 1; transition-property: opacity; transition-duration: 300ms; transition-delay: 380ms;
+}
+.cv-roll--enter .cv-roll__total { opacity: 0; }
+.cv-roll__body { flex-grow: 1; flex-shrink: 1; justify-content: center; padding: 8px 12px 8px 6px; }
+.cv-roll__label { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: 17px; letter-spacing: 1px; color: var(--text-1); white-space: normal; }
+.cv-roll__detail { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); font-size: var(--fs-md); color: var(--text-2); }
+.cv-roll__ribbon {
+    width: 150px; flex-shrink: 0;
+    align-items: center; justify-content: center;
+    padding: 0 12px;
+    background-color: var(--leaf-dim);
+    border-left-width: 1px; border-color: rgba(0, 0, 0, 0.4);
+}
+.cv-roll__verdict { -unity-font-definition: url("../Fonts/SDF/Cinzel-Bold.asset"); font-size: 15px; letter-spacing: 2px; color: var(--text-1); -unity-text-align: middle-center; white-space: normal; }
+.cv-roll--success .cv-roll__ribbon { background-color: var(--leaf-dim); }
+.cv-roll--failure .cv-roll__ribbon { background-color: var(--blood-dim); }
+.cv-roll--crit-success { border-color: var(--gold); background-color: var(--gold-deep); }
+.cv-roll--crit-success .cv-roll__ribbon { background-color: var(--gold); }
+.cv-roll--crit-success .cv-roll__verdict { color: var(--ink-0); }
+.cv-roll--crit-success .cv-roll__face { -unity-background-image-tint-color: rgba(255, 224, 138, 0.3); }
+.cv-roll--crit-success .cv-roll__total { color: var(--crit); text-shadow: 0 0 12px rgba(255, 224, 138, 0.7); }
+.cv-roll--crit-failure { border-color: var(--blood); background-color: var(--blood-deep); }
+.cv-roll--crit-failure .cv-roll__ribbon { background-color: var(--blood); }
+.cv-roll--crit-failure .cv-roll__face { -unity-background-image-tint-color: rgba(214, 69, 69, 0.3); }
+.cv-roll--crit-failure .cv-roll__total { color: #FF8A8A; }
+
+.cv-thinking { flex-direction: row; align-items: center; height: 26px; padding-left: 4px; opacity: 0; transition-property: opacity; transition-duration: var(--motion); }
+.cv-thinking--on { opacity: 1; }
+.cv-thinking .cv-icon { width: 16px; height: 16px; margin-right: 10px; -unity-background-image-tint-color: var(--gold-dim); }
+.cv-thinking__text { font-size: var(--fs-sm); -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); color: var(--text-3); }
+
+.cv-jump { position: absolute; right: 16px; bottom: 12px; }
+
+/* ------------------------------------------------------------- command bar */
+
+.cv-command {
+    margin: 0 0 20px 0;
+    padding: 12px 14px 10px 14px;
+    background-color: var(--ink-2);
+    border-width: 1px; border-color: var(--line-strong);
+}
+.cv-command__quick { flex-direction: row; flex-wrap: wrap; margin-bottom: 8px; }
+.cv-command__quick .cv-btn { margin-right: 6px; margin-bottom: 4px; }
+.cv-command__row { flex-direction: row; align-items: flex-end; }
+.cv-command__input { flex-grow: 1; flex-shrink: 1; margin: 0 10px 0 0; }
+.cv-command__input .unity-base-text-field__input { min-height: 46px; max-height: 190px; font-size: var(--fs-md); background-color: var(--ink-0); white-space: normal; -unity-text-align: upper-left; }
+.cv-command__send { min-height: 46px; min-width: 128px; }
+.cv-command__hint { flex-direction: row; margin-top: 6px; }
+.cv-command__hint .cv-caption { font-size: 11px; color: var(--text-4); margin-right: 18px; }
+
+/* ------------------------------------------------------------ party frames */
+
+.cv-party { width: 264px; flex-shrink: 0; padding: 22px 12px 12px 20px; }
+.cv-party__head { flex-direction: row; align-items: center; margin-bottom: 12px; }
+.cv-member {
+    flex-direction: row;
+    padding: 10px;
+    margin-bottom: 8px;
+    background-color: rgba(18, 21, 28, 0.85);
+    border-width: 1px; border-color: var(--line-faint);
+    transition-property: border-color, background-color; transition-duration: var(--motion-fast);
+}
+.cv-member:hover { border-color: var(--line-strong); background-color: var(--ink-3); }
+.cv-member--pc { border-left-width: 2px; border-left-color: var(--gold); }
+.cv-member__crest {
+    width: 44px; height: 44px; flex-shrink: 0; margin-right: 10px;
+    align-items: center; justify-content: center;
+    background-color: var(--ink-0);
+    border-width: 1px; border-color: var(--gold-dim);
+    -unity-font-definition: url("../Fonts/SDF/Cinzel-Bold.asset"); font-size: 18px; color: var(--gold);
+    -unity-text-align: middle-center;
+}
+.cv-member__body { flex-grow: 1; flex-shrink: 1; }
+.cv-member__name { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: 14px; color: var(--text-1); letter-spacing: 0.5px; }
+.cv-member__sub { font-size: 13px; color: var(--text-3); margin-bottom: 5px; -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); }
+.cv-member__hp { flex-direction: row; align-items: center; }
+.cv-member__hp .cv-bar { flex-grow: 1; }
+.cv-member__hptext { -unity-font-definition: url("../Fonts/SDF/EBGaramond-SemiBold.asset"); font-size: 14px; color: var(--text-2); margin-left: 6px; min-width: 44px; -unity-text-align: middle-right; }
+.cv-member__conditions { flex-direction: row; flex-wrap: wrap; margin-top: 5px; }
+
+/* ------------------------------------------------------------ codex drawer */
+
+.cv-codex {
+    width: 372px; flex-shrink: 0;
+    padding: 16px 18px;
+    background-color: rgba(11, 13, 18, 0.94);
+    border-left-width: 1px; border-color: var(--line);
+    transition-property: width, opacity; transition-duration: var(--motion);
+}
+.cv-codex--closed { width: 0; padding: 0; opacity: 0; border-left-width: 0; }
+.cv-codex__body { flex-grow: 1; }
+
+.cv-quest { padding: 10px 0; border-bottom-width: 1px; border-color: var(--line-faint); }
+.cv-quest__title { -unity-font-definition: url("../Fonts/SDF/EBGaramond-SemiBold.asset"); font-size: var(--fs-md); color: var(--text-1); white-space: normal; }
+.cv-quest__meta { flex-direction: row; margin-top: 3px; }
+.cv-quest--overdue .cv-quest__title { color: var(--blood); }
+
+.cv-item { flex-direction: row; align-items: center; padding: 8px 0; border-bottom-width: 1px; border-color: var(--line-faint); }
+.cv-item__name { flex-grow: 1; flex-shrink: 1; font-size: var(--fs-md); color: var(--text-1); white-space: normal; }
+.cv-item .cv-btn { margin-left: 6px; }
+
+.cv-empty { flex-direction: column; align-items: center; padding: 28px 12px; }
+.cv-empty .cv-icon { width: 40px; height: 40px; margin-bottom: 10px; -unity-background-image-tint-color: var(--text-4); }
+.cv-empty__text { font-size: var(--fs-sm); color: var(--text-3); -unity-text-align: middle-center; white-space: normal; -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); }
+
+.cv-kv { flex-direction: row; padding: 5px 0; border-bottom-width: 1px; border-color: var(--line-faint); }
+.cv-kv__key { width: 42%; -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: 12px; letter-spacing: 1.5px; color: var(--text-3); }
+.cv-kv__value { flex-grow: 1; flex-shrink: 1; font-size: var(--fs-md); color: var(--text-1); white-space: normal; }
+
+/* --------------------------------------------------------- campaign cards */
+
+.cv-campaigns { flex-direction: row; flex-wrap: wrap; }
+.cv-campaign {
+    width: 32%; min-width: 280px; margin: 0 1.3% 16px 0;
+    padding: 20px;
+    background-color: var(--ink-2);
+    border-width: 1px; border-color: var(--line);
+    transition-property: border-color, background-color, translate; transition-duration: var(--motion-fast);
+}
+.cv-campaign:hover { border-color: var(--gold-dim); background-color: var(--ink-3); translate: 0 -2px; }
+.cv-campaign--active { border-color: var(--gold); }
+.cv-campaign__name { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: 20px; color: var(--gold-bright); white-space: normal; letter-spacing: 1px; }
+.cv-campaign__slug { -unity-font-definition: url("../Fonts/SDF/JetBrainsMono-Regular.asset"); font-size: 12px; color: var(--text-4); margin-bottom: 10px; }
+.cv-campaign__actions { flex-direction: row; margin-top: 14px; }
+.cv-campaign__actions .cv-btn { margin-right: 8px; }
+
+/* ------------------------------------------------------- responsive shell */
+
+.cv-shell--narrow .cv-codex { position: absolute; right: 0; top: 60px; bottom: 0; }
+.cv-shell--compact .cv-party { width: 76px; padding-left: 12px; }
+.cv-shell--compact .cv-member__body { display: none; }
+.cv-shell--compact .cv-party__head { display: none; }
+
+.cv-log-wrap { flex-grow: 1; min-height: 0; }
+.cv-party__list { flex-grow: 1; }
+
+/* ------------------------------------------------ codex: ledger and journal */
+
+.cv-codex__heading { color: var(--gold); margin-top: var(--sp-5); margin-bottom: var(--sp-2); padding-bottom: 4px; border-bottom-width: 1px; border-color: var(--line); }
+.cv-codex__quiet { font-size: var(--fs-sm); color: var(--text-3); -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); white-space: normal; }
+
+/* quests: a seal, a title, what's left in words */
+.cv-ledger-entry { flex-direction: row; align-items: flex-start; padding: 12px 0; border-bottom-width: 1px; border-color: var(--line-faint); }
+.cv-ledger-entry__seal {
+    width: 12px; height: 12px; margin: 7px 14px 0 4px; flex-shrink: 0;
+    rotate: 45deg; background-color: var(--gold-deep); border-width: 1px; border-color: var(--gold);
+}
+.cv-ledger-entry__title { -unity-font-definition: url("../Fonts/SDF/EBGaramond-SemiBold.asset"); font-size: 19px; color: var(--text-1); white-space: normal; }
+.cv-ledger-entry__note { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); font-size: var(--fs-sm); color: var(--text-3); margin-top: 2px; white-space: normal; }
+.cv-ledger-entry--overdue .cv-ledger-entry__seal { background-color: var(--blood-deep); border-color: var(--blood); }
+.cv-ledger-entry--overdue .cv-ledger-entry__note { color: var(--blood); }
+
+/* scene: a few lines of prose */
+.cv-scene { padding: 6px 0 4px 0; }
+.cv-scene__place { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: 20px; color: var(--gold-bright); letter-spacing: 1px; white-space: normal; }
+.cv-scene__time { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); font-size: var(--fs-sm); color: var(--text-3); margin-top: 2px; }
+.cv-scene__doing { font-size: var(--fs-md); color: var(--text-1); margin-top: 8px; white-space: normal; }
+
+.cv-ally {
+    flex-direction: row; align-items: center;
+    padding: 8px 6px; margin-bottom: 6px;
+    border-width: 1px; border-color: var(--line-faint); background-color: var(--ink-2);
+    transition-property: border-color, background-color; transition-duration: var(--motion-fast);
+}
+.cv-ally:hover { border-color: var(--line-strong); background-color: var(--ink-3); }
+.cv-ally__crest {
+    width: 34px; height: 34px; margin-right: 10px; flex-shrink: 0;
+    border-width: 1px; border-color: var(--gold-dim); border-radius: 17px; background-color: var(--ink-0);
+    -unity-font-definition: url("../Fonts/SDF/Cinzel-Bold.asset"); font-size: 13px; color: var(--gold); -unity-text-align: middle-center;
+}
+.cv-ally__name { -unity-font-definition: url("../Fonts/SDF/EBGaramond-SemiBold.asset"); font-size: var(--fs-md); color: var(--text-1); }
+.cv-ally__sub { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); font-size: 14px; color: var(--text-3); margin-bottom: 4px; }
+.cv-ally .cv-bar { height: 5px; }
+
+.cv-face { padding: 5px 0; border-bottom-width: 1px; border-color: var(--line-faint); }
+.cv-face__name { -unity-font-definition: url("../Fonts/SDF/EBGaramond-SemiBold.asset"); font-size: var(--fs-md); color: var(--text-1); }
+.cv-face__stance { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); font-size: var(--fs-sm); color: var(--text-2); white-space: normal; }
+
+/* journal */
+.cv-journal__session { flex-direction: row; align-items: center; justify-content: space-between; padding: 4px 0 8px 0; }
+.cv-journal__session .cv-codex__quiet { flex-shrink: 1; margin-right: 10px; }
+.cv-journal__story {
+    -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset");
+    font-size: var(--fs-md); color: var(--text-1); white-space: normal;
+    padding: 10px 14px; background-color: var(--ink-2); border-left-width: 2px; border-color: var(--gold-dim);
+}
+.cv-journal__entry { font-size: var(--fs-md); color: var(--text-1); white-space: normal; }
+.cv-thread { flex-direction: row; align-items: flex-start; padding: 3px 0; }
+.cv-thread__mark { width: 7px; height: 7px; margin: 9px 10px 0 2px; flex-shrink: 0; rotate: 45deg; border-width: 1px; border-color: var(--gold); }
+.cv-thread__text { flex-shrink: 1; font-size: var(--fs-md); color: var(--text-1); white-space: normal; }
+.cv-codex__body .cv-card { margin-top: var(--sp-4); }

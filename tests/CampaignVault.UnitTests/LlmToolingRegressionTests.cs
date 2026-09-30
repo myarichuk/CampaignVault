@@ -204,6 +204,27 @@ public class LlmToolingRegressionTests
         Assert.Contains("guidance", prompt, StringComparison.OrdinalIgnoreCase);
     }
 
+    // Models imitate quoted examples even under "banned": the narration surfaces describe the
+    // telegram failure in words and never quote it (NARRATION_AND_CLIENT_PLAN.md, N3).
+    [Theory]
+    [InlineData("recommended-system-prompt.md")]
+    [InlineData("recommended-system-prompt.narrative.md")]
+    [InlineData("recommended-system-prompt.opencode.md")]
+    [InlineData("claude_skills/dnd-narration/SKILL.md")]
+    public void NarrationSurfaces_QuoteNoTelegramFragments(string file)
+    {
+        var text = File.ReadAllText(Path.Combine(FindRepoRoot(), file));
+        string[] quotedFailures =
+        {
+            "Hut up.", "Trail bread.", "Coin in the purse", "Wheels moving again", "Lyra takes a short rest",
+            "Kit on.", "bladder has opinions", "Show rolls inline", "cheap per turn",
+        };
+        foreach (var fragment in quotedFailures)
+        {
+            Assert.DoesNotContain(fragment, text, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
     [Fact]
     public void RegisteredToolSchema_UnderChattynessCap()
     {
@@ -275,8 +296,10 @@ public class LlmToolingRegressionTests
         surfaces.Add(("DmHelpManual.Faq", CampaignVault.Tools.DmHelpManual.FaqSection));
         surfaces.Add(("DmHelpManual.WorldBuilding", CampaignVault.Tools.DmHelpManual.WorldBuildingSection));
 
-        surfaces.Add(("recommended-system-prompt.md",
-            File.ReadAllText(Path.Combine(repoRoot, "recommended-system-prompt.md"))));
+        foreach (var prompt in Directory.EnumerateFiles(repoRoot, "recommended-system-prompt*.md"))
+        {
+            surfaces.Add((Path.GetFileName(prompt), File.ReadAllText(prompt)));
+        }
 
         foreach (var skill in Directory.EnumerateFiles(Path.Combine(repoRoot, "claude_skills"), "SKILL.md", SearchOption.AllDirectories))
         {

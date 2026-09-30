@@ -18,7 +18,10 @@ internal static class TurnCadenceAdvisor
 
     private const int Cap = 256;
 
-    private sealed record LastCommit(DateTime At, bool HadRoll, bool HazardPending, int FollowUpsSinceRoll);
+    private sealed record LastCommit(DateTime At, bool HadRoll, bool HazardPending, int FollowUpsSinceRoll, int Chain = 1);
+
+    /// <summary>Commits in a row, each inside Window of the last, at which even roll-carrying batches get flagged.</summary>
+    internal const int ChainAdvisoryLength = 4; // roll + hazard save + knowledge_update is the longest legitimate chain (3)
 
     private static readonly ConcurrentDictionary<string, LastCommit> Last = new(StringComparer.OrdinalIgnoreCase);
 
@@ -30,6 +33,13 @@ internal static class TurnCadenceAdvisor
         if (!Last.TryGetValue(campaign, out var prev) || (now ?? DateTime.UtcNow) - prev.At > Window)
         {
             return null;
+        }
+
+        if (prev.Chain + 1 >= ChainAdvisoryLength)
+        {
+            // Rolls are exempt one at a time, but a run of them is the model playing a chase or fight alone.
+            return $"TURN CADENCE: commit #{prev.Chain + 1} in a row with no pause. One player message = one beat: stop " +
+                   "chaining, narrate what has landed as a full scene, and let the player's next message decide what happens next.";
         }
 
         if (changes.Any(c => c is RulesetAction))
@@ -62,9 +72,14 @@ internal static class TurnCadenceAdvisor
         var hazard = summary?.Any(s => s.Contains("HAZARD:", StringComparison.Ordinal)) == true;
 
         var followUps = 0;
-        if (!hadRoll && Last.TryGetValue(campaign, out var prev) && at - prev.At <= Window && (prev.HadRoll || prev.FollowUpsSinceRoll > 0))
+        var chain = 1;
+        if (Last.TryGetValue(campaign, out var prev) && at - prev.At <= Window)
         {
-            followUps = prev.FollowUpsSinceRoll + 1;
+            chain = prev.Chain + 1;
+            if (!hadRoll && (prev.HadRoll || prev.FollowUpsSinceRoll > 0))
+            {
+                followUps = prev.FollowUpsSinceRoll + 1;
+            }
         }
 
         if (Last.Count > Cap)
@@ -75,6 +90,6 @@ internal static class TurnCadenceAdvisor
             }
         }
 
-        Last[campaign] = new LastCommit(at, hadRoll, hazard, followUps);
+        Last[campaign] = new LastCommit(at, hadRoll, hazard, followUps, chain);
     }
 }

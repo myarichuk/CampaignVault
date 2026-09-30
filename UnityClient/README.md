@@ -30,8 +30,13 @@ something you can hand someone else.
    or skip this and use the in-client embedded server (Settings tab).
 3. `Assets/Scenes/SampleScene.unity` already has a `VaultClient` GameObject
    (added by `CampaignVault > Bootstrap Main Scene`, see below). Press Play.
-4. Settings tab: server URL, connector, optional bearer token, BYOK base
-   URL + model + API key. Health check first, then Campaigns tab.
+4. First run opens the **Setup** wizard (server check → AI provider →
+   campaign questionnaire). Providers are profiles (OpenAI, Anthropic,
+   OpenRouter, Ollama, LM Studio, or any OpenAI-compatible URL); one is
+   active at a time, and campaigns are independent of which model runs them.
+   Profiles, keys included, are saved as plain JSON in
+   `Application.persistentDataPath/vault-providers.json`. Manage them later
+   in Settings, along with server URL, connector and optional bearer token.
 
 If you ever start from a truly empty scene, use
 **CampaignVault > Create Client UI** (adds `VaultClient` to the open scene
@@ -79,12 +84,36 @@ Run **one build at a time in the foreground**; the CLI's `--timeout` flag
 `--timeout 600`. If `unity run` sits silently without ever launching an
 Editor, check Unity Hub for a sign-in/license prompt — it blocks headless runs.
 
+## Tests
+
+One run at a time, in the foreground (the CLI's `--timeout` bounds a slow one):
+
+```bash
+unity test . --mode EditMode --timeout 580    # unit + integration (~70 tests)
+unity test . --mode PlayMode --timeout 480    # the real UI, rendered to PNGs
+```
+
+- **EditMode** (`Assets/CampaignVault/Tests/EditMode`): parsers, markdown,
+  roll verdicts, streaming/SSE, the DM driver against a scripted local
+  provider (streamed tool loop, stream fallback, STOP, history hygiene), the
+  app layer, and `SmokeScenarioTests`, the full smoke flow headless against
+  the staged embedded server on a throwaway DB under the temp dir.
+- **PlayMode** (`Assets/CampaignVault/Tests/PlayMode`): hosts the actual UI
+  and photographs it into `Library/VaultSnapshots/*.png` (review them after
+  UI changes). `TableTests` plays a turn with a real Enter keypress against
+  the scratch server and a scripted DM, and STOP must abort in under a
+  second. `ShellLayoutTests` covers the breakpoints and a 1,000-segment log.
+  The style guide (`UI/Dev/StyleGuide.uxml`) shows every component.
+- Integration tests skip themselves when no server is staged for the
+  platform, and never touch the player's prefs, provider file or campaigns.
+
 ## Smoke-test a build
 
-The player has a built-in end-to-end test that drives the real UI (Onboard →
-Campaigns → Session → Dashboard → Character → Inventory → Events → two chat
-turns → delete) and exits 0/1. Point it at a **scratch** server: it creates and
-deletes a campaign.
+The player has a built-in end-to-end check (`-vault-smoke`) that runs the same
+scenario as `SmokeScenarioTests`, headless through the app layer: MCP
+handshake, onboarding, world seed, campaign list, session, sheet, pack,
+search, prompt budget, two optional chat turns, delete. It exits 0/1. Point it
+at a **scratch** server: it creates and deletes a campaign.
 
 ```bash
 S=$(mktemp -d)
@@ -98,9 +127,10 @@ Builds/StandaloneOSX/CampaignVaultClient.app/Contents/MacOS/UnityClient \
 grep VaultSmoke $S/smoke.log     # one PASS/FAIL line per check, then RESULT pass=N fail=M
 ```
 
-Without `-vault-smoke-llm` the chat checks are skipped. The chat mock used
-during development scripts `load_skill` → `search_world` → prose per turn and
-asserts earlier turns arrive compacted (see `VaultSmokeRunner.Chat`).
+Without `-vault-smoke-llm` the chat checks are skipped. The mock scripts
+`load_skill` → `search_world` → prose on turn one and reports on turn two
+whether earlier tool results arrived compacted (see `SmokeScenarioTests`).
+Smoke runs keep prefs in memory, so they never change the player's settings.
 
 ## Package for distribution
 
@@ -139,41 +169,54 @@ disk image, and let the user unzip/mount and run:
 
 - `ProjectSettings/EditorBuildSettings.asset` must list
   `Assets/Scenes/SampleScene.unity`, and that scene must contain a
-  `VaultClientUI`-bearing GameObject — a fresh checkout had neither, so a
+  `VaultClientUI`-bearing GameObject: a fresh checkout had neither, so a
   player build shipped zero scenes. `BuildTools.EnsureMainSceneBootstrapped`
   fixes both and runs before every build method above.
-- `ProjectSettings` `Active Input Handling` must be **Both** (not
-  "Input System Package (New)" only) — `VaultClientUI` wires up the legacy
-  `StandaloneInputModule` and calls `Input.GetKeyDown` directly for
-  Enter-to-send, both of which throw under Input System-only.
-- Unity UI (`UnityEngine.UI`) allows exactly one `Graphic`-derived component
-  (`Image`, `Text`, `RawImage`, …) per GameObject. A few `VaultTheme`/panel
-  helpers used to call `.AddComponent<RectTransform>()` on a GameObject that
-  `VaultTheme.Row`/`Column` (via their required-component layout group) had
-  already given one, or add a `Text` onto the same object as an `Image` —
-  both throw and abort `BuildShell` mid-construction, which is why the whole
-  client rendered blank. Fixed at every call site; if you add a new panel
-  helper, use `GetComponent<RectTransform>()` on anything that already came
-  from `Row`/`Column`/`PanelBox`, and give a button/card's label its own
-  child GameObject rather than sharing the background's.
+- Nothing calls the legacy `UnityEngine.Input` API any more (UI Toolkit reads
+  input itself), so `Active Input Handling` could move to Input System only.
+  It's still **Both**, which is safe.
+- USS `var()` doesn't resolve font asset references: faces are referenced
+  with `url()` directly in the sheets.
+- `IVisualElementScheduler.Execute(delegate { … })` is ambiguous between
+  `Action` and `Action<TimerState>`: use a lambda (`() => …`).
+- Batchmode renders frames uncapped. Tests that wait for a transition must
+  wait real time, not a frame count, and never `WaitForEndOfFrame` (it
+  doesn't resume in batchmode).
+- The embedded server writes into its own folder at runtime (`RulesetData/`
+  extraction, RavenDB logs), which is why the player copies it to app data
+  before launching it. Tests run it in place and remove whatever it adds.
 
 ## Layout / design notes
 
-The UI is entirely code-built `UnityEngine.UI` (legacy Text/Image, no
-TextMeshPro, no UI Toolkit) — see `Assets/CampaignVault/Scripts/UI/VaultTheme.cs`
-for the palette and primitives.
+UI Toolkit, dark-fantasy theme. Where things live:
 
-**Table feel** (`VaultFx.cs`, `VaultSfx.cs`; asset-free, toggle both in
-Settings > Table feel): narration and NPC lines typewrite in (click a line,
-or send, to finish instantly; layout-stable, so the scroll never jumps), new
-transcript lines fade/scale in, roll chips tumble through d20 faces and land
-on SUCCESS (gold flash, chime) or FAIL (shudder, thud), buttons swell on hover
-and tick on click, health bars fill up, panels cross-fade on tab switch with
-a gold underline on the active tab, a "The Dungeon Master weaves the tale…"
-indicator pulses while a turn resolves, and dim embers drift behind the page
-under a procedural vignette. Sounds are synthesized at startup (no audio
-assets). Effects only animate scale/alpha/color/rotation/text — never
-layout-driven positions — and always settle to the exact final state.
+- `Scripts/App/`: the UI-free layer. `VaultAppState` (everything the client
+  knows, with change and toast events), `VaultController` (every command, as
+  IEnumerators), `VaultBootstrap` (wiring, prefs, autostart, smoke).
+- `Scripts/UI/`: views over the app layer. `VaultClientUI` (the root, which
+  keeps its old name so scenes still bind), `StoryLogView`, `CommandBar`,
+  `PartyViews` (party frames, codex drawer, character sheet), `WorldOverlays`
+  (campaign book, onboarding), `SettingsOverlays` (settings, first-run setup,
+  F12 inspector), `Layers` (overlays, toasts, tooltips), `Ui` (element factory).
+- `UI/Theme/*.uss`: tokens, components, the table, and generated icon classes.
+  Every visual decision is in USS; C# only adds `cv-*` classes.
+- `UI/Resources/VaultUI/`: `Shell.uxml` (static skeleton) and
+  `VaultPanelSettings.asset` (scales from 1920x1080).
+- `UI/Fonts`, `UI/Icons`, `UI/Frames`: OFL fonts (Cinzel, EB Garamond,
+  JetBrains Mono) as SDF font assets, game-icons.net SVGs imported as vector
+  images, and hand-made filigree ornaments. Attribution is in `LICENSING.md`.
+  After adding a font, re-run **CampaignVault > Build UI Assets** (or
+  `unity run . -- -executeMethod CampaignVault.UnityClient.Editor.VaultUiAssetBuilder.BuildAll`).
+
+The table: top bar (campaign, session, date, place, server and model status),
+party frames on the left, the story in the center with the command bar below
+it, and the codex drawer on the right (quests, scene, pack, journal). The
+campaign book, settings, character sheet, onboarding and setup open as pages
+over the table; Esc closes the top one, and F12 opens the inspector. Replies
+stream in. Tool activity folds into one strip per turn, and roll cards show
+the server's own verdict, criticals included. On narrow windows the codex
+floats closed and, narrower still, party frames shrink to crests. Settings >
+Table feel turns motion and sound off.
 
 **Token budget** (every model call resends everything, so the chat driver
 keeps it small — measured on the first call of a turn):
@@ -191,13 +234,7 @@ byte-stable so providers with automatic prompt caching can reuse it.
 
 Remaining gaps worth knowing about:
 
-- **11 equal-width tabs in one row** is cramped at the 1280 reference width.
-  Chat is the heart of the app; Dashboard/Character would work better as a
-  side rail next to it than as separate tabs, and Plugins belongs under
-  Settings > Advanced.
-- Legacy `Text` renders softer than TextMeshPro, especially at the header's
-  26px. A TMP migration is the biggest remaining visual-quality lever
-  (`VaultTheme.EnsureFonts()` is the choke point) but it's its own project.
-- The transcript isn't persisted: restarting the app loses the chat view
+- The transcript isn't persisted: restarting the app loses the story view
   (campaign state itself lives on the server).
-- Replies don't stream; long narration arrives in one piece (then typewrites).
+- Embers are the vignette's warm glow only. A particle layer behind the UI
+  document is the obvious next step for motion in the backdrop.

@@ -48,6 +48,15 @@ public sealed class HpChangeHandler(IRollService rollService) : IWorldChangeHand
             return ChangeHandlerResult.Failure();
         }
 
+        if (character.IsDead && hp.Delta > 0)
+        {
+            var deadMsg = $"{hp.CharacterId} is dead (day {character.Death!.Day}); healing can't reach them. " +
+                "To bring them back commit {\"$type\": \"death\", \"characterId\": \"" + hp.CharacterId + "\", \"revive\": true}.";
+            ctx.RecordMessage($"WARNING: {deadMsg}");
+            ctx.RecordFailure();
+            return ChangeHandlerResult.Failure(deadMsg);
+        }
+
         var damageTaken = hp.Delta < 0 ? -hp.Delta : 0;
         var hpBefore = character.CurrentHp;
         character.CurrentHp = Math.Clamp(character.CurrentHp + hp.Delta, 0, character.MaxHp);
@@ -80,8 +89,10 @@ public sealed class HpChangeHandler(IRollService rollService) : IWorldChangeHand
             }
         }
 
+        var killed = await ApplyDyingRulesAsync(ctx, character, hp.Delta, hpBefore, damageTaken, ct);
+
         // Concentration break check: DC = max(10, half damage taken), save vs DC (CON for 5e, Fortitude for PF2e).
-        if (damageTaken > 0 && character.SystemStats?.StatusEffects != null)
+        if (!killed && damageTaken > 0 && character.SystemStats?.StatusEffects != null)
         {
             var concentration = character.SystemStats.StatusEffects.FirstOrDefault(e => e.Name.Contains("Concentration", StringComparison.OrdinalIgnoreCase));
             if (concentration != null)
@@ -107,6 +118,69 @@ public sealed class HpChangeHandler(IRollService rollService) : IWorldChangeHand
         }
 
         return ChangeHandlerResult.Ok;
+    }
+
+    /// <summary>
+    /// 5e dying rules for player characters only (NPC death stays an explicit <c>death</c> commit): massive damage
+    /// kills outright, damage at 0 HP adds a death-save failure, reaching 0 starts the tally, healing clears it.
+    /// Returns true when this damage killed the character.
+    /// </summary>
+    private static async Task<bool> ApplyDyingRulesAsync(
+        ChangeContext ctx, Character character, int delta, int hpBefore, int damageTaken, CancellationToken ct)
+    {
+        if (!character.IsPc || character.SystemStats is not Dnd5eExtension)
+        {
+            return false;
+        }
+
+        if (delta > 0)
+        {
+            if (character.CurrentHp > 0 && character.DeathSaves != null)
+            {
+                character.DeathSaves = null;
+                ctx.RecordMessage($"{character.Name} is conscious again; death saves cleared.");
+            }
+            return false;
+        }
+
+        if (damageTaken <= 0)
+        {
+            return false;
+        }
+
+        var overflow = damageTaken - hpBefore;
+        if (overflow >= character.MaxHp)
+        {
+            await DeathChangeHandler.DieAsync(
+                new DeathChange { CharacterId = character.Id, Cause = "massive damage", KillerId = FindAttackerId(ctx, character.Id) },
+                character, ctx, ct);
+            return true;
+        }
+
+        if (hpBefore > 0)
+        {
+            if (character.CurrentHp == 0)
+            {
+                character.DeathSaves = new DeathSaveTally();
+                ctx.RecordMessage($"{character.Name} is down at 0 HP and dying: roll death saves with {{\"$type\":\"death_save\",\"characterId\":\"{character.Id}\"}} each turn.");
+            }
+            return false;
+        }
+
+        // Already at 0 HP: each hit is a failed death save (a stable body becomes unstable again).
+        var tally = character.DeathSaves ??= new DeathSaveTally();
+        tally.Stable = false;
+        tally.Failures++;
+        ctx.RecordMessage($"{character.Name} takes damage at 0 HP: death save failure ({tally.Failures}/3).");
+        if (tally.Failures < 3)
+        {
+            return false;
+        }
+
+        await DeathChangeHandler.DieAsync(
+            new DeathChange { CharacterId = character.Id, Cause = "failed death saves", KillerId = FindAttackerId(ctx, character.Id) },
+            character, ctx, ct);
+        return true;
     }
 
     /// <summary>

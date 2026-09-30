@@ -73,4 +73,34 @@ public class TurnCadenceAdvisorTests
         TurnCadenceAdvisor.Record(c, [Activity()], [], T0);
         Assert.Null(TurnCadenceAdvisor.Evaluate(c, [Activity()], T0 + TurnCadenceAdvisor.Window + TimeSpan.FromSeconds(1)));
     }
+
+    [Fact]
+    public void ChainOfRolls_WarnsFromTheFourthCommit()
+    {
+        var c = NewCampaign();
+        for (var i = 0; i < 3; i++)
+        {
+            Assert.Null(TurnCadenceAdvisor.Evaluate(c, [Roll()], T0.AddSeconds(i * 4)));
+            TurnCadenceAdvisor.Record(c, [Roll()], [], T0.AddSeconds(i * 4));
+        }
+
+        var w = TurnCadenceAdvisor.Evaluate(c, [Roll()], T0.AddSeconds(12));
+        Assert.NotNull(w);
+        Assert.Contains("commit #4", w);
+    }
+
+    [Fact]
+    public void ChainResetsAfterThePlayerPause()
+    {
+        var c = NewCampaign();
+        for (var i = 0; i < 4; i++)
+        {
+            TurnCadenceAdvisor.Record(c, [Roll()], [], T0.AddSeconds(i * 4));
+        }
+
+        var later = T0.AddSeconds(12) + TurnCadenceAdvisor.Window + TimeSpan.FromSeconds(1);
+        Assert.Null(TurnCadenceAdvisor.Evaluate(c, [Roll()], later));
+        TurnCadenceAdvisor.Record(c, [Roll()], [], later);
+        Assert.Null(TurnCadenceAdvisor.Evaluate(c, [Roll()], later.AddSeconds(4)));
+    }
 }

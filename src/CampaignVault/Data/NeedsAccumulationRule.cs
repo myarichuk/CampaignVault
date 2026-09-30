@@ -35,10 +35,9 @@ public class NeedsAccumulationRule : ISimulationRule
                 continue;
             }
 
-            // Dead characters don't get hungry. There's no persisted deceased/archived flag on
-            // Character (MaxHp can be 0 for entities that never had HP tracked at all, e.g. some
-            // non-combatant NPCs, so only skip once MaxHp confirms HP is actually tracked).
-            if (npc.MaxHp > 0 && npc.CurrentHp <= 0)
+            // Dead characters don't get hungry. Downed ones (0 HP, MaxHp confirms HP is tracked) are
+            // skipped too; MaxHp can be 0 for entities that never had HP tracked at all.
+            if (npc.IsDead || (npc.MaxHp > 0 && npc.CurrentHp <= 0))
             {
                 continue;
             }

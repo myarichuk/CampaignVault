@@ -1357,7 +1357,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
 
         if (changes.OfType<EventOccurred>().Any(e => e.ImpliesPersistentPhysicalChange == true)
             && !changes.Any(c => c is ItemEquip or ItemUnequip or ItemUpdate or StatusChange or StatusRemove
-                or CharacterUpdate or ArchiveEntityChange { EntityType: ArchivableEntityType.Item }))
+                or CharacterUpdate or DeathChange or ArchiveEntityChange { EntityType: ArchivableEntityType.Item }))
         {
             AppendReminder(result,
                 "An event in this batch flagged impliesPersistentPhysicalChange=true, but the batch has no " +

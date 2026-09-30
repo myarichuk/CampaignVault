@@ -28,7 +28,7 @@ internal static class McpResponseCleaner
 {
     /// <summary>
     /// Whether to populate StructuredContent at all, in addition to Content. Set once at startup
-    /// from MCP_INCLUDE_STRUCTURED_CONTENT (see Program.cs); off by default. Public/settable rather
+    /// from MCP_INCLUDE_STRUCTURED_CONTENT or CampaignVault:Mcp:IncludeStructuredContent (see Program.cs); off by default. Public/settable rather
     /// than DI-injected because this filter class, like its sibling request filters, is registered
     /// as a bare static via IMcpRequestFilterBuilder before the DI container exists.
     /// </summary>
@@ -61,6 +61,35 @@ internal static class McpResponseCleaner
             Apply(result);
             return result;
         });
+
+        // A tool that advertises an outputSchema must return structuredContent (MCP spec); strict clients
+        // such as opencode fail every call with -32600 otherwise. Without IncludeStructuredContent the
+        // cleaner strips it, so the schema is not advertised either. The tool collection keeps its schema
+        // (the SDK needs it to populate StructuredContent for the cleaner), so tools/list gets clones.
+        filters.AddListToolsFilter(next => async (request, cancellationToken) =>
+        {
+            var result = await next(request, cancellationToken);
+            if (!IncludeStructuredContent)
+            {
+                result.Tools = result.Tools.Select(WithoutOutputSchema).ToList();
+            }
+            return result;
+        });
+    }
+
+    private static readonly System.Reflection.MethodInfo MemberwiseCloneMethod =
+        typeof(object).GetMethod("MemberwiseClone", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+
+    // Shallow clone so no Tool field the SDK adds later is silently dropped from the listing.
+    internal static Tool WithoutOutputSchema(Tool tool)
+    {
+        if (tool.OutputSchema is null)
+        {
+            return tool;
+        }
+        var clone = (Tool)MemberwiseCloneMethod.Invoke(tool, null)!;
+        clone.OutputSchema = null;
+        return clone;
     }
 
     /// <summary>

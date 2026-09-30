@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
+using CampaignVault.UnityClient.AI;
 
 namespace CampaignVault.UnityClient.Editor
 {
@@ -10,6 +11,9 @@ namespace CampaignVault.UnityClient.Editor
     /// Stages the DM content the chat driver reads from StreamingAssets (all
     /// git-ignored copies, regenerated here instead of by hand):
     ///   recommended-system-prompt.md      -> CampaignVault/system-prompt.md
+    ///   recommended-system-prompt.narrative.md -> CampaignVault/system-prompt.narrative.md
+    ///   (only the ```text fence, without the template CAMPAIGN line: the rest
+    ///   is installer notes and must not reach the model)
     ///   claude_skills/NAME/SKILL.md       -> CampaignVault/skills/NAME/SKILL.md
     ///   plugins/P/(skillsPath)/NAME/SKILL.md -> CampaignVault/plugin-skills/P/NAME/SKILL.md
     /// Plugin skills are sidecar-only (PLUGINS.md): the server never serves
@@ -37,9 +41,8 @@ namespace CampaignVault.UnityClient.Editor
             string dest = Path.Combine(Application.streamingAssetsPath, "CampaignVault");
             Directory.CreateDirectory(dest);
 
-            string prompt = Path.Combine(repoRoot, "recommended-system-prompt.md");
-            if (File.Exists(prompt)) { File.Copy(prompt, Path.Combine(dest, "system-prompt.md"), true); }
-            else { Debug.LogWarning("[Vault] recommended-system-prompt.md not found; the client falls back to a one-line prompt."); }
+            StagePrompt(repoRoot, dest, "recommended-system-prompt.md", "system-prompt.md", true);
+            StagePrompt(repoRoot, dest, "recommended-system-prompt.narrative.md", "system-prompt.narrative.md", false);
 
             int core = CopySkillTree(Path.Combine(repoRoot, "claude_skills"), Path.Combine(dest, "skills"));
 
@@ -61,6 +64,19 @@ namespace CampaignVault.UnityClient.Editor
             }
             AssetDatabase.Refresh();
             Debug.Log("[Vault] Staged DM prompt, " + core + " core skills, " + plugin + " plugin skills.");
+        }
+
+        private static void StagePrompt(string repoRoot, string dest, string sourceName, string targetName, bool required)
+        {
+            string source = Path.Combine(repoRoot, sourceName);
+            string target = Path.Combine(dest, targetName);
+            if (!File.Exists(source))
+            {
+                if (File.Exists(target)) { File.Delete(target); }
+                if (required) { Debug.LogWarning("[Vault] " + sourceName + " not found; the client falls back to a one-line prompt."); }
+                return;
+            }
+            File.WriteAllText(target, SystemPromptProvider.ExtractPromptBody(File.ReadAllText(source)) + "\n");
         }
 
         /// <summary>Copies every NAME/SKILL.md under source; returns how many. Replaces dest wholesale.</summary>

@@ -40,7 +40,7 @@ internal static class EntitySeedingAdvisor
                 sb.AppendLine("2. Use `take_turn` → `activity` to move the party there");
                 sb.AppendLine("3. Use `get_entity(locationId, partyPresent:true)` to load the scene for narration");
                 sb.AppendLine();
-                sb.AppendLine("**References:** dnd-exploration skill (lazy-seeding), SACRED RULES rule 4 (Location Hierarchy & Lazy Seeding)");
+                sb.AppendLine("**References:** dnd-exploration skill (location hierarchy), dnd-world-building skill (seeding checklist)");
                 break;
 
             case "character":
@@ -67,7 +67,7 @@ internal static class EntitySeedingAdvisor
                 sb.AppendLine("3. Link it to a clue in a `plotThread` if it's narrative-critical");
                 sb.AppendLine("4. Use `get_entity(itemId)` to fetch it before interacting");
                 sb.AppendLine();
-                sb.AppendLine("**References:** SACRED RULES rule 4 (Mutations), dnd-world-change skill, dnd-world-building skill");
+                sb.AppendLine("**References:** dnd-world-change skill (seed before you name), dnd-world-building skill");
                 break;
 
             case "quest":
@@ -80,7 +80,7 @@ internal static class EntitySeedingAdvisor
                 sb.AppendLine("2. Use `take_turn` → `quest_progress` to evolve it during play");
                 sb.AppendLine("3. Use `get_entity(questId)` to check current state and objectives");
                 sb.AppendLine();
-                sb.AppendLine("**References:** dnd-campaign-events skill, SACRED RULES rule 4");
+                sb.AppendLine("**References:** dnd-campaign-events skill, dnd-world-building skill");
                 break;
 
             case "faction":
@@ -107,16 +107,16 @@ internal static class EntitySeedingAdvisor
                 sb.AppendLine("2. Surface clues as the party explores; check for ENGINE WARNING (missing clue entities)");
                 sb.AppendLine("3. Use `get_entity(plot-threadId)` to review state and clues");
                 sb.AppendLine();
-                sb.AppendLine("**References:** SACRED RULES rule 4 (Plot Threads), CLUE VALIDATION & LAZY ENTITY SEEDING, dnd-world-building skill");
+                sb.AppendLine("**References:** dnd-world-building skill (plot threads, materializing clues)");
                 break;
 
             default:
                 sb.AppendLine($"**To seed a {entityType}:**");
                 sb.AppendLine("1. Use `world_build` with the entity batch and required fields");
-                sb.AppendLine("2. Reference SACRED RULES rule 4 (Mutations) for structure");
+                sb.AppendLine("2. Fields per entity: lookup kind=help topic=world-building");
                 sb.AppendLine("3. Use `get_entity(id)` after seeding to load and interact");
                 sb.AppendLine();
-                sb.AppendLine("**References:** lookup kind=help topic=tools, dnd-world-change skill, recommended-system-prompt.md");
+                sb.AppendLine("**References:** dnd-world-building skill, dnd-world-change skill");
                 break;
         }
 
@@ -192,7 +192,7 @@ internal static class EntitySeedingAdvisor
         sb.AppendLine("- Flavor factions with passive roles (background NPCs, tavern crowds) → skip events unless a specific plot needs them");
         sb.AppendLine("- Newly awakened threats (an enemy resurfaces, a calamity brewing) → seed events immediately to persist the threat");
         sb.AppendLine();
-        sb.AppendLine("**References:** SACRED RULES rule 4 (World Events & Disruptable Consequences), world_build docs");
+        sb.AppendLine("**References:** dnd-campaign-events skill, lookup kind=help topic=world-building");
 
         return sb.ToString();
     }

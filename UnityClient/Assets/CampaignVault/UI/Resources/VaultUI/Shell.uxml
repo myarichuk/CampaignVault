@@ -1,0 +1,34 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <!--
+        The table. Static skeleton only: every region is filled and bound in
+        code (Scripts/UI/VaultClientUI.cs). Styles: UI/Theme/*.uss.
+    -->
+    <ui:VisualElement name="Root" class="cv-root">
+        <ui:VisualElement class="cv-backdrop" picking-mode="Ignore" />
+        <ui:VisualElement class="cv-vignette" picking-mode="Ignore" />
+        <ui:VisualElement name="Shell" class="cv-shell">
+            <ui:VisualElement name="TopBar" class="cv-topbar">
+                <ui:VisualElement class="cv-brand">
+                    <ui:VisualElement class="cv-icon cv-icon--crest" />
+                    <ui:Label text="CAMPAIGN VAULT" class="cv-display cv-brand__name" />
+                </ui:VisualElement>
+                <ui:VisualElement name="Context" class="cv-context">
+                    <ui:Label name="ContextTitle" class="cv-context__title" />
+                    <ui:Label name="ContextMeta" class="cv-context__meta" />
+                </ui:VisualElement>
+                <ui:VisualElement class="cv-spacer" />
+                <ui:VisualElement name="TopActions" class="cv-row" />
+            </ui:VisualElement>
+            <ui:VisualElement name="Stage" class="cv-stage">
+                <ui:VisualElement name="Party" class="cv-party" />
+                <ui:VisualElement name="Center" class="cv-center">
+                    <ui:VisualElement name="Column" class="cv-center__column" />
+                </ui:VisualElement>
+                <ui:VisualElement name="Codex" class="cv-codex" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="Toasts" class="cv-toasts" picking-mode="Ignore" />
+        <ui:VisualElement name="OverlayLayer" class="cv-layer" picking-mode="Ignore" />
+        <ui:VisualElement name="TooltipLayer" class="cv-layer" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

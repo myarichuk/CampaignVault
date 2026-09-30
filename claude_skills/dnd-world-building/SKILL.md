@@ -1,86 +1,77 @@
 ---
 name: dnd-world-building
-description: Seeding a new campaign, settlement, or region via world_build — location depth, plot thread scaffolding, clue materialization, and item templates
+description: Seeding with world_build — seeding order, the depth a new area needs, speaking NPCs, secrets and traps, plot-thread scaffolding, clues as real items, item templates
 metadata:
   type: skill
 ---
 
-# World-Building Mode
+# World Building
 
-You are seeding new content via `world_build` — session 0, arrival in a new settlement, entering a new region, or introducing a new plot thread mid-campaign.
+Seeding with `world_build`: session 0, a new settlement or region, a new plot thread mid-campaign, or a single person or place the story is about to name. It is one atomic batch (at most 100 entries); an existing id is merged. This skill is the process; `lookup kind=help topic=world-building` has the field-level schema, the per-ruleset `systemStats`, and a full example.
 
-## Recommended Seeding Order
+## Order
 
-`world_build` dispatches in a fixed order regardless of array order in your call, so forward references within the same batch are safe (e.g. a quest's `giverId` pointing at a character seeded later in the same call):
+`world_build` processes its arrays in a fixed order whatever order you send them in, so references forward within one batch are safe (a quest's `giverId` naming a character seeded in the same call):
 
-1. **locations** — the starting hub/region first, then anywhere it links to.
-2. **factions** — any powers already active in the region.
-3. **creatures / spells / feats** — only if this campaign has homebrew content.
-4. **characters** — PCs first (`isPc: true`), then the named NPCs the opening scene actually needs.
-5. **items** — starting gear, set `holderId` to the owning character. See **Items** below.
-6. **quests** — the opening hook, if you have one ready.
-7. **plotThreads** — DM-only scaffolding for arcs you're seeding in advance. See **Plot Thread Enrichment** below.
-8. **lore** — background/history entries worth being searchable.
-9. **rumors** — seed sparingly; most should emerge from play, not a pre-written list.
-10. **needDescriptors** — human-readable explanations for any custom needs your NPCs track.
+1. **locations**: the starting hub first, then what it links to.
+2. **factions** active in the region.
+3. **creatures, spells, feats**: only homebrew.
+4. **characters**: PCs (`isPc: true`), then the named NPCs the opening actually needs. Combat-capable NPCs need `systemStats`; gear is a separate `items[]` entry held by them.
+5. **items**: starting gear with `holderId` set.
+6. **quests**: the opening hook, if ready.
+7. **plotThreads**: scaffolding for arcs seeded ahead.
+8. **lore** worth being searchable.
+9. **rumors**, sparingly; most should come out of play.
+10. **needDescriptors** explaining any custom needs.
 
-For the exact field-level schema and a full copy-paste JSON example, call `lookup kind=help topic=world-building` — this skill covers the *process*, that tool call covers the *syntax*.
+## A new area, layer by layer
 
-## World-Building Seeding Checklist (Mandatory Rigor)
+The party should be able to move through the world at this resolution without you inventing it mid-scene. The location hierarchy itself is in `dnd-exploration`.
 
-When seeding a new area, apply these layers in order. **Any missing layer is a gap** — the party should navigate the world at this resolution without the GM inventing it wholesale mid-scene. (Location hierarchy — Region → Settlement → District → Building → Room — and when a spot needs a full `Location` vs. just narration is covered in `dnd-exploration`; this checklist assumes that model.)
+1. **Settlement and factions.** The settlement (type Settlement, `ambientCrowd`, description, `dangerModifier`), the factions active there, and at least one NPC per faction or district who exists only to make the place lived-in: psychology, `currentActivity`, `keepAlive: true`.
+2. **Districts.** Three to five per settlement, each with `parentLocationId`, `ambientCrowd` (a typical moment), `dangerModifier` (0 safe, 20+ active threat) and two or three sensory details in the description.
+3. **Buildings.** Two or three per district: somewhere social (a tavern or inn, where rumors live), a service (a shop, temple or guildhall, where hooks come from), and a landmark (a theatre, a bathhouse, a prison), each linked with `connectedFromLocationId` and `connectionDescription`.
+4. **Fixtures and secrets.** A description that names what is there is enough for atmosphere. Seed an entity only when it matters: a place to enter is a child location with an exit, a fixture worth touching (a desk, a notice board, an altar) is an item held by the location, and its contents are items held by it. For a place tied to a plot thread, quest or secret, ask what is hidden there and who hid it, and seed zero to two answers, each with a reason, never as a quota. The engine keeps them off the scene and resolves finding them:
+   - a secret passage: an exit with `hidden: true`, `discoverDc` and `intent` ("the smuggler's way down; a draft moves the candle");
+   - a concealed object: an item with `hidden: true` and `discoverDc`, held by the location or by a fixture (a key in the desk);
+   - a secret on a fixture: an `ItemDetail` with `hidden: true`, `discoverDc` and `intent` (a false bottom, a glyph under the varnish);
+   - a trap: a `hazard` on an exit (fires on passing), an item (fires when taken) or the location's `hazards` (fires on entering): `{name, trigger, detectDc, disarmDc, effect, saveDc, saveAbility, intent}`.
+5. **Exits.** Every location has at least one; `connectedFromLocationId` creates it. No dead ends.
+6. **Plot threads** (below).
 
-**Step 1 — Settlement & Factions:**
-- The settlement/region itself (e.g. `locations/neverwinter`, type: Settlement, with `ambientCrowd`, description, `dangerModifier`)
-- **Factions** active here
-- At least **one NPC per faction/district** who exists only to make the world feel lived-in — not a quest-giver, just someone with psychology, `currentActivity`, `keepAlive: true`
+## Speaking NPCs
 
-**Step 2 — Districts:** Every settlement needs 3-5 named districts. Each gets:
-- `type: District`, `parentLocationId: <settlement>`
-- `ambientCrowd` (texture of a typical moment)
-- `dangerModifier` (0 = safe, 20+ = active threat)
-- `description` (2-3 sensory details)
+Anyone who will talk needs enough to have a voice: `psychology.traits`, a want and a fear, and at least two memories that give them opinions. Without these every NPC sounds the same.
 
-**Step 3 — Street-Level Buildings:** Every district needs 2-3 Building-type locations:
-- A tavern or inn (social hub, rumor source)
-- A shop, temple, or guildhall (service node, quest hook source)
-- A notable landmark (theater, bathhouse, prison, barracks)
-- Each gets `type: Building`, `connectedFromLocationId: <district>`, `connectionDescription`
+```json
+{ "characters": [ { "id": "chars/hedda-miller", "name": "Hedda", "currentLocationId": "locations/old-mill", "currentActivity": "Sharpening a sickle on the step", "keepAlive": true,
+  "psychology": { "traits": ["blunt", "suspicious of townsfolk"], "wants": ["the mill kept in the family"], "fears": ["the bailiff's men"],
+    "memories": {
+      "the-flood": { "topic": "the-flood", "details": "Lost her husband when the weir broke two springs ago; blames the lord's steward for the repairs he never paid for" },
+      "strangers": { "topic": "strangers", "details": "The last travellers who asked about the mill were the steward's surveyors" } } } } ] }
+```
 
-**Step 4 — Fixtures and secrets (there are no "points of interest"):** A description that names what is here is enough for ambience; don't pre-seed placeholder names. Seed a real entity only when it matters: an enterable spot is a child `Location` with an exit, a fixture worth touching (desk, notice board, altar) is an `items[]` entry held by the location, and its contents are items held by that item. For each location tied to a plot thread, quest or NPC secret, ask "what is hidden here, and who hid it?" and seed 0-2 answers, each with a reason. Never seed secrets as a quota. The engine keeps them off the scene and resolves finding them, as it does dice:
-- a secret passage: an exit with `hidden: true`, `discoverDc`, `intent` ("the smuggler's way down; a draft moves the candle");
-- a concealed object: an item with `hidden: true`, `discoverDc` (held by the location, or by a fixture: a key in the desk);
-- a secret on a fixture: an `ItemDetail` with `hidden: true`, `discoverDc`, `intent` (false bottom, a glyph under the varnish);
-- a trap: a `hazard` on an exit (fires passing through), an item (fires when taken) or the location's `hazards` (fires on entering): `{name, trigger, detectDc, disarmDc, effect, saveDc, saveAbility, intent}`.
-You get every secret of a location once, as `fullScene.dmOnly`, on the first arrival of a session: foreshadow from it, never read it out.
+## Plot threads
 
-**Step 5 — Exits:** Every location must have at least one exit (auto-linked via `connectedFromLocationId` on creation). No dead ends.
+Every plot thread has:
+- `foreshadowingHooks`: two to four teasers you can narrate;
+- `clues`: two to four, each with `id`, `description` and `involvedEntityIds` (physical, behavioural or relational);
+- a testable `resolutionCondition` ("the party shows Maeva proof of the Thayan camp and she calls off the war parties", not "the party talks to them");
+- `involvedEntityIds`: the main NPCs and factions.
 
-**Step 6 — Plot Thread Enrichment:** Every plot thread seeded via `world_build` MUST include `foreshadowingHooks` (2-4 narratable teasers), `clues` (2-4 entries, each with `id`, `description`, `involvedEntityIds` — clue types: physical, behavioral, relational), a testable `resolutionCondition` ("party presents evidence of the Thayan camp to Maeva, and she calls off the elven war parties" — not "the party talks to them"), and `involvedEntityIds` (primary NPCs + factions). (Canonical counts: 2–4 everywhere; `dnd-campaign-events` and `dnd-npc-interaction` defer here.)
-
-**Apply this checklist BEFORE committing any `world_build` call.** Run through each layer mentally. If you catch yourself saying "I'll add that later," stop — seed it now. The cost of a missed location is a broken `get_entity` call or a dead-end scene. The cost of a missed fixture, unfilled plot thread, or non-materialized clue is flat narration without narrative scaffolding.
-
-## Materializing Clues in the World
-
-**If a clue references a physical object** (a letter, a journal, a ledger, a bloodstained arrow, a bounty notice, a torn map) — **seed that object as an `items[]` entry** in `world_build` with `holderId` pointing to the character or location where it can be found. Otherwise the party searches and finds nothing in the persisted world; the clue exists only as metadata, not as something they can interact with.
-
-**Bidirectional linking:** The clue's `involvedEntityIds` must include the item ID (e.g., `"items/dunstun-journal"`). Additionally, tag the item with a plot-thread reference: `tags: ["clue:plot-threads/dunstun-confession"]`. Without this, the clue metadata and the item are orphaned from each other — `get_entity` on the item won't surface the clue's context, and the DM won't know the item's significance at a glance.
-
-**If a clue references a witness or informant** — decide whether they need their own `chars[]` entry (recurring, named, likely to be interacted with multiple times) or can emerge from the location's `ambientCrowd` during play (transient, nameless, one-off). When unsure, keep them in the clue text and promote them via `world_build` if the party pursues them. Tag them similarly: `tags: ["witness:plot-threads/dunstun-confession"]` on their `chars[]` entry if seeding them.
+**Clues must exist in the world.** A clue that names an object (a letter, a ledger, a bloodied arrow, a torn map) needs that object as an `items[]` entry with `holderId` where it can be found, the item's id in the clue's `involvedEntityIds`, and a tag back to the thread (`tags: ["clue:plot-threads/dunstun-confession"]`). Otherwise the party searches and finds nothing. A witness who will recur gets a `characters[]` entry tagged the same way (`witness:plot-threads/...`); a one-off can stay in the clue text and emerge from the crowd, to be seeded if the party pursues them.
 
 ## Items
 
-Items aren't restricted to weapons/armor — `coreCategory` plus the open `properties`/`tags` bag cover outfits, tools, consumables, and artifacts uniformly, and `coreCategory` and equip `equipZones`/`equipLayer` are open strings, not a fixed list — a plugin pack may define its own (e.g. `category: Jewelry`, zones like `septum`/`anklet`).
+`coreCategory`, equip zones and layers are open strings, so outfits, tools, consumables and artifacts are all items, and a plugin may add its own categories and zones. Before typing an item's fields by hand:
 
-**Before hand-typing an item's fields, check whether it's already a known template:**
-1. `lookup` kind:'items' (filter by `query`/`category`/`tag`) — if a matching template exists (SRD or a homebrew/plugin pack), set `definitionName` on the `items[]` entry instead of typing out `coreCategory`/`tags`/`properties`/equip fields by hand. Anything you *also* set explicitly on that same entry still overrides the template.
-2. If no template fits and you're inventing tags for a homebrew item, check `lookup` kind:'item_tags' first — reuse an existing tag (e.g. `exotic`) instead of a near-duplicate (`rare`), or the `itemTag` filter above silently stops matching it.
+1. `lookup kind=items` (filter by `query`, `category` or `tag`). If a template fits (SRD, homebrew or a plugin pack), set `definitionName`; fields you also set still override it.
+2. For a homebrew item's tags, check `lookup kind=item_tags` first and reuse an existing tag rather than a near-duplicate, or tag filters stop matching it.
 
 ## Checklist
 
-**When seeding a new area (world_build):**
-- [ ] Steps 1–5: Settlement, districts, buildings, fixtures/secrets where they matter, exits all complete?
-- [ ] Every plot thread has foreshadowingHooks (2-4), clues (2-4), resolutionCondition, involvedEntityIds?
-- [ ] Every clue referencing a physical object has a matching, bidirectionally-tagged `items[]` entry?
-- [ ] For each item: checked kind:'items' for a `definitionName` match, or kind:'item_tags' before inventing a new tag?
-- [ ] Ready to call `world_build`?
+- [ ] Settlement, districts, buildings, fixtures and secrets where they matter, and exits.
+- [ ] Every NPC who will speak has traits, a want, a fear and two memories.
+- [ ] Every plot thread has hooks, clues, a testable resolution and its involved entities.
+- [ ] Every clue that names an object has its item, linked both ways.
+- [ ] Items checked against templates and existing tags.

@@ -5,26 +5,27 @@ metadata:
   type: skill
 ---
 
-# Combat Mode
+# Combat (D&D 5e)
 
-You are running a D&D combat encounter. These rules apply **only during active combat**.
+For Pathfinder 2e campaigns, `pf2e-combat` covers what differs; the flow below is shared.
 
-## Core Rules
+## Flow
 
-1. **Start combat** → `combat(action: "start", locationId, combatantIds)` → each combatant rolls initiative once
-2. **Turn order** → `combat(action: "next")` advances turns, expires round-based status effects
-3. **Every action resolves via `ruleset_action`** — never invent rolls yourself; never pair it with a manual `hp`/`status`/`engagement_relation` on the same character (damage, conditions, grapple engagement auto-apply — the batch hard-fails as a duplicate; see `dnd-world-change`)
-4. **Grapple:** `ContestedCheck` + `Maneuver` in `ruleset_action`; engine auto-applies engagement on success (manual `engagement_relation` only for non-grapple restraint)
-6. **A PC's turn is a hard stop, not a beat to narrate through.** When `combat(action: "next")` lands on a PC, describe the round state (what changed, who's threatening whom, any status ticking) and stop — wait for the player's stated action before committing any `ruleset_action` for that PC. Never pick their target, action, or spell for them, and never chain a PC's turn straight into the next NPC's without their input in between. An NPC combatant's turn is the one case you resolve and narrate in the same batch — their action comes from Psychology/TurnIntent, not the player.
-7. **Don't refuse a legal combat action outright.** If a PC declares an attack/maneuver the rules and fiction support, resolve it via the matching `ruleset_action` and let the roll decide — a low chance to hit is not a reason to refuse the attempt.
+1. **Start:** `combat(action: "start", locationId, combatantIds)`; everyone rolls initiative once.
+2. **Turns:** `combat(action: "next")` advances the turn and expires round-based statuses.
+3. **Every action is a `ruleset_action`** in `take_turn`. The engine rolls and applies damage, conditions and grapple engagement itself (`dnd-world-change`).
+4. **Grapple and shove:** `ContestedCheck` with `Maneuver`; success applies the engagement. A manual `engagement_relation` is only for restraint that isn't a grapple.
+5. **A PC's turn is a hard stop.** When the turn lands on a PC, describe the round state (what changed, who threatens whom, what is ticking) and wait for the player's declared action. Never choose their target, action or spell, and never run a PC's turn into the next NPC's without their input. An NPC's turn is resolved and narrated in one batch, from their psychology and `TurnIntent`.
+6. **A legal action is attempted, not refused.** A low chance to hit is the roll's business.
+7. **End:** `combat(action: "end")`.
 
-Only bundle multiple actors into one `take_turn` when they're genuinely simultaneous (e.g., an AoE hitting several targets in the same instant) — see `dnd-bundling`'s "intervening player decision/round" rule for the general cross-skill version of this.
+Reactions and opportunity attacks are a `ruleset_action` with `isReaction: true`.
 
 ## Action Types (ruleset_action.actionType)
 
-- **Attack** — omit `bonus`/`damageBonus`: the engine derives them from the sheet (ability + proficiency + fighting style + weapon enchantment); passing either replaces the derived total. Optional per-attack flags: `powerAttack` (only if a recorded feat defines that toggle), `sneakAttack` (ally adjacent), `offHand` (bonus-action off-hand attack; no ability mod on damage without Two-Weapon Fighting; refused before an Attack action this turn, and, when weapons are equipped in the hand zones, unless two light weapons are wielded — `item_equip` both), `actionSurge`, `bonusAction`, `assert` (see below). List one target per swing of Extra Attack; the result warns if `targetIds` outnumber the attacks one action allows or `attackCount` skips a listed target. Cunning Action is its own bonus action: `actionName` "Cunning Action", `parameters.option` dash|disengage|hide (hide needs `dc`). Bard Jack of All Trades is applied automatically to unproficient ability checks and initiative. Extra Attack (Fighter 5+) needs no flag: the further swings of one Attack action don't cost another action. Record fighting style/subclass via level_up choices or `systemStats.levelUpChoices`, or Archery/Dueling won't apply.
-- **SkillCheck** — skill name, dc
-- **SavingThrow** — save type (Dexterity, etc.), dc
+- **Attack** — send the weapon's dice in `damageDice` without a modifier; omit `bonus`/`damageBonus`: the engine derives them from the sheet (ability + proficiency + fighting style + weapon enchantment); passing either replaces the derived total. Optional per-attack flags: `powerAttack` (only if a recorded feat defines that toggle), `sneakAttack` (ally adjacent), `offHand` (bonus-action off-hand attack; no ability mod on damage without Two-Weapon Fighting; refused before an Attack action this turn, and, when weapons are equipped in the hand zones, unless two light weapons are wielded — `item_equip` both), `actionSurge`, `bonusAction`, `assert` (see below). List one target per swing of Extra Attack; the result warns if `targetIds` outnumber the attacks one action allows or `attackCount` skips a listed target. Cunning Action is its own bonus action: `actionName` "Cunning Action", `parameters.option` dash|disengage|hide (hide needs `dc`). Bard Jack of All Trades is applied automatically to unproficient ability checks and initiative. Extra Attack (Fighter 5+) needs no flag: the further swings of one Attack action don't cost another action. Record fighting style/subclass via level_up choices or `systemStats.levelUpChoices`, or Archery/Dueling won't apply.
+- **SkillCheck** — `actionName` is the skill; `parameters.dc`
+- **SavingThrow** — `parameters.save` (Dexterity, etc.) and `dc`
 - **ContestedCheck** — skill vs. skill (for grapple, opposed rolls)
 - **Spell** — spell name, resolution (attack/save/check/heal/utility), parameters
 
@@ -42,7 +43,7 @@ Only bundle multiple actors into one `take_turn` when they're genuinely simultan
 }
 ```
 
-**Cantrip damage scales with caster level, not spell level.** Every SRD 5.1 spell now carries structured damage/save data (`SpellDefinition.DamageAtCharacterLevel`/`DamageAtSlotLevel`/`SaveType`), and `Dnd5eRulesetResolver` soft-warns whenever a cast's `damageDice`/`save` disagrees with the definition — for any spell with data, not just a hardcoded few. It's still a warning, not a hard fail: damage applies as sent, and homebrew/reflavored spells with no definition cast normally. Get the tier from the caster's actual character level: **1d[die]** at levels 1-4, **2d[die]** at 5-10, **3d[die]** at 11-16, **4d[die]** at 17-20. No ability modifier is ever added to cantrip damage (only to the attack roll).
+**Cantrip damage scales with character level, not spell level:** 1 die at levels 1–4, 2 at 5–10, 3 at 11–16, 4 at 17–20, and no ability modifier on the damage. Every SRD spell carries its damage and save data, so the engine warns when the dice or save you send disagree with the spell; the damage still applies as sent, and homebrew spells cast normally.
 
 **Fireball** (save, all targets):
 ```json
@@ -81,6 +82,8 @@ Pool order and pre-combining don't matter (`4d6+2d8`, `40d6` for Meteor Swarm al
 }
 ```
 
+**Utility spells** (Mage Armor, Alarm) roll nothing and apply nothing: commit the lasting effect as a `status` (with `statModifiers`, for example ArmorClass) and the slot as a `resource` in the same batch.
+
 ## Spell Components
 
 Before resolving a `Spell` action, check whether the caster can actually supply what the spell requires:
@@ -92,44 +95,29 @@ When *you* apply a status effect (Gagged, Bound, silence zone, etc.) that should
 
 Casting also spends the slot — commit `{ "$type": "resource", "characterId": "chars/wizard", "poolName": "spell_slots_3", "delta": -1 }` in the same batch. Overspend hard-fails; narrate the fizzle and let the player pick another.
 
-## Engagement & Spatial
+## Restraint that isn't a grapple
 
-Manual `engagement_relation` only for non-grapple restraint (grapple success auto-applies — rule 4 above):
+Holding someone down after the fight, tying them, escorting a prisoner: commit it yourself.
 ```json
-{
-  "$type": "engagement_relation",
-  "characterId": "chars/fighter",
-  "targetId": "chars/goblin",
-  "category": "Physical",
-  "verb": "grappling"
-}
+{ "$type": "engagement_relation", "characterId": "chars/fighter", "targetId": "chars/goblin", "category": "Physical", "verb": "restraining" }
 ```
 
 ## Status Effects
 
-Commit status changes:
+A condition the engine didn't apply itself is a `status`; ending it is `status_remove`:
 ```json
-{
-  "$type": "status",
-  "characterId": "chars/wizard",
-  "statusId": "Concentration",
-  "newState": "active"
-}
+{ "$type": "status", "characterId": "chars/wizard", "status": "Concentration" }
 ```
 
-## Combat Checklist
+## Checklist
 
-- [ ] Did I call `combat(action: "start")` to initialize?
-- [ ] Is this an action (attack/spell/move)? → `ruleset_action` first
-- [ ] Did I narrate sensory outcome from the roll result?
-- [ ] Did time pass (turn advanced)? → `combat(action: "next")` or `minutesElapsed` on the take_turn request
-- [ ] Did HP/status/engagement change? → Only via `ruleset_action` auto-apply, or a dedicated `status` commit for an unrelated condition
-- [ ] Is someone grappling? → Engine auto-applies engagement; manual `engagement_relation` only for non-grapple restraint
-- [ ] If it just advanced to a PC's turn, did I stop instead of choosing their action for them?
-- [ ] Did I resolve the PC's declared action via a check instead of refusing it outright?
+- [ ] Combat started, and the turn advanced with `combat(action: "next")`.
+- [ ] Each action is a `ruleset_action`, with nothing the engine applies added by hand.
+- [ ] A spell spent its slot in the same batch, and its components were possible.
+- [ ] On a PC's turn I stopped and waited for the player.
 
 ## Feat effects (homebrew and SRD)
-Feats can declare `effects` (upsert_feat): fixed numeric modifiers to attack, damage, skill, save or AC rolls. The engine applies the number; you only supply facts.
+Feats can declare `effects` (seeded through `world_build` `feats[]`): fixed numeric modifiers to attack, damage, skill, save or AC rolls. The engine applies the number; you only supply facts.
 - **Engine-checked** conditions (weapon `ranged`/`melee`/`finesse`/`twoHanded`/`heavy`) and player **toggles** (`parameters.powerAttack: "true"`) need nothing from you beyond the toggle.
 - **DM-judged** conditions ("an ally is adjacent", "shooting from higher ground") are flags: put the ones you judge true right now in `parameters.assert` (comma-separated, e.g. `"allyNear,highGround"`). take_turn's `featChecklist` lists the flags every response while combat is active (everyone in round 1, the active character after). An effect whose flag you did not assert is *reported* in the roll result ("not applied: needs assert=…"), never applied silently. Never invent the number; pass only the flag.
 - PF2e effects carry a `bonusType`; among a character's feat effects only the highest bonus and worst penalty of each typed kind count.

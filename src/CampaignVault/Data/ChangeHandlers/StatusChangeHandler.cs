@@ -15,7 +15,7 @@ namespace CampaignVault.Data.ChangeHandlers;
 ///   separate Frightened sources). De-duplication is the LLM DM's responsibility.
 /// - Remove (StatusRemove.Status): removes ALL StatusEffects whose Name matches case-insensitively.
 /// - Legacy path: StatusChange.Status (plain string) is still accepted for backward compatibility
-///   and creates a minimal StatusEffect with just a Name and Category="Legacy".
+///   and creates a minimal StatusEffect with just a Name and Category="Condition" (AppliedBy marks the path).
 /// - Auto-expiry (ExpiresAtDay / ExpiresAtRound) is enforced by AdvanceWorldAsync / CombatEncounter
 ///   advancement, not here.
 /// </summary>
@@ -92,7 +92,8 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
             effect = new StatusEffect
             {
                 Name     = add.Status,
-                Category = "Legacy",
+                // Plain-string statuses are conditions ("Poisoned"); this text reaches the story log.
+                Category = "Condition",
                 AppliedBy = "legacy-status-change"
             };
         }
@@ -139,7 +140,8 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
         character.SystemStats.StatusEffects.Add(effect);
         context.RecordPhysicalStateNudge($"{character.Name} is now affected by '{effect.Name}'.");
 
-        await LogStatusEventAsync(context, character, $"{character.Name} gained status '{effect.Name}' ({effect.Category}).");
+        var category = string.IsNullOrWhiteSpace(effect.Category) ? string.Empty : $" ({effect.Category})";
+        await LogStatusEventAsync(context, character, $"{character.Name} gained status '{effect.Name}'{category}.");
 
         return ChangeHandlerResult.Ok;
     }

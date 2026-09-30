@@ -1,0 +1,125 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement class="cv-root" style="flex-grow: 1;">
+        <ui:VisualElement class="cv-backdrop" />
+        <ui:VisualElement class="cv-vignette" picking-mode="Ignore" />
+        <ui:VisualElement class="cv-shell">
+            <ui:VisualElement class="cv-topbar">
+                <ui:VisualElement class="cv-brand">
+                    <ui:VisualElement class="cv-icon cv-icon--crest" />
+                    <ui:Label text="CAMPAIGN VAULT" class="cv-display cv-brand__name" />
+                </ui:VisualElement>
+                <ui:VisualElement class="cv-context">
+                    <ui:Label text="THE SUNKEN CROWN" class="cv-context__title" />
+                    <ui:Label text="Session 4 · Day 12, Dusk · Harrowgate, the Old Mill" class="cv-context__meta" />
+                </ui:VisualElement>
+                <ui:VisualElement class="cv-spacer" />
+                <ui:VisualElement class="cv-pill cv-pill--ok"><ui:VisualElement class="cv-pill__dot" /><ui:Label text="server" class="cv-pill__text" /></ui:VisualElement>
+                <ui:VisualElement class="cv-pill cv-pill--busy"><ui:VisualElement class="cv-pill__dot" /><ui:Label text="claude-sonnet-5-5" class="cv-pill__text" /></ui:VisualElement>
+                <ui:Button class="cv-btn cv-btn--ghost cv-btn--icon"><ui:VisualElement class="cv-icon cv-icon--campaigns" /></ui:Button>
+                <ui:Button class="cv-btn cv-btn--ghost cv-btn--icon"><ui:VisualElement class="cv-icon cv-icon--quests" /></ui:Button>
+                <ui:Button class="cv-btn cv-btn--ghost cv-btn--icon"><ui:VisualElement class="cv-icon cv-icon--settings" /></ui:Button>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="cv-stage">
+                <ui:VisualElement class="cv-party">
+                    <ui:VisualElement class="cv-party__head"><ui:Label text="THE PARTY" class="cv-caption" /></ui:VisualElement>
+                    <ui:VisualElement class="cv-member cv-member--pc">
+                        <ui:Label text="AR" class="cv-member__crest" />
+                        <ui:VisualElement class="cv-member__body">
+                            <ui:Label text="Aric Thorne" class="cv-member__name" />
+                            <ui:Label text="Human Fighter 5" class="cv-member__sub" />
+                            <ui:VisualElement class="cv-member__hp">
+                                <ui:VisualElement class="cv-bar"><ui:VisualElement class="cv-bar__ghost" style="width: 72%;" /><ui:VisualElement class="cv-bar__fill" style="width: 64%;" /></ui:VisualElement>
+                                <ui:Label text="29/45" class="cv-member__hptext" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="cv-member__conditions"><ui:VisualElement class="cv-chip cv-chip--blood"><ui:Label text="POISONED" /></ui:VisualElement></ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="cv-member">
+                        <ui:Label text="MI" class="cv-member__crest" />
+                        <ui:VisualElement class="cv-member__body">
+                            <ui:Label text="Mirelle" class="cv-member__name" />
+                            <ui:Label text="Elf Ranger 4 · ally" class="cv-member__sub" />
+                            <ui:VisualElement class="cv-member__hp">
+                                <ui:VisualElement class="cv-bar cv-bar--low"><ui:VisualElement class="cv-bar__fill" style="width: 22%;" /></ui:VisualElement>
+                                <ui:Label text="7/31" class="cv-member__hptext" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="cv-member">
+                        <ui:Label text="SH" class="cv-member__crest" />
+                        <ui:VisualElement class="cv-member__body">
+                            <ui:Label text="Shade" class="cv-member__name" />
+                            <ui:Label text="Familiar · minion" class="cv-member__sub" />
+                            <ui:VisualElement class="cv-member__hp">
+                                <ui:VisualElement class="cv-bar cv-bar--mid"><ui:VisualElement class="cv-bar__fill" style="width: 50%;" /></ui:VisualElement>
+                                <ui:Label text="3/6" class="cv-member__hptext" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="cv-center">
+                    <ui:VisualElement class="cv-center__column">
+                        <ui:ScrollView class="cv-log">
+                            <ui:VisualElement class="cv-system"><ui:VisualElement class="cv-icon cv-icon--spark" /><ui:Label text="Campaign “the-sunken-crown” is now active. The DM starts this table with a fresh conversation." class="cv-system__text" /></ui:VisualElement>
+                            <ui:Label text="The mill wheel groans in the dark water, its paddles slick with river weed. Somewhere above, a lantern gutters — and in its light you see the flour sacks have been &lt;b&gt;slashed open&lt;/b&gt;, their contents spilled like snow across the boards." class="cv-seg cv-seg--narration" />
+                            <ui:VisualElement class="cv-player"><ui:VisualElement class="cv-player__bubble"><ui:VisualElement class="cv-icon cv-icon--send" /><ui:Label text="I crouch by the sacks and look for tracks in the flour." class="cv-player__text" /></ui:VisualElement></ui:VisualElement>
+                            <ui:Label text="Let me check the search rules and the hidden content here." class="cv-aside" />
+                            <ui:VisualElement class="cv-activity"><ui:VisualElement class="cv-activity__head"><ui:VisualElement class="cv-icon cv-icon--chevron cv-activity__chevron" /><ui:VisualElement class="cv-icon cv-icon--inspect" /><ui:Label text="THE DM CONSULTS THE LEDGER · 2" class="cv-activity__title" /></ui:VisualElement></ui:VisualElement>
+                            <ui:VisualElement class="cv-roll cv-roll--success"><ui:VisualElement class="cv-icon cv-icon--d20 cv-roll__die" /><ui:VisualElement class="cv-roll__body"><ui:Label text="Perception" class="cv-roll__label" /><ui:Label text="17 vs DC 14" class="cv-roll__detail" /></ui:VisualElement><ui:Label text="SUCCESS" class="cv-roll__verdict" /></ui:VisualElement>
+                            <ui:VisualElement class="cv-roll cv-roll--crit-success"><ui:VisualElement class="cv-icon cv-icon--d20 cv-roll__die" /><ui:VisualElement class="cv-roll__body"><ui:Label text="Longsword vs Ghoul" class="cv-roll__label" /><ui:Label text="25 vs AC 13" class="cv-roll__detail" /></ui:VisualElement><ui:Label text="CRITICAL SUCCESS" class="cv-roll__verdict" /></ui:VisualElement>
+                            <ui:VisualElement class="cv-roll cv-roll--failure"><ui:VisualElement class="cv-icon cv-icon--d20 cv-roll__die" /><ui:VisualElement class="cv-roll__body"><ui:Label text="Constitution Save" class="cv-roll__label" /><ui:Label text="9 vs DC 13" class="cv-roll__detail" /></ui:VisualElement><ui:Label text="FAILURE" class="cv-roll__verdict" /></ui:VisualElement>
+                            <ui:VisualElement class="cv-voice"><ui:VisualElement class="cv-voice__bar" style="background-color: rgb(255, 199, 158);" /><ui:VisualElement class="cv-voice__body"><ui:Label text="OLD TOM" class="cv-nameplate" style="color: rgb(255, 199, 158);" /><ui:Label text="“Those aren't rat tracks, friend. Something walked on two legs through here — and it was carrying the miller.”" class="cv-voice__line" /></ui:VisualElement></ui:VisualElement>
+                            <ui:VisualElement class="cv-system cv-system--error"><ui:VisualElement class="cv-icon cv-icon--warning" /><ui:Label text="Tool take_turn failed: HTTP 500 contacting http://127.0.0.1:5275/play" class="cv-system__text" /></ui:VisualElement>
+                        </ui:ScrollView>
+                        <ui:VisualElement class="cv-thinking cv-thinking--on"><ui:VisualElement class="cv-icon cv-icon--d20" /><ui:Label text="the DM is thinking…" class="cv-thinking__text" /></ui:VisualElement>
+                        <ui:VisualElement class="cv-command cv-frame">
+                            <ui:VisualElement class="cv-command__quick">
+                                <ui:Button class="cv-btn cv-btn--small cv-btn--ghost"><ui:VisualElement class="cv-icon cv-icon--sm cv-icon--look" /><ui:Label text="LOOK" /></ui:Button>
+                                <ui:Button class="cv-btn cv-btn--small cv-btn--ghost"><ui:VisualElement class="cv-icon cv-icon--sm cv-icon--talk" /><ui:Label text="TALK" /></ui:Button>
+                                <ui:Button class="cv-btn cv-btn--small cv-btn--ghost"><ui:VisualElement class="cv-icon cv-icon--sm cv-icon--search" /><ui:Label text="SEARCH" /></ui:Button>
+                                <ui:Button class="cv-btn cv-btn--small cv-btn--ghost"><ui:VisualElement class="cv-icon cv-icon--sm cv-icon--attack" /><ui:Label text="ATTACK" /></ui:Button>
+                                <ui:Button class="cv-btn cv-btn--small cv-btn--ghost"><ui:VisualElement class="cv-icon cv-icon--sm cv-icon--rest" /><ui:Label text="REST" /></ui:Button>
+                                <ui:Button class="cv-btn cv-btn--small cv-btn--ghost"><ui:VisualElement class="cv-icon cv-icon--sm cv-icon--ooc" /><ui:Label text="OUT OF CHARACTER" /></ui:Button>
+                            </ui:VisualElement>
+                            <ui:VisualElement class="cv-command__row">
+                                <ui:TextField multiline="true" class="cv-field cv-command__input" value="I follow the drag marks toward the waterwheel, sword drawn." />
+                                <ui:Button class="cv-btn cv-btn--primary cv-command__send"><ui:VisualElement class="cv-icon cv-icon--send" /><ui:Label text="ACT" /></ui:Button>
+                            </ui:VisualElement>
+                            <ui:VisualElement class="cv-command__hint"><ui:Label text="ENTER TO ACT" class="cv-caption" /><ui:Label text="SHIFT+ENTER NEW LINE" class="cv-caption" /><ui:Label text="UP TO RECALL" class="cv-caption" /></ui:VisualElement>
+                            <ui:VisualElement class="cv-frame__corner cv-frame__corner--tl" /><ui:VisualElement class="cv-frame__corner cv-frame__corner--tr" /><ui:VisualElement class="cv-frame__corner cv-frame__corner--bl" /><ui:VisualElement class="cv-frame__corner cv-frame__corner--br" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="cv-codex">
+                    <ui:VisualElement class="cv-tabs">
+                        <ui:Button class="cv-tab cv-tab--active"><ui:VisualElement class="cv-icon cv-icon--sm cv-icon--quests" /><ui:Label text="QUESTS" /></ui:Button>
+                        <ui:Button class="cv-tab"><ui:VisualElement class="cv-icon cv-icon--sm cv-icon--scene" /><ui:Label text="SCENE" /></ui:Button>
+                        <ui:Button class="cv-tab"><ui:VisualElement class="cv-icon cv-icon--sm cv-icon--pack" /><ui:Label text="PACK" /></ui:Button>
+                        <ui:Button class="cv-tab"><ui:VisualElement class="cv-icon cv-icon--sm cv-icon--journal" /><ui:Label text="JOURNAL" /></ui:Button>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="cv-quest"><ui:Label text="Find the miller before the new moon" class="cv-quest__title" /><ui:VisualElement class="cv-quest__meta"><ui:VisualElement class="cv-chip cv-chip--gold"><ui:VisualElement class="cv-icon cv-icon--time" /><ui:Label text="DAY 14" /></ui:VisualElement><ui:VisualElement class="cv-chip"><ui:Label text="2 OPEN" /></ui:VisualElement></ui:VisualElement></ui:VisualElement>
+                    <ui:VisualElement class="cv-quest cv-quest--overdue"><ui:Label text="Deliver the Warden's letter" class="cv-quest__title" /><ui:VisualElement class="cv-quest__meta"><ui:VisualElement class="cv-chip cv-chip--blood"><ui:Label text="OVERDUE" /></ui:VisualElement></ui:VisualElement></ui:VisualElement>
+                    <ui:VisualElement class="cv-divider" />
+                    <ui:Label text="COMPONENTS" class="cv-caption" style="margin-bottom: 8px;" />
+                    <ui:VisualElement class="cv-row" style="margin-bottom: 8px;">
+                        <ui:Button text="PRIMARY" class="cv-btn cv-btn--primary" style="margin-right: 6px;" />
+                        <ui:Button text="DEFAULT" class="cv-btn" style="margin-right: 6px;" />
+                        <ui:Button text="DELETE" class="cv-btn cv-btn--danger" />
+                    </ui:VisualElement>
+                    <ui:TextField class="cv-field" value="https://openrouter.ai/api/v1" />
+                    <ui:VisualElement class="cv-switch cv-switch--on"><ui:VisualElement class="cv-switch__track"><ui:VisualElement class="cv-switch__knob" /></ui:VisualElement><ui:Label text="Stream replies" /></ui:VisualElement>
+                    <ui:VisualElement class="cv-row" style="flex-wrap: wrap;">
+                        <ui:VisualElement class="cv-chip cv-chip--arcane"><ui:VisualElement class="cv-icon cv-icon--ac" /><ui:Label text="AC 17" /></ui:VisualElement>
+                        <ui:VisualElement class="cv-chip cv-chip--leaf"><ui:Label text="RESTED" /></ui:VisualElement>
+                        <ui:VisualElement class="cv-chip"><ui:VisualElement class="cv-icon cv-icon--location" /><ui:Label text="OLD MILL" /></ui:VisualElement>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="cv-toast cv-toast--success" style="margin-top: 12px;"><ui:VisualElement class="cv-icon cv-icon--check cv-icon--leaf" /><ui:Label text="Session 4 open (resumed)." class="cv-toast__text" /></ui:VisualElement>
+                    <ui:VisualElement class="cv-toast cv-toast--error"><ui:VisualElement class="cv-icon cv-icon--warning cv-icon--blood" /><ui:Label text="Delete failed: campaign is locked." class="cv-toast__text" /></ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

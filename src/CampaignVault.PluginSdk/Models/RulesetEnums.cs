@@ -12,6 +12,29 @@ public static class RulesetSystem
     public const string Dnd5e = "dnd5e";
     public const string Pathfinder2e = "pf2e";
     public const string Narrative = "narrative";
+
+    /// <summary>
+    /// The id for a system as a player or model spelled it: any casing of a built-in id, or a legacy
+    /// member name ("Dnd5e", "Pathfinder2e" — still what onboarding offers), maps to the built-in id.
+    /// Anything else (a plugin's system) passes through trimmed. Store only canonical ids: the engine
+    /// compares them ordinally.
+    /// </summary>
+    public static string Canonicalize(string? system)
+    {
+        var trimmed = system?.Trim() ?? string.Empty;
+        if (trimmed.Equals(Dnd5e, StringComparison.OrdinalIgnoreCase))
+        {
+            return Dnd5e;
+        }
+
+        if (trimmed.Equals(Pathfinder2e, StringComparison.OrdinalIgnoreCase)
+            || trimmed.Equals("pathfinder2e", StringComparison.OrdinalIgnoreCase))
+        {
+            return Pathfinder2e;
+        }
+
+        return trimmed.Equals(Narrative, StringComparison.OrdinalIgnoreCase) ? Narrative : trimmed;
+    }
 }
 
 /// <summary>

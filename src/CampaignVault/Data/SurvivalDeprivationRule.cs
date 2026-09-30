@@ -71,7 +71,7 @@ public class SurvivalDeprivationRule : ISimulationRule
             }
 
             // Dead characters don't starve further (mirrors NeedsAccumulationRule).
-            if (character.MaxHp > 0 && character.CurrentHp <= 0)
+            if (character.IsDead || (character.MaxHp > 0 && character.CurrentHp <= 0))
             {
                 continue;
             }

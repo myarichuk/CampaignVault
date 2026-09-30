@@ -1,135 +1,88 @@
 ---
 name: dnd-bundling
-description: Which WorldChange types to bundle in one take_turn call — cohesion rules, decision tree, and common patterns
+description: Shaping take_turn calls — one beat per call, never chaining beats, the one approved two-call split, and which changes belong together (load before any take_turn)
 metadata:
   type: skill
 ---
 
-# Bundling & Composite Actions
+# Bundling
 
-**Context**: `take_turn` handles all mutations atomically with bundled auto-refresh (caps/opt-ins: `dnd-world-change`). No separate commit tool exists — `take_turn` with changes[] is the one mutation pattern. Mutation syntax, required fields, auto-apply/auto-log rules → `dnd-world-change` (canonical); this skill decides *which* types cohere in one beat.
+This skill decides how many `take_turn` calls a moment takes and what goes into each. Field syntax, required fields and what the engine applies by itself are in `dnd-world-change`.
 
-**Tool schema (Stub mode, the default):** `take_turn`'s advertised schema deliberately does NOT list `$type` verbs or fields — these skills are the source of truth. Cache the `campaignvault___*` tool names after the first successful call; do not re-run `search_connected_tools` or re-request the schema each beat. Send sparse objects (`$type` + the fields you mean, no nulls). If a `$type` is unfamiliar or a commit fails, call `lookup kind=commit_schema` (no args = index; `type=<one $type>` = its fields) instead of guessing.
+## One beat, one call
 
-## Core Principle: Bundling Cohesion
+A beat is one atomic action from the player's point of view, with its immediate consequences. Everything it changes goes into one `changes[]` array, however many types that takes. Never split a beat across calls: a batch rolls back as a whole, but a split beat can half-persist.
 
-One narrative beat = one `take_turn` call, however many change types it needs — never split a beat across calls (a failed batch rolls back atomically; a split batch can half-persist). A **bundle** is the set of `WorldChange` types describing one atomic action from the player's perspective.
+A decision in between always makes two beats. An attack now and an ambush two rounds later are two calls; the alarm the attack raises this instant is part of the same one.
 
-✅ **Cohesive**: `ruleset_action` + `engagement_relation` (check establishes a lasting state — explicit commit; only grapple/escape-grapple auto-applies); `ruleset_action` + `character_update` + `event` (damage wounds someone); `ruleset_action` + `event` + `activity` (attack's immediate cascade — alarm, mobilization — still one beat); any pressure fix + the beat already being committed (never a dedicated fix call).
+## Never chain beats
 
-❌ **Incoherent**: `ruleset_action` (attack) + `item_update` (unrelated item) — two calls; `event` + `event` — one suffices; unclustered `character_update` + `spatial_position` + `activity` — separate beats. An intervening player decision/round always splits beats (attack now vs. ambush two rounds later = two calls); immediate same-beat consequences never split.
+One player message gets at most one committing `take_turn`. If the result holds something the player hasn't seen (an interrupt, an encounter, combat starting, a roll's outcome), stop and narrate it; the player's next message decides what follows. Don't commit a rest, a fight, a chase or a journey on your own to keep the story moving. Resending a rolled-back batch and read-only refreshes don't count. A `narrativeReminder` saying "N commits in a row" means this rule was already broken.
 
-Auto-apply/auto-log (which pairs are redundant vs. required) → `dnd-world-change`, never re-decided here: `status` and Physical/Medical `engagement_relation` self-log (no paired `event`); HP-only `ruleset_action` and Social/Attention/Proximity relations need an explicit `event`.
+## The one approved split
 
-## Decision Tree
+When the rest of the beat depends on a roll you haven't seen, use two calls: call A makes the roll; call B commits what it revealed (a `knowledge_update` citing call A's `eventId`, a mood, a relationship). Nothing else is split.
 
-**1. One narrative beat?** No (distinct events separated by a decision/round) → separate `take_turn` per beat. Yes → #2.
-**2. Does the outcome change state?** No → bare `event` or `ruleset_action`. Yes → #3.
-**3. How many types?** All of them, in ONE changes[] array. Worked examples: `lookup kind=help topic=patterns`.
+## What belongs together
 
-## Common Bundling Patterns
+Together in one batch:
+- a check and the lasting state it creates (a persuaded NPC as a Social `engagement_relation`);
+- an attack and its immediate cascade (the guard shouts, the room stands up);
+- the fix for an ENGINE WARNING and the beat you are already committing (never a separate fix call).
 
-### Social Action (Persuasion, Deception, Intimidation)
+Apart, in separate beats or not at all:
+- two unrelated things (an attack and an item update elsewhere in the room);
+- two events for one moment (one suffices);
+- a mood committed for a passing feeling (let the prose carry it; commit `mood` only when it lasts or matters mechanically);
+- `spatial_position` next to an `activity` that already says where someone is.
 
-**Success case**:
-```json
-[
-  { "$type": "ruleset_action", "characterId": "chars/valen", "actionType": "SkillCheck",
-    "actionName": "Persuasion", "parameters": { "dc": "14" } },
-  { "$type": "engagement_relation", "characterId": "chars/valen", "targetId": "chars/barkeep",
-    "verb": "persuaded", "category": "Social" },
-  { "$type": "event", "category": "Social", "involved": ["chars/valen", "chars/barkeep"],
-    "summary": "Valen persuaded the barkeep to reveal the gang's hideout." }
-]
-```
+Multiple actors share one batch only when they act in the same instant, such as one area spell hitting several targets.
 
-**Failure case** (Social relation + optional record — never auto-logged, so pair an `event` if the attempt is worth recording):
-```json
-[
-  { "$type": "ruleset_action", ... },
-  { "$type": "engagement_relation", "characterId": "chars/valen", "targetId": "chars/barkeep",
-    "verb": "accused", "category": "Social" }
-]
-```
+## Examples
 
-### Combat Action (Attack + Damage)
-
-Use `take_turn` with ruleset_action (no separate attack tool exists):
-```json
-[
-  { "$type": "ruleset_action", "characterId": "chars/valen", "actionType": "Attack",
-    "actionName": "Longsword", "targetIds": ["chars/goblin1"],
-    "parameters": { "damageDice": "1d8+3" } }
-  // HP delta is auto-applied; no separate $type needed
-]
-```
-
-### Character State Change (Mood, Status, Appearance)
-
-**Single change**:
-```json
-[
-  { "$type": "character_update", "characterId": "chars/valen",
-    "newMood": "Wounded", "updateAppearance": "bloodied, breathing hard" }
-]
-```
-
-**With narrative log**:
-```json
-[
-  { "$type": "character_update", ... },
-  { "$type": "event", "summary": "Valen took a critical hit and stumbled backward." }
-]
-```
-
-### NPC Relationship Milestone (First Meeting — Social never auto-logs, so the event is the ONLY record; don't drop it)
+A persuasion that lands. Social relations don't log themselves, so the event is the record:
 
 ```json
 [
-  { "$type": "engagement_relation", "characterId": "chars/valen", "targetId": "chars/mysterious_stranger",
-    "verb": "met", "category": "Social" },
-  { "$type": "event", "category": "Narrative", "involved": ["chars/valen", "chars/mysterious_stranger"],
-    "summary": "Valen encountered a mysterious stranger in the tavern." }
+  { "$type": "ruleset_action", "characterId": "chars/valen", "actionType": "SkillCheck", "actionName": "Persuasion", "targetIds": ["chars/barkeep"], "parameters": { "dc": 14 } },
+  { "$type": "engagement_relation", "characterId": "chars/valen", "targetId": "chars/barkeep", "verb": "persuaded", "category": "Social" },
+  { "$type": "event", "category": "Conversation", "involved": ["chars/valen", "chars/barkeep"], "locationId": "locations/golden-tavern", "summary": "Valen talks the barkeep into naming the gang's hideout" }
 ]
 ```
 
-## Conflict Avoidance
+An attack. Send the weapon's dice without a modifier (the sheet adds it); damage applies itself, so no `hp` change:
 
-### Narrative vs. Game State
-
-❌ Don't update mood just to log a feeling:
 ```json
 [
-  { "$type": "character_update", "newMood": "Curious" },  // not needed if fleeting
-  { "$type": "event", "summary": "Valen looked curious." } // narrate in event instead
+  { "$type": "ruleset_action", "characterId": "chars/valen", "actionType": "Attack", "actionName": "Longsword", "targetIds": ["chars/goblin-1"], "parameters": { "damageDice": "1d8" } }
 ]
 ```
 
-✅ Do this if mood is persistent/mechanical:
+A curse that should last: the look and the mood are committed, and the event carries the flag:
+
 ```json
 [
-  { "$type": "character_update", "newMood": "Cursed", "updateAppearance": "eyes glow red" },
-  { "$type": "event", "summary": "Valen was cursed!" }
+  { "$type": "character_update", "characterId": "chars/valen", "featuresToAdd": ["eyes glow a dull red"] },
+  { "$type": "mood", "characterId": "chars/valen", "newMood": "Cursed" },
+  { "$type": "event", "category": "Discovery", "involved": ["chars/valen"], "locationId": "locations/crypt", "summary": "Valen touches the idol and is cursed", "impliesPersistentPhysicalChange": true }
 ]
 ```
 
-### Activity vs. Spatial Position
+A first meeting worth remembering:
 
-❌ Don't double-commit:
 ```json
 [
-  { "$type": "activity", "characterId": "chars/valen", "newActivity": "Examining the painting" },
-  { "$type": "spatial_position", "characterId": "chars/valen", "location": "corner" }  // redundant
+  { "$type": "engagement_relation", "characterId": "chars/valen", "targetId": "chars/stranger", "verb": "met", "category": "Social" },
+  { "$type": "event", "category": "Conversation", "involved": ["chars/valen", "chars/stranger"], "locationId": "locations/golden-tavern", "summary": "A hooded stranger sits down across from Valen uninvited" }
 ]
 ```
 
-✅ Activity is positional already; just use:
+Moving within a room is an `activity` that says where:
+
 ```json
 [
   { "$type": "activity", "characterId": "chars/valen", "newActivity": "Examining the painting in the corner" }
 ]
 ```
 
-| **Unsure about bundling** | Inspect first (`get_entity` / `lookup kind=commit_schema`) — never a speculative `take_turn` (see `dnd-world-change` No-Op Rule) |
-
-For bundling decisions, use this decision tree, `lookup kind=help topic=patterns`, and `lookup kind=commit_schema`.
+Unsure what a type needs? `lookup kind=commit_schema type=<$type>` or `get_entity`, never a trial `take_turn`.

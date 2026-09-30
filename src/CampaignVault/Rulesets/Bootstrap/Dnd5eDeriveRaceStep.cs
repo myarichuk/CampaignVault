@@ -9,7 +9,7 @@ public sealed class Dnd5eDeriveRaceStep(RaceDefinitionProvider raceProvider) : I
     public string Name => "dnd5e.derive_race";
 
     public bool CanApply(BootstrapContext context) =>
-        context.Trigger == BootstrapTrigger.Create
+        context.Trigger is BootstrapTrigger.Create or BootstrapTrigger.Upsert
         && context.Character.SystemStats is Dnd5eExtension { Race.Length: > 0 };
 
     public Task<BootstrapStepResult?> ApplyAsync(BootstrapContext context, CancellationToken ct = default)
@@ -20,7 +20,9 @@ public sealed class Dnd5eDeriveRaceStep(RaceDefinitionProvider raceProvider) : I
             return Task.FromResult<BootstrapStepResult?>(null);
         }
 
-        ApplyRaceTraits(context.Character, stats, race);
+        // Speed, size and traits are idempotent, so world_build upserts get them too; ability bonuses are
+        // additive and only land once, when the character is created.
+        ApplyRaceTraits(context.Character, stats, race, context.Trigger == BootstrapTrigger.Create);
 
         return Task.FromResult<BootstrapStepResult?>(new BootstrapStepResult
         {
@@ -29,9 +31,9 @@ public sealed class Dnd5eDeriveRaceStep(RaceDefinitionProvider raceProvider) : I
         });
     }
 
-    internal static void ApplyRaceTraits(Character character, Dnd5eExtension stats, RaceDefinition race)
+    internal static void ApplyRaceTraits(Character character, Dnd5eExtension stats, RaceDefinition race, bool applyAbilityBonuses = true)
     {
-        foreach (var (ability, bonus) in race.AbilityBonuses)
+        foreach (var (ability, bonus) in applyAbilityBonuses ? race.AbilityBonuses : [])
         {
             switch (ability.ToLowerInvariant())
             {

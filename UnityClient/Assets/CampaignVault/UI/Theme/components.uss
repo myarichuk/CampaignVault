@@ -1,0 +1,365 @@
+/*
+ * Campaign Vault components. Class names are cv-<block>[__element][--modifier].
+ * Unity's default theme is imported first; where a control carries both a
+ * unity-* and a cv-* class, the rules here win on order at equal specificity.
+ */
+
+/* ---------------------------------------------------------------- base type */
+
+.cv-root {
+    flex-grow: 1;
+    background-color: var(--ink-1);
+    -unity-font-definition: url("../Fonts/SDF/EBGaramond-Regular.asset");
+    font-size: var(--fs-md);
+    color: var(--text-1);
+}
+
+.cv-display {
+    -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset");
+    color: var(--gold);
+    letter-spacing: 3px;
+    text-shadow: 0 0 10px rgba(240, 207, 106, 0.28);
+}
+
+.cv-h1 { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: var(--fs-xl); color: var(--gold); letter-spacing: 2px; }
+.cv-h2 { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: var(--fs-lg); color: var(--gold); letter-spacing: 1.5px; }
+.cv-h3 { -unity-font-definition: url("../Fonts/SDF/Cinzel-Regular.asset"); font-size: var(--fs-md); color: var(--text-1); letter-spacing: 1px; }
+
+.cv-body { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Regular.asset"); font-size: var(--fs-md); color: var(--text-1); white-space: normal; }
+.cv-body--story { font-size: var(--fs-story); }
+.cv-muted { color: var(--text-3); }
+.cv-italic { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); }
+.cv-mono { -unity-font-definition: url("../Fonts/SDF/JetBrainsMono-Regular.asset"); font-size: var(--fs-sm); }
+
+/* Small-caps label: section heads, field captions, stat keys. */
+.cv-caption {
+    -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset");
+    font-size: var(--fs-xs);
+    color: var(--text-3);
+    letter-spacing: 2.5px;
+}
+
+.cv-text-gold { color: var(--gold); }
+.cv-text-blood { color: var(--blood); }
+.cv-text-leaf { color: var(--leaf); }
+.cv-text-arcane { color: var(--arcane); }
+
+/* ------------------------------------------------------------------ surfaces */
+
+.cv-panel {
+    background-color: var(--ink-2);
+    border-width: 1px;
+    border-color: var(--line);
+    border-radius: var(--radius);
+}
+
+.cv-panel--raised { background-color: var(--ink-3); }
+.cv-panel--sunken { background-color: var(--ink-0); border-color: var(--line-faint); }
+
+.cv-card {
+    background-color: var(--ink-2);
+    border-width: 1px;
+    border-color: var(--line);
+    border-radius: var(--radius);
+    padding: var(--sp-4);
+    margin-bottom: var(--sp-3);
+}
+
+.cv-card__title { margin-bottom: var(--sp-3); }
+.cv-card--warning { border-color: var(--gold); }
+
+.cv-row { flex-direction: row; align-items: center; }
+.cv-col { flex-direction: column; }
+.cv-grow { flex-grow: 1; flex-shrink: 1; }
+.cv-gap-sm > * { margin-right: var(--sp-2); }
+.cv-spacer { flex-grow: 1; }
+
+/* Filigree corners: four absolutely placed children, rotated per corner. */
+.cv-frame { position: relative; }
+.cv-frame__corner {
+    position: absolute;
+    width: 34px;
+    height: 34px;
+    background-image: url("../Frames/corner.svg");
+    -unity-background-image-tint-color: var(--gold-dim);
+    opacity: 0.85;
+}
+.cv-frame__corner--tl { left: -1px; top: -1px; }
+.cv-frame__corner--tr { right: -1px; top: -1px; rotate: 90deg; }
+.cv-frame__corner--br { right: -1px; bottom: -1px; rotate: 180deg; }
+.cv-frame__corner--bl { left: -1px; bottom: -1px; rotate: 270deg; }
+
+.cv-divider {
+    height: 16px;
+    margin: 12px 0;
+    background-image: url("../Frames/divider.svg");
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--gold-dim);
+    opacity: 0.8;
+}
+
+.cv-rule { height: 1px; background-color: var(--line); margin: 12px 0; }
+
+/* -------------------------------------------------------------------- icons */
+
+.cv-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--text-2);
+}
+.cv-icon--xs { width: 14px; height: 14px; }
+.cv-icon--sm { width: 16px; height: 16px; }
+.cv-icon--lg { width: 28px; height: 28px; }
+.cv-icon--xl { width: 40px; height: 40px; }
+.cv-icon--gold { -unity-background-image-tint-color: var(--gold); }
+.cv-icon--blood { -unity-background-image-tint-color: var(--blood); }
+.cv-icon--leaf { -unity-background-image-tint-color: var(--leaf); }
+.cv-icon--arcane { -unity-background-image-tint-color: var(--arcane); }
+.cv-icon--muted { -unity-background-image-tint-color: var(--text-3); }
+
+/* ------------------------------------------------------------------ buttons */
+
+.cv-btn {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    margin: 0;
+    padding: 0 16px;
+    background-color: var(--ink-3);
+    border-width: 1px;
+    border-color: var(--line-strong);
+    border-radius: var(--radius);
+    -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset");
+    font-size: var(--fs-sm);
+    letter-spacing: 1.5px;
+    color: var(--text-1);
+    -unity-text-align: middle-center;
+    transition-property: background-color, border-color, color, scale, opacity;
+    transition-duration: var(--motion-fast);
+    transition-timing-function: ease-out-cubic;
+}
+.cv-btn:hover { background-color: var(--ink-4); border-color: var(--gold); color: var(--gold-bright); }
+.cv-btn:active { scale: 0.97 0.97; }
+.cv-btn:focus { border-color: var(--gold); }
+.cv-btn:disabled { opacity: 0.38; }
+.cv-btn .cv-icon { margin-right: var(--sp-2); -unity-background-image-tint-color: var(--text-2); }
+.cv-btn:hover .cv-icon { -unity-background-image-tint-color: var(--gold-bright); }
+
+.cv-btn--primary { background-color: var(--gold-deep); border-color: var(--gold); color: var(--gold-bright); }
+.cv-btn--primary:hover { background-color: var(--gold-deep-hover); color: var(--crit); }
+.cv-btn--primary .cv-icon { -unity-background-image-tint-color: var(--gold-bright); }
+
+.cv-btn--ghost { background-color: rgba(0, 0, 0, 0); border-color: rgba(0, 0, 0, 0); color: var(--text-2); }
+.cv-btn--ghost:hover { background-color: var(--line-faint); border-color: rgba(0, 0, 0, 0); }
+
+.cv-btn--danger { border-color: var(--blood-dim); color: var(--blood); }
+.cv-btn--danger:hover { background-color: var(--blood-deep); border-color: var(--blood); color: #FF7A7A; }
+.cv-btn--danger .cv-icon { -unity-background-image-tint-color: var(--blood); }
+
+.cv-btn--armed { background-color: var(--blood-dim); border-color: var(--blood); color: #FFD6D6; }
+
+.cv-btn--small { min-height: 30px; padding: 0 12px; font-size: var(--fs-xs); }
+.cv-btn--icon { width: 38px; min-width: 38px; padding: 0; }
+.cv-btn--icon .cv-icon { margin-right: 0; }
+.cv-btn--icon.cv-btn--small { width: 30px; min-width: 30px; }
+.cv-btn--selected { border-color: var(--gold); color: var(--gold-bright); background-color: var(--gold-deep); }
+
+/* ------------------------------------------------------------------- inputs */
+
+.cv-field { margin: 0 0 12px 0; }
+.cv-field > .unity-label { display: none; }
+.cv-field .unity-base-text-field__input {
+    background-color: var(--ink-0);
+    border-width: 1px;
+    border-color: var(--line);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    min-height: 38px;
+    -unity-font-definition: url("../Fonts/SDF/EBGaramond-Regular.asset");
+    font-size: var(--fs-md);
+    color: var(--text-1);
+    --unity-cursor-color: var(--gold-bright);
+    --unity-selection-color: rgba(201, 162, 39, 0.35);
+    transition-property: border-color;
+    transition-duration: var(--motion-fast);
+}
+.cv-field:hover .unity-base-text-field__input { border-color: var(--line-strong); }
+.cv-field:focus .unity-base-text-field__input { border-color: var(--gold); }
+.cv-field .unity-base-text-field__input--placeholder { color: var(--text-4); -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); }
+.cv-field--multiline .unity-base-text-field__input { -unity-text-align: upper-left; white-space: normal; min-height: 84px; }
+.cv-field--invalid .unity-base-text-field__input { border-color: var(--blood); }
+
+.cv-counter { -unity-font-definition: url("../Fonts/SDF/JetBrainsMono-Regular.asset"); font-size: var(--fs-xs); color: var(--text-4); -unity-text-align: upper-right; margin-top: -8px; margin-bottom: var(--sp-2); }
+.cv-counter--over { color: var(--blood); }
+
+/* Toggle: a small switch drawn with a track and a knob. */
+.cv-switch { flex-direction: row; align-items: center; margin-bottom: var(--sp-2); }
+.cv-switch__track {
+    width: 38px; height: 20px; border-radius: 10px;
+    background-color: var(--ink-0); border-width: 1px; border-color: var(--line-strong);
+    margin-right: var(--sp-3);
+    transition-property: background-color, border-color; transition-duration: var(--motion);
+}
+.cv-switch__knob {
+    position: absolute; left: 2px; top: 2px; width: 14px; height: 14px; border-radius: 7px;
+    background-color: var(--text-3);
+    transition-property: left, background-color; transition-duration: var(--motion); transition-timing-function: ease-out-cubic;
+}
+.cv-switch--on .cv-switch__track { background-color: var(--gold-deep); border-color: var(--gold); }
+.cv-switch--on .cv-switch__knob { left: 20px; background-color: var(--gold-bright); }
+
+/* --------------------------------------------------------------------- tabs */
+
+.cv-tabs { flex-direction: row; border-bottom-width: 1px; border-color: var(--line); margin-bottom: var(--sp-3); }
+.cv-tab {
+    flex-direction: row; align-items: center; flex-shrink: 1;
+    padding: 8px 9px;
+    margin: 0 4px -1px 0;
+    border-width: 0; border-bottom-width: 2px; border-color: rgba(0, 0, 0, 0);
+    background-color: rgba(0, 0, 0, 0);
+    border-radius: 0;
+    -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset");
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    color: var(--text-3);
+    transition-property: color, border-color; transition-duration: var(--motion-fast);
+}
+.cv-tab .cv-icon { margin-right: var(--sp-2); -unity-background-image-tint-color: var(--text-3); }
+.cv-tab:hover { color: var(--text-1); }
+.cv-tab--active { color: var(--gold-bright); border-color: var(--gold); }
+.cv-tab--active .cv-icon { -unity-background-image-tint-color: var(--gold); }
+
+/* -------------------------------------------------------------- chips, bars */
+
+.cv-chip {
+    flex-direction: row; align-items: center;
+    padding: 2px 8px;
+    margin: 0 4px 4px 0;
+    border-width: 1px; border-color: var(--line-strong); border-radius: 10px;
+    background-color: var(--ink-3);
+    -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset");
+    font-size: 12px; letter-spacing: 1px;
+    color: var(--text-2);
+}
+.cv-chip .cv-icon { width: 13px; height: 13px; margin-right: var(--sp-1); }
+.cv-chip--gold { border-color: var(--gold-dim); color: var(--gold-bright); }
+.cv-chip--blood { border-color: var(--blood-dim); color: var(--blood); background-color: var(--blood-deep); }
+.cv-chip--leaf { border-color: var(--leaf-dim); color: var(--leaf); }
+.cv-chip--arcane { border-color: var(--arcane-dim); color: var(--arcane); }
+
+.cv-bar {
+    height: 8px;
+    background-color: var(--ink-0);
+    border-width: 1px; border-color: var(--line-faint); border-radius: 1px;
+    overflow: hidden;
+}
+.cv-bar--thick { height: 14px; }
+.cv-bar__ghost {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background-color: var(--blood-dim);
+    transition-property: width; transition-duration: 600ms; transition-delay: 280ms; transition-timing-function: ease-in-out-sine;
+}
+.cv-bar__fill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background-color: var(--leaf);
+    transition-property: width, background-color; transition-duration: 260ms; transition-timing-function: ease-out-cubic;
+}
+.cv-bar--mid .cv-bar__fill { background-color: var(--gold); }
+.cv-bar--low .cv-bar__fill { background-color: var(--blood); }
+.cv-bar__label { position: absolute; left: 0; right: 0; top: 0; bottom: 0; -unity-text-align: middle-center; -unity-font-definition: url("../Fonts/SDF/JetBrainsMono-Bold.asset"); font-size: 10px; color: var(--text-1); }
+
+/* ------------------------------------------------------- overlays, modals */
+
+.cv-overlay {
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+    background-color: var(--scrim);
+    align-items: center; justify-content: center;
+    opacity: 1;
+    transition-property: opacity; transition-duration: var(--motion);
+}
+.cv-overlay--hidden { opacity: 0; }
+.cv-modal {
+    width: 82%; max-width: 1180px; height: 86%;
+    background-color: var(--ink-1);
+    border-width: 1px; border-color: var(--line-strong);
+    padding: var(--sp-6);
+    scale: 1 1;
+    transition-property: scale, opacity; transition-duration: var(--motion); transition-timing-function: ease-out-back;
+}
+.cv-overlay--hidden .cv-modal { scale: 0.96 0.96; }
+.cv-modal--narrow { width: 720px; max-width: 90%; height: auto; max-height: 88%; }
+.cv-modal__head { flex-direction: row; align-items: center; margin-bottom: var(--sp-4); }
+.cv-modal__title { flex-grow: 1; }
+.cv-modal__foot { flex-direction: row; justify-content: flex-end; margin-top: var(--sp-4); }
+.cv-modal__foot > .cv-btn { margin-left: var(--sp-2); }
+
+/* ------------------------------------------------------------------ toasts */
+
+/* Bottom left, under the party frames: clear of the story, the codex tabs and the command bar. */
+.cv-toasts { position: absolute; bottom: 24px; left: 20px; width: 360px; }
+.cv-toast {
+    flex-direction: row; align-items: center;
+    padding: 12px 16px;
+    margin-bottom: var(--sp-2);
+    background-color: var(--ink-3);
+    border-width: 1px; border-left-width: 3px; border-color: var(--line-strong);
+    opacity: 1; translate: 0 0;
+    transition-property: opacity, translate; transition-duration: 260ms; transition-timing-function: ease-out-cubic;
+}
+.cv-toast--enter { opacity: 0; translate: -40px 0; }
+.cv-toast--leave { opacity: 0; }
+.cv-toast .cv-icon { margin-right: var(--sp-3); }
+.cv-toast__text { flex-shrink: 1; white-space: normal; font-size: var(--fs-sm); color: var(--text-1); }
+.cv-toast--success { border-left-color: var(--leaf); }
+.cv-toast--warning { border-left-color: var(--ember); }
+.cv-toast--error { border-left-color: var(--blood); background-color: var(--blood-deep); }
+
+/* ----------------------------------------------------------------- tooltip */
+
+.cv-tooltip {
+    position: absolute;
+    max-width: 360px;
+    padding: 8px 12px;
+    background-color: var(--ink-0);
+    border-width: 1px; border-color: var(--gold-dim);
+    font-size: var(--fs-sm); color: var(--text-1); white-space: normal;
+    opacity: 1; transition-property: opacity; transition-duration: var(--motion-fast);
+}
+.cv-tooltip--hidden { opacity: 0; }
+
+/* -------------------------------------------------------------- scrollbars */
+
+.unity-scroller--vertical { width: 8px; margin-left: 2px; }
+.unity-scroller--vertical .unity-scroller__low-button,
+.unity-scroller--vertical .unity-scroller__high-button { display: none; }
+.unity-scroller--vertical .unity-base-slider__tracker { background-color: rgba(0, 0, 0, 0); border-width: 0; }
+.unity-scroller--vertical .unity-base-slider__dragger {
+    background-color: var(--ink-4); border-width: 0; border-radius: 4px; width: 6px; left: 1px;
+}
+.unity-scroller--vertical .unity-base-slider__dragger:hover { background-color: var(--gold-dim); }
+.unity-scroller--horizontal { display: none; }
+
+/* ----------------------------------------------------------- reduced motion */
+
+.reduced-motion * { transition-duration: 0s; transition-delay: 0s; }
+
+/* ------------------------------------------------------------------ layers */
+
+.cv-layer { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.cv-field-caption { margin-top: 4px; margin-bottom: 4px; }
+.cv-btn__label { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); }
+.cv-modal__icon { margin-right: 12px; }
+.cv-modal__scroll .unity-scroll-view__content-container { padding-right: 12px; }
+
+.cv-question { -unity-font-definition: url("../Fonts/SDF/EBGaramond-SemiBold.asset"); font-size: 26px; color: var(--text-1); white-space: normal; margin: 12px 0 6px 0; }
+.cv-modal__toolbar { flex-shrink: 0; }
+
+/* ------------------------------------------------ settings: the DM's abilities */
+
+.cv-toolgroup { margin-top: var(--sp-4); }
+.cv-toolgroup__title { color: var(--gold); padding-bottom: 4px; margin-bottom: 6px; border-bottom-width: 1px; border-color: var(--line); }
+.cv-tool { margin-bottom: 8px; }
+.cv-tool__blurb { font-size: var(--fs-sm); color: var(--text-3); margin-left: 50px; margin-top: -6px; white-space: normal; }

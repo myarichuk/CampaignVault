@@ -27,7 +27,8 @@ public sealed class ArchiveEntityChangeHandler : IWorldChangeHandler
         {
             return ChangeHandlerResult.Failure(
                 "entityType is required (one of: Location, Item, Faction, Quest, Creature, Spell, Feat, Rumor, PlotThread). " +
-                "Characters cannot be archived this way — Character has no IsArchived field; use keepAlive:false instead.");
+                "Characters (PCs, NPCs, the dead) cannot be archived. If the character died commit {\"$type\": \"death\", \"characterId\": \"chars/...\", \"cause\": \"...\"}; " +
+                "to make a living NPC leave the scene use an activity change with newLocationId: null, updateLocation: true; a one-scene transient with keepAlive:false auto-GCs.");
         }
 
         IArchivable? entity = ac.EntityType switch

@@ -36,6 +36,22 @@ CampaignVault bundles game reference content from two systems:
 - **Restrictions**: Content is limited to Remastered core rules and ORC-licensed material — no Golarion setting-specific content, proprietary Paizo sourcebooks, or licensed properties
 - **Why `Player Core`/`Player Core 2` specifically**: these two books are the ones Paizo rewrote during the 2023 Remaster specifically to strip Golarion-specific Product Identity (deity names, nation names, setting lore) out of core mechanics, so the books could be released cleanly under ORC. Restricting the generator's query to these two `primary_source` values (plus `rarity: common`) isn't an arbitrary content filter — it's what keeps this project inside Paizo's own declared-open scope. Pulling from any other AoN-indexed sourcebook (Lost Omens, adventure paths, non-Remastered legacy books) would reintroduce Golarion-specific Product Identity that this scope is designed to exclude.
 
+## Unity Client Assets
+
+The Unity client (`UnityClient/Assets/CampaignVault/UI/`) ships third-party fonts and icons. They're redistributable with attribution; none are modified beyond what's noted.
+
+### Fonts (SIL Open Font License 1.1)
+- **Cinzel** by Natanael Gama: display type, headings, nameplates. `UI/Fonts/OFL-Cinzel.txt`
+- **EB Garamond** by Georg Duffner and Octavio Pardo: body and story text. `UI/Fonts/OFL-EBGaramond.txt`
+- **JetBrains Mono** by JetBrains: dice math and developer text. `UI/Fonts/OFL-JetBrainsMono.txt`
+- **Source**: static per-weight builds of the Google Fonts releases (https://github.com/google/fonts, `ofl/`). The `UI/Fonts/SDF/*.asset` files are Unity font assets generated from these TTFs.
+
+### Icons (CC BY 3.0)
+- **Source**: game-icons.net (https://game-icons.net, https://github.com/game-icons/icons)
+- **License**: Creative Commons Attribution 3.0 Unported, https://creativecommons.org/licenses/by/3.0/
+- **Authors**: Lorc, Delapouite, sbed and Skoll. The per-icon list is in `UI/Icons/ATTRIBUTION.md`.
+- **Modifications**: the black background square is removed and fills are set to white so the UI can tint them. `add.svg`, `chevron.svg` and everything under `UI/Frames/` are original to this project.
+
 ## Important Deployment Note: RavenDB License
 
 CampaignVault embeds RavenDB via the `RavenDB.Embedded` NuGet package. **To legally deploy CampaignVault (especially for commercial use), you must obtain a RavenDB license key.** 
@@ -56,6 +72,8 @@ See [COMMERCIAL.md](./COMMERCIAL.md) and the README for deployment setup instruc
 | D&D 5e Reference Data | CC-BY-4.0 | SRD 5.1 only; attribution to Wizards of the Coast |
 | Pathfinder 2e Reference Data | ORC License | Core rules only; attribution to Paizo Inc. |
 | RavenDB (embedded) | Proprietary EULA (with Community tier) | Requires license key for deployment; obtain at ravendb.net/license |
+| Unity client fonts (Cinzel, EB Garamond, JetBrains Mono) | SIL OFL 1.1 | License texts ship next to the fonts |
+| Unity client icons (game-icons.net) | CC BY 3.0 | Attribution in `UnityClient/Assets/CampaignVault/UI/Icons/ATTRIBUTION.md` |
 
 ---
 

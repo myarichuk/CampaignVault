@@ -72,7 +72,7 @@ fi
 echo "== Writing AGENTS.md =="
 FENCE="$(awk '/^```text$/{f=1;next} /^```$/{f=0} f' "$PROMPT_SRC")"
 
-CAMPAIGN_LINE="**CAMPAIGN:** campaignName=\"${SLUG}\" — always use this exact value on every campaign-scoped call, never ask the player or re-derive it. PC roster: ${ROSTER} — use these ids as characterId on their checks/actions. Ruleset: ${RULESET}."
+CAMPAIGN_LINE="CAMPAIGN: campaignName=\"${SLUG}\" on every call | PCs: ${ROSTER} | Ruleset: ${RULESET}"
 
 AGENTS_PATH="$TARGET_DIR/AGENTS.md"
 if [[ -f "$AGENTS_PATH" && $FORCE -eq 0 ]]; then
@@ -82,7 +82,7 @@ if [[ -f "$AGENTS_PATH" && $FORCE -eq 0 ]]; then
 fi
 
 printf '%s\n' "$FENCE" | awk -v line="$CAMPAIGN_LINE" '
-  /^\*\*CAMPAIGN:\*\* campaignName=/ { print line; next }
+  /^(\*\*)?CAMPAIGN:(\*\*)? campaignName=/ { print line; next }
   { print }
 ' > "$AGENTS_PATH"
 echo "  wrote $AGENTS_PATH"

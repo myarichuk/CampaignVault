@@ -36,7 +36,18 @@ public class Character : ICampaignScopedEntity, IHasDirt
     public int CurrentHp { get; set; }
     
     public int MaxHp { get; set; }
-    
+
+    /// <summary>
+    /// Set once the character has died (core <c>death</c> verb); null while alive. See <see cref="DeathRecord"/>.
+    /// </summary>
+    public DeathRecord? Death { get; set; }
+
+    /// <summary>Death-save progress while a 5e PC is at 0 HP; null otherwise. See <see cref="DeathSaveTally"/>.</summary>
+    public DeathSaveTally? DeathSaves { get; set; }
+
+    /// <summary>True once <see cref="Death"/> is recorded. Not persisted; the index exposes it as <c>IsDead</c>.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsDead => Death != null;
 
     public string? Notes { get; set; }
     

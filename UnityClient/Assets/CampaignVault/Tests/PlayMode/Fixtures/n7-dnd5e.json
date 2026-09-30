@@ -1,0 +1,49 @@
+{
+  "locations": [
+    { "id": "locations/copper-ferry", "name": "The Copper Ferry", "description": "A flat-bottomed ferry landing under a copper sky. Rope-lines hum in the wind and the river smells of iron.", "climateZone": "Temperate", "ambientCrowd": "a few bargemen and a tethered goat", "dangerModifier": 5 },
+    { "id": "locations/old-mill", "name": "The Old Mill", "description": "A drowned mill, its wheel still turning in the dark water.", "connectedFromLocationId": "locations/copper-ferry", "climateZone": "Temperate", "dangerModifier": 15 }
+  ],
+  "characters": [
+    {
+      "id": "chars/aric", "name": "Aric Thorne", "isPc": true, "classLevel": "Fighter 5",
+      "currentLocationId": "locations/copper-ferry", "currentActivity": "Watching the far bank",
+      "currentAppearance": "A broad soldier in dented mail, a scar through one eyebrow.",
+      "systemStats": {
+        "$system": "dnd5e", "level": 5, "classLevels": [ { "class": "Fighter", "level": 5 } ],
+        "race": "Human", "background": "Soldier", "hitDie": "d10",
+        "strength": 16, "dexterity": 14, "constitution": 15, "intelligence": 10, "wisdom": 12, "charisma": 8,
+        "attributes": { "morale": 70 }
+      }
+    },
+    {
+      "id": "chars/wren", "name": "Sister Wren", "isPartyCompanion": true, "classLevel": "Cleric 3",
+      "currentLocationId": "locations/copper-ferry", "currentActivity": "Praying over the ferry ropes",
+      "currentAppearance": "A stout dwarf in a grey habit, a lantern at her belt.",
+      "systemStats": {
+        "$system": "dnd5e", "level": 3, "classLevels": [ { "class": "Cleric", "level": 3 } ],
+        "race": "Dwarf", "background": "Acolyte", "hitDie": "d8", "spellcastingAbility": "wisdom",
+        "strength": 12, "dexterity": 8, "constitution": 14, "intelligence": 10, "wisdom": 16, "charisma": 13
+      }
+    },
+    {
+      "id": "chars/tam", "name": "Old Tam", "currentLocationId": "locations/copper-ferry", "currentActivity": "Coiling wet rope",
+      "notes": "The ferryman. Owes the toll-house more than he can pay."
+    }
+  ],
+  "items": [
+    { "id": "items/aric-longsword", "name": "Longsword", "definitionName": "longsword", "holderId": "chars/aric", "isEquipped": true },
+    { "id": "items/aric-mail", "name": "Chain Mail", "definitionName": "chain_mail", "holderId": "chars/aric", "isEquipped": true },
+    { "id": "items/aric-shield", "name": "Shield", "definitionName": "shield", "holderId": "chars/aric", "isEquipped": true },
+    { "id": "items/aric-potion", "name": "Potion of Healing", "holderId": "chars/aric", "quantity": 2 },
+    { "id": "items/aric-rope", "name": "Hempen Rope", "holderId": "chars/aric", "description": "Fifty feet, still damp." },
+    { "id": "items/aric-letter", "name": "Sealed Letter", "holderId": "chars/aric", "description": "Addressed to the toll-house, wax unbroken." },
+    { "id": "items/wren-mace", "name": "Mace", "definitionName": "mace", "holderId": "chars/wren", "isEquipped": true },
+    { "id": "items/wren-lantern", "name": "Hooded Lantern", "holderId": "chars/wren", "description": "Brass, smoke-blackened." }
+  ],
+  "quests": [
+    { "id": "quests/drowned-miller", "title": "The Drowned Miller", "giverId": "chars/tam", "relatedLocationIds": [ "locations/copper-ferry" ], "deadlineDay": 4,
+      "objectives": [ { "description": "Find where the miller was taken" }, { "description": "Bring word back to Old Tam" } ] },
+    { "id": "quests/toll-debt", "title": "The Toll-House Debt", "giverId": "chars/tam", "relatedLocationIds": [ "locations/copper-ferry" ],
+      "objectives": [ { "description": "Deliver the sealed letter to the toll-house" } ] }
+  ]
+}

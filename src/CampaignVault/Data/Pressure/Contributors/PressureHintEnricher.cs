@@ -23,6 +23,11 @@ public sealed class PressureHintEnricher : IPressureContributor
 
         foreach (var c in characters)
         {
+            if (c.IsDead)
+            {
+                continue;
+            }
+
             if (c.CurrentHp <= c.MaxHp * threshold && c.CurrentHp > 0)
             {
                 pressures.Add(new WorldPressureItem(PressureSeverity.Simulation, c.Id,
@@ -32,7 +37,7 @@ public sealed class PressureHintEnricher : IPressureContributor
             else if (c.CurrentHp <= 0)
             {
                 pressures.Add(new WorldPressureItem(PressureSeverity.EngineWarning, c.Id,
-                    $"{c.Name} is dying or dead. Example fix in commit: [ {{\"$type\": \"hp\", \"characterId\": \"chars/xxx\", \"delta\": 10}}, {{\"$type\": \"status\", \"characterId\": \"chars/xxx\", \"status\": \"Stable\"}} ]",
+                    $"{c.Name} is dying or dead. Example fix in commit: [ {{\"$type\": \"hp\", \"characterId\": \"chars/xxx\", \"delta\": 10}}, {{\"$type\": \"status\", \"characterId\": \"chars/xxx\", \"status\": \"Stable\"}} ] — or, if dead: [ {{\"$type\": \"death\", \"characterId\": \"chars/xxx\", \"cause\": \"...\"}} ]",
                     CharacterDistressPressureContributor.DyingGroupingKey));
             }
 

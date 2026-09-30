@@ -6,6 +6,8 @@ public record ClassDefinition : RulesetTemplate
     public string? HitDie { get; init; }
     // Nullable: null means "inherit from parent"; explicit None means non-caster
     public CasterType? CasterType { get; init; }
+    /// <summary>The ability the class casts with (e.g. "Intelligence"); null for non-casters or to inherit.</summary>
+    public string? SpellcastingAbility { get; init; }
     public List<string> Pools { get; init; } = [];
     public List<string> SavingThrows { get; init; } = [];
     public List<string> Aliases { get; init; } = [];
@@ -16,6 +18,7 @@ public record ClassDefinition : RulesetTemplate
             System = !string.IsNullOrEmpty(child.System) ? child.System : parent.System,
             HitDie = child.HitDie ?? parent.HitDie,
             CasterType = child.CasterType ?? parent.CasterType,
+            SpellcastingAbility = child.SpellcastingAbility ?? parent.SpellcastingAbility,
             Description = child.Description ?? parent.Description,
             Pools = child.Pools.Count > 0 ? child.Pools : parent.Pools,
             SavingThrows = child.SavingThrows.Count > 0 ? child.SavingThrows : parent.SavingThrows,

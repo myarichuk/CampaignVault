@@ -1,6 +1,7 @@
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using CampaignVault.Data;
+using CampaignVault.Hosting;
 using CampaignVault.Middleware;
 using CampaignVault.Plugins;
 using CampaignVault.Schema;
@@ -31,15 +32,13 @@ var grpcHttpsPort = int.TryParse(Environment.GetEnvironmentVariable("GRPC_HTTPS_
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.PreferHostingUrls(false);
 
-var bindAny = string.Equals(
-    Environment.GetEnvironmentVariable("MCP_BIND_ANY"),
-    "1",
-    StringComparison.OrdinalIgnoreCase) || !builder.Environment.IsDevelopment();
+// On by default outside Development; an explicit "0" forces either off (the Unity client's embedded server runs
+// as Production with MCP_BIND_ANY=0 and HTTPS_ENABLED=0: loopback-only, plain HTTP).
+var bindAny = HostSwitches.Resolve(
+    Environment.GetEnvironmentVariable("MCP_BIND_ANY"), !builder.Environment.IsDevelopment());
 
-var httpsEnabled = string.Equals(
-    Environment.GetEnvironmentVariable("HTTPS_ENABLED"),
-    "1",
-    StringComparison.OrdinalIgnoreCase) || !builder.Environment.IsDevelopment();
+var httpsEnabled = HostSwitches.Resolve(
+    Environment.GetEnvironmentVariable("HTTPS_ENABLED"), !builder.Environment.IsDevelopment());
 
 var httpsCertPath = Environment.GetEnvironmentVariable("HTTPS_CERT_PATH");
 var httpsCertPassword = Environment.GetEnvironmentVariable("HTTPS_CERT_PASSWORD");
@@ -56,10 +55,12 @@ var mcpStateless = string.Equals(
     "1",
     StringComparison.OrdinalIgnoreCase);
 
-var mcpIncludeStructuredContent = string.Equals(
-    Environment.GetEnvironmentVariable("MCP_INCLUDE_STRUCTURED_CONTENT"),
-    "1",
-    StringComparison.OrdinalIgnoreCase);
+// Env var wins, else appsettings CampaignVault:Mcp:IncludeStructuredContent. Also decides whether tools/list
+// advertises an outputSchema (only valid when structuredContent is actually returned).
+var mcpStructuredEnv = Environment.GetEnvironmentVariable("MCP_INCLUDE_STRUCTURED_CONTENT");
+var mcpIncludeStructuredContent = !string.IsNullOrWhiteSpace(mcpStructuredEnv)
+    ? mcpStructuredEnv.Trim() is "1" || mcpStructuredEnv.Trim().Equals("true", StringComparison.OrdinalIgnoreCase)
+    : builder.Configuration.GetValue<bool>("CampaignVault:Mcp:IncludeStructuredContent");
 
 builder.WebHost.ConfigureKestrel(options =>
 {
@@ -169,13 +170,16 @@ if (bindAny && string.IsNullOrEmpty(bearerToken))
         "FATAL: refusing to start. This deploy would bind the MCP endpoint on all interfaces " +
         "(0.0.0.0) with no authentication — ASPNETCORE_ENVIRONMENT is not 'Development' or " +
         "MCP_BIND_ANY=1 was set, and BEARER_TOKEN is unset. Set BEARER_TOKEN to enable auth, or " +
-        "run with ASPNETCORE_ENVIRONMENT=Development (and MCP_BIND_ANY unset) for a loopback-only " +
-        "local dev server.");
+        "set MCP_BIND_ANY=0 (or run with ASPNETCORE_ENVIRONMENT=Development and MCP_BIND_ANY unset) " +
+        "for a loopback-only local server.");
     Environment.Exit(1);
 }
 
-// RavenDB Embedded Setup
-var documentStore = RavenStartup.Initialize(dbPath);
+// RavenDB Embedded Setup. The license comes only from these two variables, like BEARER_TOKEN above.
+var ravenLicensing = HostSwitches.RavenLicensing(
+    Environment.GetEnvironmentVariable("CAMPAIGN_RAVEN_LICENSE"),
+    Environment.GetEnvironmentVariable("CAMPAIGN_RAVEN_LICENSE_PATH"));
+var documentStore = RavenStartup.Initialize(dbPath, ravenLicensing);
 
 // Services
 builder.Services.AddSingleton(documentStore);
@@ -219,7 +223,7 @@ var mcpServerBuilder = builder.Services.AddMcpServer(options =>
     options.ServerInfo = new Implementation
     {
         Name = "CampaignVault",
-        Version = "0.11.0"
+        Version = EngineVersion.Current
     };
 });
 
@@ -264,6 +268,10 @@ McpResponseCleaner.IncludeStructuredContent = mcpIncludeStructuredContent;
 builder.Services.AddGrpc();
 
 var app = builder.Build();
+
+// Stop RavenDB with the host (SIGTERM, Ctrl+C): its server runs as a child process that otherwise outlives
+// this one for a while and keeps the database lock, so an immediate restart can't open the data.
+app.Lifetime.ApplicationStopped.Register(() => Raven.Embedded.EmbeddedServer.Instance.Dispose());
 
 var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 
@@ -311,7 +319,17 @@ foreach (var route in ToolProfiles.Routes)
 }
 app.MapGet("/info", () => "CampaignVault MCP Server (RavenDB) is running.")
     .RequireLocalPort(mcpPorts);
-app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
+// version lets a client notice it is talking to a different server build than it shipped with.
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", version = EngineVersion.Current }))
+    .RequireLocalPort(mcpPorts);
+// Plain HTTP, not an MCP tool, so the model never pays for it: the client's plugin manager reads what was found.
+app.MapGet("/plugins", () => Results.Ok(new
+    {
+        engineVersion = EngineVersion.Current,
+        bundledDirectories = PluginCatalog.BundledDirectories,
+        userDirectories = PluginCatalog.UserDirectories,
+        plugins = PluginCatalog.Entries,
+    }))
     .RequireLocalPort(mcpPorts);
 
 // Bind gRPC sync exclusively to the dedicated gRPC listener port.
@@ -336,7 +354,10 @@ app.Lifetime.ApplicationStarted.Register(() =>
      \____\__,_|_| |_| |_| .__/ \__,_|_|\__, |_| |_|    \_/ \__,_|\__,_|_|\__|
                          |_|            |___/                                 
     ");
-    Console.Error.WriteLine($"MCP Version: 0.2.0");
+    Console.Error.WriteLine($"Server Version: {EngineVersion.Current}");
+    Console.Error.WriteLine($"Environment: {app.Environment.EnvironmentName}");
+    Console.Error.WriteLine($"RavenDB License: {HostSwitches.DescribeLicensing(ravenLicensing)}");
+    Console.Error.WriteLine($"Plugins: {HostSwitches.DescribePlugins(PluginCatalog.Entries)}");
     Console.Error.WriteLine($"Database Path: {dbPathSetting}");
     Console.Error.WriteLine($"Auth Enabled: {authEnabled}");
     Console.Error.WriteLine($"HTTPS Enabled: {httpsEnabled}");
