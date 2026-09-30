@@ -58,7 +58,8 @@ namespace CampaignVault.UnityClient.UI
 
             var transcript = state.Transcript;
             foreach (var seg in transcript.Segments) { Append(seg, false); }
-            transcript.Added += delegate (TranscriptSegment seg) { Append(seg, state.FxEnabled); };
+            // Restored history arrives in a burst: no dice tumbling or sounds for rolls made last week.
+            transcript.Added += delegate (TranscriptSegment seg) { Append(seg, state.FxEnabled && !seg.Restored); };
             transcript.Removed += OnRemoved;
             transcript.Updated += OnUpdated;
             transcript.Cleared += delegate { _entries.Clear(); _scroll.Clear(); };
@@ -107,7 +108,9 @@ namespace CampaignVault.UnityClient.UI
                     _scroll.Add(strip);
                 }
                 entry.Strip = strip;
-                entry.Element = Ui.Text(ActivityText(seg.Text), "cv-activity__item");
+                entry.Element = seg.Kind == SegmentKind.Notes
+                    ? Ui.Rich(seg.Text, "cv-activity__notes")
+                    : Ui.Text(ActivityText(seg.Text), "cv-activity__item");
                 strip.Q(className: "cv-activity__items").Add(entry.Element);
                 RefreshStripTitle(strip);
             }
@@ -120,9 +123,10 @@ namespace CampaignVault.UnityClient.UI
             NoteNewContent();
         }
 
+        /// <summary>Tool lines and the two-pass loop's notes: folded into the turn's strip, out of the story.</summary>
         private static bool IsActivity(TranscriptSegment seg)
         {
-            return seg.Kind == SegmentKind.ToolData && !seg.Text.StartsWith("\U0001F4AD");
+            return seg.Kind == SegmentKind.Notes || (seg.Kind == SegmentKind.ToolData && !seg.Text.StartsWith("\U0001F4AD"));
         }
 
         /// <summary>The strip the next activity item joins: only if activity was the very last thing shown.</summary>
@@ -148,9 +152,17 @@ namespace CampaignVault.UnityClient.UI
 
         private static void RefreshStripTitle(VisualElement strip)
         {
-            int n = strip.Q(className: "cv-activity__items").childCount;
+            var items = strip.Q(className: "cv-activity__items");
+            int n = 0;
+            bool notes = false;
+            foreach (var child in items.Children())
+            {
+                if (child.ClassListContains("cv-activity__notes")) { notes = true; } else { n++; }
+            }
             var title = strip.Q<Label>(className: "cv-activity__title");
-            Ui.SetText(title, "THE DM CONSULTS THE LEDGER · " + n);
+            string text = n > 0 ? "THE DM CONSULTS THE LEDGER · " + n : "THE DM'S NOTES";
+            if (n > 0 && notes) { text += " · NOTES"; }
+            Ui.SetText(title, text);
         }
 
         /// <summary>Driver lines ("⚙ take_turn", "✦ the DM consults X") as readable activity.</summary>
@@ -171,6 +183,7 @@ namespace CampaignVault.UnityClient.UI
                 case SegmentKind.Roll: return BuildRoll(seg, animate);
                 case SegmentKind.Player: return BuildPlayer(seg);
                 case SegmentKind.Aside: return Ui.Rich(seg.Text, "cv-aside");
+                case SegmentKind.Recap: return BuildRecap(seg);
                 case SegmentKind.ToolData: return Ui.Rich(seg.Text.Substring(seg.Text.Length > 2 ? 2 : 0).Trim(), "cv-aside"); // reasoning 💭
                 default: return BuildSystem(seg);
             }
@@ -197,6 +210,19 @@ namespace CampaignVault.UnityClient.UI
             body.Add(Ui.Rich("“" + seg.Text + "”", "cv-voice__line"));
             row.Add(body);
             return row;
+        }
+
+        /// <summary>A session boundary: a gilt rule with the heading, then the "previously…" text.</summary>
+        private static VisualElement BuildRecap(TranscriptSegment seg)
+        {
+            var card = Ui.El("cv-recap");
+            var head = Ui.El("cv-recap__head");
+            head.Add(Ui.El("cv-recap__rule"));
+            head.Add(Ui.Text((seg.Speaker ?? string.Empty).ToUpperInvariant(), "cv-recap__title"));
+            head.Add(Ui.El("cv-recap__rule"));
+            card.Add(head);
+            if (!string.IsNullOrEmpty(seg.Text)) { card.Add(Ui.Rich(seg.Text, "cv-recap__text")); }
+            return card;
         }
 
         private static VisualElement BuildPlayer(TranscriptSegment seg)

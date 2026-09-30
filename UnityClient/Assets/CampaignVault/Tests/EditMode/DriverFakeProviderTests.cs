@@ -475,15 +475,53 @@ namespace CampaignVault.UnityClient.Tests
         }
 
         [UnityTest]
-        public IEnumerator TwoPass_LoopNarratesAnyway_KeptAsAside_StorytellerStillWrites()
+        public IEnumerator TwoPass_LoopNarratesAnyway_KeptAsNotes_StorytellerStillWrites()
         {
             TwoPass();
             _script.Enqueue(req => new Reply { Body = Plain("You push the door open.\nDONE") });
             _script.Enqueue(req => new Reply { Body = Plain("The hinges shriek.") });
             yield return Send("I open the door.");
             Assert.AreEqual(2, _chatRequests.Count);
-            Assert.AreEqual("You push the door open.", _transcript.Segments.First(s => s.Kind == SegmentKind.Aside).Text);
+            Assert.AreEqual("You push the door open.", _transcript.Segments.First(s => s.Kind == SegmentKind.Notes).Text);
+            Assert.IsFalse(_transcript.Segments.Any(s => s.Kind == SegmentKind.Aside), "the story is told once, by the storyteller");
             Assert.AreEqual("The hinges shriek.", _transcript.Segments.Last(s => s.Kind == SegmentKind.Narration).Text);
+        }
+
+        [UnityTest]
+        public IEnumerator TwoPass_LoopWordsWithToolCalls_AreNotes_NeverStreamedIntoTheStory()
+        {
+            TwoPass();
+            _script.Enqueue(req => Sse(
+                Delta("{\"content\":\"The mill is dark. \"}"),
+                Delta("{\"tool_calls\":[{\"index\":0,\"id\":\"c1\",\"function\":{\"name\":\"take_turn\",\"arguments\":\"{}\"}}]}")));
+            _script.Enqueue(req => new Reply { Body = Plain("DONE") });
+            _script.Enqueue(req => new Reply { Body = Plain("Dust hangs in the lantern light.") });
+            int liveNarration = 0;
+            _transcript.Added += delegate (TranscriptSegment seg) { if (seg.Streaming && seg.Kind != SegmentKind.Narration) { liveNarration++; } };
+            var succeeded = new List<string>();
+            _driver.ToolSucceeded += delegate (string tool, string result) { succeeded.Add(tool); };
+
+            yield return Send("I step inside.");
+
+            Assert.AreEqual(0, liveNarration, "loop text is not streamed into the log");
+            Assert.AreEqual("The mill is dark.", _transcript.Segments.First(s => s.Kind == SegmentKind.Notes).Text);
+            Assert.IsFalse(_transcript.Segments.Any(s => s.Kind == SegmentKind.Aside));
+            Assert.AreEqual(1, _transcript.Segments.Count(s => s.Kind == SegmentKind.Narration));
+            CollectionAssert.AreEqual(new[] { "take_turn" }, succeeded, "the app layer hears about committed tool calls");
+        }
+
+        [UnityTest]
+        public IEnumerator RestorePassages_FeedsTheStorytellerAfterARestart()
+        {
+            TwoPass();
+            _driver.RestorePassages(new List<KeyValuePair<string, string>>
+            {
+                new KeyValuePair<string, string>("I knock.", "The door opens a crack."),
+            });
+            Assert.AreEqual("The door opens a crack.", _driver.LastPassage);
+            var messages = _driver.BuildNarrationMessages("I push in.", new TurnBrief()).ArrayValue;
+            Assert.IsTrue(messages.Any(m => m.GetString("role", null) == "assistant" && m.GetString("content", null) == "The door opens a crack."));
+            yield break;
         }
 
         [UnityTest]

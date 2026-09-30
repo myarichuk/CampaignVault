@@ -43,20 +43,30 @@ namespace CampaignVault.UnityClient.App
 
             // A smoke run never touches the player's saved prefs.
             if (prefs == null) { prefs = VaultSmokeRunner.RequestedServerUrl() != null ? (IVaultPrefs)new MemoryPrefs() : new UnityPrefs(); }
+            // Nor the saved chronicle: only the real player's prefs come with one.
+            if (prefs is UnityPrefs) { state.Store = new TranscriptStore(System.IO.Path.Combine(Application.persistentDataPath, "Transcripts")); }
             State = state;
             Controller = new VaultController(state, this, prefs);
             Controller.LoadPreferences();
+            if (Controller.RestoreHistory())
+            {
+                state.Transcript.Add(new TranscriptSegment
+                {
+                    Kind = SegmentKind.System,
+                    Text = "Welcome back. The chronicle above is where you left off.",
+                });
+            }
 
             int skills;
             string names;
-            bool armed = state.Prompts.TryGetSkillStatus(out skills, out names) && skills > 0;
-            state.Transcript.Add(new TranscriptSegment
+            if (!state.Prompts.TryGetSkillStatus(out skills, out names) || skills == 0)
             {
-                Kind = SegmentKind.System,
-                Text = "Welcome to the Vault. " + (armed
-                    ? "The DM is armed with " + skills + " skills."
-                    : "The DM prompt or skills are missing — see Settings."),
-            });
+                state.Transcript.Add(new TranscriptSegment
+                {
+                    Kind = SegmentKind.System,
+                    Text = "⚠ The Dungeon Master's prompt or skills are missing from this build, so play will go badly. See Settings.",
+                });
+            }
         }
 
         /// <summary>First run: no usable provider yet, so the UI should open setup.</summary>

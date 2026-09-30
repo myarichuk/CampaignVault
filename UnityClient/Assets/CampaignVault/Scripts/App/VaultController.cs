@@ -28,7 +28,19 @@ namespace CampaignVault.UnityClient.App
             _s = state;
             _host = host;
             _prefs = prefs;
+            if (_s.Driver != null) { _s.Driver.ToolSucceeded += OnDriverTool; }
         }
+
+        // The session number the log already shows a recap for (0 = none this run).
+        private int _recappedSession;
+        // True while a player turn runs: its segments are saved together when it ends.
+        private bool _turnActive;
+
+        /// <summary>Tools that only read; a turn that ran nothing else changed nothing the table shows.</summary>
+        private static readonly HashSet<string> ReadOnlyTools = new HashSet<string>
+        {
+            SystemPromptProvider.LoadSkillTool, "lookup", "get_entity", "search_world", "start_session", "end_session", "list_campaigns",
+        };
 
         public VaultAppState State { get { return _s; } }
 
@@ -47,6 +59,7 @@ namespace CampaignVault.UnityClient.App
             _s.PcId = _prefs.GetString(PrefKeys.PcId, string.Empty);
             _s.FxEnabled = _prefs.GetInt(PrefKeys.Fx, 1) == 1;
             _s.SfxMuted = _prefs.GetInt(PrefKeys.Sfx, 1) == 0;
+            _s.StoryTextSize = Mathf.Clamp(_prefs.GetInt(PrefKeys.StoryTextSize, VaultAppState.DefaultStoryTextSize), 0, VaultAppState.StoryTextSizes.Length - 1);
             if (_s.Server != null)
             {
                 _s.Server.Config = _s.Config;
@@ -80,6 +93,18 @@ namespace CampaignVault.UnityClient.App
             _prefs.SetInt(PrefKeys.Fx, enabled ? 1 : 0);
             _prefs.Save();
             _s.Notify(StateArea.Preferences);
+        }
+
+        /// <summary>Sets the story text size step (clamped); returns the step now in effect.</summary>
+        public int SetStoryTextSize(int step)
+        {
+            step = Mathf.Clamp(step, 0, VaultAppState.StoryTextSizes.Length - 1);
+            if (step == _s.StoryTextSize) { return step; }
+            _s.StoryTextSize = step;
+            _prefs.SetInt(PrefKeys.StoryTextSize, step);
+            _prefs.Save();
+            _s.Notify(StateArea.Preferences);
+            return step;
         }
 
         public void SetSfxMuted(bool muted)
@@ -125,12 +150,17 @@ namespace CampaignVault.UnityClient.App
                 SavePcId();
                 SaveCompanionIds();
                 _s.Driver.ResetConversation();
+                // Each campaign keeps its own chronicle: the log switches with the table.
+                _s.Transcript.Clear();
+                bool returning = RestoreHistory();
                 if (slug.Length > 0)
                 {
                     _s.Transcript.Add(new TranscriptSegment
                     {
                         Kind = SegmentKind.System,
-                        Text = "Campaign “" + slug + "” is now active. The DM starts this table with a fresh conversation.",
+                        Text = returning
+                            ? "Back at “" + slug + "”. The chronicle above is where you left off; the next line you send picks the session back up."
+                            : "Campaign “" + slug + "” is at the table. Send a line to begin the session.",
                     });
                 }
             }
@@ -139,8 +169,36 @@ namespace CampaignVault.UnityClient.App
         }
 
         /// <summary>
+        /// Loads the active campaign's saved chronicle into the log and gives
+        /// the storyteller its recent scenes back. True when there was any.
+        /// </summary>
+        public bool RestoreHistory()
+        {
+            _recappedSession = 0;
+            if (_s.Store == null || !_s.HasCampaign) { return false; }
+            var restored = _s.Store.Load(_s.CampaignSlug);
+            if (restored.Count == 0) { return false; }
+            foreach (var seg in restored) { _s.Transcript.Add(seg); }
+            _s.Driver.RestorePassages(TranscriptStore.Passages(restored, Storyteller.MaxPassages));
+            _s.Notify(StateArea.Driver);
+            return true;
+        }
+
+        /// <summary>The session this client left open for the active campaign (0 = none), so a relaunch resumes it.</summary>
+        public int RememberedOpenSession
+        {
+            get
+            {
+                if (!_s.HasCampaign) { return 0; }
+                int n;
+                return int.TryParse(_prefs.GetString(PrefKeys.OpenSessionPrefix + _s.CampaignSlug, string.Empty), out n) ? n : 0;
+            }
+        }
+
+        /// <summary>
         /// Folds a start_session digest in: ruleset, PC roster and party
         /// fingerprint for the DM prompt, companions to track, and a default PC.
+        /// The first time a session shows up this run, the log gets its recap.
         /// </summary>
         public void ApplySession(SessionDigest digest)
         {
@@ -169,7 +227,106 @@ namespace CampaignVault.UnityClient.App
                 SavePcId();
             }
             _s.SessionStatus = DescribeSession(digest);
+            if (digest.SessionNumber > 0 && _s.HasCampaign)
+            {
+                _prefs.SetString(PrefKeys.OpenSessionPrefix + _s.CampaignSlug, digest.SessionNumber.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                _prefs.Save();
+            }
+            AddRecap(digest);
             _s.Notify(StateArea.Session | StateArea.Pc | StateArea.Companions);
+        }
+
+        private void AddRecap(SessionDigest digest)
+        {
+            if (digest == null || digest.SessionNumber <= 0 || digest.SessionNumber == _recappedSession) { return; }
+            _recappedSession = digest.SessionNumber;
+            var recap = RecapFor(digest);
+            // Relaunched without playing: the saved chronicle already ends on this same recap.
+            var last = LastStorySegment();
+            if (last != null && last.Kind == SegmentKind.Recap && last.Speaker == recap.Speaker && last.Text == recap.Text) { return; }
+            AddChronicle(recap);
+        }
+
+        /// <summary>A line for the chronicle outside a player turn (a turn saves its own lines when it ends).</summary>
+        private void AddChronicle(TranscriptSegment seg)
+        {
+            _s.Transcript.Add(seg);
+            if (!_turnActive && _s.Store != null && _s.HasCampaign) { _s.Store.Append(_s.CampaignSlug, new[] { seg }); }
+        }
+
+        private TranscriptSegment LastStorySegment()
+        {
+            var segments = _s.Transcript.Segments;
+            for (int i = segments.Count - 1; i >= 0; i--)
+            {
+                if (segments[i].Kind != SegmentKind.System) { return segments[i]; }
+            }
+            return null;
+        }
+
+        /// <summary>The "previously…" card a session opens with: last session's handoff, else the recent digest.</summary>
+        public static TranscriptSegment RecapFor(SessionDigest digest)
+        {
+            string heading = "Session " + digest.SessionNumber + (digest.Resumed ? " · resumed" : " begins");
+            string title = (digest.Title ?? string.Empty).Trim();
+            if (title.Length > 0 && title != digest.SessionNumber.ToString(System.Globalization.CultureInfo.InvariantCulture)) { heading += " — " + title; }
+            var parts = new List<string>();
+            var h = digest.Handoff;
+            if (h != null && h.LastSession.Length > 0)
+            {
+                parts.Add((digest.Resumed && h.Checkpoint ? "So far this session: " : "Previously: ") + h.LastSession.Trim());
+            }
+            else if (h != null && h.StorySoFar.Length > 0)
+            {
+                parts.Add("The story so far: " + h.StorySoFar.Trim());
+            }
+            else if (digest.RecentDigest.Length > 0)
+            {
+                parts.Add(digest.RecentDigest.Trim());
+            }
+            if (h != null && h.PartyIntent.Length > 0) { parts.Add("You meant to: " + h.PartyIntent.Trim()); }
+            if (parts.Count == 0 && !digest.Resumed && digest.SessionNumber == 1) { parts.Add("The story begins."); }
+            return new TranscriptSegment
+            {
+                Kind = SegmentKind.Recap,
+                Speaker = heading,
+                Text = TextSanitizer.Clean(string.Join("\n\n", parts.ToArray()), 2400),
+            };
+        }
+
+        /// <summary>The session closed (by the player's handoff or the DM's own end_session): mark it in the log.</summary>
+        private void MarkSessionEnded(string summary)
+        {
+            int number = _s.Session != null ? _s.Session.SessionNumber : _recappedSession;
+            _s.Session = null;
+            _recappedSession = 0;
+            if (_s.HasCampaign) { _prefs.Delete(PrefKeys.OpenSessionPrefix + _s.CampaignSlug); _prefs.Save(); }
+            AddChronicle(new TranscriptSegment
+            {
+                Kind = SegmentKind.Recap,
+                Speaker = number > 0 ? "Session " + number + " ends" : "The session ends",
+                Text = TextSanitizer.Clean(summary ?? string.Empty, 1200),
+            });
+        }
+
+        /// <summary>Follows sessions the DM opens or closes on its own, so the table never shows a stale one.</summary>
+        internal void OnDriverTool(string tool, string resultText)
+        {
+            if (tool != "start_session" && tool != "end_session") { return; }
+            JsonValue parsed;
+            if (!JsonValue.TryParse(resultText, out parsed) || parsed.Kind != JsonKind.Object || !parsed.GetBool("success", true)) { return; }
+            var data = parsed.Get("data");
+            if (data.IsNull) { data = parsed; }
+            if (tool == "start_session")
+            {
+                ApplySession(SessionDigest.FromResult(data));
+            }
+            else if (!data.GetBool("checkpoint", data.GetBool("Checkpoint", false)))
+            {
+                MarkSessionEnded(string.Empty);
+                _s.SessionStatus = "The DM ended the session.";
+                _s.Notify(StateArea.Session);
+            }
         }
 
         public static string DescribeSession(SessionDigest digest)
@@ -191,7 +348,7 @@ namespace CampaignVault.UnityClient.App
         /// <summary>Opens (or resumes) the session. Title only matters for a brand-new one.</summary>
         public IEnumerator StartSession(string title)
         {
-            yield return OpenSession(title, "session", true);
+            yield return OpenSession(title, "session", true, false);
         }
 
         /// <summary>
@@ -200,10 +357,11 @@ namespace CampaignVault.UnityClient.App
         /// </summary>
         public IEnumerator RefreshTable()
         {
-            yield return OpenSession(null, "refresh", false);
+            yield return OpenSession(null, "refresh", false, false);
         }
 
-        private IEnumerator OpenSession(string title, string busyKey, bool announce)
+        /// <param name="soft">A failure is a warning, not an error (the player's line still goes to the DM).</param>
+        private IEnumerator OpenSession(string title, string busyKey, bool announce, bool soft)
         {
             if (!RequireCampaign(delegate (string m) { _s.SessionStatus = m; _s.Notify(StateArea.Session); })) { yield break; }
             if (!_s.TryBeginBusy(busyKey)) { yield break; }
@@ -218,7 +376,8 @@ namespace CampaignVault.UnityClient.App
                     string error = "start_session failed: " + (result != null ? result.ErrorMessage : "no response");
                     _s.SessionStatus = error;
                     _s.Notify(StateArea.Session);
-                    _s.RaiseToast(error, ToastKind.Error);
+                    _s.RaiseToast(soft ? "Couldn't open the session first (" + (result != null ? result.ErrorMessage : "no response") + "); the DM will try." : error,
+                        soft ? ToastKind.Warning : ToastKind.Error);
                     yield break;
                 }
                 ApplySession(SessionDigest.FromResult(result.Data.Data));
@@ -271,7 +430,7 @@ namespace CampaignVault.UnityClient.App
                 }
                 else
                 {
-                    _s.Session = null;
+                    MarkSessionEnded(draft.LastSession);
                     _s.SessionStatus = "Session ended. The handoff carries the story forward.";
                     _s.RaiseToast("Session ended with handoff.", ToastKind.Success);
                 }
@@ -299,12 +458,59 @@ namespace CampaignVault.UnityClient.App
             return true;
         }
 
+        /// <summary>
+        /// One player line, start to finish: the first in-character line of a
+        /// sitting opens (or resumes) the session so its recap lands first;
+        /// then the DM's turn; then the turn is saved to the chronicle and, if
+        /// it changed the world, the table (HP, quests, time) is re-read.
+        /// </summary>
         public IEnumerator SendPlayerTextRoutine(string text)
         {
             if (!CanSend(text)) { yield break; }
-            _s.Transcript.Add(new TranscriptSegment { Kind = SegmentKind.Player, Text = text.Trim() });
-            _s.Notify(StateArea.Driver);
-            yield return _s.Driver.SendPlayerText(text.Trim(), _s.Transcript, delegate { _s.Notify(StateArea.Driver); });
+            string line = text.Trim();
+            string slug = _s.CampaignSlug;
+            _turnActive = false;
+            if (_s.Session == null && !Storyteller.IsOocPlayer(line))
+            {
+                yield return OpenSession(null, "session", false, true);
+                if (_s.Driver.IsBusy || _s.CampaignSlug != slug) { yield break; }
+            }
+            var player = new TranscriptSegment { Kind = SegmentKind.Player, Text = line };
+            _turnActive = true;
+            try
+            {
+                _s.Transcript.Add(player);
+                _s.Notify(StateArea.Driver);
+                yield return _s.Driver.SendPlayerText(line, _s.Transcript, delegate { _s.Notify(StateArea.Driver); });
+            }
+            finally
+            {
+                _turnActive = false;
+                SaveTurn(slug, player);
+            }
+            if (_s.Session != null && _s.CampaignSlug == slug && ChangedTheWorld(_s.Driver.CurrentTurn))
+            {
+                yield return RefreshTable();
+            }
+        }
+
+        private void SaveTurn(string slug, TranscriptSegment player)
+        {
+            if (_s.Store == null || string.IsNullOrEmpty(slug) || slug != _s.CampaignSlug) { return; }
+            var segments = _s.Transcript.Segments;
+            int start = -1;
+            for (int i = segments.Count - 1; i >= 0; i--) { if (ReferenceEquals(segments[i], player)) { start = i; break; } }
+            if (start < 0) { return; }
+            var turn = new List<TranscriptSegment>();
+            for (int i = start; i < segments.Count; i++) { turn.Add(segments[i]); }
+            _s.Store.Append(slug, turn);
+        }
+
+        internal static bool ChangedTheWorld(TurnRecord turn)
+        {
+            if (turn == null) { return false; }
+            foreach (string tool in turn.Tools) { if (!ReadOnlyTools.Contains(tool)) { return true; } }
+            return false;
         }
 
         private bool CanSend(string text)
@@ -315,6 +521,17 @@ namespace CampaignVault.UnityClient.App
             {
                 _s.RaiseToast("Chat needs an AI provider: " + notReady, ToastKind.Warning);
                 _s.RequestSetup();
+                return false;
+            }
+            if (!_s.HasCampaign)
+            {
+                _s.RaiseToast("Choose a campaign first: the Dungeon Master needs a table to run.", ToastKind.Info);
+                _s.RequestCampaigns();
+                return false;
+            }
+            if (_s.IsBusy("session"))
+            {
+                _s.RaiseToast("The session is still opening.", ToastKind.Info);
                 return false;
             }
             if (_s.Driver.IsBusy)
@@ -560,6 +777,9 @@ namespace CampaignVault.UnityClient.App
                 if (result != null && result.Ok)
                 {
                     if (_s.CampaignSlug == slug) { SelectCampaign(string.Empty, null); }
+                    if (_s.Store != null) { _s.Store.Delete(slug); }
+                    _prefs.Delete(PrefKeys.OpenSessionPrefix + slug);
+                    _prefs.Save();
                     _s.RaiseToast("Campaign “" + slug + "” deleted.", ToastKind.Success);
                 }
                 else
@@ -997,14 +1217,25 @@ namespace CampaignVault.UnityClient.App
             _s.RaiseToast("Bearer token cleared.", ToastKind.Info);
         }
 
+        /// <summary>
+        /// False until the launch-time autostart has either found a server,
+        /// started one or given up, so the first connection check waits for it
+        /// instead of racing a server that is still unpacking or booting.
+        /// </summary>
+        public bool AutostartSettled { get; private set; }
+
         /// <summary>Autostart only ever hijacks a loopback URL, never a remote server.</summary>
         public IEnumerator AutostartEmbedded()
         {
-            if (_s.Server == null || !_s.Server.AutoStart || !ServerHostManager.IsLoopbackUrl(_s.Config.ServerUrl)) { yield break; }
-            bool healthy = false;
-            yield return _s.Config.CheckHealth(delegate (bool ok, string msg) { healthy = ok; });
-            if (healthy) { yield break; }
-            yield return StartEmbedded(_s.Server.Port);
+            try
+            {
+                if (_s.Server == null || !_s.Server.AutoStart || !ServerHostManager.IsLoopbackUrl(_s.Config.ServerUrl)) { yield break; }
+                bool healthy = false;
+                yield return _s.Config.CheckHealth(delegate (bool ok, string msg) { healthy = ok; });
+                if (healthy) { yield break; }
+                yield return StartEmbedded(_s.Server.Port);
+            }
+            finally { AutostartSettled = true; }
         }
 
         public IEnumerator StartEmbedded(int port)
@@ -1027,8 +1258,9 @@ namespace CampaignVault.UnityClient.App
                 });
                 _s.EmbeddedMessage = message;
                 if (started) { _s.PluginsLoaded = false; }
+                else { SetConnection(ConnectionStatus.Down, "Built-in server: " + message); }
                 _s.Notify(StateArea.Embedded);
-                _s.RaiseToast(started ? "Embedded server started." : "Embedded server: " + message, started ? ToastKind.Success : ToastKind.Warning);
+                _s.RaiseToast(started ? "Embedded server started." : "The built-in server didn't start. " + message, started ? ToastKind.Success : ToastKind.Error);
             }
             finally { _s.EndBusy("embedded"); }
         }

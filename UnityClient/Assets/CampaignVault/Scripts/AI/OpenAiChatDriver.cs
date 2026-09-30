@@ -83,6 +83,13 @@ namespace CampaignVault.UnityClient.AI
         /// <summary>The turn being resolved right now, or the last one.</summary>
         public TurnRecord CurrentTurn { get; private set; }
 
+        /// <summary>
+        /// A server tool the model called succeeded: (tool name, its raw result
+        /// text). The app layer follows the session through it (a start_session
+        /// or end_session the DM made on its own).
+        /// </summary>
+        public event Action<string, string> ToolSucceeded;
+
         private readonly List<JsonValue> _history = new List<JsonValue>();
 
         /// <summary>The replayable conversation, for tests and the dev inspector.</summary>
@@ -145,6 +152,21 @@ namespace CampaignVault.UnityClient.AI
             _passages.Clear();
             SessionUsage = new TokenUsage();
             CurrentTurn = null;
+        }
+
+        /// <summary>
+        /// Gives the storyteller back its recent scenes (from the client's saved
+        /// history) after a restart, so the prose picks up where it left off.
+        /// </summary>
+        public void RestorePassages(IList<KeyValuePair<string, string>> passages)
+        {
+            _passages.Clear();
+            if (passages == null) { return; }
+            foreach (var p in passages)
+            {
+                _passages.Add(new KeyValuePair<string, string>(p.Key, Storyteller.Cap(p.Value, Storyteller.MaxPassageChars)));
+            }
+            while (_passages.Count > Storyteller.MaxPassages) { _passages.RemoveAt(0); }
         }
 
         /// <summary>Force a fresh tools/list on the next message (server, connector or plugins changed).</summary>
@@ -226,13 +248,19 @@ namespace CampaignVault.UnityClient.AI
                     // Streamed text lands in one live segment; once the reply is
                     // complete it's replaced by its final form (narration split
                     // into voices, or a muted aside when tool calls ride along).
-                    // In two-pass mode the loop's words are never the story.
+                    // In two-pass mode the loop's words are never the story, so
+                    // they aren't streamed at all: the status line says it's working.
                     TranscriptSegment live = null;
                     Action<string> onDelta = delegate (string delta)
                     {
+                        if (twoPass)
+                        {
+                            Status = "the DM works through what happens…";
+                            return;
+                        }
                         if (live == null)
                         {
-                            live = new TranscriptSegment { Kind = twoPass ? SegmentKind.Aside : SegmentKind.Narration, Streaming = true };
+                            live = new TranscriptSegment { Kind = SegmentKind.Narration, Streaming = true };
                             transcript.Add(live);
                         }
                         live.Text += delta;
@@ -308,12 +336,13 @@ namespace CampaignVault.UnityClient.AI
                         }
                         else
                         {
-                            // The loop narrated despite the contract: keep its words
-                            // visible as an aside and let the storyteller write the scene.
-                            string aside = Storyteller.EndsWithDone(trimmed, out before) ? before : trimmed;
-                            if (aside.Length > 0)
+                            // The loop narrated despite the contract: keep its words as
+                            // notes (folded away with the tool activity) and let the
+                            // storyteller write the scene, so the story isn't told twice.
+                            string notes = Storyteller.EndsWithDone(trimmed, out before) ? before : trimmed;
+                            if (notes.Length > 0)
                             {
-                                transcript.Add(new TranscriptSegment { Kind = SegmentKind.Aside, Text = TextSanitizer.Clean(aside) });
+                                transcript.Add(new TranscriptSegment { Kind = SegmentKind.Notes, Text = TextSanitizer.Clean(notes) });
                                 changed();
                             }
                             handToStoryteller = true;
@@ -322,7 +351,12 @@ namespace CampaignVault.UnityClient.AI
                     }
                     if (trimmed.Length > 0)
                     {
-                        if (toolCalls.Count > 0)
+                        if (toolCalls.Count > 0 && twoPass)
+                        {
+                            // Two-pass: the storyteller tells the story; this is bookkeeping.
+                            transcript.Add(new TranscriptSegment { Kind = SegmentKind.Notes, Text = TextSanitizer.Clean(trimmed) });
+                        }
+                        else if (toolCalls.Count > 0)
                         {
                             // Words sent with tool calls are the DM thinking aloud
                             // ("let me check the rules"), not the story.
@@ -405,6 +439,11 @@ namespace CampaignVault.UnityClient.AI
                                     record.Rolls.Add(roll.Roll.Label + " " + roll.Roll.Detail + ": " + roll.Roll.Verdict);
                                 }
                                 brief.Add(toolName, args, resultText, true);
+                                if (ToolSucceeded != null)
+                                {
+                                    try { ToolSucceeded(toolName, resultText); }
+                                    catch (Exception ex) { Debug.LogException(ex); }
+                                }
                             }
                             else if (_cancelRequested)
                             {

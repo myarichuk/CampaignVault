@@ -151,6 +151,15 @@ namespace CampaignVault.UnityClient.Server
                 yield break;
             }
 
+            // RavenDB Embedded runs its database through "dotnet": without one the server dies at startup.
+            string dotnetDir = EmbeddedServerSupport.FindDotnetDir();
+            if (dotnetDir == null)
+            {
+                done(false, "The built-in server needs the .NET 10 runtime (its RavenDB database runs on it), and none was found. "
+                    + "Install it from " + EmbeddedServerSupport.DotnetDownloadUrl + " and start the server again.");
+                yield break;
+            }
+
             int port = EmbeddedServerSupport.PickPort(Port, EmbeddedServerSupport.IsPortFree, EmbeddedServerSupport.FreePort);
             if (port != Port && status != null) { status("Port " + Port + " is in use; starting on " + port + " instead."); }
             Config.ServerUrl = "http://127.0.0.1:" + port;
@@ -166,6 +175,8 @@ namespace CampaignVault.UnityClient.Server
             };
             // Production, but loopback-only over HTTP; blank the token and license vars so host env never leaks in.
             start.EnvironmentVariables["ASPNETCORE_ENVIRONMENT"] = "Production";
+            bool windows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+            start.EnvironmentVariables["PATH"] = EmbeddedServerSupport.PathWithDotnet(dotnetDir, Environment.GetEnvironmentVariable("PATH"), windows);
             start.EnvironmentVariables["MCP_BIND_ANY"] = "0";
             start.EnvironmentVariables["HTTPS_ENABLED"] = "0";
             start.EnvironmentVariables["MCP_PORT"] = port.ToString(CultureInfo.InvariantCulture);
@@ -182,6 +193,7 @@ namespace CampaignVault.UnityClient.Server
 
             string logPath = Path.Combine(_deployedDir, "server.log");
             int loggedLines = 0;
+            var errLines = new System.Collections.Generic.List<string>();
             try
             {
                 _server = new Process { StartInfo = start, EnableRaisingEvents = true };
@@ -189,7 +201,11 @@ namespace CampaignVault.UnityClient.Server
                 _log = new StreamWriter(new FileStream(logPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete)) { AutoFlush = true };
                 StreamWriter logRef = _log;
                 _server.OutputDataReceived += delegate (object sender, DataReceivedEventArgs e) { WriteLog(logRef, e.Data, ref loggedLines); };
-                _server.ErrorDataReceived += delegate (object sender, DataReceivedEventArgs e) { WriteLog(logRef, e.Data == null ? null : "ERR " + e.Data, ref loggedLines); };
+                _server.ErrorDataReceived += delegate (object sender, DataReceivedEventArgs e)
+                {
+                    WriteLog(logRef, e.Data == null ? null : "ERR " + e.Data, ref loggedLines);
+                    if (e.Data != null) { lock (errLines) { if (errLines.Count < 40) { errLines.Add(e.Data); } } }
+                };
                 if (!_server.Start())
                 {
                     StopEmbedded();
@@ -228,8 +244,14 @@ namespace CampaignVault.UnityClient.Server
             }
             if (!healthy)
             {
+                bool exited = !IsRunning;
+                // Let the last stderr lines land before reading them.
+                if (exited) { yield return new WaitForSeconds(0.3f); }
+                string why;
+                lock (errLines) { why = EmbeddedServerSupport.StartupFailure(errLines); }
                 StopEmbedded();
-                done(false, "Server did not answer /health within 45s. See " + logPath);
+                done(false, (exited ? "The server stopped during startup" : "The server did not answer /health within 45s")
+                    + (why != null ? ": " + TextSanitizer.Clean(why, 300) : ".") + " Log: " + logPath);
                 yield break;
             }
             ReportedVersion = version;

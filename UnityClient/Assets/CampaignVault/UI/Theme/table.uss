@@ -156,7 +156,7 @@
 .cv-roll--crit-failure .cv-roll__face { -unity-background-image-tint-color: rgba(214, 69, 69, 0.3); }
 .cv-roll--crit-failure .cv-roll__total { color: #FF8A8A; }
 
-.cv-thinking { flex-direction: row; align-items: center; height: 26px; padding-left: 4px; opacity: 0; transition-property: opacity; transition-duration: var(--motion); }
+.cv-thinking { flex-direction: row; align-items: center; height: 26px; flex-shrink: 0; padding-left: 4px; opacity: 0; transition-property: opacity; transition-duration: var(--motion); }
 .cv-thinking--on { opacity: 1; }
 .cv-thinking .cv-icon { width: 16px; height: 16px; margin-right: 10px; -unity-background-image-tint-color: var(--gold-dim); }
 .cv-thinking__text { font-size: var(--fs-sm); -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); color: var(--text-3); }
@@ -165,7 +165,9 @@
 
 /* ------------------------------------------------------------- command bar */
 
+/* Never shrinks: the story log gives up the space instead (a long log used to crush the bar). */
 .cv-command {
+    flex-shrink: 0;
     margin: 0 0 20px 0;
     padding: 12px 14px 10px 14px;
     background-color: var(--ink-2);
@@ -215,12 +217,25 @@
 .cv-codex {
     width: 372px; flex-shrink: 0;
     padding: 16px 18px;
+    overflow: hidden;
     background-color: rgba(11, 13, 18, 0.94);
     border-left-width: 1px; border-color: var(--line);
     transition-property: width, opacity; transition-duration: var(--motion);
 }
 .cv-codex--closed { width: 0; padding: 0; opacity: 0; border-left-width: 0; }
 .cv-codex__body { flex-grow: 1; }
+/* Fixed inner width: closing the drawer slides the content out instead of squeezing it. */
+.cv-codex > .cv-tabs, .cv-codex > .cv-codex__body { width: 336px; flex-shrink: 0; }
+.cv-codex > .cv-codex__body { flex-shrink: 1; }
+/* Four equal tabs, icon over label, so JOURNAL fits and nothing reflows on hover. */
+.cv-codex .cv-tab {
+    flex-grow: 1; flex-shrink: 0; flex-basis: 0;
+    flex-direction: column; justify-content: center; align-items: center;
+    padding: 6px 2px 8px 2px; margin: 0 0 -1px 0;
+    font-size: 11px; letter-spacing: 1px;
+}
+.cv-codex .cv-tab .cv-icon { margin: 0 0 4px 0; }
+.cv-codex .cv-tab .cv-btn__label { -unity-text-align: middle-center; }
 
 .cv-quest { padding: 10px 0; border-bottom-width: 1px; border-color: var(--line-faint); }
 .cv-quest__title { -unity-font-definition: url("../Fonts/SDF/EBGaramond-SemiBold.asset"); font-size: var(--fs-md); color: var(--text-1); white-space: normal; }
@@ -263,7 +278,8 @@
 .cv-shell--compact .cv-member__body { display: none; }
 .cv-shell--compact .cv-party__head { display: none; }
 
-.cv-log-wrap { flex-grow: 1; min-height: 0; }
+/* flex-basis 0: the log's (huge) content height never competes with the command bar for space. */
+.cv-log-wrap { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-height: 0; }
 .cv-party__list { flex-grow: 1; }
 
 /* ------------------------------------------------ codex: ledger and journal */
@@ -321,3 +337,50 @@
 .cv-thread__mark { width: 7px; height: 7px; margin: 9px 10px 0 2px; flex-shrink: 0; rotate: 45deg; border-width: 1px; border-color: var(--gold); }
 .cv-thread__text { flex-shrink: 1; font-size: var(--fs-md); color: var(--text-1); white-space: normal; }
 .cv-codex__body .cv-card { margin-top: var(--sp-4); }
+
+/* ------------------------------------------------- session recaps, DM notes */
+
+.cv-recap { margin: 20px 0 24px 0; }
+.cv-recap__head { flex-direction: row; align-items: center; margin-bottom: 10px; }
+.cv-recap__rule { flex-grow: 1; height: 1px; background-color: var(--line-strong); }
+.cv-recap__title { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: 14px; letter-spacing: 3px; color: var(--gold); margin: 0 14px; -unity-text-align: middle-center; }
+.cv-recap__text { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); font-size: var(--fs-md); color: var(--text-2); white-space: normal; padding: 0 28px; }
+
+.cv-activity__notes {
+    -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset");
+    font-size: var(--fs-sm); color: var(--text-3); white-space: normal;
+    margin: 4px 0 6px 0; padding-left: 10px;
+    border-left-width: 1px; border-color: var(--line-faint);
+}
+
+/* ------------------------------------------------------- story text size */
+
+/* Garamond, not Cinzel: Cinzel is all small caps, so "Aa" would read "AA". */
+.cv-textsize-btn .cv-btn__label, .cv-textsize__step .cv-btn__label { -unity-font-definition: url("../Fonts/SDF/EBGaramond-SemiBold.asset"); letter-spacing: 0; }
+.cv-textsize-btn .cv-btn__label { font-size: 21px; }
+.cv-popover {
+    position: absolute; top: 62px; right: 150px;
+    padding: 12px 14px;
+    background-color: var(--ink-2);
+    border-width: 1px; border-color: var(--gold-dim);
+}
+.cv-popover__title { margin-bottom: 8px; }
+.cv-textsize { flex-direction: row; align-items: center; margin-bottom: 6px; }
+.cv-textsize__step { min-width: 46px; }
+.cv-textsize__step .cv-btn__label { font-size: 15px; }
+.cv-textsize__step--up .cv-btn__label { font-size: 19px; }
+.cv-textsize__value { min-width: 150px; -unity-text-align: middle-center; font-size: var(--fs-sm); color: var(--text-2); }
+
+/* One cv-story-N class on the root (TextSizeControl.Apply); sizes match VaultAppState.StoryTextSizes. */
+.cv-story-0 .cv-seg--narration, .cv-story-0 .cv-voice__line { font-size: 16px; }
+.cv-story-0 .cv-player__text, .cv-story-0 .cv-recap__text { font-size: 14px; }
+.cv-story-1 .cv-seg--narration, .cv-story-1 .cv-voice__line { font-size: 18px; }
+.cv-story-1 .cv-player__text, .cv-story-1 .cv-recap__text { font-size: 16px; }
+.cv-story-2 .cv-seg--narration, .cv-story-2 .cv-voice__line { font-size: 21px; }
+.cv-story-2 .cv-player__text, .cv-story-2 .cv-recap__text { font-size: 18px; }
+.cv-story-3 .cv-seg--narration, .cv-story-3 .cv-voice__line { font-size: 24px; }
+.cv-story-3 .cv-player__text, .cv-story-3 .cv-recap__text { font-size: 20px; }
+.cv-story-4 .cv-seg--narration, .cv-story-4 .cv-voice__line { font-size: 27px; }
+.cv-story-4 .cv-player__text, .cv-story-4 .cv-recap__text { font-size: 23px; }
+.cv-story-5 .cv-seg--narration, .cv-story-5 .cv-voice__line { font-size: 31px; }
+.cv-story-5 .cv-player__text, .cv-story-5 .cv-recap__text { font-size: 26px; }

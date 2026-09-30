@@ -237,6 +237,83 @@ namespace CampaignVault.UnityClient.Server
             return (bytes / (1024.0 * 1024.0)).ToString("0", CultureInfo.InvariantCulture) + " MB";
         }
 
+        // ------------------------------------------------------ .NET runtime
+
+        public const string DotnetDownloadUrl = "https://dotnet.microsoft.com/download/dotnet/10.0";
+
+        /// <summary>
+        /// The folder holding a dotnet host, or null. RavenDB Embedded runs its
+        /// database server through "dotnet", so the self-contained CampaignVault
+        /// still needs one installed. An app started from the Dock, Finder or
+        /// Unity Hub gets a bare PATH without the installer's folders, so the
+        /// usual install locations are searched after DOTNET_ROOT and PATH.
+        /// </summary>
+        public static string FindDotnetDir(string dotnetRoot, string path, string home, bool windows, Func<string, bool> exists)
+        {
+            string exe = windows ? "dotnet.exe" : "dotnet";
+            var candidates = new System.Collections.Generic.List<string>();
+            if (!string.IsNullOrEmpty(dotnetRoot)) { candidates.Add(dotnetRoot); }
+            foreach (string dir in (path ?? string.Empty).Split(windows ? ';' : ':'))
+            {
+                if (dir.Trim().Length > 0) { candidates.Add(dir.Trim()); }
+            }
+            if (windows)
+            {
+                candidates.Add(@"C:\Program Files\dotnet");
+                candidates.Add(@"C:\Program Files (x86)\dotnet");
+                if (!string.IsNullOrEmpty(home)) { candidates.Add(Path.Combine(home, ".dotnet")); }
+            }
+            else
+            {
+                candidates.Add("/usr/local/share/dotnet");
+                candidates.Add("/opt/homebrew/bin");
+                candidates.Add("/usr/local/bin");
+                candidates.Add("/usr/share/dotnet");
+                candidates.Add("/usr/lib/dotnet");
+                candidates.Add("/snap/bin");
+                if (!string.IsNullOrEmpty(home)) { candidates.Add(Path.Combine(home, ".dotnet")); }
+            }
+            foreach (string dir in candidates)
+            {
+                if (exists(Path.Combine(dir, exe))) { return dir; }
+            }
+            return null;
+        }
+
+        /// <summary>This machine's dotnet folder, or null.</summary>
+        public static string FindDotnetDir()
+        {
+            bool windows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+            return FindDotnetDir(
+                Environment.GetEnvironmentVariable("DOTNET_ROOT"),
+                Environment.GetEnvironmentVariable("PATH"),
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                windows,
+                File.Exists);
+        }
+
+        /// <summary>The PATH to give the server so it (and RavenDB under it) finds dotnet first.</summary>
+        public static string PathWithDotnet(string dotnetDir, string path, bool windows)
+        {
+            if (string.IsNullOrEmpty(dotnetDir)) { return path ?? string.Empty; }
+            return string.IsNullOrEmpty(path) ? dotnetDir : dotnetDir + (windows ? ";" : ":") + path;
+        }
+
+        /// <summary>
+        /// Why the server died at startup, from its log lines: the unhandled
+        /// exception's message when there is one, else the last error line.
+        /// </summary>
+        public static string StartupFailure(System.Collections.Generic.IList<string> errLines)
+        {
+            if (errLines == null || errLines.Count == 0) { return null; }
+            foreach (string line in errLines)
+            {
+                int at = line.IndexOf("Unhandled exception.", StringComparison.Ordinal);
+                if (at >= 0) { return line.Substring(at + "Unhandled exception.".Length).Trim(); }
+            }
+            return errLines[errLines.Count - 1].Trim();
+        }
+
         // ------------------------------------------------------ build guards
 
         /// <summary>True for a git-lfs pointer stub (a clone without git-lfs) instead of the real file.</summary>

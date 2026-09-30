@@ -202,6 +202,8 @@ namespace CampaignVault.UnityClient.UI
             var card = Ui.Card("Table feel");
             Ui.Switch(card, "Animations and motion", _state.FxEnabled, delegate (bool on) { _controller.SetFx(on); });
             Ui.Switch(card, "Sound effects", !_state.SfxMuted, delegate (bool on) { _controller.SetSfxMuted(!on); VaultSfx.Muted = !on; });
+            card.Add(Ui.Text("STORY TEXT SIZE", "cv-caption cv-field-caption"));
+            card.Add(TextSizeControl.Build(_state, _controller));
             _content.Add(card);
         }
 

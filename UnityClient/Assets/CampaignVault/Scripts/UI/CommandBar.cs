@@ -94,10 +94,24 @@ namespace CampaignVault.UnityClient.UI
             bar.Add(hint);
             column.Add(bar);
 
-            state.Changed += delegate (StateArea area) { if ((area & StateArea.Driver) != 0) { PaintBusy(); } };
+            state.Changed += delegate (StateArea area)
+            {
+                if ((area & (StateArea.Driver | StateArea.Busy)) != 0) { PaintBusy(); }
+                if ((area & (StateArea.Campaign | StateArea.Session)) != 0) { PaintPlaceholder(); }
+            };
             // The driver's status text changes between Notify calls: poll it while busy.
             _thinking.schedule.Execute(Tick).Every(33);
             PaintBusy();
+            PaintPlaceholder();
+        }
+
+        /// <summary>The empty box says what the next line will do: nothing yet, open the session, or play.</summary>
+        private void PaintPlaceholder()
+        {
+            string text = !_state.HasCampaign ? "Choose a campaign to begin (the campaign book, top right)…"
+                : _state.Session == null ? "What do you do? Your first line opens the session."
+                : "What do you do?";
+            _input.textEdition.placeholder = text;
         }
 
         public TextField Input { get { return _input; } }
@@ -196,9 +210,15 @@ namespace CampaignVault.UnityClient.UI
             return v.IndexOf('\n', caret) < 0;
         }
 
+        /// <summary>A turn is running, or the session is opening ahead of one.</summary>
+        private bool Working
+        {
+            get { return (_state.Driver != null && _state.Driver.IsBusy) || _state.IsBusy("session"); }
+        }
+
         private void PaintBusy()
         {
-            bool busy = _state.Driver != null && _state.Driver.IsBusy;
+            bool busy = Working;
             if (busy == _busyShown) { return; }
             _busyShown = busy;
             Ui.SetButtonText(_act, busy ? "STOP" : "ACT");
@@ -214,7 +234,7 @@ namespace CampaignVault.UnityClient.UI
         {
             PaintBusy();
             if (!_busyShown) { return; }
-            string status = _state.Driver.Status;
+            string status = _state.Driver.IsBusy ? _state.Driver.Status : "the table is being set: opening the session…";
             Ui.SetText(_thinkingText, string.IsNullOrEmpty(status) ? "the DM is thinking…" : status);
             if (_state.FxEnabled)
             {

@@ -12,8 +12,12 @@ namespace CampaignVault.UnityClient.Model
     /// <summary>
     /// Aside = text the model sent alongside tool calls ("let me check the
     /// rules…"): shown muted, never as story narration.
+    /// Notes = the two-pass bookkeeping loop's own words: folded into the
+    /// turn's activity strip, since the storyteller writes the scene.
+    /// Recap = a session boundary: Speaker holds the heading ("Session 4"),
+    /// Text the "previously…" summary (may be empty).
     /// </summary>
-    public enum SegmentKind { Narration, NpcVoice, Roll, System, ToolData, Player, Aside }
+    public enum SegmentKind { Narration, NpcVoice, Roll, System, ToolData, Player, Aside, Notes, Recap }
 
     /// <summary>The server's own verdict, never recomputed client-side (nat 20s and PF2e degrees shift it).</summary>
     public enum RollOutcome { CriticalSuccess, Success, Failure, CriticalFailure }
@@ -42,6 +46,8 @@ namespace CampaignVault.UnityClient.Model
         public RollInfo Roll;
         /// <summary>True while a streamed reply is still arriving into Text.</summary>
         public bool Streaming;
+        /// <summary>Loaded from the client's saved history rather than played this run.</summary>
+        public bool Restored;
     }
 
     /// <summary>
@@ -100,7 +106,7 @@ namespace CampaignVault.UnityClient.Model
                 int drop = -1;
                 for (int i = 0; i < _segments.Count; i++)
                 {
-                    if (_segments[i].Kind == SegmentKind.ToolData) { drop = i; break; }
+                    if (_segments[i].Kind == SegmentKind.ToolData || _segments[i].Kind == SegmentKind.Notes) { drop = i; break; }
                 }
                 RemoveAt(drop >= 0 ? drop : 0);
             }

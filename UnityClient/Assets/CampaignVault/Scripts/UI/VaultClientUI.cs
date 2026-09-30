@@ -31,6 +31,8 @@ namespace CampaignVault.UnityClient.UI
         private Label _contextMeta;
         private VisualElement _serverSigil;
         private VisualElement _modelSigil;
+        private VisualElement _textMenu;
+        private Button _textButton;
 
         private OverlayHost _overlays;
         private CommandBar _command;
@@ -114,24 +116,30 @@ namespace CampaignVault.UnityClient.UI
             _root.RegisterCallback<GeometryChangedEvent>(delegate { ApplyBreakpoints(); });
             _state.Changed += OnChanged;
             _state.SetupRequested += OpenSetup;
+            _state.CampaignsRequested += OpenCampaigns;
             OnChanged(StateArea.All);
         }
 
-        /// <summary>First run opens setup; otherwise check the server and resume the table.</summary>
+        /// <summary>
+        /// First run opens setup. Otherwise: wait for the built-in server to
+        /// finish starting (unpacking and RavenDB can take a while), check the
+        /// connection, and resume the session this client left open. A session
+        /// that was ended stays ended: the next line the player sends opens one.
+        /// </summary>
         private IEnumerator FirstLook()
         {
             yield return null;
             if (_boot.NeedsSetup) { OpenSetup(); yield break; }
-            // Give an autostarting embedded server a moment before the first health check.
-            yield return new WaitForSecondsRealtime(_state.Server != null && _state.Server.AutoStart ? 2.5f : 0.2f);
+            float waitUntil = Time.realtimeSinceStartup + 180f;
+            while (!_controller.AutostartSettled && Time.realtimeSinceStartup < waitUntil) { yield return null; }
             yield return _controller.CheckConnection();
-            if (_state.Connection == ConnectionStatus.Healthy && _state.HasCampaign && _state.Session == null)
-            {
-                yield return _controller.RefreshTable();
-            }
-            else if (!_state.HasCampaign)
+            if (!_state.HasCampaign)
             {
                 OpenCampaigns();
+            }
+            else if (_state.Connection == ConnectionStatus.Healthy && _state.Session == null && _controller.RememberedOpenSession > 0)
+            {
+                yield return _controller.RefreshTable();
             }
             _command.Focus();
         }
@@ -154,6 +162,9 @@ namespace CampaignVault.UnityClient.UI
             actions.Add(_modelSigil);
             actions.Add(Ui.El("cv-topbar__divider"));
 
+            _textButton = Ui.Button("Aa", null, "cv-btn--ghost cv-btn--icon cv-textsize-btn", ToggleTextMenu);
+            TooltipLayer.Attach(_textButton, "Story text size");
+            actions.Add(_textButton);
             actions.Add(Ui.IconButton("campaigns", "Campaigns", "cv-btn--ghost", OpenCampaigns));
             actions.Add(Ui.IconButton("quests", "Codex: quests, scene, pack and journal", "cv-btn--ghost", ToggleCodex));
             actions.Add(Ui.IconButton("settings", "Settings", "cv-btn--ghost", delegate { _overlays.Toggle(_settings); }));
@@ -161,7 +172,26 @@ namespace CampaignVault.UnityClient.UI
             {
                 _overlays.Open(new ConfirmOverlay("Leave the table?", "The embedded server stops with the client. Everything the Dungeon Master committed is already saved.", "LEAVE", false, _boot.Quit));
             }));
+
+            // The "Aa" menu: a small popover under the top bar; any click outside closes it.
+            _textMenu = Ui.El("cv-popover cv-popover--textsize");
+            _textMenu.Add(Ui.Text("STORY TEXT", "cv-caption cv-popover__title"));
+            _textMenu.Add(TextSizeControl.Build(_state, _controller));
+            _textMenu.style.display = DisplayStyle.None;
+            _root.Add(_textMenu);
+            _root.RegisterCallback<PointerDownEvent>(delegate (PointerDownEvent e)
+            {
+                var target = e.target as VisualElement;
+                if (_textMenu.style.display == DisplayStyle.None || target == null) { return; }
+                if (_textMenu.Contains(target) || _textButton.Contains(target)) { return; }
+                _textMenu.style.display = DisplayStyle.None;
+            }, TrickleDown.TrickleDown);
         }
+
+        private void ToggleTextMenu() { ShowTextMenu(_textMenu.style.display == DisplayStyle.None); }
+
+        /// <summary>The "Aa" story text menu (public for tests and snapshots).</summary>
+        public void ShowTextMenu(bool open) { _textMenu.style.display = open ? DisplayStyle.Flex : DisplayStyle.None; }
 
         private static VisualElement Sigil(string icon)
         {
@@ -200,7 +230,11 @@ namespace CampaignVault.UnityClient.UI
             if ((area & (StateArea.Campaign | StateArea.Session | StateArea.Pc)) != 0) { PaintContext(); }
             if ((area & (StateArea.Connection | StateArea.Busy)) != 0) { PaintServerSigil(); }
             if ((area & (StateArea.Driver | StateArea.Providers)) != 0) { PaintModelSigil(); }
-            if ((area & StateArea.Preferences) != 0) { _root.EnableInClassList("reduced-motion", !_state.FxEnabled); }
+            if ((area & StateArea.Preferences) != 0)
+            {
+                _root.EnableInClassList("reduced-motion", !_state.FxEnabled);
+                TextSizeControl.Apply(_root, _state.StoryTextSize);
+            }
         }
 
         private void PaintContext()
@@ -287,8 +321,23 @@ namespace CampaignVault.UnityClient.UI
         {
             if (e.keyCode == KeyCode.Escape)
             {
+                if (_textMenu.style.display != DisplayStyle.None) { _textMenu.style.display = DisplayStyle.None; e.StopPropagation(); return; }
                 if (_overlays.CloseTop()) { e.StopPropagation(); }
                 return;
+            }
+            // Ctrl/Cmd with + / − / 0: story text size, like a browser's zoom.
+            if (e.actionKey)
+            {
+                int step = -1;
+                if (e.keyCode == KeyCode.Equals || e.keyCode == KeyCode.Plus || e.keyCode == KeyCode.KeypadPlus) { step = _state.StoryTextSize + 1; }
+                else if (e.keyCode == KeyCode.Minus || e.keyCode == KeyCode.KeypadMinus) { step = _state.StoryTextSize - 1; }
+                else if (e.keyCode == KeyCode.Alpha0 || e.keyCode == KeyCode.Keypad0) { step = VaultAppState.DefaultStoryTextSize; }
+                if (step >= 0)
+                {
+                    _controller.SetStoryTextSize(step);
+                    e.StopPropagation();
+                    return;
+                }
             }
             if (e.keyCode == KeyCode.F12)
             {

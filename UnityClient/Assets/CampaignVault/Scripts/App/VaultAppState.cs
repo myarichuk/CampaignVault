@@ -127,6 +127,8 @@ namespace CampaignVault.UnityClient.App
 
         // ---- the table ----
         public readonly VaultTranscript Transcript = new VaultTranscript();
+        /// <summary>The client's saved history per campaign; null = nothing is kept (smoke runs, tests).</summary>
+        public TranscriptStore Store;
         public string CampaignSlug { get { return Prompts != null ? Prompts.CampaignSlug : string.Empty; } }
         public string Ruleset { get { return Prompts != null ? Prompts.Ruleset : string.Empty; } }
         public bool HasCampaign { get { return !string.IsNullOrEmpty(CampaignSlug); } }
@@ -166,6 +168,12 @@ namespace CampaignVault.UnityClient.App
         public string EmbeddedMessage = string.Empty;
         public bool FxEnabled = true;
         public bool SfxMuted;
+        /// <summary>Story text size step, 0 (smallest) to StoryTextSizes.Length - 1; see StoryTextSizes.</summary>
+        public int StoryTextSize = DefaultStoryTextSize;
+
+        /// <summary>Narration font sizes (panel px at 1080p) the story text steps through.</summary>
+        public static readonly int[] StoryTextSizes = { 16, 18, 21, 24, 27, 31 };
+        public const int DefaultStoryTextSize = 2;
 
         private readonly HashSet<string> _busy = new HashSet<string>();
 
@@ -175,6 +183,8 @@ namespace CampaignVault.UnityClient.App
         public event Action<string, ToastKind> Toast;
         /// <summary>Chat was tried without a usable provider: the UI should open first-run setup.</summary>
         public event Action SetupRequested;
+        /// <summary>Chat was tried with no campaign at the table: the UI should open the campaign book.</summary>
+        public event Action CampaignsRequested;
 
         public void Notify(StateArea area)
         {
@@ -189,6 +199,11 @@ namespace CampaignVault.UnityClient.App
         public void RequestSetup()
         {
             if (SetupRequested != null) { SetupRequested(); }
+        }
+
+        public void RequestCampaigns()
+        {
+            if (CampaignsRequested != null) { CampaignsRequested(); }
         }
 
         /// <summary>One in-flight operation per name: a second tap mid-call never forks a duplicate.</summary>

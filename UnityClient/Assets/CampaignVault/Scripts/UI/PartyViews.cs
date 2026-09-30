@@ -256,7 +256,7 @@ namespace CampaignVault.UnityClient.UI
             var here = Ui.El("cv-scene");
             if (pc != null && pc.Location.Length > 0) { here.Add(Ui.Text(Ui.PrettyId(pc.Location), "cv-scene__place")); }
             if (s.Time.Length > 0) { here.Add(Ui.Text(VaultClientUI.ShortTime(s.Time), "cv-scene__time")); }
-            if (pc != null && pc.Activity.Length > 0) { here.Add(Ui.Text(pc.Name + ": " + Lower(pc.Activity) + ".", "cv-scene__doing")); }
+            if (pc != null && pc.Activity.Length > 0) { here.Add(Ui.Text(DescribeActivity(pc.Name, pc.Activity), "cv-scene__doing")); }
             if (here.childCount == 0) { here.Add(Ui.Text("The Dungeon Master hasn't placed the party yet.", "cv-body cv-muted")); }
             _body.Add(here);
 
@@ -322,9 +322,23 @@ namespace CampaignVault.UnityClient.UI
             return null;
         }
 
-        private static string Lower(string text)
+        /// <summary>
+        /// "Kaelen follows the coach" stays a sentence; "Sharpening a sickle"
+        /// becomes "Kaelen — sharpening a sickle." Never "Kaelen: kaelen follows…".
+        /// </summary>
+        internal static string DescribeActivity(string name, string activity)
         {
-            return string.IsNullOrEmpty(text) ? text : char.ToLowerInvariant(text[0]) + text.Substring(1);
+            string a = (activity ?? string.Empty).Trim();
+            if (a.Length == 0) { return string.Empty; }
+            string n = (name ?? string.Empty).Trim();
+            string first = n.Split(' ')[0];
+            bool named = (n.Length > 0 && a.StartsWith(n, StringComparison.OrdinalIgnoreCase))
+                || (first.Length > 0 && a.StartsWith(first + " ", StringComparison.OrdinalIgnoreCase));
+            string text = named
+                ? (a.StartsWith(n, StringComparison.OrdinalIgnoreCase) && n.Length > 0 ? n + a.Substring(n.Length) : first + a.Substring(first.Length))
+                : (n.Length > 0 ? n + " — " + char.ToLowerInvariant(a[0]) + a.Substring(1) : Capitalize(a));
+            char end = text[text.Length - 1];
+            return end == '.' || end == '!' || end == '?' || end == '…' ? text : text + ".";
         }
 
         private static VisualElement Heading(string text)

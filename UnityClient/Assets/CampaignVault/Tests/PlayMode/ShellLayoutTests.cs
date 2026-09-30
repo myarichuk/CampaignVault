@@ -131,6 +131,19 @@ namespace CampaignVault.UnityClient.PlayTests
         }
 
         [UnityTest]
+        public IEnumerator StoryTextSize_MenuAndLargerText()
+        {
+            VaultClientUI host = null;
+            yield return Host(1920, 1080, delegate (VaultClientUI ui, VaultAppState s, VaultController c) { Stage(s, c); c.SetStoryTextSize(4); host = ui; });
+            host.ShowTextMenu(true);
+            Assert.IsTrue(host.Root.ClassListContains("cv-story-4"));
+            var narration = host.Root.Q<Label>(className: "cv-seg--narration");
+            yield return Settle(0.3f);
+            Assert.AreEqual(VaultAppState.StoryTextSizes[4], narration.resolvedStyle.fontSize, 0.5f, "the story text follows the setting");
+            Snap("p7-textsize");
+        }
+
+        [UnityTest]
         public IEnumerator LongSession_LogStaysIncremental()
         {
             VaultClientUI host = null;

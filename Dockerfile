@@ -14,10 +14,13 @@ RUN dotnet restore
 # Copy everything else and build
 COPY . .
 
-# Publish with trimming enabled to reduce image size
+# Publish with trimming enabled to reduce image size. Trimming also turns off
+# reflection-based System.Text.Json by default, which the server relies on
+# (anonymous /health payloads, tool results), so it's turned back on.
 RUN dotnet publish src/CampaignVault/CampaignVault.csproj -c Release -o /app \
     -p:PublishTrimmed=true \
     -p:TrimMode=partial \
+    -p:JsonSerializerIsReflectionEnabledByDefault=true \
     -p:DebugType=none \
     -p:DebugSymbols=false
 

@@ -103,6 +103,8 @@ namespace CampaignVault.UnityClient.Tests
             };
             start.EnvironmentVariables["ASPNETCORE_ENVIRONMENT"] = "Development";
             start.EnvironmentVariables["MCP_PORT"] = port.ToString();
+            // Never the default 50051: a developer's own server usually holds it.
+            start.EnvironmentVariables["GRPC_PORT"] = TestPorts.Free().ToString();
             start.EnvironmentVariables["MCP_BIND_ANY"] = string.Empty;
             start.EnvironmentVariables["BEARER_TOKEN"] = string.Empty;
             start.EnvironmentVariables["CAMPAIGN_DB_PATH"] = Path.Combine(_scratch, "db");

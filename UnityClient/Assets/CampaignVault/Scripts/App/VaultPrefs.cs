@@ -27,8 +27,11 @@ namespace CampaignVault.UnityClient.App
         public const string Companions = "vault.companions";
         public const string Fx = "vault.fx";
         public const string Sfx = "vault.sfx";
+        public const string StoryTextSize = "vault.storytext";
         public const string EmbeddedPort = "vault.embedded.port";
         public const string EmbeddedAutostart = "vault.embedded.autostart";
+        /// <summary>Per campaign (suffix the slug): the session number this client left open, so a relaunch resumes it.</summary>
+        public const string OpenSessionPrefix = "vault.session.open.";
     }
 
     public sealed class UnityPrefs : IVaultPrefs
