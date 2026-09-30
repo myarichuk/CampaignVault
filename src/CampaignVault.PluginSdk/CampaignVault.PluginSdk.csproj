@@ -16,6 +16,9 @@
     <PackageProjectUrl>https://github.com/myarichuk/CampaignVault</PackageProjectUrl>
     <RepositoryUrl>https://github.com/myarichuk/CampaignVault</RepositoryUrl>
     <PackageTags>campaignvault;ttrpg;plugin-sdk</PackageTags>
+    <!-- Reflection-based by design and never trimmed (TrimMode=partial only trims assemblies marked trimmable).
+         Without this, the Docker publish (PublishTrimmed) flows the trim analyzer into this project as IL2026/IL2075 noise. -->
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
   </PropertyGroup>
 
   <ItemGroup>

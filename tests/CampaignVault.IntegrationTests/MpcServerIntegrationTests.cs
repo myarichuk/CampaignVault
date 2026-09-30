@@ -1,4 +1,4 @@
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 
@@ -30,6 +30,9 @@ public class McpServerIntegrationTests : IAsyncLifetime
                 .WithEnvironment("CAMPAIGN_DB_PATH", "/app/data/campaign.db")
                 .WithEnvironment("MCP_BIND_ANY", "1")
                 .WithEnvironment("BEARER_TOKEN", BEARER_TOKEN)
+                // HTTPS defaults on outside Development and the image has no dev certificate, so Kestrel
+                // throws at startup and the container exits.
+                .WithEnvironment("HTTPS_ENABLED", "0")
                 // One-shot tools/call posts below, with no initialize handshake or session id.
                 .WithEnvironment("MCP_STATELESS", "1")
                 .WithWaitStrategy(Wait.ForUnixContainer()
@@ -59,9 +62,20 @@ public class McpServerIntegrationTests : IAsyncLifetime
         }
         catch (Exception ex)
         {
+            var logs = "";
+            if (_container != null)
+            {
+                try
+                {
+                    var (stdout, stderr) = await _container.GetLogsAsync();
+                    logs = $"\n--- container stdout ---\n{stdout}\n--- container stderr ---\n{stderr}";
+                }
+                catch { /* container may not exist */ }
+            }
+
             throw new InvalidOperationException(
                 "Failed to start Docker container. Ensure Docker is running and the campaignvault:latest image is built. " +
-                "Build it with: docker build -t campaignvault:latest -f Dockerfile .", ex);
+                "Build it with: docker build -t campaignvault:latest -f Dockerfile ." + logs, ex);
         }
     }
 
