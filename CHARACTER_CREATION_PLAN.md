@@ -569,7 +569,7 @@ them by unzipping it and listing the paths above.
 - `VaultSmokeScenario.AnswerFor` and `TableTests` answer `Party` with `build-at-table`.
 - All suites are green.
 
-**Status (2026-10-01): 4.1, 4.2, 4.3 and 4.5 done; 4.4 (DM drafts) waits on open question 5.**
+**Status (2026-10-01): 4.1, 4.2, 4.3 and 4.5 done; 4.4 (DM drafts) moves into Phase 5 (see below).**
 - Server: one `party` question (`OnboardingAnswerType.Party`, JSON `OnboardingPartyAnswer`), ids checked
   against the campaign's characters; legacy `pc_creation` states finish on the old questions and wording;
   the brief lists built ids and says "Do NOT world_build". `start_session` keeps handing back the brief
@@ -583,6 +583,13 @@ them by unzipping it and listing the paths above.
   submitted are not recovered if the app restarts mid-step (they stay in the campaign as PCs); DM DRAFTS
   currently submits `dm-drafts` with no ids, so the DM invents the party from the brief (the old
   `dm-pregenerates` behaviour) until 4.4.
+- **4.4 decisions (Michael, 2026-10-01):** Q5 = one model call for the whole party. Drafted party members are
+  NPC companions (`isPartyCompanion`), not PCs, with a shared history among themselves and with the PCs, each
+  within +/- 1 level of the PCs. Finding: the `companion` kind has no recipe yet, only a bare `identity` step
+  (the stat-block schema is Phase 5.1 data), so a drafted companion is a stat block, not a class build. 4.4 is
+  therefore built with Phase 5: reuse the party page (cards + review + save), add the one-call drafter that
+  returns stat-block fields, preview each, flag bad picks on their field, level clamped to the range. A first
+  attempt that drove the PC recipe for companions was reverted for that reason.
 - PF2e/Narrative: the builder has no recipe for them yet (Phase 6); Narrative's party step offers only the
   table and DM routes.
 
