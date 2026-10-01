@@ -125,7 +125,7 @@ namespace CampaignVault.UnityClient.Editor
             if (platform == BuildTarget.StandaloneOSX)
             {
                 // A universal build still gets the Apple Silicon server only; Intel Macs need an x64 build.
-                return UnityEditor.OSXStandalone.UserBuildSettings.architecture == UnityEditor.Build.OSArchitecture.x64 ? "osx-x64" : "osx-arm64";
+                return MacArchitecture.Get() == UnityEditor.Build.OSArchitecture.x64 ? "osx-x64" : "osx-arm64";
             }
             if (platform == BuildTarget.StandaloneWindows || platform == BuildTarget.StandaloneWindows64) { return "win-x64"; }
             if (platform == BuildTarget.StandaloneLinux64) { return "linux-x64"; }

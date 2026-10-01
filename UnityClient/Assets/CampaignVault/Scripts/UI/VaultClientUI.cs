@@ -30,6 +30,7 @@ namespace CampaignVault.UnityClient.UI
         private VisualElement _codexHost;
         private Label _contextTitle;
         private Label _contextMeta;
+        private string _contextFull = string.Empty;
         private VisualElement _serverSigil;
         private VisualElement _modelSigil;
         private VisualElement _textMenu;
@@ -160,6 +161,8 @@ namespace CampaignVault.UnityClient.UI
         {
             _contextTitle = _root.Q<Label>("ContextTitle");
             _contextMeta = _root.Q<Label>("ContextMeta");
+            // Both lines end in an ellipsis when the bar is too narrow; the tooltip always has them whole.
+            TooltipLayer.Attach(_contextTitle.parent, delegate { return _contextFull; });
             var actions = _root.Q("TopActions");
 
             _serverSigil = Sigil("server");
@@ -264,6 +267,7 @@ namespace CampaignVault.UnityClient.UI
                 if (pc != null && pc.Location.Length > 0) { meta += " · " + Ui.PrettyId(pc.Location); }
             }
             Ui.SetText(_contextMeta, meta);
+            _contextFull = title + "\n" + meta;
         }
 
         /// <summary>"Day 1, Month 1, Year 1492 (A drowned mill town…) — Dawn" → "Day 1, Month 1, Year 1492 — Dawn".</summary>

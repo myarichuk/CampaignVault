@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
 using CampaignVault.UnityClient.AI;
 using CampaignVault.UnityClient.Flows;
@@ -977,13 +978,7 @@ namespace CampaignVault.UnityClient.App
                 string prefilled;
                 if (!ob.Prefilled.TryGetValue(parsed.Key, out prefilled))
                 {
-                    if (ob.Question == null || ob.Question.Key != parsed.Key)
-                    {
-                        // A new question: last question's draft and brainstorm don't carry over.
-                        ob.Draft = string.Empty;
-                        ob.ClearBrainstorm();
-                    }
-                    ob.Question = parsed;
+                    MoveToQuestion(ob, parsed);
                     ob.Error = string.Empty;
                     SetOnboarding(OnboardingPhase.Question, string.Empty);
                     yield break;
@@ -997,6 +992,26 @@ namespace CampaignVault.UnityClient.App
         }
 
         /// <summary>state.collectedAnswers → key/answer strings, for the brainstorm prompt and the party line.</summary>
+        /// <summary>
+        /// A question arrives. On a new one the draft resets, but the conversation with the DM carries on
+        /// (a divider marks the move), so a plot talked through on the world question is still there when
+        /// the plot question comes. The same question again (a rejected answer) changes nothing.
+        /// </summary>
+        internal static void MoveToQuestion(OnboardingState ob, OnboardingQuestion parsed)
+        {
+            if (ob.Question == null || ob.Question.Key != parsed.Key)
+            {
+                ob.Draft = string.Empty;
+                ob.Brainstorming = false;
+                ob.BrainstormError = string.Empty;
+                if (OnboardingBrainstorm.HasTalk(ob.BrainstormChat))
+                {
+                    ob.BrainstormChat.Add(new KeyValuePair<string, string>(OnboardingBrainstorm.MarkerRole, parsed.Text));
+                }
+            }
+            ob.Question = parsed;
+        }
+
         internal static void ReadAnswers(JsonValue state, Dictionary<string, string> into)
         {
             var answers = Pick(state, "collectedAnswers", "CollectedAnswers");
@@ -1165,7 +1180,7 @@ namespace CampaignVault.UnityClient.App
             _s.Notify(StateArea.Onboarding);
         }
 
-        /// <summary>Back to the question; the conversation is kept until the question changes.</summary>
+        /// <summary>Back to the question; the conversation is kept for the whole setup.</summary>
         public void CloseBrainstorm()
         {
             _s.Onboarding.Brainstorming = false;
@@ -1175,9 +1190,18 @@ namespace CampaignVault.UnityClient.App
         public IEnumerator SendBrainstorm(string text)
         {
             var ob = _s.Onboarding;
-            text = TextSanitizer.Clean(text, 2000).Trim();
+            text = TextSanitizer.Clean(text, 0).Trim();
             if (text.Length == 0 || ob.BrainstormBusy || ob.Question == null) { yield break; }
+            if (text.Length > OnboardingBrainstorm.MaxMessageChars)
+            {
+                // Never cut what the player wrote: the composer already shows the limit; say it again and keep the text.
+                ob.BrainstormError = "That message is " + text.Length.ToString("N0", CultureInfo.InvariantCulture) + " characters; the limit is "
+                    + OnboardingBrainstorm.MaxMessageChars.ToString("N0", CultureInfo.InvariantCulture) + ". Trim it or send it in parts.";
+                _s.Notify(StateArea.Onboarding);
+                yield break;
+            }
             ob.BrainstormChat.Add(new KeyValuePair<string, string>("user", text));
+            ob.BrainstormDraft = string.Empty;
             yield return BrainstormTurn(null);
         }
 
@@ -1185,7 +1209,7 @@ namespace CampaignVault.UnityClient.App
         public IEnumerator WriteUpBrainstorm()
         {
             var ob = _s.Onboarding;
-            if (ob.BrainstormBusy || ob.Question == null || ob.BrainstormChat.Count == 0) { yield break; }
+            if (ob.BrainstormBusy || ob.Question == null || !OnboardingBrainstorm.HasTalk(ob.BrainstormChat)) { yield break; }
             yield return BrainstormTurn(OnboardingBrainstorm.FinalizeInstruction(ob.Question));
         }
 
@@ -1200,7 +1224,9 @@ namespace CampaignVault.UnityClient.App
             {
                 new KeyValuePair<string, string>("system", OnboardingBrainstorm.SystemPrompt(question, ob.Answers)),
             };
-            messages.AddRange(ob.BrainstormChat);
+            // Over the budget the middle of the chat drops out; the overlay marks those messages as no longer sent.
+            var dropped = OnboardingBrainstorm.Dropped(ob.BrainstormChat, OnboardingBrainstorm.MaxConversationChars);
+            messages.AddRange(OnboardingBrainstorm.ModelMessages(ob.BrainstormChat, dropped));
             if (finalizeInstruction != null) { messages.Add(new KeyValuePair<string, string>("user", finalizeInstruction)); }
             string reply = null;
             string error = null;
@@ -1214,11 +1240,11 @@ namespace CampaignVault.UnityClient.App
             }
             else if (finalizeInstruction == null)
             {
-                ob.BrainstormChat.Add(new KeyValuePair<string, string>("assistant", TextSanitizer.Clean(reply, 6000)));
+                ob.BrainstormChat.Add(new KeyValuePair<string, string>("assistant", TextSanitizer.Clean(reply, OnboardingBrainstorm.MaxReplyChars)));
             }
             else
             {
-                ob.Draft = OnboardingBrainstorm.CleanAnswer(TextSanitizer.Clean(reply, 6000));
+                ob.Draft = OnboardingBrainstorm.CleanAnswer(TextSanitizer.Clean(reply, 0));
                 ob.Brainstorming = false;
             }
             _s.Notify(StateArea.Onboarding);

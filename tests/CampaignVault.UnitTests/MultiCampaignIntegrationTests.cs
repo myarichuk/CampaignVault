@@ -488,6 +488,9 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         Assert.Equal(expectPartyQuestion, asked.Contains(OnboardingQuestionCatalog.PartyComposition));
         Assert.Equal(!expectPartyQuestion, asked.Contains(OnboardingQuestionCatalog.SoloCompanions));
         Assert.Equal(expectRoster, asked.Contains(OnboardingQuestionCatalog.PcRoster));
+        // The plot follows the world directly, before any character questions.
+        Assert.Equal(asked.IndexOf(OnboardingQuestionCatalog.HomebrewWorldDetails) + 1, asked.IndexOf(OnboardingQuestionCatalog.PlotSource));
+        Assert.True(asked.IndexOf(OnboardingQuestionCatalog.PlotDirection) < asked.IndexOf(OnboardingQuestionCatalog.PcCreation));
 
         var finalize = await onboarding.FinalizeCampaignOnboarding(slug);
         Assert.True(finalize.Success, finalize.Summary);
@@ -506,6 +509,39 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         var session = await sessions.StartSession(slug);
         Assert.False(session.Success);
         Assert.Contains("CAMPAIGN SETUP BRIEF", session.Summary);
+    }
+
+    [Fact]
+    public async Task Onboarding_Narrative_SkipsStartingLevel_AndBriefStatesNoLevel()
+    {
+        var repo = _fixture.CreateRepository();
+        var onboarding = TestCampaignToolsFactory.CreateTool<OnboardingTools>(_fixture, repo);
+        var slug = "onboard-narrative-" + Guid.NewGuid().ToString("N")[..8];
+
+        var start = await onboarding.StartCampaignOnboarding(slug);
+        var asked = new List<string>();
+        OnboardingQuestion? current = start.Data!.CurrentQuestion;
+        while (current != null)
+        {
+            Assert.True(asked.Count < 30, "Onboarding question loop did not terminate.");
+            asked.Add(current.Key);
+            string answer = current.Key switch
+            {
+                OnboardingQuestionCatalog.System => "Narrative",
+                OnboardingQuestionCatalog.WorldSetting => "solo",
+                _ when current.AnswerType == OnboardingAnswerType.Enum => current.EnumOptions![0],
+                _ => "A reasonable free-text answer for this question."
+            };
+            var submit = await onboarding.SubmitOnboardingAnswer(slug, answer);
+            Assert.True(submit.Success, submit.Summary);
+            current = submit.Data!.CurrentQuestion;
+        }
+
+        Assert.DoesNotContain(OnboardingQuestionCatalog.StartingLevel, asked);
+        var finalize = await onboarding.FinalizeCampaignOnboarding(slug);
+        Assert.True(finalize.Success, finalize.Summary);
+        Assert.DoesNotContain("Starting level", finalize.Data!.SeedBrief);
+        Assert.DoesNotContain("level 1", finalize.Data.SeedBrief);
     }
 
     [Fact]

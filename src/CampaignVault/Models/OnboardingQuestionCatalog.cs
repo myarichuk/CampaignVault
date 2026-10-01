@@ -54,7 +54,18 @@ public static class OnboardingQuestionCatalog
                 AnswerType = OnboardingAnswerType.Enum,
                 EnumOptions = ["Dnd5e", "Pathfinder2e", "Narrative"],
                 HelpText =
-                    "This determines mechanics, NPC stat generation, and combat rules. It will be locked and cannot be changed later."
+                    "This determines mechanics, NPC stat generation, and combat rules. It will be locked and cannot be changed later.",
+                BranchingRules = new Dictionary<string, OnboardingBranchingRule>
+                {
+                    {
+                        // Narrative play has no character levels.
+                        "Narrative", new OnboardingBranchingRule
+                        {
+                            TriggerValue = "Narrative",
+                            SkipQuestions = [StartingLevel]
+                        }
+                    }
+                }
             },
 
             // Q2: Tone & Themes
@@ -122,12 +133,45 @@ public static class OnboardingQuestionCatalog
             {
                 Key = HomebrewWorldDetails,
                 Text =
-                    "Describe the world. For an existing setting, name it and the region you start in (e.g. 'Forgotten Realms — the Sword Coast'); for a homebrew world, give its climate, geography and history (e.g. 'Temperate forests with mountain kingdoms, 2000-year history, a tyranny rising').",
+                    "Describe the world. For an existing setting, name it and the region you start in (e.g. 'Forgotten Realms — the Sword Coast'); for a homebrew world, give its climate, geography and history (e.g. 'Temperate forests with mountain kingdoms, 2000 years of history'). The plot is the next question.",
                 AnswerType = OnboardingAnswerType.Text,
                 HelpText = "Grounds the world-building in your vision."
             },
 
-            // Q5: Party composition (party only)
+            // Q5: Plot source, right after the world: players pour plot into the world answer otherwise,
+            // and meeting "do you have a plot idea?" four questions later reads like being asked twice.
+
+            new OnboardingQuestion
+            {
+                Key = PlotSource,
+                Text = "Do you have a plot idea in mind, or would you like the system to generate one?",
+                AnswerType = OnboardingAnswerType.Enum,
+                EnumOptions = ["user-provided", "generated-surprise", "generated-with-direction"],
+                HelpText = "Choose 'generated-with-direction' if you want to guide the theme (e.g., 'murder mystery').",
+                BranchingRules = new Dictionary<string, OnboardingBranchingRule>
+                {
+                    {
+                        "generated-surprise", new OnboardingBranchingRule
+                        {
+                            TriggerValue = "generated-surprise",
+                            SkipQuestions = [PlotDirection]
+                        }
+                    }
+                }
+            },
+
+            // Q5b: The plot idea or its direction (skipped for a surprise plot)
+
+            new OnboardingQuestion
+            {
+                Key = PlotDirection,
+                Text =
+                    "Describe your plot idea, or the direction it should take (e.g. 'murder mystery', 'grand adventure', 'traveling scholars discovering ancient ruins').",
+                AnswerType = OnboardingAnswerType.Text,
+                HelpText = "The DM seeds the opening quests and plot threads from this."
+            },
+
+            // Q6: Party composition (party only)
 
             new OnboardingQuestion
             {
@@ -137,7 +181,7 @@ public static class OnboardingQuestionCatalog
                 HelpText = "Helps with encounter difficulty and with generating characters if you let the DM make them."
             },
 
-            // Q5b: Solo companions (solo only)
+            // Q6b: Solo companions (solo only)
 
             new OnboardingQuestion
             {
@@ -148,7 +192,7 @@ public static class OnboardingQuestionCatalog
                 HelpText = "Companions travel with the player character and can fight alongside them."
             },
 
-            // Q6: How the player characters come to be
+            // Q7: How the player characters come to be
 
             new OnboardingQuestion
             {
@@ -177,7 +221,7 @@ public static class OnboardingQuestionCatalog
                 }
             },
 
-            // Q6b: The player characters themselves (describe-now only)
+            // Q7b: The player characters themselves (describe-now only)
 
             new OnboardingQuestion
             {
@@ -188,7 +232,7 @@ public static class OnboardingQuestionCatalog
                 HelpText = "The DM builds full character sheets from these. Anything you leave out, the DM fills in to fit."
             },
 
-            // Q7: Starting level
+            // Q8: Starting level (skipped for Narrative: no levels)
 
             new OnboardingQuestion
             {
@@ -198,38 +242,6 @@ public static class OnboardingQuestionCatalog
                 MinValue = 1,
                 MaxValue = 20,
                 HelpText = "Level 1 is a fresh start; 3 gives everyone their subclass."
-            },
-
-            // Q8: Plot Source
-
-            new OnboardingQuestion
-            {
-                Key = PlotSource,
-                Text = "Do you have a plot idea in mind, or would you like the system to generate one?",
-                AnswerType = OnboardingAnswerType.Enum,
-                EnumOptions = ["user-provided", "generated-surprise", "generated-with-direction"],
-                HelpText = "Choose 'generated-with-direction' if you want to guide the theme (e.g., 'murder mystery').",
-                BranchingRules = new Dictionary<string, OnboardingBranchingRule>
-                {
-                    {
-                        "generated-surprise", new OnboardingBranchingRule
-                        {
-                            TriggerValue = "generated-surprise",
-                            SkipQuestions = [PlotDirection]
-                        }
-                    }
-                }
-            },
-
-            // Q8b: The plot idea or its direction (skipped for a surprise plot)
-
-            new OnboardingQuestion
-            {
-                Key = PlotDirection,
-                Text =
-                    "Describe your plot idea, or the direction it should take (e.g. 'murder mystery', 'grand adventure', 'traveling scholars discovering ancient ruins').",
-                AnswerType = OnboardingAnswerType.Text,
-                HelpText = "The DM seeds the opening quests and plot threads from this."
             },
 
             // Q9: Opening scene

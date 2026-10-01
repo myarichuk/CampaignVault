@@ -53,7 +53,7 @@ namespace CampaignVault.UnityClient.Editor
         public static void BuildStandaloneOSX()
         {
             // Pinned so the build matches the osx-arm64 server ServerEmbedBuildProcessor stages.
-            UnityEditor.OSXStandalone.UserBuildSettings.architecture = UnityEditor.Build.OSArchitecture.ARM64;
+            MacArchitecture.Set(UnityEditor.Build.OSArchitecture.ARM64);
             Build(BuildTarget.StandaloneOSX, "CampaignVaultClient.app");
         }
 

@@ -22,7 +22,7 @@
 .cv-sheet__identity { flex-grow: 1; flex-shrink: 1; }
 .cv-sheet__lineage {
     -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset");
-    font-size: var(--fs-lg); color: var(--text-1);
+    font-size: var(--fs-lg); color: var(--text-1); white-space: normal;
 }
 .cv-sheet__where { font-size: var(--fs-sm); color: var(--text-3); margin-top: 2px; white-space: normal; }
 .cv-sheet__badges { flex-direction: row; flex-wrap: wrap; margin-top: var(--sp-2); }
@@ -113,7 +113,7 @@
 .cv-check--rank2 .cv-check__rank { border-color: var(--arcane-dim); color: var(--arcane); }
 .cv-check--rank3 .cv-check__rank { border-color: var(--gold-dim); color: var(--gold); }
 .cv-check--rank4 .cv-check__rank { border-color: var(--gold); color: var(--gold-bright); background-color: var(--gold-deep); }
-.cv-check__name { flex-grow: 1; font-size: var(--fs-md); color: var(--text-2); }
+.cv-check__name { flex-grow: 1; flex-shrink: 1; font-size: var(--fs-md); color: var(--text-2); white-space: normal; }
 .cv-check--proficient .cv-check__name { color: var(--text-1); }
 .cv-check__ability { font-size: 11px; color: var(--text-4); letter-spacing: 1.5px; margin-right: 12px; -unity-font-definition: url("../Fonts/SDF/Cinzel-Regular.asset"); }
 .cv-check__mod { width: 40px; -unity-text-align: middle-right; -unity-font-definition: url("../Fonts/SDF/EBGaramond-SemiBold.asset"); font-size: var(--fs-md); color: var(--text-1); }
@@ -122,7 +122,7 @@
 
 /* resources as pips */
 .cv-resource { flex-direction: row; align-items: center; padding: 4px 0; }
-.cv-resource__name { flex-grow: 1; font-size: var(--fs-md); color: var(--text-1); }
+.cv-resource__name { flex-grow: 1; flex-shrink: 1; font-size: var(--fs-md); color: var(--text-1); white-space: normal; }
 .cv-resource__pips { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; max-width: 60%; }
 .cv-pip {
     width: 14px; height: 14px; margin-left: 5px;
@@ -139,6 +139,7 @@
     border-width: 1px; border-color: var(--line-strong);
     background-color: var(--ink-2);
     font-size: var(--fs-sm); color: var(--text-1);
+    white-space: normal; flex-shrink: 1; max-width: 100%;
 }
 
 /* gear */
@@ -151,8 +152,8 @@
 
 /* condition & needs: a word and a slim gauge */
 .cv-gauge { flex-direction: row; align-items: center; padding: 3px 0; }
-.cv-gauge__name { width: 34%; font-size: var(--fs-sm); color: var(--text-3); }
-.cv-gauge__word { width: 30%; font-size: var(--fs-md); color: var(--text-1); -unity-font-definition: url("../Fonts/SDF/EBGaramond-SemiBold.asset"); }
+.cv-gauge__name { width: 34%; font-size: var(--fs-sm); color: var(--text-3); white-space: normal; }
+.cv-gauge__word { width: 30%; white-space: normal; font-size: var(--fs-md); color: var(--text-1); -unity-font-definition: url("../Fonts/SDF/EBGaramond-SemiBold.asset"); }
 .cv-gauge .cv-bar { flex-grow: 1; height: 5px; }
 .cv-gauge--noticeable .cv-gauge__word { color: var(--ember); }
 .cv-gauge--pressing .cv-gauge__word { color: var(--blood); }
@@ -173,7 +174,7 @@
 }
 .cv-statblock__name {
     -unity-font-definition: url("../Fonts/SDF/Cinzel-Bold.asset");
-    font-size: 30px; color: #7A200D; letter-spacing: 1px;
+    font-size: 30px; color: #7A200D; letter-spacing: 1px; white-space: normal;
 }
 .cv-statblock__type {
     -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset");

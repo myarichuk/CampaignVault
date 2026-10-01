@@ -28,7 +28,8 @@
 .cv-brand .cv-icon { width: 26px; height: 26px; margin-right: 10px; -unity-background-image-tint-color: var(--gold); }
 .cv-brand__name { font-size: 19px; }
 .cv-context { flex-direction: column; justify-content: center; padding-left: 20px; border-left-width: 1px; border-color: var(--line); flex-shrink: 1; min-width: 0; overflow: hidden; }
-.cv-context__title { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: 16px; color: var(--gold-bright); letter-spacing: 1.5px; }
+/* One line in a fixed bar: ellipsis, with the full title in a tooltip (VaultClientUI). */
+.cv-context__title { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: 16px; color: var(--gold-bright); letter-spacing: 1.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cv-context__meta { font-size: var(--fs-sm); color: var(--text-3); -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cv-topbar .cv-btn { margin-left: 6px; }
 
@@ -74,7 +75,7 @@
 .cv-voice { flex-direction: row; margin-bottom: 16px; }
 .cv-voice__bar { width: 3px; margin-right: 14px; background-color: var(--text-3); }
 .cv-voice__body { flex-grow: 1; flex-shrink: 1; }
-.cv-nameplate { -unity-font-definition: url("../Fonts/SDF/Cinzel-Bold.asset"); font-size: var(--fs-xs); letter-spacing: 2.5px; margin-bottom: 2px; color: var(--text-3); }
+.cv-nameplate { -unity-font-definition: url("../Fonts/SDF/Cinzel-Bold.asset"); font-size: var(--fs-xs); letter-spacing: 2.5px; margin-bottom: 2px; color: var(--text-3); white-space: normal; }
 .cv-voice__line { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); font-size: var(--fs-story); color: var(--text-1); white-space: normal; }
 
 .cv-player { flex-direction: row; justify-content: flex-end; margin: 10px 0 20px 0; }
@@ -135,7 +136,7 @@
 .cv-roll--enter .cv-roll__total { opacity: 0; }
 .cv-roll__body { flex-grow: 1; flex-shrink: 1; justify-content: center; padding: 8px 12px 8px 6px; }
 .cv-roll__label { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: 17px; letter-spacing: 1px; color: var(--text-1); white-space: normal; }
-.cv-roll__detail { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); font-size: var(--fs-md); color: var(--text-2); }
+.cv-roll__detail { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); font-size: var(--fs-md); color: var(--text-2); white-space: normal; }
 .cv-roll__ribbon {
     width: 150px; flex-shrink: 0;
     align-items: center; justify-content: center;
@@ -205,8 +206,9 @@
     -unity-text-align: middle-center;
 }
 .cv-member__body { flex-grow: 1; flex-shrink: 1; }
-.cv-member__name { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: 14px; color: var(--text-1); letter-spacing: 0.5px; }
-.cv-member__sub { font-size: 13px; color: var(--text-3); margin-bottom: 5px; -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); }
+/* Names and class lines wrap: the frame grows taller rather than spilling over the story. */
+.cv-member__name { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: 14px; color: var(--text-1); letter-spacing: 0.5px; white-space: normal; }
+.cv-member__sub { font-size: 13px; color: var(--text-3); margin-bottom: 5px; -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); white-space: normal; }
 .cv-member__hp { flex-direction: row; align-items: center; }
 .cv-member__hp .cv-bar { flex-grow: 1; }
 .cv-member__hptext { -unity-font-definition: url("../Fonts/SDF/EBGaramond-SemiBold.asset"); font-size: 14px; color: var(--text-2); margin-left: 6px; min-width: 44px; -unity-text-align: middle-right; }
@@ -251,7 +253,7 @@
 .cv-empty__text { font-size: var(--fs-sm); color: var(--text-3); -unity-text-align: middle-center; white-space: normal; -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); }
 
 .cv-kv { flex-direction: row; padding: 5px 0; border-bottom-width: 1px; border-color: var(--line-faint); }
-.cv-kv__key { width: 42%; -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: 12px; letter-spacing: 1.5px; color: var(--text-3); }
+.cv-kv__key { width: 42%; white-space: normal; -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: 12px; letter-spacing: 1.5px; color: var(--text-3); }
 .cv-kv__value { flex-grow: 1; flex-shrink: 1; font-size: var(--fs-md); color: var(--text-1); white-space: normal; }
 
 /* --------------------------------------------------------- campaign cards */
@@ -267,7 +269,7 @@
 .cv-campaign:hover { border-color: var(--gold-dim); background-color: var(--ink-3); translate: 0 -2px; }
 .cv-campaign--active { border-color: var(--gold); }
 .cv-campaign__name { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: 20px; color: var(--gold-bright); white-space: normal; letter-spacing: 1px; }
-.cv-campaign__slug { -unity-font-definition: url("../Fonts/SDF/JetBrainsMono-Regular.asset"); font-size: 12px; color: var(--text-4); margin-bottom: 10px; }
+.cv-campaign__slug { -unity-font-definition: url("../Fonts/SDF/JetBrainsMono-Regular.asset"); font-size: 12px; color: var(--text-4); margin-bottom: 10px; white-space: normal; }
 .cv-campaign__actions { flex-direction: row; margin-top: 14px; }
 .cv-campaign__actions .cv-btn { margin-right: 8px; }
 
@@ -316,12 +318,12 @@
     border-width: 1px; border-color: var(--gold-dim); border-radius: 17px; background-color: var(--ink-0);
     -unity-font-definition: url("../Fonts/SDF/Cinzel-Bold.asset"); font-size: 13px; color: var(--gold); -unity-text-align: middle-center;
 }
-.cv-ally__name { -unity-font-definition: url("../Fonts/SDF/EBGaramond-SemiBold.asset"); font-size: var(--fs-md); color: var(--text-1); }
-.cv-ally__sub { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); font-size: 14px; color: var(--text-3); margin-bottom: 4px; }
+.cv-ally__name { -unity-font-definition: url("../Fonts/SDF/EBGaramond-SemiBold.asset"); font-size: var(--fs-md); color: var(--text-1); white-space: normal; }
+.cv-ally__sub { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); font-size: 14px; color: var(--text-3); margin-bottom: 4px; white-space: normal; }
 .cv-ally .cv-bar { height: 5px; }
 
 .cv-face { padding: 5px 0; border-bottom-width: 1px; border-color: var(--line-faint); }
-.cv-face__name { -unity-font-definition: url("../Fonts/SDF/EBGaramond-SemiBold.asset"); font-size: var(--fs-md); color: var(--text-1); }
+.cv-face__name { -unity-font-definition: url("../Fonts/SDF/EBGaramond-SemiBold.asset"); font-size: var(--fs-md); color: var(--text-1); white-space: normal; }
 .cv-face__stance { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); font-size: var(--fs-sm); color: var(--text-2); white-space: normal; }
 
 /* journal */
@@ -343,7 +345,7 @@
 .cv-recap { margin: 20px 0 24px 0; }
 .cv-recap__head { flex-direction: row; align-items: center; margin-bottom: 10px; }
 .cv-recap__rule { flex-grow: 1; height: 1px; background-color: var(--line-strong); }
-.cv-recap__title { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: 14px; letter-spacing: 3px; color: var(--gold); margin: 0 14px; -unity-text-align: middle-center; }
+.cv-recap__title { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: 14px; letter-spacing: 3px; color: var(--gold); margin: 0 14px; -unity-text-align: middle-center; white-space: normal; flex-shrink: 1; max-width: 70%; }
 .cv-recap__text { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); font-size: var(--fs-md); color: var(--text-2); white-space: normal; padding: 0 28px; }
 
 .cv-activity__notes {

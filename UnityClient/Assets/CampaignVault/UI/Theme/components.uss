@@ -189,7 +189,7 @@
 .cv-field:hover .unity-base-text-field__input { border-color: var(--line-strong); }
 .cv-field:focus .unity-base-text-field__input { border-color: var(--gold); }
 .cv-field .unity-base-text-field__input--placeholder { color: var(--text-4); -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); }
-.cv-field--multiline .unity-base-text-field__input { -unity-text-align: upper-left; white-space: normal; min-height: 84px; }
+.cv-field--multiline .unity-base-text-field__input { -unity-text-align: upper-left; white-space: normal; min-height: 84px; max-height: 220px; }
 .cv-field--invalid .unity-base-text-field__input { border-color: var(--blood); }
 
 .cv-counter { -unity-font-definition: url("../Fonts/SDF/JetBrainsMono-Regular.asset"); font-size: var(--fs-xs); color: var(--text-4); -unity-text-align: upper-right; margin-top: -8px; margin-bottom: var(--sp-2); }
@@ -291,9 +291,13 @@
 }
 .cv-overlay--hidden .cv-modal { scale: 0.96 0.96; }
 .cv-modal--narrow { width: 720px; max-width: 90%; height: auto; max-height: 88%; }
-.cv-modal__head { flex-direction: row; align-items: center; margin-bottom: var(--sp-4); }
-.cv-modal__title { flex-grow: 1; }
-.cv-modal__foot { flex-direction: row; justify-content: flex-end; margin-top: var(--sp-4); }
+/* Head, dock and foot never shrink: tall content scrolls in the body instead of crushing the title. */
+.cv-modal__head { flex-direction: row; align-items: center; margin-bottom: var(--sp-4); flex-shrink: 0; }
+/* A long character name wraps instead of pushing the close button out. */
+.cv-modal__title { flex-grow: 1; flex-shrink: 1; white-space: normal; }
+.cv-modal__scroll { flex-shrink: 1; min-height: 0; }
+.cv-modal__dock { flex-shrink: 0; }
+.cv-modal__foot { flex-direction: row; justify-content: flex-end; margin-top: var(--sp-4); flex-shrink: 0; }
 .cv-modal__foot > .cv-btn { margin-left: var(--sp-2); }
 
 /* ------------------------------------------------------------------ toasts */

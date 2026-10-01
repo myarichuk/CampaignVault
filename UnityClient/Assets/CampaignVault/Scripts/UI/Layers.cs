@@ -110,6 +110,8 @@ namespace CampaignVault.UnityClient.UI
         protected VisualElement Body { get; private set; }
         /// <summary>Fixed under the title, above the scrolling body (tabs, page actions).</summary>
         protected VisualElement Toolbar { get; private set; }
+        /// <summary>Fixed between the scrolling body and the foot (a chat composer).</summary>
+        protected VisualElement Dock { get; private set; }
         protected VisualElement Foot { get; private set; }
         protected OverlayHost Host { get; private set; }
 
@@ -140,6 +142,8 @@ namespace CampaignVault.UnityClient.UI
             scroll.style.flexGrow = 1;
             Body = scroll.contentContainer;
             modal.Add(scroll);
+            Dock = Ui.El("cv-modal__dock");
+            modal.Add(Dock);
             Foot = Ui.El("cv-modal__foot");
             modal.Add(Foot);
             Root.Add(modal);

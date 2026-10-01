@@ -68,6 +68,7 @@ namespace CampaignVault.UnityClient.PlayTests
                 if (s.Onboarding.Phase == OnboardingPhase.ReadyToFinalize) { yield return c.FinalizeOnboarding(); continue; }
                 var q = s.Onboarding.Question;
                 string answer = q.Type == AnswerType.Choice ? q.Options[0] : q.Type == AnswerType.YesNo ? "yes"
+                    : q.Type == AnswerType.Number ? "1"
                     : q.Type == AnswerType.List ? "Aric Thorne — human fighter" : "A drowned mill town under a copper sky";
                 yield return c.SubmitOnboardingAnswer(answer);
             }

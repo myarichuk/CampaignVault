@@ -22,7 +22,9 @@ public static class OnboardingBrief
         var pcCreation = Answer(OnboardingQuestionCatalog.PcCreation);
         var roster = SplitList(Answer(OnboardingQuestionCatalog.PcRoster));
         var level = Answer(OnboardingQuestionCatalog.StartingLevel);
-        if (level.Length == 0)
+        // Narrative campaigns skip the level question: no level to state.
+        var levelled = !string.Equals(system, "Narrative", StringComparison.OrdinalIgnoreCase);
+        if (levelled && level.Length == 0)
         {
             level = "1";
         }
@@ -60,7 +62,11 @@ public static class OnboardingBrief
             sb.AppendLine($"  - {pc}");
         }
 
-        Line(sb, "Starting level", level);
+        if (levelled)
+        {
+            Line(sb, "Starting level", level);
+        }
+
         Line(sb, "Plot", plotSource switch
         {
             "user-provided" => $"the player's idea: {plotDirection}",
@@ -76,7 +82,7 @@ public static class OnboardingBrief
         sb.AppendLine("Do, in order:");
         var step = 1;
         var pcWord = solo ? "the player character" : "the player characters";
-        var statLine = $"isPc=true, level {level}, full systemStats for the {system} ruleset, and their starting gear as items[] with holderId set (same batch)";
+        var statLine = $"isPc=true, {(levelled ? $"level {level}, " : "")}full systemStats for the {system} ruleset, and their starting gear as items[] with holderId set (same batch)";
         switch (pcCreation)
         {
             case OnboardingQuestionCatalog.PcCreationDmPregenerates:

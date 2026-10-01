@@ -103,6 +103,8 @@ namespace CampaignVault.UnityClient.App
         public readonly Dictionary<string, string> Answers = new Dictionary<string, string>();
         /// <summary>Pre-fills the current question's field (a brainstormed write-up); cleared per question.</summary>
         public string Draft = string.Empty;
+        /// <summary>The brainstorm reply being typed, kept across repaints.</summary>
+        public string BrainstormDraft = string.Empty;
 
         // Brainstorming the current question with the model (a side chat; nothing reaches the server).
         public bool Brainstorming;
@@ -117,6 +119,7 @@ namespace CampaignVault.UnityClient.App
             Brainstorming = false;
             BrainstormBusy = false;
             BrainstormChat.Clear();
+            BrainstormDraft = string.Empty;
             BrainstormLive = string.Empty;
             BrainstormError = string.Empty;
         }

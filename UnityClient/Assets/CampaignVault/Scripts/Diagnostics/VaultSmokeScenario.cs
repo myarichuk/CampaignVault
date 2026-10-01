@@ -137,6 +137,8 @@ namespace CampaignVault.UnityClient.Diagnostics
             {
                 case AnswerType.Choice: return q.Options[0];
                 case AnswerType.YesNo: return "yes";
+                // Starting level: the server rejects anything but a whole number, which used to loop the smoke run.
+                case AnswerType.Number: return "1";
                 case AnswerType.List: return VaultController.FormatListAnswer("Smoke Hero — human fighter");
                 default: return "A windswept frontier town on the edge of old ruins";
             }

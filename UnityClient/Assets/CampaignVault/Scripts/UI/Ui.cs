@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 using CampaignVault.UnityClient.Model;
@@ -42,6 +43,37 @@ namespace CampaignVault.UnityClient.UI
             var l = new Label(MarkdownLite.ToRichText(TextSanitizer.Clean(markdown ?? string.Empty)));
             l.enableRichText = true;
             return AddClasses(l, classes);
+        }
+
+        /// <summary>Paragraph chunks past a label's display cap: one label each, so long prose shows whole.</summary>
+        public const int BlockChunkChars = 6000;
+
+        /// <summary>
+        /// Model or player prose of any length: split at blank lines (or, for a
+        /// single huge paragraph, at a word) into labels under the per-label cap,
+        /// instead of one label ending in "(truncated)".
+        /// </summary>
+        public static void RichBlock(VisualElement parent, string markdown, string classes = null)
+        {
+            foreach (string chunk in Chunks(markdown ?? string.Empty, BlockChunkChars)) { parent.Add(Rich(chunk, classes)); }
+        }
+
+        internal static List<string> Chunks(string text, int max)
+        {
+            var chunks = new List<string>();
+            if (text.Length <= max) { chunks.Add(text); return chunks; }
+            int start = 0;
+            while (text.Length - start > max)
+            {
+                int cut = text.LastIndexOf("\n\n", start + max - 1, max - 1, StringComparison.Ordinal);
+                if (cut <= start + max / 4) { cut = text.LastIndexOfAny(new[] { ' ', '\n' }, start + max - 1, max - 1); }
+                if (cut <= start + max / 4) { cut = start + max; }
+                chunks.Add(text.Substring(start, cut - start).TrimEnd());
+                start = cut;
+                while (start < text.Length && char.IsWhiteSpace(text[start])) { start++; }
+            }
+            if (start < text.Length) { chunks.Add(text.Substring(start)); }
+            return chunks;
         }
 
         public static void SetText(Label label, string text)
@@ -91,7 +123,12 @@ namespace CampaignVault.UnityClient.UI
             var f = new TextField();
             f.multiline = multiline;
             f.AddToClassList("cv-field");
-            if (multiline) { f.AddToClassList("cv-field--multiline"); }
+            if (multiline)
+            {
+                // Capped in USS: a long paste scrolls inside the box instead of growing it past the dialog.
+                f.AddToClassList("cv-field--multiline");
+                f.verticalScrollerVisibility = ScrollerVisibility.Auto;
+            }
             AddClasses(f, classes);
             f.textEdition.placeholder = placeholder ?? string.Empty;
             f.textEdition.hidePlaceholderOnFocus = true;
@@ -141,9 +178,11 @@ namespace CampaignVault.UnityClient.UI
             var c = El("cv-chip");
             if (!string.IsNullOrEmpty(variant)) { c.AddToClassList("cv-chip--" + variant); }
             if (!string.IsNullOrEmpty(icon)) { c.Add(Icon(icon)); }
-            string clean = TextSanitizer.Clean(text ?? string.Empty, 48);
-            if (clean.Length > 32) { clean = clean.Substring(0, 32) + "…"; }
-            c.Add(Text(clean.ToUpperInvariant()));
+            string full = TextSanitizer.Clean(text ?? string.Empty, 0);
+            string shown = full.Length > 32 ? full.Substring(0, 32).TrimEnd() + "…" : full;
+            c.Add(Text(shown.ToUpperInvariant()));
+            // The chip shows a stub; the tooltip keeps the whole condition readable.
+            if (shown.Length != full.Length) { TooltipLayer.Attach(c, full); }
             return c;
         }
 
@@ -244,12 +283,22 @@ namespace CampaignVault.UnityClient.UI
         }
 
         /// <summary>Two-letter monogram for a portrait tile.</summary>
+        /// <remarks>Letters and digits only, so "\"Red\" Jack", "  ", or an emoji name never make an empty or broken tile.</remarks>
         public static string Monogram(string name)
         {
-            if (string.IsNullOrEmpty(name)) { return "?"; }
-            var parts = name.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length >= 2) { return (parts[0].Substring(0, 1) + parts[1].Substring(0, 1)).ToUpperInvariant(); }
-            return name.Trim().Substring(0, Math.Min(2, name.Trim().Length)).ToUpperInvariant();
+            var initials = new System.Text.StringBuilder();
+            var firstWord = new System.Text.StringBuilder();
+            bool wordStart = true;
+            int words = 0;
+            foreach (char ch in name ?? string.Empty)
+            {
+                if (char.IsWhiteSpace(ch)) { wordStart = true; continue; }
+                if (!char.IsLetterOrDigit(ch)) { continue; }
+                if (wordStart) { words++; if (initials.Length < 2) { initials.Append(ch); } wordStart = false; }
+                if (words == 1 && firstWord.Length < 2) { firstWord.Append(ch); }
+            }
+            string mono = initials.Length >= 2 ? initials.ToString() : firstWord.ToString();
+            return mono.Length == 0 ? "?" : mono.ToUpperInvariant();
         }
 
         /// <summary>Adds a class next frame, so a transition from the base state actually plays.</summary>
