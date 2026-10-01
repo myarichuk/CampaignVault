@@ -45,6 +45,7 @@ namespace CampaignVault.UnityClient.UI
         private OnboardingOverlay _onboarding;
         private InspectorOverlay _inspector;
         private CharacterSheetOverlay _sheet;
+        private CharacterBuilderOverlay _builder;
         private bool _codexOpen = true;
         private bool _codexUserChoice;
 
@@ -103,6 +104,7 @@ namespace CampaignVault.UnityClient.UI
             _setup = new SetupOverlay(_state, _controller, OpenOnboarding, OpenCampaigns);
             _inspector = new InspectorOverlay(_state, _controller);
             _sheet = new CharacterSheetOverlay(_state, _controller);
+            _builder = new CharacterBuilderOverlay(_state, _controller);
 
             BuildTopBar();
             var column = _root.Q("Column");
@@ -110,7 +112,7 @@ namespace CampaignVault.UnityClient.UI
             column.Add(logWrap);
             _log = new StoryLogView(logWrap, _state);
             _command = new CommandBar(column, _state, _controller);
-            new PartyFramesView(_root.Q("Party"), _state, _controller, OpenSheet, OpenCampaigns);
+            new PartyFramesView(_root.Q("Party"), _state, _controller, OpenSheet, OpenCampaigns, delegate { OpenBuilder("pc"); });
             _codexHost = _root.Q("Codex");
             Codex = new CodexView(_codexHost, _state, _controller, OpenSheet);
 
@@ -323,6 +325,17 @@ namespace CampaignVault.UnityClient.UI
         public void OpenSettings(int tab = 0) { _settings.ShowTab(tab); _overlays.Open(_settings); }
         public void OpenOnboarding() { _overlays.Open(_onboarding); }
         public void OpenSetup() { if (_overlays != null) { _overlays.Open(_setup); } }
+
+        /// <summary>The character builder for the campaign at the table; reopening resumes the draft.</summary>
+        public void OpenBuilder(string kind)
+        {
+            if (!_state.HasCampaign) { OpenCampaigns(); return; }
+            if (_overlays.IsOpen(_builder)) { return; }
+            _builder.SetKind(kind);
+            _overlays.Open(_builder);
+        }
+
+        public CharacterBuilderOverlay Builder { get { return _builder; } }
 
         public void OpenSheet(string id)
         {

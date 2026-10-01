@@ -1,0 +1,27 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- CountedFieldViewModel: a captioned handoff field with a live character counter. -->
+    <ui:VisualElement>
+        <ui:Label class="cv-caption cv-field-caption">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Caption" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <cv:VaultField vertical-scroller-visibility="Auto">
+            <Bindings>
+                <ui:DataBinding property="name" data-source-path="Name" binding-mode="ToTarget" />
+                <ui:DataBinding property="placeholder" data-source-path="Placeholder" binding-mode="ToTarget" />
+                <ui:DataBinding property="multiline" data-source-path="Multiline" binding-mode="ToTarget" />
+                <ui:DataBinding property="value" data-source-path="Value" binding-mode="TwoWay" />
+                <cv:ClassBinding property="cls-multiline" data-source-path="Multiline" class-name="cv-field--multiline cv-field--tall" />
+                <cv:ClassBinding property="cls-over" data-source-path="Over" class-name="cv-field--invalid" />
+            </Bindings>
+        </cv:VaultField>
+        <ui:Label class="cv-counter">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Counter" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="HasCounter" class-name="cv-hidden" invert="true" />
+                <cv:ClassBinding property="cls-over" data-source-path="Over" class-name="cv-counter--over" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

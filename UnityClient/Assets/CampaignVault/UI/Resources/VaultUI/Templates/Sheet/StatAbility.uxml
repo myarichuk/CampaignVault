@@ -1,0 +1,14 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement class="cv-statblock__ability">
+        <ui:Label class="cv-statblock__ability-name">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Short" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-statblock__ability-value">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Value" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

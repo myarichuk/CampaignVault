@@ -1,0 +1,23 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- StatLineViewModel: "Armor Class 15", and a bar under hit points. -->
+    <ui:VisualElement>
+        <ui:VisualElement class="cv-statblock__line">
+            <ui:Label class="cv-statblock__key">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Key" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label class="cv-statblock__value">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Value" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+        <cv:VaultBar>
+            <Bindings>
+                <ui:DataBinding property="fraction" data-source-path="Fraction" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="HasBar" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </cv:VaultBar>
+    </ui:VisualElement>
+</ui:UXML>

@@ -18,7 +18,7 @@ namespace CampaignVault.UnityClient.App
     /// scenario and tests yield them directly (no play mode needed). All
     /// writes to VaultAppState happen here and are announced via Notify.
     /// </summary>
-    public sealed class VaultController
+    public sealed partial class VaultController
     {
         private readonly VaultAppState _s;
         private readonly MonoBehaviour _host;

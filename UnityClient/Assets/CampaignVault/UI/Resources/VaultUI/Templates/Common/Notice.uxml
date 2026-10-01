@@ -1,0 +1,18 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- An empty or waiting state: an icon and a line (Notice, NoticeIcon on the data source). Hidden when Notice is empty. -->
+    <ui:VisualElement class="cv-empty">
+        <Bindings>
+            <cv:ClassBinding property="cls-hidden" data-source-path="Notice" class-name="cv-hidden" invert="true" />
+        </Bindings>
+        <ui:VisualElement picking-mode="Ignore" class="cv-icon">
+            <Bindings>
+                <cv:VariantBinding property="var-icon" data-source-path="NoticeIcon" class-prefix="cv-icon--" />
+            </Bindings>
+        </ui:VisualElement>
+        <ui:Label class="cv-empty__text">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Notice" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

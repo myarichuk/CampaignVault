@@ -1,0 +1,146 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- SheetViewModel: a player character. Shared by the character sheet and the builder's live preview. -->
+    <ui:VisualElement class="cv-sheet">
+        <ui:VisualElement class="cv-sheet__hero">
+            <ui:Label class="cv-sheet__crest">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Monogram" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <ui:VisualElement class="cv-sheet__identity">
+                <ui:Label class="cv-sheet__lineage">
+                    <Bindings>
+                        <ui:DataBinding property="text" data-source-path="Identity" binding-mode="ToTarget" />
+                    </Bindings>
+                </ui:Label>
+                <ui:Label class="cv-sheet__where">
+                    <Bindings>
+                        <ui:DataBinding property="text" data-source-path="Where" binding-mode="ToTarget" />
+                        <cv:ClassBinding property="cls-hidden" data-source-path="Where" class-name="cv-hidden" invert="true" />
+                    </Bindings>
+                </ui:Label>
+                <cv:Repeater item-template="Sheet/Badge" class="cv-sheet__badges">
+                    <Bindings>
+                        <ui:DataBinding property="itemsSource" data-source-path="Badges" binding-mode="ToTarget" />
+                        <cv:ClassBinding property="cls-hidden" data-source-path="Badges" class-name="cv-hidden" invert="true" />
+                    </Bindings>
+                </cv:Repeater>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:Label class="cv-sheet__looks">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Looks" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Looks" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <cv:Repeater class="cv-vitals">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Vitals" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+        <cv:Repeater item-template="Sheet/Medallion" class="cv-abilities">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Abilities" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Abilities" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </cv:Repeater>
+        <ui:VisualElement class="cv-sheet__cols">
+            <ui:VisualElement class="cv-sheet__col cv-sheet__col--left">
+            <ui:VisualElement class="cv-sheet__section">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Saves" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:VisualElement class="cv-sheet__heading">
+                    <ui:Label text="SAVING THROWS" class="cv-caption" />
+                </ui:VisualElement>
+                <cv:Repeater item-template="Sheet/CheckRow">
+                    <Bindings>
+                        <ui:DataBinding property="itemsSource" data-source-path="Saves" binding-mode="ToTarget" />
+                        <cv:ClassBinding property="cls-two" data-source-path="SavesTwoColumns" class-name="cv-checks--two" />
+                    </Bindings>
+                </cv:Repeater>
+            </ui:VisualElement>
+            <ui:VisualElement class="cv-sheet__section">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Skills" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:VisualElement class="cv-sheet__heading">
+                    <ui:Label text="SKILLS" class="cv-caption" />
+                </ui:VisualElement>
+                <cv:Repeater item-template="Sheet/CheckRow">
+                    <Bindings>
+                        <ui:DataBinding property="itemsSource" data-source-path="Skills" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:Repeater>
+            </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement class="cv-sheet__col">
+            <ui:VisualElement class="cv-sheet__section">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Resources" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:VisualElement class="cv-sheet__heading">
+                    <ui:Label text="RESOURCES" class="cv-caption" />
+                </ui:VisualElement>
+                <cv:Repeater item-template="Sheet/ResourceRow">
+                    <Bindings>
+                        <ui:DataBinding property="itemsSource" data-source-path="Resources" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:Repeater>
+            </ui:VisualElement>
+            <ui:VisualElement class="cv-sheet__section">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Features" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:VisualElement class="cv-sheet__heading">
+                    <ui:Label text="FEATURES &amp; TRAITS" class="cv-caption" />
+                </ui:VisualElement>
+                <cv:Repeater item-template="Sheet/Feature" class="cv-features">
+                    <Bindings>
+                        <ui:DataBinding property="itemsSource" data-source-path="Features" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:Repeater>
+            </ui:VisualElement>
+            <ui:VisualElement class="cv-sheet__section">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Gear" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:VisualElement class="cv-sheet__heading">
+                    <ui:Label text="EQUIPMENT" class="cv-caption" />
+                </ui:VisualElement>
+                <cv:Repeater item-template="Sheet/GearRow">
+                    <Bindings>
+                        <ui:DataBinding property="itemsSource" data-source-path="Gear" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:Repeater>
+            </ui:VisualElement>
+            <ui:VisualElement class="cv-sheet__section">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Needs" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:VisualElement class="cv-sheet__heading">
+                    <ui:Label text="CONDITION &amp; NEEDS" class="cv-caption" />
+                </ui:VisualElement>
+                <cv:Repeater item-template="Sheet/GaugeRow">
+                    <Bindings>
+                        <ui:DataBinding property="itemsSource" data-source-path="Needs" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:Repeater>
+            </ui:VisualElement>
+            <ui:VisualElement class="cv-sheet__section">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Recent" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:VisualElement class="cv-sheet__heading">
+                    <ui:Label text="LATELY" class="cv-caption" />
+                </ui:VisualElement>
+                <cv:Repeater item-template="Sheet/LedgerRow">
+                    <Bindings>
+                        <ui:DataBinding property="itemsSource" data-source-path="Recent" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:Repeater>
+            </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

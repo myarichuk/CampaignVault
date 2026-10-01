@@ -1,0 +1,40 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- IdentityStepViewModel: name, concept, look; a companion's stat block when the step names one. -->
+    <ui:VisualElement class="cv-builder__widget">
+        <ui:Label text="NAME" class="cv-caption cv-field-caption" />
+        <cv:VaultField name="identity-name" placeholder="what the table calls them" is-delayed="true">
+            <Bindings>
+                <ui:DataBinding property="value" data-source-path="Name" binding-mode="TwoWay" />
+            </Bindings>
+        </cv:VaultField>
+        <ui:Label text="CONCEPT" class="cv-caption cv-field-caption" />
+        <cv:VaultField name="identity-concept" placeholder="one line: who they are and what drives them" is-delayed="true">
+            <Bindings>
+                <ui:DataBinding property="value" data-source-path="Concept" binding-mode="TwoWay" />
+            </Bindings>
+        </cv:VaultField>
+        <ui:Label text="LOOK" class="cv-caption cv-field-caption" />
+        <cv:VaultField name="identity-look" placeholder="what others see first" is-delayed="true" multiline="true" vertical-scroller-visibility="Auto" class="cv-field--multiline">
+            <Bindings>
+                <ui:DataBinding property="value" data-source-path="Look" binding-mode="TwoWay" />
+            </Bindings>
+        </cv:VaultField>
+        <ui:Label class="cv-body cv-text-blood">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="SchemaError" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="SchemaError" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <ui:VisualElement class="cv-card">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="HasSchema" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <ui:Label text="STAT BLOCK" class="cv-caption cv-card__title" />
+            <cv:Repeater item-template="Builder/StatField">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Stats" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

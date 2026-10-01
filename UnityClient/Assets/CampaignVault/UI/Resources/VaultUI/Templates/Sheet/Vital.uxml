@@ -1,0 +1,24 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- VitalViewModel: armor, speed, initiative, proficiency, level, spell DC. -->
+    <ui:VisualElement class="cv-vital">
+        <Bindings>
+            <cv:VariantBinding property="var-tone" data-source-path="Tone" class-prefix="cv-vital--" />
+        </Bindings>
+        <ui:Label class="cv-vital__value">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Value" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-caption cv-vital__caption">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Caption" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-vital__sub">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Sub" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Sub" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

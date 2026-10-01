@@ -1,0 +1,16 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <!-- UnsupportedStepViewModel: a step kind this client has no widget for. -->
+    <ui:VisualElement name="builder-unsupported" class="cv-card cv-card--warning cv-builder__unsupported">
+        <ui:Label text="NOT SUPPORTED YET" class="cv-caption cv-card__title" />
+        <ui:Label class="cv-body">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Message" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-body cv-muted">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Detail" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

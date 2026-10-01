@@ -1,0 +1,14 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- StepPillViewModel: one step on the rail. -->
+    <cv:VaultButton class="cv-btn--small cv-builder__pill">
+        <Bindings>
+            <ui:DataBinding property="name" data-source-path="Name" binding-mode="ToTarget" />
+            <ui:DataBinding property="label" data-source-path="Label" binding-mode="ToTarget" />
+            <ui:DataBinding property="icon" data-source-path="Icon" binding-mode="ToTarget" />
+            <ui:DataBinding property="command" data-source-path="Go" binding-mode="ToTarget" />
+            <cv:ClassBinding property="cls-current" data-source-path="Current" class-name="cv-builder__pill--current" />
+            <cv:ClassBinding property="cls-done" data-source-path="Done" class-name="cv-builder__pill--done" />
+            <cv:ClassBinding property="cls-wrong" data-source-path="Wrong" class-name="cv-builder__pill--error" />
+        </Bindings>
+    </cv:VaultButton>
+</ui:UXML>

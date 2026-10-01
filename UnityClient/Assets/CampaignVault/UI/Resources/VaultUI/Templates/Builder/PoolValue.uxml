@@ -1,0 +1,12 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- PoolValueViewModel: one value to assign to an ability. -->
+    <cv:VaultButton class="cv-btn--small cv-pool">
+        <Bindings>
+            <ui:DataBinding property="name" data-source-path="Name" binding-mode="ToTarget" />
+            <ui:DataBinding property="label" data-source-path="Text" binding-mode="ToTarget" />
+            <ui:DataBinding property="command" data-source-path="Assign" binding-mode="ToTarget" />
+            <cv:ClassBinding property="cls-selected" data-source-path="Selected" class-name="cv-btn--selected" />
+            <cv:ClassBinding property="cls-taken" data-source-path="Taken" class-name="cv-pool--taken" />
+        </Bindings>
+    </cv:VaultButton>
+</ui:UXML>

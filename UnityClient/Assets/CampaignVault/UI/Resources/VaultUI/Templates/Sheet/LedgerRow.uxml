@@ -1,0 +1,15 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <!-- LedgerViewModel: a recent event. -->
+    <ui:VisualElement class="cv-ledger">
+        <ui:Label class="cv-ledger__day">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Day" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-ledger__text">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Text" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,49 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- Binding checks (Tests/PlayMode/BindingTests.cs): every kind of binding the client's pages use, in one place. -->
+    <ui:VisualElement name="spike-root" class="cv-card">
+        <ui:Label name="spike-name-echo">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Name" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <cv:VaultField name="spike-name">
+            <Bindings>
+                <ui:DataBinding property="value" data-source-path="Name" binding-mode="TwoWay" />
+                <ui:DataBinding property="placeholder" data-source-path="Placeholder" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultField>
+        <ui:TextField name="spike-static-placeholder" placeholder-text="static hint" />
+        <ui:VisualElement name="spike-flag">
+            <Bindings>
+                <cv:ClassBinding property="cls-on" data-source-path="Flag" class-name="spike--on" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Flag" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:VisualElement>
+        <cv:VaultButton name="spike-press" label="PRESS" icon="d20" tooltip="a hint">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="Press" binding-mode="ToTarget" />
+                <ui:DataBinding property="enabledSelf" data-source-path="CanPress" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultButton>
+        <ui:Label name="spike-sheet-name">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Sheet.Name" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <cv:Repeater name="spike-items" item-template="Dev/SpikeItem">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Items" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+        <cv:Repeater name="spike-paragraphs" item-template="Dev/SpikeText">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Paragraphs" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+        <cv:ContentPresenter name="spike-content">
+            <Bindings>
+                <ui:DataBinding property="content" data-source-path="Content" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:ContentPresenter>
+    </ui:VisualElement>
+</ui:UXML>

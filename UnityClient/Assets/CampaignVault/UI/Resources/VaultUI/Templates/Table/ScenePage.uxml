@@ -1,0 +1,73 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- ScenePage: where the party stands, its allies (click for the stat block), and known faces. -->
+    <ui:Template name="Notice" src="../Common/Notice.uxml" />
+    <ui:VisualElement>
+        <ui:Instance template="Notice" />
+        <ui:VisualElement>
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="HasContent" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <ui:VisualElement class="cv-scene">
+            <ui:Label class="cv-scene__place">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Place" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Place" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label class="cv-scene__time">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Time" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Time" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label class="cv-scene__doing">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Doing" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Doing" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label class="cv-body cv-muted">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Unplaced" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Unplaced" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+            </ui:VisualElement>
+            <ui:Label text="ALLIES" class="cv-caption cv-codex__heading" />
+            <ui:Label class="cv-codex__quiet">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="AlliesNote" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="AlliesNote" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+            <cv:Repeater item-template="Table/AllyRow">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Allies" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+            <ui:VisualElement class="cv-row cv-scene__track">
+                <cv:VaultField name="codex-track-id" placeholder="track someone by id (a mount, a hireling…)" class="cv-grow cv-field--flush">
+                    <Bindings>
+                        <ui:DataBinding property="value" data-source-path="TrackId" binding-mode="TwoWay" />
+                    </Bindings>
+                </cv:VaultField>
+                <cv:VaultButton name="codex-track" icon="add" tooltip="Track" class="cv-btn--icon cv-btn--small cv-scene__trackadd">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="Track" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+            </ui:VisualElement>
+            <ui:VisualElement>
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Faces" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:Label text="KNOWN FACES" class="cv-caption cv-codex__heading" />
+                <cv:Repeater item-template="Table/FaceRow">
+                    <Bindings>
+                        <ui:DataBinding property="itemsSource" data-source-path="Faces" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:Repeater>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

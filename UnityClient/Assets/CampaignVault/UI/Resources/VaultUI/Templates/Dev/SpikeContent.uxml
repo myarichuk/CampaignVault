@@ -1,0 +1,7 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Label name="spike-content-text" class="cv-body">
+        <Bindings>
+            <ui:DataBinding property="text" data-source-path="Text" binding-mode="ToTarget" />
+        </Bindings>
+    </ui:Label>
+</ui:UXML>

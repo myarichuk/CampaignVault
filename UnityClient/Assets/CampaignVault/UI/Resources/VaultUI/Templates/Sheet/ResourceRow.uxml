@@ -1,0 +1,21 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- ResourceViewModel: name, pips (up to eight), count. -->
+    <ui:VisualElement class="cv-resource">
+        <ui:Label class="cv-resource__name">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Name" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <cv:Repeater item-template="Sheet/Pip" class="cv-resource__pips">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Pips" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Pips" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </cv:Repeater>
+        <ui:Label class="cv-resource__count">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Count" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

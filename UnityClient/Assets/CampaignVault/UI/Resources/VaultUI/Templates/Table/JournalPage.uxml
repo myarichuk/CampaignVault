@@ -1,0 +1,168 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- JournalPage: the session, the story so far, downtime, the handoff, and the world's lore. -->
+    <ui:VisualElement>
+        <ui:VisualElement class="cv-journal__session">
+            <ui:Label class="cv-codex__quiet">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Status" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <cv:VaultButton name="codex-open-session" class="cv-btn--small">
+                <Bindings>
+                    <ui:DataBinding property="label" data-source-path="OpenLabel" binding-mode="ToTarget" />
+                    <ui:DataBinding property="icon" data-source-path="OpenIcon" binding-mode="ToTarget" />
+                    <ui:DataBinding property="command" data-source-path="Open" binding-mode="ToTarget" />
+                    <ui:DataBinding property="enabledSelf" data-source-path="CanOpen" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-primary" data-source-path="OpenPrimary" class-name="cv-btn--primary" />
+                    <cv:ClassBinding property="cls-ghost" data-source-path="OpenPrimary" class-name="cv-btn--ghost" invert="true" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="ShowOpen" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </cv:VaultButton>
+        </ui:VisualElement>
+        <ui:VisualElement>
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="Story" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <ui:Label text="THE STORY SO FAR" class="cv-caption cv-codex__heading" />
+            <ui:Label class="cv-journal__story">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Story" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+        <ui:VisualElement>
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="Last" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <ui:Label class="cv-caption cv-codex__heading">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="LastHeading" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label class="cv-journal__entry">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Last" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+        <ui:VisualElement>
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="Threads" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <ui:Label text="LOOSE THREADS" class="cv-caption cv-codex__heading" />
+            <cv:Repeater item-template="Table/ThreadRow">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Threads" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+        </ui:VisualElement>
+        <ui:VisualElement>
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="Intent" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <ui:Label text="WHAT YOU MEANT TO DO" class="cv-caption cv-codex__heading" />
+            <ui:Label class="cv-journal__entry">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Intent" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+        <ui:VisualElement>
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="Lately" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <ui:Label text="LATELY" class="cv-caption cv-codex__heading" />
+            <ui:Label class="cv-journal__entry">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Lately" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+        <ui:VisualElement class="cv-card">
+            <ui:Label text="DOWNTIME" class="cv-caption cv-card__title" />
+            <ui:VisualElement class="cv-row">
+                <cv:VaultField name="codex-days" placeholder="days" class="cv-field--flush cv-journal__days">
+                    <Bindings>
+                        <ui:DataBinding property="value" data-source-path="Days" binding-mode="TwoWay" />
+                    </Bindings>
+                </cv:VaultField>
+                <cv:VaultButton name="codex-advance" label="LET TIME PASS" icon="time" tooltip="Days pass, resources recover, rumors fade and deadlines approach. The Dungeon Master narrates what changed." class="cv-btn--small cv-journal__advance">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="Advance" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement class="cv-card">
+            <ui:Label text="END OF SESSION" class="cv-caption cv-card__title" />
+            <ui:Label text="The handoff is what the next session starts from, instead of the raw event log. Checkpoint before a long pause." class="cv-body cv-muted" />
+            <cv:VaultButton name="codex-write-handoff" label="WRITE THE HANDOFF" icon="journal" class="cv-btn--small cv-journal__write">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="Write" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="ShowWrite" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </cv:VaultButton>
+            <ui:VisualElement>
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="ShowForm" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <cv:Repeater item-template="Table/CountedField">
+                    <Bindings>
+                        <ui:DataBinding property="itemsSource" data-source-path="Fields" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:Repeater>
+                <cv:Repeater item-template="Common/ErrorText">
+                    <Bindings>
+                        <ui:DataBinding property="itemsSource" data-source-path="Issues" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:Repeater>
+                <ui:VisualElement class="cv-row cv-journal__actions">
+                    <cv:VaultButton name="codex-checkpoint" label="CHECKPOINT" icon="seal" class="cv-btn--small">
+                        <Bindings>
+                            <ui:DataBinding property="command" data-source-path="Checkpoint" binding-mode="ToTarget" />
+                            <ui:DataBinding property="enabledSelf" data-source-path="Idle" binding-mode="ToTarget" />
+                        </Bindings>
+                    </cv:VaultButton>
+                    <cv:VaultButton name="codex-end-session" label="END SESSION" icon="exit" class="cv-btn--small cv-btn--primary">
+                        <Bindings>
+                            <ui:DataBinding property="command" data-source-path="End" binding-mode="ToTarget" />
+                            <ui:DataBinding property="enabledSelf" data-source-path="Idle" binding-mode="ToTarget" />
+                        </Bindings>
+                    </cv:VaultButton>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement class="cv-card">
+            <ui:Label text="SEARCH THE WORLD" class="cv-caption cv-card__title" />
+            <ui:VisualElement class="cv-row">
+                <cv:VaultField name="codex-query" placeholder="a name, a place, a rumor…" class="cv-grow cv-field--flush">
+                    <Bindings>
+                        <ui:DataBinding property="value" data-source-path="Query" binding-mode="TwoWay" />
+                    </Bindings>
+                </cv:VaultField>
+                <cv:VaultButton name="codex-search" icon="search" tooltip="Search" class="cv-btn--icon cv-btn--small cv-codex__go">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="Search" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+            </ui:VisualElement>
+            <ui:Label class="cv-body cv-text-blood">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="SearchError" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="SearchError" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label class="cv-body cv-muted">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="SearchSummary" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="SearchSummary" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+            <cv:Repeater item-template="Table/SearchHit">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Hits" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

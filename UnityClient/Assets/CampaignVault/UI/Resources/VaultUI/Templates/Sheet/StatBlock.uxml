@@ -1,0 +1,49 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- StatBlockViewModel: the parchment for a companion or NPC. -->
+    <ui:VisualElement class="cv-statblock">
+        <ui:Label class="cv-statblock__name">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Name" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-statblock__type">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="TypeLine" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <cv:Repeater item-template="Sheet/StatBadge" class="cv-statblock__badges">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Badges" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Badges" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </cv:Repeater>
+        <ui:VisualElement class="cv-statblock__rule" />
+        <cv:Repeater item-template="Sheet/StatLine">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="TopLines" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+        <ui:VisualElement>
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="Abilities" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <ui:VisualElement class="cv-statblock__rule" />
+            <cv:Repeater item-template="Sheet/StatAbility" class="cv-statblock__abilities">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Abilities" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+            <ui:VisualElement class="cv-statblock__rule" />
+        </ui:VisualElement>
+        <cv:Repeater item-template="Sheet/StatLine">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Lines" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+        <cv:Repeater item-template="Sheet/StatSection">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Sections" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+    </ui:VisualElement>
+</ui:UXML>

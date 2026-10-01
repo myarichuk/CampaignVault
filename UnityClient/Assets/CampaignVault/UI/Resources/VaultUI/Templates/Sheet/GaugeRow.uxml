@@ -1,0 +1,24 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- GaugeViewModel: a need. -->
+    <ui:VisualElement class="cv-gauge">
+        <Bindings>
+            <cv:VariantBinding property="var-severity" data-source-path="Severity" class-prefix="cv-gauge--" />
+        </Bindings>
+        <ui:Label class="cv-gauge__name">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Name" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-gauge__word">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Word" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <cv:VaultBar>
+            <Bindings>
+                <ui:DataBinding property="fraction" data-source-path="Fraction" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="ShowBar" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </cv:VaultBar>
+    </ui:VisualElement>
+</ui:UXML>

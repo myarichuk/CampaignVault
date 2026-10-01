@@ -1,0 +1,7 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Label class="cv-caption cv-pack__caption">
+        <Bindings>
+            <ui:DataBinding property="text" data-source-path="Text" binding-mode="ToTarget" />
+        </Bindings>
+    </ui:Label>
+</ui:UXML>

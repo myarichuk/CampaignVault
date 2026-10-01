@@ -1,0 +1,19 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- An options step's loading / failed / nothing-to-choose notice (OptionsStepViewModel.Notice). -->
+    <ui:VisualElement class="cv-empty">
+        <Bindings>
+            <cv:ClassBinding property="cls-hidden" data-source-path="Notice" class-name="cv-hidden" invert="true" />
+        </Bindings>
+        <ui:VisualElement picking-mode="Ignore" class="cv-icon">
+            <Bindings>
+                <cv:ClassBinding property="cls-error" data-source-path="NoticeIsError" class-name="cv-icon--warning" />
+                <cv:ClassBinding property="cls-quiet" data-source-path="NoticeIsError" class-name="cv-icon--d20" invert="true" />
+            </Bindings>
+        </ui:VisualElement>
+        <ui:Label class="cv-empty__text">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Notice" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

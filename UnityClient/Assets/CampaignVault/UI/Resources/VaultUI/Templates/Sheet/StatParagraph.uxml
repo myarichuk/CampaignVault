@@ -1,0 +1,8 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <ui:Label class="cv-statblock__para">
+        <Bindings>
+            <ui:DataBinding property="text" data-source-path="Text" binding-mode="ToTarget" />
+            <cv:ClassBinding property="cls-italic" data-source-path="Italic" class-name="cv-statblock__para--italic" />
+        </Bindings>
+    </ui:Label>
+</ui:UXML>

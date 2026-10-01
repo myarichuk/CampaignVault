@@ -1,0 +1,22 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- PickStepViewModel: pickOne / pickN / feats / allocate. -->
+    <ui:Template name="Notice" src="OptionsNotice.uxml" />
+    <ui:Template name="Filter" src="OptionsFilter.uxml" />
+    <ui:VisualElement class="cv-builder__widget">
+        <ui:Instance template="Notice" />
+        <ui:Label class="cv-caption cv-builder__count">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="CountText" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="ShowCount" class-name="cv-hidden" invert="true" />
+                <cv:ClassBinding property="cls-complete" data-source-path="CountComplete" class-name="cv-text-leaf" />
+                <cv:ClassBinding property="cls-over" data-source-path="CountOver" class-name="cv-text-blood" />
+            </Bindings>
+        </ui:Label>
+        <ui:Instance template="Filter" />
+        <cv:Repeater item-template="Builder/OptionCard" class="cv-options">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Options" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+    </ui:VisualElement>
+</ui:UXML>

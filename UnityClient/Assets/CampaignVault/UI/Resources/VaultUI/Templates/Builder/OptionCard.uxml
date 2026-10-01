@@ -1,0 +1,39 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- OptionViewModel: a race, class, skill, spell... as a card. -->
+    <cv:VaultButton class="cv-option">
+        <Bindings>
+            <ui:DataBinding property="name" data-source-path="Name" binding-mode="ToTarget" />
+            <ui:DataBinding property="command" data-source-path="Pick" binding-mode="ToTarget" />
+            <ui:DataBinding property="tooltip" data-source-path="FullHint" binding-mode="ToTarget" />
+            <cv:ClassBinding property="cls-selected" data-source-path="Selected" class-name="cv-option--selected" />
+            <cv:ClassBinding property="cls-suggested" data-source-path="Suggested" class-name="cv-option--suggested" />
+            <cv:ClassBinding property="cls-full" data-source-path="Full" class-name="cv-option--full" />
+            <cv:ClassBinding property="cls-hidden" data-source-path="Visible" class-name="cv-hidden" invert="true" />
+        </Bindings>
+        <ui:VisualElement picking-mode="Ignore" class="cv-option__head">
+            <ui:Label picking-mode="Ignore" class="cv-option__label cv-grow">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Label" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <ui:VisualElement picking-mode="Ignore" class="cv-chip cv-chip--arcane">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Suggested" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:VisualElement picking-mode="Ignore" class="cv-icon cv-icon--spark" />
+                <ui:Label picking-mode="Ignore" text="DM'S PICK" />
+            </ui:VisualElement>
+            <ui:VisualElement picking-mode="Ignore" class="cv-icon cv-icon--check cv-icon--gold cv-icon--sm">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Selected" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:Label picking-mode="Ignore" class="cv-option__desc">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Description" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Description" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+    </cv:VaultButton>
+</ui:UXML>

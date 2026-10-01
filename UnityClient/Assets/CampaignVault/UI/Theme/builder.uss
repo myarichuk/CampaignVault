@@ -1,0 +1,95 @@
+/*
+ * The character builder: step rail, step widgets (option cards, ability table,
+ * spell sections), the live sheet on the right, and the DM's advice.
+ */
+.cv-modal--builder { width: 1500px; max-width: 96%; height: 92%; }
+
+/* ---------------------------------------------------------------- toolbar */
+.cv-builder__bar { flex-direction: row; align-items: center; margin-bottom: var(--sp-3); }
+.cv-builder__rail { flex-direction: row; flex-wrap: wrap; flex-grow: 1; flex-shrink: 1; }
+.cv-builder__pill { margin: 0 var(--sp-2) var(--sp-2) 0; }
+.cv-builder__pill--current { border-color: var(--gold); color: var(--gold-bright); background-color: var(--gold-deep); }
+.cv-builder__pill--done .cv-icon { -unity-background-image-tint-color: var(--leaf); }
+.cv-builder__pill--error { border-color: var(--blood-dim); }
+.cv-builder__pill--error .cv-icon { -unity-background-image-tint-color: var(--blood); }
+.cv-builder__level { flex-direction: row; align-items: center; flex-shrink: 0; margin-left: var(--sp-4); }
+.cv-builder__levelvalue { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: var(--fs-lg); color: var(--gold-bright); min-width: 28px; -unity-text-align: middle-center; }
+.cv-builder__down .cv-icon { rotate: 180deg; }
+.cv-builder__note { margin-bottom: var(--sp-2); }
+.cv-builder__cleared {
+    flex-direction: row; align-items: center;
+    padding: var(--sp-2) var(--sp-3);
+    border-width: 1px; border-color: var(--gold-dim); border-radius: var(--radius);
+    background-color: var(--gold-deep);
+}
+.cv-builder__cleared .cv-icon { margin-right: var(--sp-2); }
+
+/* ---------------------------------------------------------------- columns */
+.cv-builder { flex-direction: row; align-items: flex-start; }
+.cv-builder__step { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; padding-right: var(--sp-5); }
+.cv-builder__preview {
+    width: 560px; flex-shrink: 0;
+    padding-left: var(--sp-5);
+    border-left-width: 1px; border-color: var(--line);
+}
+.cv-builder__title { margin-bottom: var(--sp-3); }
+.cv-builder__issue { margin-bottom: var(--sp-2); }
+.cv-builder__count { margin-bottom: var(--sp-3); }
+.cv-builder__filter { max-width: 360px; }
+.cv-builder__section { margin-bottom: var(--sp-5); }
+.cv-builder__group { margin-top: var(--sp-3); }
+.cv-builder__previewcap { margin-bottom: var(--sp-3); color: var(--text-3); }
+.cv-builder__notes { margin-top: var(--sp-4); }
+.cv-builder__advice { margin-top: var(--sp-4); border-color: var(--arcane-dim); }
+.cv-builder__picks { flex-wrap: wrap; margin-top: var(--sp-2); }
+.cv-builder__picks .cv-btn { margin: 0 var(--sp-2) var(--sp-2) 0; }
+.cv-builder__ask { align-items: center; margin-top: var(--sp-3); }
+.cv-builder__status { -unity-text-align: middle-left; margin-right: var(--sp-3); }
+
+/* The sheet in a narrow column: its two columns stack. */
+.cv-builder__sheet .cv-sheet__cols { flex-direction: column; align-items: stretch; }
+/* In a column, flex-basis 0 collapses each one to nothing and the sections overlap. */
+.cv-builder__sheet .cv-sheet__col { flex-basis: auto; flex-grow: 0; }
+.cv-builder__sheet .cv-sheet__col--left { margin-right: 0; }
+.cv-builder__sheet .cv-vitals { flex-wrap: wrap; }
+
+/* ------------------------------------------------------------ option cards */
+.cv-options { flex-direction: row; flex-wrap: wrap; }
+.cv-option {
+    flex-direction: column; align-items: stretch;
+    width: 300px; min-height: 64px; height: auto;
+    margin: 0 var(--sp-3) var(--sp-3) 0;
+    padding: var(--sp-3);
+    white-space: normal;
+}
+.cv-option__head { flex-direction: row; align-items: center; }
+.cv-option__label { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: var(--fs-sm); color: var(--text-1); white-space: normal; }
+.cv-option__desc { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Regular.asset"); font-size: var(--fs-sm); color: var(--text-3); white-space: normal; margin-top: var(--sp-1); -unity-text-align: upper-left; }
+.cv-option--selected { border-color: var(--gold); background-color: var(--gold-deep); }
+.cv-option--selected .cv-option__label { color: var(--gold-bright); }
+.cv-option--suggested { border-color: var(--arcane); }
+.cv-option--full { opacity: 0.5; }
+
+/* ------------------------------------------------------------ ability table */
+.cv-builder__methods { margin-bottom: var(--sp-4); }
+.cv-abilitytable { margin-bottom: var(--sp-4); }
+.cv-abilityrow {
+    flex-direction: row; align-items: center;
+    padding: var(--sp-2) 0;
+    border-bottom-width: 1px; border-color: var(--line-faint);
+}
+.cv-abilityrow__name { width: 150px; flex-shrink: 0; }
+.cv-abilityrow__controls { flex-direction: row; align-items: center; flex-grow: 1; flex-wrap: wrap; }
+.cv-abilityrow__controls .cv-btn { margin-right: var(--sp-1); }
+.cv-abilityrow__pool { flex-direction: row; align-items: center; flex-wrap: wrap; }
+.cv-abilityrow__minus .cv-icon { rotate: 180deg; }
+.cv-abilityrow__score { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: var(--fs-lg); color: var(--text-1); min-width: 40px; -unity-text-align: middle-center; }
+.cv-abilityrow__total { flex-direction: row; align-items: center; width: 200px; flex-shrink: 0; justify-content: flex-end; }
+.cv-abilityrow__final { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: var(--fs-md); color: var(--gold-bright); margin-left: var(--sp-2); }
+.cv-pool { min-width: 44px; }
+.cv-pool--taken { opacity: 0.45; }
+.cv-builder__rolllog { margin-top: var(--sp-2); }
+.cv-builder__unsupported { margin-top: var(--sp-2); }
+.cv-builder__roll { align-self: flex-start; margin-bottom: var(--sp-3); }
+.cv-builder__askfield { margin-bottom: 0; }
+.cv-builder__asksend { margin-left: var(--sp-2); }

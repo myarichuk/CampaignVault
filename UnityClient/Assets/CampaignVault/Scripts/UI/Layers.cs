@@ -1,22 +1,29 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.UIElements;
 using CampaignVault.UnityClient.App;
+using CampaignVault.UnityClient.UI.Controls;
+using CampaignVault.UnityClient.UI.Mvvm;
 
 namespace CampaignVault.UnityClient.UI
 {
     /// <summary>
-    /// Hover tooltips for runtime panels (VisualElement.tooltip only shows in
-    /// the Editor). One shared bubble per panel, placed by the pointer and
-    /// clamped to the screen.
+    /// Hover tooltips for runtime panels (VisualElement.tooltip only shows in the Editor). Any element's
+    /// <c>tooltip</c> (set in UXML, bound, or by <see cref="Attach(VisualElement, string)"/>) shows in one shared
+    /// bubble per panel, placed by the pointer and clamped to the screen. Disabled elements get no pointer events of
+    /// their own, so a disabled button's reason goes on a wrapper.
     /// </summary>
     public static class TooltipLayer
     {
         private const long DelayMs = 450;
+        private static readonly ConditionalWeakTable<VisualElement, Func<string>> Live = new ConditionalWeakTable<VisualElement, Func<string>>();
         private static Label _bubble;
+        private static VisualElement _owner;
         private static IVisualElementScheduledItem _pending;
 
+        /// <summary>The bubble lives on layer; hovers are watched on the layer's parent (the whole UI).</summary>
         public static void Install(VisualElement layer)
         {
             _bubble = new Label();
@@ -25,34 +32,63 @@ namespace CampaignVault.UnityClient.UI
             _bubble.pickingMode = PickingMode.Ignore;
             _bubble.enableRichText = false;
             layer.Add(_bubble);
+            var watched = layer.parent ?? layer;
+            watched.RegisterCallback<PointerMoveEvent>(OnMove, TrickleDown.TrickleDown);
+            watched.RegisterCallback<PointerDownEvent>(delegate { Hide(); }, TrickleDown.TrickleDown);
+            watched.RegisterCallback<PointerLeaveEvent>(delegate { Hide(); _owner = null; });
         }
 
+        /// <summary>Code-built elements: the same as tooltip="…" in UXML.</summary>
         public static void Attach(VisualElement target, string text)
         {
-            Attach(target, delegate { return text; });
+            target.tooltip = text;
         }
 
         /// <summary>Text read when the pointer arrives, for tooltips that describe live state.</summary>
         public static void Attach(VisualElement target, Func<string> text)
         {
-            target.RegisterCallback<PointerEnterEvent>(delegate (PointerEnterEvent e) { Show(target, text(), e.position); });
-            target.RegisterCallback<PointerLeaveEvent>(delegate { Hide(); });
-            target.RegisterCallback<PointerDownEvent>(delegate { Hide(); });
+            Live.AddOrUpdate(target, text);
         }
 
-        private static void Show(VisualElement target, string text, Vector2 position)
+        private static void OnMove(PointerMoveEvent e)
         {
-            if (_bubble == null || string.IsNullOrEmpty(text)) { return; }
-            if (_pending != null) { _pending.Pause(); }
+            var owner = Owner(e.target as VisualElement);
+            if (owner == _owner) { return; }
+            Hide();
+            _owner = owner;
+            if (owner != null) { Show(owner, e.position); }
+        }
+
+        private static VisualElement Owner(VisualElement e)
+        {
+            Func<string> live;
+            for (; e != null; e = e.parent)
+            {
+                if (Live.TryGetValue(e, out live) || !string.IsNullOrEmpty(e.tooltip)) { return e; }
+            }
+            return null;
+        }
+
+        private static string TextOf(VisualElement owner)
+        {
+            Func<string> live;
+            return Live.TryGetValue(owner, out live) ? live() : owner.tooltip;
+        }
+
+        private static void Show(VisualElement target, Vector2 position)
+        {
+            if (_bubble == null) { return; }
             _pending = _bubble.schedule.Execute(() =>
             {
-                if (target.panel == null) { return; }
+                string text = TextOf(target);
+                if (target.panel == null || _owner != target || string.IsNullOrEmpty(text)) { return; }
                 _bubble.text = text;
                 var layer = _bubble.parent;
                 Vector2 local = layer.WorldToLocal(position);
                 float x = Mathf.Min(local.x + 16f, layer.layout.width - 380f);
                 float y = local.y + 22f;
                 if (y > layer.layout.height - 80f) { y = local.y - 60f; }
+                // Pointer-relative placement: a runtime value, the one kind of inline style allowed.
                 _bubble.style.left = Mathf.Max(8f, x);
                 _bubble.style.top = Mathf.Max(8f, y);
                 _bubble.BringToFront();
@@ -103,7 +139,11 @@ namespace CampaignVault.UnityClient.UI
         }
     }
 
-    /// <summary>A full-screen page (Campaigns, Settings, Character…) shown over the table.</summary>
+    /// <summary>
+    /// A full-screen page (Campaigns, Settings, Character…) shown over the table, in the Shell/Modal.uxml frame.
+    /// A page with a <see cref="Template"/> fills the modal's regions from it (the children of its top-level
+    /// elements named toolbar, body, dock, foot) and binds to the view model <see cref="CreateViewModel"/> makes each time it opens.
+    /// </summary>
     public abstract class Overlay
     {
         public VisualElement Root { get; private set; }
@@ -114,8 +154,13 @@ namespace CampaignVault.UnityClient.UI
         protected VisualElement Dock { get; private set; }
         protected VisualElement Foot { get; private set; }
         protected OverlayHost Host { get; private set; }
+        /// <summary>What the page's template binds to while it's open; null for pages without a template.</summary>
+        protected ViewModel ViewModel { get; private set; }
 
-        /// <summary>Title in the header; narrow = a dialog instead of a page.</summary>
+        private Label _title;
+        private VisualElement _modal;
+
+        /// <summary>Title in the header (read on every open); narrow = a dialog instead of a page.</summary>
         protected abstract string Title { get; }
         protected virtual string TitleIcon { get { return null; } }
         protected virtual bool Narrow { get { return false; } }
@@ -123,35 +168,83 @@ namespace CampaignVault.UnityClient.UI
         protected virtual string ModalClass { get { return null; } }
         /// <summary>False for dialogs that must be completed (first-run setup without a provider).</summary>
         public virtual bool CanDismiss { get { return true; } }
+        /// <summary>The page's layout under Resources/VaultUI/Templates, or null for a page built in code.</summary>
+        protected virtual string Template { get { return null; } }
+
+        /// <summary>The page's view model, made on every open and disposed on close.</summary>
+        protected virtual ViewModel CreateViewModel() { return null; }
 
         internal void Build(OverlayHost host)
         {
             Host = host;
-            Root = Ui.El("cv-overlay cv-overlay--hidden");
-            var modal = Ui.Frame(Ui.El("cv-modal" + (Narrow ? " cv-modal--narrow" : string.Empty) + (ModalClass != null ? " " + ModalClass : string.Empty)));
+            Root = Templates.Clone("Shell/Modal");
+            var modal = _modal = Root.Q("modal");
+            modal.EnableInClassList("cv-modal--narrow", Narrow);
+            if (ModalClass != null) { modal.AddToClassList(ModalClass); }
             modal.RegisterCallback<ClickEvent>(delegate (ClickEvent e) { e.StopPropagation(); });
-            var head = Ui.El("cv-modal__head");
-            if (TitleIcon != null) { head.Add(Ui.Icon(TitleIcon, "cv-icon--lg cv-icon--gold cv-modal__icon")); }
-            head.Add(Ui.Text(Title.ToUpperInvariant(), "cv-h1 cv-modal__title"));
-            if (CanDismiss) { head.Add(Ui.IconButton("close", "Close (Esc)", "cv-btn--ghost", delegate { host.Close(this); })); }
-            modal.Add(head);
-            Toolbar = Ui.El("cv-modal__toolbar");
-            modal.Add(Toolbar);
-            var scroll = new ScrollView(ScrollViewMode.Vertical);
-            scroll.AddToClassList("cv-modal__scroll");
-            scroll.style.flexGrow = 1;
-            Body = scroll.contentContainer;
-            modal.Add(scroll);
-            Dock = Ui.El("cv-modal__dock");
-            modal.Add(Dock);
-            Foot = Ui.El("cv-modal__foot");
-            modal.Add(Foot);
-            Root.Add(modal);
+            var icon = Root.Q("modal-icon");
+            if (TitleIcon != null) { icon.AddToClassList("cv-icon--" + TitleIcon); }
+            else { icon.AddToClassList("cv-hidden"); }
+            _title = Root.Q<Label>("modal-title");
+            var close = Root.Q<VaultButton>("modal-close");
+            close.command = delegate { host.Close(this); };
+            close.EnableInClassList("cv-hidden", !CanDismiss);
+            Toolbar = Root.Q("modal-toolbar");
+            Body = Root.Q<ScrollView>("modal-scroll").contentContainer;
+            Dock = Root.Q("modal-dock");
+            Foot = Root.Q("modal-foot");
             Root.RegisterCallback<ClickEvent>(delegate { if (CanDismiss) { host.Close(this); } });
             BuildContent();
         }
 
-        protected abstract void BuildContent();
+        /// <summary>A fresh copy of the page's template on every open, so nothing from the last visit shows for a frame.</summary>
+        private void CloneTemplate()
+        {
+            foreach (var region in new[] { Toolbar, Body, Dock, Foot }) { region.Clear(); }
+            var page = new VisualElement();
+            Templates.CloneInto(Template, page);
+            Slot(page, "toolbar", Toolbar);
+            Slot(page, "body", Body);
+            Slot(page, "dock", Dock);
+            Slot(page, "foot", Foot);
+        }
+
+        /// <summary>The children of the template's top-level element with this name move into the region (the element itself is only a carrier, so rules like ".cv-modal__foot > .cv-btn" still match).</summary>
+        private static void Slot(VisualElement page, string name, VisualElement region)
+        {
+            foreach (var carrier in new List<VisualElement>(page.Children()))
+            {
+                if (carrier.name != name) { continue; }
+                foreach (var child in new List<VisualElement>(carrier.Children())) { region.Add(child); }
+            }
+        }
+
+        /// <summary>Code-built content and code-behind hooks; a page with a template may need none.</summary>
+        protected virtual void BuildContent() { }
+
+        internal void Opened()
+        {
+            Ui.SetText(_title, Title.ToUpperInvariant());
+            if (Template != null)
+            {
+                CloneTemplate();
+                ViewModel = CreateViewModel();
+                if (ViewModel != null) { ViewModel.Refresh(); }
+                Root.dataSource = ViewModel;
+            }
+            OnOpen();
+        }
+
+        internal void Closed()
+        {
+            OnClose();
+            if (ViewModel != null)
+            {
+                Root.dataSource = null;
+                ViewModel.Dispose();
+                ViewModel = null;
+            }
+        }
 
         /// <summary>Called each time the overlay opens (refresh data here).</summary>
         public virtual void OnOpen() { }
@@ -160,6 +253,12 @@ namespace CampaignVault.UnityClient.UI
         public virtual void OnClose() { }
 
         protected void Close() { Host.Close(this); }
+
+        /// <summary>A title that depends on what the page shows (the character's name).</summary>
+        protected void SetTitle(string title) { Ui.SetText(_title, (title ?? string.Empty).ToUpperInvariant()); }
+
+        /// <summary>A size variant of the modal for what the page shows (a stat block is narrower than a sheet).</summary>
+        protected void SetModalClass(string className, bool on) { _modal.EnableInClassList(className, on); }
     }
 
     /// <summary>The overlay stack. Esc closes the top one only.</summary>
@@ -182,7 +281,7 @@ namespace CampaignVault.UnityClient.UI
             if (overlay.Root == null) { overlay.Build(this); }
             _layer.Add(overlay.Root);
             _stack.Add(overlay);
-            overlay.OnOpen();
+            overlay.Opened();
             var root = overlay.Root;
             root.schedule.Execute(() => { root.RemoveFromClassList("cv-overlay--hidden"); }).StartingIn(16);
             return overlay;
@@ -193,7 +292,7 @@ namespace CampaignVault.UnityClient.UI
         public void Close(Overlay overlay)
         {
             if (!_stack.Remove(overlay)) { return; }
-            overlay.OnClose();
+            overlay.Closed();
             TooltipLayer.Hide();
             var root = overlay.Root;
             root.AddToClassList("cv-overlay--hidden");

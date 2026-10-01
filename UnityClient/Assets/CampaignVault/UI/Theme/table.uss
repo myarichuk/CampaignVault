@@ -386,3 +386,17 @@
 .cv-story-4 .cv-player__text, .cv-story-4 .cv-recap__text { font-size: 23px; }
 .cv-story-5 .cv-seg--narration, .cv-story-5 .cv-voice__line { font-size: 31px; }
 .cv-story-5 .cv-player__text, .cv-story-5 .cv-recap__text { font-size: 26px; }
+
+/* ------------------------------------------------- codex pages (UXML, phase 2.5) */
+.cv-field.cv-field--flush { margin-bottom: 0; }
+.cv-field--tall { min-height: 64px; }
+.cv-scene__track { margin-top: 8px; }
+.cv-scene__trackadd { margin-left: 6px; }
+.cv-pack__caption { margin-top: 10px; }
+.cv-pack__note { font-size: 13px; margin-top: 10px; }
+.cv-journal__days { width: 80px; }
+.cv-journal__advance { margin-left: 8px; }
+.cv-journal__write { margin-top: 8px; }
+.cv-journal__actions { margin-top: 8px; }
+.cv-journal__actions > .cv-btn { margin-right: 8px; }
+.cv-codex__go { margin-left: 6px; }

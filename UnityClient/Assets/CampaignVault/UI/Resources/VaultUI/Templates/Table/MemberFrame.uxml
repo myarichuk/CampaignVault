@@ -1,0 +1,48 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- MemberViewModel: monogram, name, class, HP with a lagging damage ghost, conditions. Click opens the sheet. -->
+    <cv:ClickArea tooltip="Open the character sheet" class="cv-member">
+        <Bindings>
+            <ui:DataBinding property="name" data-source-path="Name" binding-mode="ToTarget" />
+            <ui:DataBinding property="command" data-source-path="Open" binding-mode="ToTarget" />
+            <cv:ClassBinding property="cls-pc" data-source-path="IsPc" class-name="cv-member--pc" />
+        </Bindings>
+        <ui:Label class="cv-member__crest">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Monogram" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:VisualElement class="cv-member__body">
+            <ui:Label class="cv-member__name">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Title" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label class="cv-member__sub">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Sub" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Sub" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+            <ui:VisualElement class="cv-member__hp">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="HasHp" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <cv:VaultBar>
+                    <Bindings>
+                        <ui:DataBinding property="fraction" data-source-path="HpFraction" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultBar>
+                <ui:Label class="cv-member__hptext">
+                    <Bindings>
+                        <ui:DataBinding property="text" data-source-path="HpText" binding-mode="ToTarget" />
+                    </Bindings>
+                </ui:Label>
+            </ui:VisualElement>
+            <cv:Repeater item-template="Sheet/Badge" class="cv-member__conditions">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Conditions" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+        </ui:VisualElement>
+    </cv:ClickArea>
+</ui:UXML>

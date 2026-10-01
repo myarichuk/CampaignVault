@@ -1,0 +1,10 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <cv:VaultButton class="cv-option">
+        <Bindings>
+            <ui:DataBinding property="name" data-source-path="Name" binding-mode="ToTarget" />
+            <ui:DataBinding property="label" data-source-path="Label" binding-mode="ToTarget" />
+            <ui:DataBinding property="command" data-source-path="Pick" binding-mode="ToTarget" />
+            <cv:ClassBinding property="cls-selected" data-source-path="Selected" class-name="cv-option--selected" />
+        </Bindings>
+    </cv:VaultButton>
+</ui:UXML>

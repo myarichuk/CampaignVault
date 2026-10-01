@@ -186,24 +186,19 @@ namespace CampaignVault.UnityClient.UI
             return c;
         }
 
-        /// <summary>A bar with a lagging "damage ghost" behind the fill.</summary>
+        /// <summary>A bar with a lagging "damage ghost" behind the fill (a <see cref="Controls.VaultBar"/>).</summary>
         public static VisualElement Bar(double fraction, string classes = null)
         {
-            var bar = El("cv-bar");
+            var bar = new Controls.VaultBar();
             AddClasses(bar, classes);
-            bar.Add(El("cv-bar__ghost"));
-            bar.Add(El("cv-bar__fill"));
-            SetBar(bar, fraction);
+            bar.fraction = (float)fraction;
             return bar;
         }
 
         public static void SetBar(VisualElement bar, double fraction)
         {
-            float f = Mathf.Clamp01((float)fraction);
-            bar.Q(className: "cv-bar__fill").style.width = Length.Percent(f * 100f);
-            bar.Q(className: "cv-bar__ghost").style.width = Length.Percent(f * 100f);
-            bar.EnableInClassList("cv-bar--mid", f <= 0.6f && f > 0.3f);
-            bar.EnableInClassList("cv-bar--low", f <= 0.3f);
+            var vaultBar = bar as Controls.VaultBar;
+            if (vaultBar != null) { vaultBar.fraction = (float)fraction; }
         }
 
         /// <summary>Filigree corners on a framed element.</summary>

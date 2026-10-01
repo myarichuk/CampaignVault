@@ -1,0 +1,54 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- AbilityStepViewModel: method tabs, then the six rows and the roll log. -->
+    <ui:VisualElement class="cv-builder__widget">
+        <cv:Repeater item-template="Builder/MethodTab" class="cv-tabs cv-builder__methods">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Methods" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+        <ui:Label text="Choose how to set the six scores. Racial bonuses are added on top; they come from the race step." class="cv-body cv-muted">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="ShowHint" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-caption cv-builder__count">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="PointsText" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="ShowPoints" class-name="cv-hidden" invert="true" />
+                <cv:ClassBinding property="cls-done" data-source-path="PointsDone" class-name="cv-text-leaf" />
+            </Bindings>
+        </ui:Label>
+        <cv:VaultButton name="roll-abilities" icon="d20" class="cv-builder__roll">
+            <Bindings>
+                <ui:DataBinding property="label" data-source-path="RollLabel" binding-mode="ToTarget" />
+                <ui:DataBinding property="command" data-source-path="Roll" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="ShowRoll" class-name="cv-hidden" invert="true" />
+                <cv:ClassBinding property="cls-primary" data-source-path="RollPrimary" class-name="cv-btn--primary" />
+            </Bindings>
+        </cv:VaultButton>
+        <ui:Label class="cv-caption cv-builder__count">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="AssignedText" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="ShowAssigned" class-name="cv-hidden" invert="true" />
+                <cv:ClassBinding property="cls-complete" data-source-path="AssignedComplete" class-name="cv-text-leaf" />
+            </Bindings>
+        </ui:Label>
+        <cv:Repeater item-template="Builder/AbilityRow" class="cv-abilitytable">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Rows" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Rows" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </cv:Repeater>
+        <ui:VisualElement class="cv-card cv-builder__rolllog">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="RollLog" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <ui:Label text="ROLL LOG" class="cv-caption cv-card__title" />
+            <cv:Repeater item-template="Common/MonoText">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="RollLog" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

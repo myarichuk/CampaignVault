@@ -393,7 +393,8 @@ namespace CampaignVault.UnityClient.UI
                 if (message.Key == OnboardingBrainstorm.MarkerRole)
                 {
                     // Where the setup moved on: a divider, so the chat reads as one conversation across the questions.
-                    var divider = Ui.Text("NEXT QUESTION · " + message.Value.ToUpperInvariant(), "cv-caption cv-text-gold");
+                    string where = BuilderAdvisor.IsMarker(message.Value) ? message.Value : "NEXT QUESTION · " + message.Value;
+                    var divider = Ui.Text(where.ToUpperInvariant(), "cv-caption cv-text-gold");
                     divider.style.marginTop = 20;
                     divider.style.whiteSpace = WhiteSpace.Normal;
                     if (gone) { divider.style.opacity = 0.45f; }

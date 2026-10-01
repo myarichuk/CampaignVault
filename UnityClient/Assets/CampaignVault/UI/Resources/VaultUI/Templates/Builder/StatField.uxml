@@ -1,0 +1,23 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- StatFieldViewModel: one stat-block field; commits on blur or Enter. -->
+    <ui:VisualElement>
+        <ui:Label class="cv-caption cv-builder__group">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="GroupTitle" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="GroupTitle" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-caption cv-field-caption">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Caption" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <cv:VaultField is-delayed="true">
+            <Bindings>
+                <ui:DataBinding property="name" data-source-path="Name" binding-mode="ToTarget" />
+                <ui:DataBinding property="placeholder" data-source-path="Hint" binding-mode="ToTarget" />
+                <ui:DataBinding property="value" data-source-path="Value" binding-mode="TwoWay" />
+            </Bindings>
+        </cv:VaultField>
+    </ui:VisualElement>
+</ui:UXML>

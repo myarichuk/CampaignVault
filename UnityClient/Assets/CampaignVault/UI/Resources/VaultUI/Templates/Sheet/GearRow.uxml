@@ -1,0 +1,40 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- GearViewModel: worn or carried. -->
+    <ui:VisualElement>
+        <ui:VisualElement class="cv-gear">
+            <Bindings>
+                <cv:ClassBinding property="cls-equipped" data-source-path="Equipped" class-name="cv-gear--equipped" />
+                <ui:DataBinding property="tooltip" data-source-path="Tooltip" binding-mode="ToTarget" />
+            </Bindings>
+            <ui:VisualElement picking-mode="Ignore" class="cv-icon">
+                <Bindings>
+                    <cv:VariantBinding property="var-icon" data-source-path="Icon" class-prefix="cv-icon--" />
+                </Bindings>
+            </ui:VisualElement>
+            <ui:VisualElement class="cv-grow">
+                <ui:Label class="cv-gear__name">
+                    <Bindings>
+                        <ui:DataBinding property="text" data-source-path="Name" binding-mode="ToTarget" />
+                    </Bindings>
+                </ui:Label>
+                <ui:Label class="cv-gear__detail">
+                    <Bindings>
+                        <ui:DataBinding property="text" data-source-path="Detail" binding-mode="ToTarget" />
+                        <cv:ClassBinding property="cls-hidden" data-source-path="Detail" class-name="cv-hidden" invert="true" />
+                    </Bindings>
+                </ui:Label>
+            </ui:VisualElement>
+            <ui:Label class="cv-gear__qty">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Quantity" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Quantity" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label text="WORN" class="cv-caption">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Equipped" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,10 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement class="cv-thread">
+        <ui:VisualElement class="cv-thread__mark" />
+        <ui:Label class="cv-thread__text">
+            <Bindings>
+                <ui:DataBinding property="text" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

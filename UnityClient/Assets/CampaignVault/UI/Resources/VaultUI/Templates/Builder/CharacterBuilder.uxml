@@ -1,0 +1,227 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!--
+        The character builder (BuilderViewModel). The four top-level elements fill the modal's regions by name
+        (Shell/Modal.uxml). Names on buttons and fields are the PlayMode tests' hooks: keep them.
+    -->
+    <ui:VisualElement name="toolbar">
+        <ui:VisualElement class="cv-builder__bar">
+            <cv:Repeater name="builder-rail" item-template="Builder/StepPill" class="cv-builder__rail">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Steps" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+            <ui:VisualElement class="cv-builder__level">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="HasSteps" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:Label text="LEVEL" class="cv-caption" />
+                <cv:VaultButton icon="chevron" tooltip="One level lower" class="cv-btn--icon cv-btn--small cv-btn--ghost cv-builder__down">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="LevelDown" binding-mode="ToTarget" />
+                        <ui:DataBinding property="enabledSelf" data-source-path="CanLevelDown" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+                <ui:Label name="builder-level" class="cv-builder__levelvalue">
+                    <Bindings>
+                        <ui:DataBinding property="text" data-source-path="LevelText" binding-mode="ToTarget" />
+                    </Bindings>
+                </ui:Label>
+                <ui:VisualElement class="cv-builder__upwrap">
+                    <Bindings>
+                        <ui:DataBinding property="tooltip" data-source-path="LevelCapReason" binding-mode="ToTarget" />
+                    </Bindings>
+                    <cv:VaultButton name="builder-level-up" icon="add" class="cv-btn--icon cv-btn--small cv-btn--ghost">
+                        <Bindings>
+                            <ui:DataBinding property="command" data-source-path="LevelUp" binding-mode="ToTarget" />
+                            <ui:DataBinding property="enabledSelf" data-source-path="CanLevelUp" binding-mode="ToTarget" />
+                            <ui:DataBinding property="tooltip" data-source-path="LevelUpHint" binding-mode="ToTarget" />
+                        </Bindings>
+                    </cv:VaultButton>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement class="cv-builder__note">
+            <ui:Label class="cv-body cv-text-blood">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Error" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Error" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+            <ui:VisualElement class="cv-builder__cleared">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="ClearedNote" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:VisualElement picking-mode="Ignore" class="cv-icon cv-icon--warning cv-icon--gold cv-icon--sm" />
+                <ui:Label name="builder-cleared" class="cv-body cv-grow">
+                    <Bindings>
+                        <ui:DataBinding property="text" data-source-path="ClearedNote" binding-mode="ToTarget" />
+                    </Bindings>
+                </ui:Label>
+                <cv:VaultButton icon="close" tooltip="Dismiss" class="cv-btn--icon cv-btn--ghost cv-btn--small">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="DismissNote" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+
+    <ui:VisualElement name="body">
+        <ui:VisualElement class="cv-builder">
+            <ui:VisualElement class="cv-builder__step">
+                <ui:VisualElement class="cv-empty">
+                    <Bindings>
+                        <cv:ClassBinding property="cls-hidden" data-source-path="HasStep" class-name="cv-hidden" />
+                    </Bindings>
+                    <ui:VisualElement picking-mode="Ignore" class="cv-icon cv-icon--character" />
+                    <ui:Label class="cv-empty__text">
+                        <Bindings>
+                            <ui:DataBinding property="text" data-source-path="EmptyText" binding-mode="ToTarget" />
+                        </Bindings>
+                    </ui:Label>
+                </ui:VisualElement>
+                <ui:VisualElement name="builder-step">
+                    <Bindings>
+                        <cv:ClassBinding property="cls-hidden" data-source-path="HasStep" class-name="cv-hidden" invert="true" />
+                    </Bindings>
+                    <ui:Label class="cv-h2 cv-builder__title">
+                        <Bindings>
+                            <ui:DataBinding property="text" data-source-path="StepTitle" binding-mode="ToTarget" />
+                        </Bindings>
+                    </ui:Label>
+                    <cv:Repeater item-template="Builder/IssueText">
+                        <Bindings>
+                            <ui:DataBinding property="itemsSource" data-source-path="Issues" binding-mode="ToTarget" />
+                        </Bindings>
+                    </cv:Repeater>
+                    <cv:Repeater item-template="Builder/WarningText">
+                        <Bindings>
+                            <ui:DataBinding property="itemsSource" data-source-path="Warnings" binding-mode="ToTarget" />
+                        </Bindings>
+                    </cv:Repeater>
+                    <cv:ContentPresenter name="builder-widget">
+                        <Bindings>
+                            <ui:DataBinding property="content" data-source-path="StepWidget" binding-mode="ToTarget" />
+                        </Bindings>
+                    </cv:ContentPresenter>
+                    <ui:VisualElement name="builder-advice" class="cv-card cv-builder__advice">
+                        <Bindings>
+                            <cv:ClassBinding property="cls-hidden" data-source-path="ShowAdvice" class-name="cv-hidden" invert="true" />
+                        </Bindings>
+                        <ui:Label text="THE DM SAYS" class="cv-caption cv-card__title" />
+                        <ui:Label class="cv-body cv-text-blood">
+                            <Bindings>
+                                <ui:DataBinding property="text" data-source-path="AdviceError" binding-mode="ToTarget" />
+                                <cv:ClassBinding property="cls-hidden" data-source-path="AdviceError" class-name="cv-hidden" invert="true" />
+                            </Bindings>
+                        </ui:Label>
+                        <cv:Repeater item-template="Common/RichText">
+                            <Bindings>
+                                <ui:DataBinding property="itemsSource" data-source-path="AdviceParagraphs" binding-mode="ToTarget" />
+                            </Bindings>
+                        </cv:Repeater>
+                        <cv:Repeater item-template="Builder/Suggestion" class="cv-row cv-builder__picks">
+                            <Bindings>
+                                <ui:DataBinding property="itemsSource" data-source-path="Suggestions" binding-mode="ToTarget" />
+                                <cv:ClassBinding property="cls-hidden" data-source-path="Suggestions" class-name="cv-hidden" invert="true" />
+                            </Bindings>
+                        </cv:Repeater>
+                        <ui:Label class="cv-body cv-text-blood">
+                            <Bindings>
+                                <ui:DataBinding property="text" data-source-path="NotOptionsText" binding-mode="ToTarget" />
+                                <cv:ClassBinding property="cls-hidden" data-source-path="NotOptionsText" class-name="cv-hidden" invert="true" />
+                            </Bindings>
+                        </ui:Label>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="cv-builder__preview">
+                <ui:Label class="cv-caption cv-builder__previewcap">
+                    <Bindings>
+                        <ui:DataBinding property="text" data-source-path="PreviewCaption" binding-mode="ToTarget" />
+                    </Bindings>
+                </ui:Label>
+                <ui:VisualElement class="cv-empty">
+                    <Bindings>
+                        <cv:ClassBinding property="cls-hidden" data-source-path="PreviewContent" class-name="cv-hidden" />
+                    </Bindings>
+                    <ui:VisualElement picking-mode="Ignore" class="cv-icon cv-icon--character" />
+                    <ui:Label text="The sheet fills in as you choose." class="cv-empty__text" />
+                </ui:VisualElement>
+                <cv:ContentPresenter name="builder-sheet" class="cv-builder__sheet">
+                    <Bindings>
+                        <ui:DataBinding property="content" data-source-path="PreviewContent" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:ContentPresenter>
+                <ui:VisualElement class="cv-card cv-builder__notes">
+                    <Bindings>
+                        <cv:ClassBinding property="cls-hidden" data-source-path="Notes" class-name="cv-hidden" invert="true" />
+                    </Bindings>
+                    <ui:Label text="WHAT THE RULES WORKED OUT" class="cv-caption cv-card__title" />
+                    <cv:Repeater item-template="Common/MutedText">
+                        <Bindings>
+                            <ui:DataBinding property="itemsSource" data-source-path="Notes" binding-mode="ToTarget" />
+                        </Bindings>
+                    </cv:Repeater>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+
+    <ui:VisualElement name="dock">
+        <ui:VisualElement class="cv-row cv-builder__ask">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="HasStep" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <cv:VaultField name="builder-ask" class="cv-grow cv-builder__askfield">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="AskText" binding-mode="TwoWay" />
+                    <ui:DataBinding property="placeholder" data-source-path="AskPlaceholder" binding-mode="ToTarget" />
+                    <ui:DataBinding property="enabledSelf" data-source-path="AskEnabled" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultField>
+            <cv:VaultButton name="builder-ask-send" icon="spark" class="cv-builder__asksend">
+                <Bindings>
+                    <ui:DataBinding property="label" data-source-path="AskLabel" binding-mode="ToTarget" />
+                    <ui:DataBinding property="command" data-source-path="Ask" binding-mode="ToTarget" />
+                    <ui:DataBinding property="enabledSelf" data-source-path="CanAsk" binding-mode="ToTarget" />
+                    <ui:DataBinding property="tooltip" data-source-path="AskHint" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+        </ui:VisualElement>
+    </ui:VisualElement>
+
+    <ui:VisualElement name="foot">
+        <ui:Label name="builder-status" class="cv-body cv-muted cv-grow cv-builder__status">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Status" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <cv:VaultButton name="builder-another" label="BUILD ANOTHER" icon="add" class="cv-btn--ghost">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="Another" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="ShowAnother" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </cv:VaultButton>
+        <cv:VaultButton name="builder-back" label="BACK" class="cv-btn--ghost">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="Back" binding-mode="ToTarget" />
+                <ui:DataBinding property="enabledSelf" data-source-path="CanBack" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultButton>
+        <cv:VaultButton name="builder-next" label="NEXT" icon="chevron">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="Next" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="ShowNext" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </cv:VaultButton>
+        <cv:VaultButton name="builder-commit" icon="seal" class="cv-btn--primary">
+            <Bindings>
+                <ui:DataBinding property="label" data-source-path="CommitLabel" binding-mode="ToTarget" />
+                <ui:DataBinding property="command" data-source-path="Commit" binding-mode="ToTarget" />
+                <ui:DataBinding property="enabledSelf" data-source-path="CanCommit" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultButton>
+    </ui:VisualElement>
+</ui:UXML>

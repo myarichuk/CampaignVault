@@ -1,0 +1,37 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- CheckViewModel: a save or skill. -->
+    <ui:VisualElement class="cv-check">
+        <Bindings>
+            <cv:VariantBinding property="var-rank" data-source-path="RankVariant" class-prefix="cv-check--rank" />
+            <cv:ClassBinding property="cls-proficient" data-source-path="Proficient" class-name="cv-check--proficient" />
+            <ui:DataBinding property="tooltip" data-source-path="Tooltip" binding-mode="ToTarget" />
+        </Bindings>
+        <ui:Label class="cv-check__rank">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="RankLetter" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Ranked" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <ui:VisualElement class="cv-check__pip">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="Ranked" class-name="cv-hidden" />
+            </Bindings>
+        </ui:VisualElement>
+        <ui:Label class="cv-check__name">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Name" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-check__ability">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Ability" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Ability" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-check__mod">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Mod" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

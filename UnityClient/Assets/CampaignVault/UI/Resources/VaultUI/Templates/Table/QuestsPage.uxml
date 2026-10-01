@@ -1,0 +1,12 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- QuestsPage: a ledger of open quests. -->
+    <ui:Template name="Notice" src="../Common/Notice.uxml" />
+    <ui:VisualElement>
+        <ui:Instance template="Notice" />
+        <cv:Repeater item-template="Table/QuestRow">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Quests" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+    </ui:VisualElement>
+</ui:UXML>

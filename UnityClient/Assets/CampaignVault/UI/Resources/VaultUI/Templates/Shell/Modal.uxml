@@ -1,0 +1,23 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!--
+        Every page and dialog (Scripts/UI/Layers.cs, Overlay): a dimmed layer, the framed modal, a head, then four
+        regions a page template fills by name: toolbar (fixed), body (scrolls), dock (fixed, e.g. a composer), foot.
+    -->
+    <ui:VisualElement name="overlay" class="cv-overlay cv-overlay--hidden">
+        <ui:VisualElement name="modal" class="cv-modal cv-frame">
+            <ui:VisualElement name="modal-head" class="cv-modal__head">
+                <ui:VisualElement name="modal-icon" picking-mode="Ignore" class="cv-icon cv-icon--lg cv-icon--gold cv-modal__icon" />
+                <ui:Label name="modal-title" class="cv-h1 cv-modal__title" />
+                <cv:VaultButton name="modal-close" icon="close" tooltip="Close (Esc)" class="cv-btn--icon cv-btn--ghost" />
+            </ui:VisualElement>
+            <ui:VisualElement name="modal-toolbar" class="cv-modal__toolbar" />
+            <ui:ScrollView name="modal-scroll" class="cv-modal__scroll" />
+            <ui:VisualElement name="modal-dock" class="cv-modal__dock" />
+            <ui:VisualElement name="modal-foot" class="cv-modal__foot" />
+            <ui:VisualElement picking-mode="Ignore" class="cv-frame__corner cv-frame__corner--tl" />
+            <ui:VisualElement picking-mode="Ignore" class="cv-frame__corner cv-frame__corner--tr" />
+            <ui:VisualElement picking-mode="Ignore" class="cv-frame__corner cv-frame__corner--bl" />
+            <ui:VisualElement picking-mode="Ignore" class="cv-frame__corner cv-frame__corner--br" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

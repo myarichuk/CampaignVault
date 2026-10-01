@@ -1,0 +1,10 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- SuggestionViewModel: one of the DM's picks. -->
+    <cv:VaultButton icon="check" class="cv-btn--small">
+        <Bindings>
+            <ui:DataBinding property="name" data-source-path="Name" binding-mode="ToTarget" />
+            <ui:DataBinding property="label" data-source-path="Label" binding-mode="ToTarget" />
+            <ui:DataBinding property="command" data-source-path="Use" binding-mode="ToTarget" />
+        </Bindings>
+    </cv:VaultButton>
+</ui:UXML>

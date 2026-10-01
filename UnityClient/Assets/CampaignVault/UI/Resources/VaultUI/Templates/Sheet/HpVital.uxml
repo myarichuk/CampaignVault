@@ -1,0 +1,25 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- HpVitalViewModel: current / max and the bar. -->
+    <ui:VisualElement class="cv-vital cv-vital--hp">
+        <ui:VisualElement class="cv-vital__row">
+            <ui:VisualElement class="cv-row cv-vital__numbers">
+                <ui:Label class="cv-vital__value">
+                    <Bindings>
+                        <ui:DataBinding property="text" data-source-path="Current" binding-mode="ToTarget" />
+                    </Bindings>
+                </ui:Label>
+                <ui:Label class="cv-vital__max">
+                    <Bindings>
+                        <ui:DataBinding property="text" data-source-path="Max" binding-mode="ToTarget" />
+                    </Bindings>
+                </ui:Label>
+            </ui:VisualElement>
+            <ui:Label text="HIT POINTS" class="cv-caption" />
+        </ui:VisualElement>
+        <cv:VaultBar class="cv-bar--thick">
+            <Bindings>
+                <ui:DataBinding property="fraction" data-source-path="Fraction" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultBar>
+    </ui:VisualElement>
+</ui:UXML>

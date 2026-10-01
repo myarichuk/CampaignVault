@@ -189,7 +189,7 @@ The creature template shape (`dnd5e/creatures/goblin.yaml`: `level`, `challengeR
 
 ## Phase 0: Plugin rules content (inheritance and overrides)
 
-> **Status: done (2026-10-01, uncommitted).**
+> **Status: done (2026-10-01, committed in `df4b7d9`).**
 > - `RulesetContentLayers<T>` (`Data/Templates/`) now layers all 10 providers.
 > - `TemplateEdits` handles `+:`, `-:`, `patches:` and inherited `requires:`.
 > - `RulesetTemplate.Requires` is in the SDK; `FeatDefinition.Requires` moved there.
@@ -245,7 +245,7 @@ providers. What's missing is control.
 
 ## Phase 1: Server creation API and recipe engine
 
-> **Status: done (2026-10-01, uncommitted).**
+> **Status: done (2026-10-01, committed in `df4b7d9`).**
 > - SDK (`PluginSdk/Rulesets/Creation/CharacterCreation.cs`): `ICharacterCreation`, `IRecipeValidator`,
 >   `CreationStep`, `CharacterDraft`, `CreationContext`, the choice shapes. `IRulesetModuleSelector.GetCreation`
 >   is a default interface member, so existing selector fakes still compile.
@@ -326,6 +326,35 @@ providers. What's missing is control.
 
 ## Phase 2: Unity builder dialog, 5e level 1
 
+> **Status: done (2026-10-01, uncommitted).**
+> - `Scripts/Model/CharacterBuilder.cs`: the wire DTOs (`CharacterDraft`, `BuilderStep`, `BuilderOption`,
+>   `BuilderIssue`, `StatBlockSchema`), `BuilderDependencies` (which steps read which, clearing, the note) and
+>   `AbilityDice`. `BuilderState` / `StepOptions` / `AbilityWork` on `VaultAppState` (`StateArea.Builder`).
+> - `App/VaultController.Builder.cs` (the controller is now `partial`): `BeginBuilder`, `BuilderSteps/Options/
+>   Preview/Commit`, `BuilderChoose`/`Toggle`/`ToggleSpell`, the ability methods, `SetBuilderLevel`, `AskDmAboutStep`.
+>   Stale replies are dropped by a draft revision counter.
+> - UI: `CharacterBuilderOverlay` (rail + level stepper in `Toolbar`, widget left, live sheet right, Ask the DM in
+>   `Dock`; regions redraw only when what they show changed, and never under a focused text field),
+>   `UI/Builder/{StepWidgets,PickWidget,AbilityScoresWidget,SpellsWidget,IdentityWidget}.cs`, `Theme/builder.uss`.
+>   `SheetView` is the sheet and stat block extracted from `CharacterSheetOverlay`, shared with the preview.
+>   Opened from the party panel's + button, and from its empty state while setup is pending.
+> - `AI/BuilderAdvisor.cs`: the step prompt (option ids, `SUGGEST:` line), suggestion matching; builder dividers in
+>   the onboarding chat read "Building Lyra · Class".
+> - Tests: EditMode `CharacterBuilderTests` (14): draft ↔ JSON, step parsing, dependency clearing and its note,
+>   dropped hidden-step choices, preview parsing, the unknown-kind card, dice, advisor parsing. PlayMode
+>   `BuilderTests`: a human fighter built by button presses (asking the scripted DM on the class step, a class
+>   change clearing skills), saved, and read back; photos `Library/VaultSnapshots/builder-*.png`.
+>   EditMode 178/178, PlayMode 12/12.
+> - **Changed from the plan / defaults:**
+>   - Open question 3 (draft persistence): **session-only**. The draft survives closing the dialog, not a restart.
+>   - The level stepper allows 1–3 (2.4); 4+ is disabled with a tooltip until phase 8.
+>   - 2.3's schema-driven stat block: the identity widget edits schema fields, but the parchment for companions is
+>     still `SheetView.StatBlock`; drawing it from the schema lands with phase 5, where companions are built.
+>   - After the first commit the draft keeps its id, so SAVE CHANGES updates the same character; BUILD ANOTHER
+>     starts fresh. The first PC built becomes the played PC when none is set.
+> - Known gaps: class options have no descriptions (the class YAMLs have none). The UI is built in C# like the
+>   rest of the client; the move to UXML templates + MVVM binding is Phase 2.5.
+
 **Goal:** the player builds a legal 5e level-1 PC end to end, with a live sheet preview,
 using widgets per step kind.
 
@@ -366,6 +395,96 @@ using widgets per step kind.
 - A PlayMode test builds a 5e level-1 fighter through the overlay and commits it, with a
   photo of each step (as `TableTests` does).
 - EditMode and PlayMode are green.
+
+## Phase 2.5: UI architecture pass ("tie the shoelaces before running")
+
+> **Status:** U.1–U.3 done (uncommitted). The user widened the scope: *all* UI moves to UXML + binding, and
+> re-engineering or splitting existing code to get there is welcome. So U.4–U.6 are no longer optional follow-ups.
+> - **U.1:** `Scripts/UI/Mvvm/` (`ViewModel` with `Set`/`SetList`/`Watch`, `ItemList.Sync`, `ITemplated`,
+>   `Templates`, `Display`), `Scripts/UI/Controls/` (`Repeater`, `ContentPresenter`, `ClassBinding`,
+>   `VariantBinding`, `VaultButton`, `VaultField`, `VaultBar`). The `Overlay` shell is `Shell/Modal.uxml` (from U.5),
+>   and a page with a `Template` fills its regions and binds to `CreateViewModel()`. `TooltipLayer` shows any
+>   element's bindable `tooltip`. `UnityClient/UI_CONVENTIONS.md`. Tests: PlayMode `BindingTests` (the spike: every
+>   binding kind in a real panel), EditMode `UiConventionTests` (inline styles with an allowlist and a ratchet for
+>   files not converted yet; every template loads).
+> - **U.2:** `Templates/Builder/*.uxml`, `BuilderViewModel` and one step view model per kind
+>   (`Scripts/UI/Builder/`). The old widgets, region signatures and focus deferral are gone; `CharacterBuilderOverlay`
+>   is 40 lines. EditMode `BuilderViewModelTests` (9) pin what is and isn't raised.
+> - **U.3:** `Templates/Sheet/*.uxml`, `SheetViewModel` / `StatBlockViewModel` / `SheetPageViewModel`
+>   (`Scripts/UI/Sheet/`); `SheetView.cs` is gone. The stat block draws any schema field it has no fixed line for
+>   (from `CharacterSheet.Stats`), so phase 5's companion fields need no client work; the builder passes its
+>   identity step's schema. EditMode `SheetViewModelTests` (5).
+> - **Lessons, now in UI_CONVENTIONS.md:** a two-way field takes state's value only when state changed underneath
+>   it (a refresh caused by one field otherwise pushes a stale value into a sibling mid-edit); bound values arrive
+>   on the panel's next update, so tests let a frame pass; a bar's first value doesn't animate.
+> - **U.4:** `Templates/Table/*.uxml` (party frames, codex tabs, the Quests / Scene / Pack / Journal pages),
+>   `PartyViewModel` and `CodexViewModel` with a page view model per tab (`Scripts/UI/Table/`); `PartyViews.cs` is
+>   two thin views. New controls: `ClickArea` (a clickable card), `VaultButton plain`. The journal's handoff draft,
+>   search and track fields live on page view models that last as long as the table, so switching tabs or a
+>   refresh never loses typing. EditMode `TableViewModelTests` (5).
+> - Snapshots compared before/after (`builder-*`, `n7-*-sheet-*`, `n7-*-codex-*`): same look.
+>   Green: EditMode 200/200, PlayMode 13/13.
+> - **Next:** U.5 (onboarding, campaigns, settings, setup, provider form: `SettingsOverlays.cs`,
+>   `WorldOverlays.cs`, `ProviderForm.cs`), then U.6 (story log, command bar, shell/top bar, toasts:
+>   `StoryLogView.cs`, `CommandBar.cs`, `VaultClientUI.cs`, `Layers.cs` toasts). Done when
+>   `UiConventionTests.Legacy` is empty and `Ui.cs`'s builders are used only by code nobody calls (then delete them).
+
+**Goal:** before phases 4 and 5 add more screens, the client's UI moves to UI Toolkit's intended split: UXML for
+structure (editable in UI Builder), USS for every visual decision, view models with runtime data binding for
+screens that show changing state, and C# only for behaviour. The builder goes first; it has the most state and
+the most hand-written redraw logic, which binding replaces.
+
+Today every page is built in C# through the `Ui` factory and redrawn wholesale on `VaultAppState.Changed`. Styling
+is already in USS (`Theme/*.uss`), but there are inline `style.*` lines across `Scripts/UI`, there is no UXML
+beyond `Shell.uxml`, and redraw-on-change needs workarounds (the builder's region signatures and "don't redraw
+under a focused text field").
+
+**Rules (written down in `UnityClient/UI_CONVENTIONS.md` as part of U.1):**
+- **UXML** for any layout that isn't generated from data: overlay shells, the sheet's sections, cards, rows.
+- **Custom controls** (`[UxmlElement] partial class OptionCard : VisualElement`) for reusable pieces with
+  behaviour: option card, ability row, step rail, check row, gear row, resource row.
+- **View models** (`INotifyBindablePropertyChanged`, `[CreateProperty]`) only where state changes while the
+  screen is open: builder, character sheet, party frames, codex, onboarding, settings. They read `VaultAppState`,
+  raise property changes, and call `VaultController` for commands. The controller stays the only writer of
+  state, as now.
+- **No view model for tiny widgets** (chip, count label, toast, tooltip): a template or the `Ui` factory is enough.
+- **No inline `style.*`** except runtime values with no class equivalent (bar fill width, tooltip position,
+  filter show/hide), each on an allowlist.
+- Element names stay as test hooks (`opt-<id>`, `builder-commit`, …), so PlayMode tests keep driving real buttons.
+
+**Items:**
+- **U.1 Groundwork:**
+  - `ViewModel` base (property-change plumbing and a `Bind(VaultAppState, StateArea)` helper that maps state areas
+    to property notifications).
+  - Template loading (`Resources/VaultUI/Templates/*.uxml`).
+  - `UI_CONVENTIONS.md`.
+  - An EditMode test that fails on inline `style.*` in `Scripts/UI` outside the allowlist.
+  - Spike first: confirm Unity 6.6 runtime binding with two-way `TextField` binding, list binding (`ListView` or
+    a repeated template) and binding a `CharacterSheet`, inside the PlayMode harness's render-to-texture panel.
+- **U.2 Builder:**
+  - `CharacterBuilder.uxml`, plus `OptionCard`, `AbilityRow` and `StepRail` controls and a `BuilderViewModel`.
+  - Remove the overlay's signatures and deferral (binding updates only what changed, so typing is never
+    interrupted).
+  - The widgets stay one per step kind.
+- **U.3 Sheet:**
+  - `SheetView` becomes `CharacterSheet.uxml` + `StatBlock.uxml` bound to a sheet view model; the sheet overlay
+    and the builder preview share it.
+  - This is where 2.3's schema-driven stat block lands too: the parchment draws from `StatBlockSchema` fields.
+- **U.4 Table:** party frames and codex, bound to the session/PC/companions areas.
+- **U.5 Dialogs:** onboarding, campaigns, settings and setup; the `Overlay` shell itself becomes `Modal.uxml`
+  (head / toolbar / scroll / dock / foot).
+- **U.6 Sweep:** remove the remaining inline styles, so the allowlist test passes for all of `Scripts/UI`.
+
+**Done when:**
+- Every screen above has a UXML layout that opens in UI Builder.
+- View models are unit-tested in EditMode without a panel (state change → property change → expected values).
+- The inline-style test passes.
+- PlayMode snapshots match the current look (the `p4`–`p6`, `n6`/`n7` and `builder-*` photos are compared side by
+  side before and after).
+- EditMode and PlayMode are green.
+
+**Out of scope:** a visual redesign. The look stays; only how it's built changes. U.4–U.6 can ship as separate
+commits, but U.1–U.3 must land before phase 4 starts.
 
 ## Phase 3: Release pipeline check (bundling)
 

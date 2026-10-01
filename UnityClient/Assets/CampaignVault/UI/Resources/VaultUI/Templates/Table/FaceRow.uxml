@@ -1,0 +1,15 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <ui:VisualElement class="cv-face">
+        <ui:Label class="cv-face__name">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Title" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-face__stance">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Stance" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Stance" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

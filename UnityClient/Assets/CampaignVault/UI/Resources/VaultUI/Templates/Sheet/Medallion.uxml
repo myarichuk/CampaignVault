@@ -1,0 +1,30 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- MedallionViewModel: STR / +3 / 16. -->
+    <ui:VisualElement class="cv-ability">
+        <Bindings>
+            <ui:DataBinding property="tooltip" data-source-path="Tooltip" binding-mode="ToTarget" />
+        </Bindings>
+        <ui:Label class="cv-ability__name">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Short" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-ability__mod">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Mod" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-ability__score">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Score" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Score" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-ability__full">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Full" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Full" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

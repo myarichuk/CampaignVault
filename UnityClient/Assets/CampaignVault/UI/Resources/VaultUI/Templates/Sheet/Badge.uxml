@@ -1,0 +1,20 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- BadgeViewModel: a condition or mood chip. -->
+    <ui:VisualElement class="cv-chip">
+        <Bindings>
+            <cv:VariantBinding property="var-tone" data-source-path="Tone" class-prefix="cv-chip--" />
+            <ui:DataBinding property="tooltip" data-source-path="Tooltip" binding-mode="ToTarget" />
+        </Bindings>
+        <ui:VisualElement picking-mode="Ignore" class="cv-icon">
+            <Bindings>
+                <cv:VariantBinding property="var-icon" data-source-path="Icon" class-prefix="cv-icon--" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Icon" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:VisualElement>
+        <ui:Label>
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Text" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,7 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <ui:VisualElement class="cv-pip">
+        <Bindings>
+            <cv:ClassBinding property="cls-full" data-source-path="Full" class-name="cv-pip--full" />
+        </Bindings>
+    </ui:VisualElement>
+</ui:UXML>

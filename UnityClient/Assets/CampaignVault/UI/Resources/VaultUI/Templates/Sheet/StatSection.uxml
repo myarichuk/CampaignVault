@@ -1,0 +1,15 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- StatSectionViewModel: "Traits", "Gear", "At the table", "Lately". -->
+    <ui:VisualElement>
+        <ui:Label class="cv-statblock__section">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Title" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <cv:Repeater item-template="Sheet/StatParagraph">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Paragraphs" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+    </ui:VisualElement>
+</ui:UXML>

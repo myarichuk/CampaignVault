@@ -52,6 +52,7 @@
 .cv-vital__caption { margin-top: 2px; -unity-text-align: middle-center; }
 .cv-vital__sub { font-size: 12px; color: var(--text-3); -unity-text-align: middle-center; }
 .cv-vital--hp { flex-grow: 1; width: auto; align-items: stretch; padding: 10px 16px 12px 16px; }
+.cv-vital__numbers { align-items: flex-end; }
 .cv-vital--hp .cv-vital__row { flex-direction: row; align-items: flex-end; justify-content: space-between; margin-bottom: 8px; }
 .cv-vital--hp .cv-vital__value { font-size: 34px; -unity-text-align: lower-left; }
 .cv-vital--hp .cv-vital__max { font-size: var(--fs-md); color: var(--text-3); margin-left: 6px; margin-bottom: 4px; }

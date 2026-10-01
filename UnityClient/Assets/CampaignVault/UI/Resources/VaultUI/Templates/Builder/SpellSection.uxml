@@ -1,0 +1,30 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- SpellSectionViewModel: cantrips, spells known or prepared. -->
+    <ui:VisualElement class="cv-builder__section">
+        <ui:VisualElement class="cv-row">
+            <ui:Label class="cv-h3 cv-grow">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Title" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label class="cv-caption cv-builder__count">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="CountText" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-complete" data-source-path="Complete" class-name="cv-text-leaf" />
+                    <cv:ClassBinding property="cls-over" data-source-path="Over" class-name="cv-text-blood" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+        <cv:Repeater item-template="Builder/OptionCard" class="cv-options">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Options" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+        <ui:Label class="cv-body cv-muted cv-italic">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Hint" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Hint" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

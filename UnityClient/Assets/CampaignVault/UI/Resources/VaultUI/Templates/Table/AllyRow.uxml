@@ -1,0 +1,48 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- AllyViewModel: a tracked companion; a failed lookup shows why. -->
+    <cv:ClickArea class="cv-ally">
+        <Bindings>
+            <ui:DataBinding property="command" data-source-path="Open" binding-mode="ToTarget" />
+            <ui:DataBinding property="tooltip" data-source-path="OpenHint" binding-mode="ToTarget" />
+        </Bindings>
+        <ui:Label class="cv-ally__name cv-text-blood">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Error" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Found" class-name="cv-hidden" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-ally__crest">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Monogram" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Found" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <ui:VisualElement class="cv-grow">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="Found" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <ui:Label class="cv-ally__name">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Title" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label class="cv-ally__sub">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Sub" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Sub" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+            <cv:VaultBar>
+                <Bindings>
+                    <ui:DataBinding property="fraction" data-source-path="HpFraction" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="HasHp" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </cv:VaultBar>
+        </ui:VisualElement>
+        <cv:VaultButton icon="close" tooltip="Stop tracking" class="cv-btn--icon cv-btn--ghost cv-btn--small">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="Untrack" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultButton>
+    </cv:ClickArea>
+</ui:UXML>

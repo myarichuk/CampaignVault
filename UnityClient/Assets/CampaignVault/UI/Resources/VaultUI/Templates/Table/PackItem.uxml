@@ -1,0 +1,21 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- PackItemViewModel: the item, USE and EQUIP/UNEQUIP (both go through the DM). -->
+    <ui:VisualElement class="cv-item">
+        <ui:Label class="cv-item__name">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Title" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <cv:VaultButton label="USE" class="cv-btn--small cv-btn--ghost">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="Use" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultButton>
+        <cv:VaultButton class="cv-btn--small cv-btn--ghost">
+            <Bindings>
+                <ui:DataBinding property="label" data-source-path="ToggleLabel" binding-mode="ToTarget" />
+                <ui:DataBinding property="command" data-source-path="Toggle" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultButton>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,38 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- The character sheet page (SheetPageViewModel): the sheet or stat block, and who plays it. -->
+    <ui:VisualElement name="body">
+        <ui:VisualElement class="cv-empty">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="Notice" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <ui:VisualElement picking-mode="Ignore" class="cv-icon">
+                <Bindings>
+                    <cv:VariantBinding property="var-icon" data-source-path="NoticeIcon" class-prefix="cv-icon--" />
+                </Bindings>
+            </ui:VisualElement>
+            <ui:Label class="cv-empty__text">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Notice" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+        <cv:ContentPresenter name="sheet-content">
+            <Bindings>
+                <ui:DataBinding property="content" data-source-path="Content" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:ContentPresenter>
+    </ui:VisualElement>
+    <ui:VisualElement name="foot">
+        <ui:Label name="sheet-yours" text="YOUR CHARACTER" class="cv-caption">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="IsYours" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <cv:VaultButton name="sheet-play-as" label="PLAY AS THIS CHARACTER" icon="character">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="PlayAs" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="CanPlayAs" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </cv:VaultButton>
+    </ui:VisualElement>
+</ui:UXML>

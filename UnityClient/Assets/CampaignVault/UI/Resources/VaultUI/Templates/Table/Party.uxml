@@ -1,0 +1,37 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- The party frames down the left edge (PartyViewModel), cloned into Shell.uxml's #Party. -->
+    <ui:Template name="Notice" src="../Common/Notice.uxml" />
+    <ui:VisualElement class="cv-party__head">
+        <ui:Label text="THE PARTY" class="cv-caption cv-grow" />
+        <cv:VaultButton name="PartyBuild" icon="add" tooltip="Build a character" class="cv-btn--icon cv-btn--ghost cv-btn--small">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="Build" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultButton>
+        <cv:VaultButton name="PartyRefresh" icon="refresh" tooltip="Refresh the table (HP, quests, time)" class="cv-btn--icon cv-btn--ghost cv-btn--small">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="RefreshTable" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultButton>
+    </ui:VisualElement>
+    <ui:VisualElement class="cv-party__list">
+        <ui:Instance template="Notice" />
+        <cv:VaultButton name="PartyChoose" label="CHOOSE ONE" icon="campaigns" class="cv-btn--small">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="Choose" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="ShowChoose" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </cv:VaultButton>
+        <cv:VaultButton name="PartyBuildFirst" label="BUILD A CHARACTER" icon="character" class="cv-btn--small">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="Build" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="ShowBuild" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </cv:VaultButton>
+        <cv:Repeater name="PartyMembers" item-template="Table/MemberFrame">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Members" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,11 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- MethodTabViewModel: standard array / point buy / roll. -->
+    <cv:VaultButton class="cv-tab">
+        <Bindings>
+            <ui:DataBinding property="name" data-source-path="Name" binding-mode="ToTarget" />
+            <ui:DataBinding property="label" data-source-path="Label" binding-mode="ToTarget" />
+            <ui:DataBinding property="command" data-source-path="Select" binding-mode="ToTarget" />
+            <cv:ClassBinding property="cls-active" data-source-path="Active" class-name="cv-tab--active" />
+        </Bindings>
+    </cv:VaultButton>
+</ui:UXML>

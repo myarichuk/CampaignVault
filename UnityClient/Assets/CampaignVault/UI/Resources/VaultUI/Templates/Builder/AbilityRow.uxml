@@ -1,0 +1,68 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- AbilityRowViewModel: the name, the pool (or point-buy steps), and the score with the race's bonus. -->
+    <ui:VisualElement class="cv-abilityrow">
+        <ui:Label class="cv-caption cv-abilityrow__name">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="NameText" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:VisualElement class="cv-abilityrow__controls">
+            <cv:VaultButton icon="chevron" class="cv-btn--icon cv-btn--small cv-abilityrow__minus">
+                <Bindings>
+                    <ui:DataBinding property="name" data-source-path="DownName" binding-mode="ToTarget" />
+                    <ui:DataBinding property="tooltip" data-source-path="DownHint" binding-mode="ToTarget" />
+                    <ui:DataBinding property="command" data-source-path="Down" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="IsPointBuy" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </cv:VaultButton>
+            <ui:Label class="cv-abilityrow__score">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="ScoreText" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="IsPointBuy" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+            <cv:VaultButton icon="add" class="cv-btn--icon cv-btn--small">
+                <Bindings>
+                    <ui:DataBinding property="name" data-source-path="UpName" binding-mode="ToTarget" />
+                    <ui:DataBinding property="tooltip" data-source-path="UpHint" binding-mode="ToTarget" />
+                    <ui:DataBinding property="command" data-source-path="Up" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="IsPointBuy" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </cv:VaultButton>
+            <ui:Label class="cv-caption cv-muted">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="CostText" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="CostText" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+            <cv:Repeater item-template="Builder/PoolValue" class="cv-abilityrow__pool">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Pool" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+            <ui:Label text="Roll to get six scores." class="cv-body cv-muted cv-italic">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="NoPool" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+        <ui:VisualElement class="cv-abilityrow__total">
+            <ui:VisualElement tooltip="From the race step." class="cv-chip cv-chip--leaf">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="BonusText" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:Label>
+                    <Bindings>
+                        <ui:DataBinding property="text" data-source-path="BonusText" binding-mode="ToTarget" />
+                    </Bindings>
+                </ui:Label>
+            </ui:VisualElement>
+            <ui:Label class="cv-abilityrow__final">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="FinalText" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="FinalText" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

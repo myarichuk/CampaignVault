@@ -1,0 +1,22 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- QuestViewModel: a seal, the title, what's left and when. -->
+    <ui:VisualElement class="cv-ledger-entry">
+        <Bindings>
+            <cv:ClassBinding property="cls-overdue" data-source-path="Overdue" class-name="cv-ledger-entry--overdue" />
+        </Bindings>
+        <ui:VisualElement class="cv-ledger-entry__seal" />
+        <ui:VisualElement class="cv-grow">
+            <ui:Label class="cv-ledger-entry__title">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Title" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label class="cv-ledger-entry__note">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Note" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Note" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

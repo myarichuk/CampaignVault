@@ -4,5 +4,6 @@
 @import url("icons.uss");
 @import url("table.uss");
 @import url("sheet.uss");
+@import url("builder.uss");
 
 VisualElement {}

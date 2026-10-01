@@ -101,9 +101,10 @@ namespace CampaignVault.UnityClient.AI
             {
                 if (dropped != null && dropped.Contains(i)) { continue; }
                 var m = chat[i];
-                messages.Add(m.Key == MarkerRole
-                    ? new KeyValuePair<string, string>("user", "(Setup note: we've moved on to the next question: \"" + m.Value + "\")")
-                    : m);
+                if (m.Key != MarkerRole) { messages.Add(m); continue; }
+                messages.Add(new KeyValuePair<string, string>("user", BuilderAdvisor.IsMarker(m.Value)
+                    ? "(Setup note: we're now on the character builder: " + m.Value + ")"
+                    : "(Setup note: we've moved on to the next question: \"" + m.Value + "\")"));
             }
             return messages;
         }

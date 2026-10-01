@@ -1,0 +1,14 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- SpellsStepViewModel. -->
+    <ui:Template name="Notice" src="OptionsNotice.uxml" />
+    <ui:Template name="Filter" src="OptionsFilter.uxml" />
+    <ui:VisualElement class="cv-builder__widget">
+        <ui:Instance template="Notice" />
+        <ui:Instance template="Filter" />
+        <cv:Repeater item-template="Builder/SpellSection">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Sections" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+    </ui:VisualElement>
+</ui:UXML>

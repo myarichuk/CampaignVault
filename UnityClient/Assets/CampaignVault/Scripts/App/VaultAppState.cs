@@ -29,6 +29,7 @@ namespace CampaignVault.UnityClient.App
         Providers = 1 << 12,
         Busy = 1 << 13,
         Plugins = 1 << 14,
+        Builder = 1 << 15,
         All = ~0,
     }
 
@@ -125,6 +126,152 @@ namespace CampaignVault.UnityClient.App
         }
     }
 
+    /// <summary>What a step offers for the current draft (character_builder action=options).</summary>
+    public sealed class StepOptions
+    {
+        public readonly List<BuilderOption> Options = new List<BuilderOption>();
+        /// <summary>Picks the step wants, or -1 when the recipe fixes none.</summary>
+        public int Count = -1;
+        /// <summary>A spells step's picks per group (cantrips, known, prepared).</summary>
+        public readonly Dictionary<string, int> GroupCounts = new Dictionary<string, int>();
+        public string Error = string.Empty;
+
+        public int GroupCount(string group)
+        {
+            int n;
+            return GroupCounts.TryGetValue(group, out n) ? n : 0;
+        }
+    }
+
+    /// <summary>The ability-score step's working state: the method, its pool, and which ability got which value.</summary>
+    public sealed class AbilityWork
+    {
+        public static readonly string[] Abilities = { "Strength", "Dexterity", "Constitution", "Intelligence", "Wisdom", "Charisma" };
+
+        /// <summary>standardArray, pointBuy or roll.</summary>
+        public string Method = string.Empty;
+        /// <summary>The values to assign (the standard array, or the rolls).</summary>
+        public readonly List<int> Pool = new List<int>();
+        /// <summary>Ability → index into Pool (array and roll).</summary>
+        public readonly Dictionary<string, int> Assigned = new Dictionary<string, int>();
+        /// <summary>Ability → score (point buy).</summary>
+        public readonly Dictionary<string, int> Bought = new Dictionary<string, int>();
+        /// <summary>Every roll made, newest last; it stays on screen.</summary>
+        public readonly List<string> RollLog = new List<string>();
+
+        /// <summary>Ability → base score, for whatever the method has filled in so far.</summary>
+        public Dictionary<string, int> Scores()
+        {
+            var scores = new Dictionary<string, int>();
+            foreach (string ability in Abilities)
+            {
+                int index;
+                int bought;
+                if (Method == "pointBuy" && Bought.TryGetValue(ability, out bought)) { scores[ability] = bought; }
+                else if (Method != "pointBuy" && Assigned.TryGetValue(ability, out index) && index >= 0 && index < Pool.Count) { scores[ability] = Pool[index]; }
+            }
+            return scores;
+        }
+    }
+
+    /// <summary>
+    /// The character builder, kept in state so the draft survives redraws and closing the dialog. Session-only: a
+    /// draft that was never committed is gone when the app quits (open question 3's default).
+    /// </summary>
+    public sealed class BuilderState
+    {
+        /// <summary>The campaign the draft belongs to; a different campaign starts a new draft.</summary>
+        public string Slug = string.Empty;
+        public string System = string.Empty;
+        public CharacterDraft Draft = new CharacterDraft();
+        /// <summary>The recipe's steps for this draft (a step whose condition fails isn't listed).</summary>
+        public readonly List<BuilderStep> Steps = new List<BuilderStep>();
+        public readonly List<StatBlockSchema> StatBlocks = new List<StatBlockSchema>();
+        public string Current = string.Empty;
+        /// <summary>Step key → its options, for the draft as it was when they loaded.</summary>
+        public readonly Dictionary<string, StepOptions> Options = new Dictionary<string, StepOptions>(StringComparer.OrdinalIgnoreCase);
+        public readonly AbilityWork Abilities = new AbilityWork();
+        /// <summary>Step key → the option filter as typed.</summary>
+        public readonly Dictionary<string, string> Filters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>The derived sheet from the last preview; null before the first.</summary>
+        public CharacterSheet Preview;
+        public readonly List<BuilderIssue> Errors = new List<BuilderIssue>();
+        public readonly List<BuilderIssue> Warnings = new List<BuilderIssue>();
+        public readonly List<string> Notes = new List<string>();
+        /// <summary>The preview matches the draft (no change since it was asked for).</summary>
+        public bool PreviewCurrent;
+        /// <summary>"Changing class cleared: skills, spells." Shown until the next change.</summary>
+        public string ClearedNote = string.Empty;
+        public string Error = string.Empty;
+        /// <summary>Set once committed; committing again updates this character.</summary>
+        public string CommittedId = string.Empty;
+        /// <summary>Bumped on every draft change, so a slow reply about an older draft is dropped.</summary>
+        public int Revision;
+
+        // Asking the DM about the current step (the onboarding conversation carries it).
+        public string AskDraft = string.Empty;
+        public bool AskBusy;
+        public string AskError = string.Empty;
+        public string AskStep = string.Empty;
+        public string AskReply = string.Empty;
+        /// <summary>Option ids the DM suggested that the step offers.</summary>
+        public readonly List<string> Suggested = new List<string>();
+        /// <summary>Ids the DM suggested that aren't options: shown, never dropped silently.</summary>
+        public readonly List<string> NotOptions = new List<string>();
+
+        public BuilderStep Step(string key)
+        {
+            int i = BuilderDependencies.IndexOf(Steps, key);
+            return i >= 0 ? Steps[i] : null;
+        }
+
+        public BuilderStep CurrentStep { get { return Step(Current); } }
+
+        public List<BuilderIssue> IssuesFor(string key, bool warnings)
+        {
+            var list = new List<BuilderIssue>();
+            foreach (var issue in warnings ? Warnings : Errors)
+            {
+                if (string.Equals(issue.Step, key, StringComparison.OrdinalIgnoreCase)) { list.Add(issue); }
+            }
+            return list;
+        }
+
+        public void Reset(string slug, string system, string kind)
+        {
+            Slug = slug ?? string.Empty;
+            System = system ?? string.Empty;
+            Draft = new CharacterDraft { Kind = kind ?? "pc" };
+            Steps.Clear();
+            StatBlocks.Clear();
+            Current = string.Empty;
+            Options.Clear();
+            Filters.Clear();
+            Abilities.Method = string.Empty;
+            Abilities.Pool.Clear();
+            Abilities.Assigned.Clear();
+            Abilities.Bought.Clear();
+            Abilities.RollLog.Clear();
+            Preview = null;
+            Errors.Clear();
+            Warnings.Clear();
+            Notes.Clear();
+            PreviewCurrent = false;
+            ClearedNote = string.Empty;
+            Error = string.Empty;
+            CommittedId = string.Empty;
+            Revision++;
+            AskDraft = string.Empty;
+            AskBusy = false;
+            AskError = string.Empty;
+            AskStep = string.Empty;
+            AskReply = string.Empty;
+            Suggested.Clear();
+            NotOptions.Clear();
+        }
+    }
+
     /// <summary>The fields of an end-of-session handoff, as typed.</summary>
     public sealed class HandoffDraft
     {
@@ -202,6 +349,7 @@ namespace CampaignVault.UnityClient.App
         public readonly List<ToolToggle> Tools = new List<ToolToggle>();
         public readonly Dictionary<string, string> ToolsErrors = new Dictionary<string, string>();
         public readonly OnboardingState Onboarding = new OnboardingState();
+        public readonly BuilderState Builder = new BuilderState();
         /// <summary>The connected server's GET /plugins, as of the last load.</summary>
         public readonly List<PluginEntry> Plugins = new List<PluginEntry>();
         public string PluginsError = string.Empty;

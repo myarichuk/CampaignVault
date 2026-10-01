@@ -1,0 +1,9 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- Past twelve options: filters the cards in place (OptionsStepViewModel.Filter). -->
+    <cv:VaultField placeholder="filter" class="cv-builder__filter">
+        <Bindings>
+            <ui:DataBinding property="value" data-source-path="Filter" binding-mode="TwoWay" />
+            <cv:ClassBinding property="cls-hidden" data-source-path="ShowFilter" class-name="cv-hidden" invert="true" />
+        </Bindings>
+    </cv:VaultField>
+</ui:UXML>

@@ -1,0 +1,21 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <ui:VisualElement class="cv-quest">
+        <ui:Label class="cv-quest__title">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Title" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-mono cv-muted">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Id" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Id" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-body">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Detail" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Detail" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

@@ -99,6 +99,8 @@ namespace CampaignVault.UnityClient.Model
         public readonly List<Gear> Carried = new List<Gear>();
         public readonly List<Recent> RecentEvents = new List<Recent>();
         public readonly List<Gauge> Needs = new List<Gauge>();
+        /// <summary>The raw systemStats object, for stat-block fields the sheet has no slot for (a schema's extras).</summary>
+        public JsonValue Stats = JsonValue.Null;
 
         public bool HasStats { get { return System.Length > 0; } }
         public bool IsPf2e { get { return System == "pf2e"; } }
@@ -158,7 +160,7 @@ namespace CampaignVault.UnityClient.Model
             };
             string classLevel = character.GetString("classLevel", string.Empty);
             var stats = character.Get("systemStats");
-            if (stats.Kind == JsonKind.Object) { sheet.ReadStats(stats, classLevel); }
+            if (stats.Kind == JsonKind.Object) { sheet.Stats = stats; sheet.ReadStats(stats, classLevel); }
             else { sheet.ClassLine = classLevel; }
 
             foreach (var c in character.GetArray("conditions")) { sheet.AddCondition(c.Kind == JsonKind.String ? c.StringValue : c.GetString("name", string.Empty)); }

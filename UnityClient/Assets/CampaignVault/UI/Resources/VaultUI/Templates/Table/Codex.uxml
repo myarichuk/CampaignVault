@@ -1,0 +1,15 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- The codex drawer (CodexViewModel), cloned straight into Shell.uxml's #Codex: tabs, then the open page. -->
+    <cv:Repeater name="codex-tabs" item-template="Table/CodexTab" class="cv-tabs">
+        <Bindings>
+            <ui:DataBinding property="itemsSource" data-source-path="Tabs" binding-mode="ToTarget" />
+        </Bindings>
+    </cv:Repeater>
+    <ui:ScrollView name="codex-body" horizontal-scroller-visibility="Hidden" class="cv-codex__body">
+        <cv:ContentPresenter name="codex-page">
+            <Bindings>
+                <ui:DataBinding property="content" data-source-path="Page" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:ContentPresenter>
+    </ui:ScrollView>
+</ui:UXML>

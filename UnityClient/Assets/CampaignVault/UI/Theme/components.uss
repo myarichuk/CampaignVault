@@ -71,6 +71,8 @@
 .cv-row { flex-direction: row; align-items: center; }
 .cv-col { flex-direction: column; }
 .cv-grow { flex-grow: 1; flex-shrink: 1; }
+/* Bound visibility (ClassBinding invert="true" on "has something to show"): never style.display from code. */
+.cv-hidden { display: none; }
 .cv-gap-sm > * { margin-right: var(--sp-2); }
 .cv-spacer { flex-grow: 1; }
 
@@ -267,6 +269,7 @@
     background-color: var(--leaf);
     transition-property: width, background-color; transition-duration: 260ms; transition-timing-function: ease-out-cubic;
 }
+.cv-bar--settling .cv-bar__ghost, .cv-bar--settling .cv-bar__fill { transition-duration: 0s; transition-delay: 0s; }
 .cv-bar--mid .cv-bar__fill { background-color: var(--gold); }
 .cv-bar--low .cv-bar__fill { background-color: var(--blood); }
 .cv-bar__label { position: absolute; left: 0; right: 0; top: 0; bottom: 0; -unity-text-align: middle-center; -unity-font-definition: url("../Fonts/SDF/JetBrainsMono-Bold.asset"); font-size: 10px; color: var(--text-1); }
@@ -295,7 +298,7 @@
 .cv-modal__head { flex-direction: row; align-items: center; margin-bottom: var(--sp-4); flex-shrink: 0; }
 /* A long character name wraps instead of pushing the close button out. */
 .cv-modal__title { flex-grow: 1; flex-shrink: 1; white-space: normal; }
-.cv-modal__scroll { flex-shrink: 1; min-height: 0; }
+.cv-modal__scroll { flex-grow: 1; flex-shrink: 1; min-height: 0; }
 .cv-modal__dock { flex-shrink: 0; }
 .cv-modal__foot { flex-direction: row; justify-content: flex-end; margin-top: var(--sp-4); flex-shrink: 0; }
 .cv-modal__foot > .cv-btn { margin-left: var(--sp-2); }

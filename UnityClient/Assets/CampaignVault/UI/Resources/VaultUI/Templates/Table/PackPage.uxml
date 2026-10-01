@@ -1,0 +1,17 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- PackPage: equipped, then carried. -->
+    <ui:Template name="Notice" src="../Common/Notice.uxml" />
+    <ui:VisualElement>
+        <ui:Instance template="Notice" />
+        <cv:Repeater>
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Rows" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+        <ui:Label text="Use and equip go through the Dungeon Master, so they're committed and narrated." class="cv-body cv-muted cv-pack__note">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="Rows" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>
