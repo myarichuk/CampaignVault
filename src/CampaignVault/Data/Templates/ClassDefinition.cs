@@ -12,6 +12,9 @@ public record ClassDefinition : RulesetTemplate
     public List<string> SavingThrows { get; init; } = [];
     public List<string> Aliases { get; init; } = [];
 
+    /// <summary>The level-1 "choose N skills from this list" pick (the character builder's skills step). <c>from: [any]</c> means every skill.</summary>
+    public SkillChoiceDefinition? SkillChoices { get; init; }
+
     public static ClassDefinition Merge(ClassDefinition child, ClassDefinition parent) =>
         child with
         {
@@ -22,6 +25,7 @@ public record ClassDefinition : RulesetTemplate
             Description = child.Description ?? parent.Description,
             Pools = child.Pools.Count > 0 ? child.Pools : parent.Pools,
             SavingThrows = child.SavingThrows.Count > 0 ? child.SavingThrows : parent.SavingThrows,
+            SkillChoices = child.SkillChoices ?? parent.SkillChoices,
             // Aliases: union so subclasses inherit parent aliases automatically
             Aliases =
             [
@@ -31,3 +35,10 @@ public record ClassDefinition : RulesetTemplate
         };
 }
 
+
+/// <summary>A class's skill pick at level 1: <see cref="Count"/> skills from <see cref="From"/>.</summary>
+public record SkillChoiceDefinition
+{
+    public int Count { get; init; }
+    public List<string> From { get; init; } = [];
+}

@@ -5,8 +5,10 @@ className: Druid
 hitDie: d8
 aliases: [druid]
 savingThrows: [Intelligence, Wisdom]
+preparedSpells: { ability: Wisdom }
 levels:
   1:
+    cantripsKnown: 2
     proficiencyBonus: 2
     features:
       - name: "Druidic"
@@ -40,6 +42,7 @@ levels:
     proficiencyBonus: 2
     spellSlots: {1: 4, 2: 2}
   4:
+    cantripsKnown: 3
     proficiencyBonus: 2
     features:
       - name: "Ability Score Improvement"
@@ -80,6 +83,7 @@ levels:
     proficiencyBonus: 4
     spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 1}
   10:
+    cantripsKnown: 4
     proficiencyBonus: 4
     features:
       - name: "Timeless Body"

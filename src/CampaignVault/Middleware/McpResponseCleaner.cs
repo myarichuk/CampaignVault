@@ -69,6 +69,7 @@ internal static class McpResponseCleaner
         filters.AddListToolsFilter(next => async (request, cancellationToken) =>
         {
             var result = await next(request, cancellationToken);
+            result.Tools = CampaignVault.Schema.ToolProfiles.Listed(result.Tools);
             if (!IncludeStructuredContent)
             {
                 result.Tools = result.Tools.Select(WithoutOutputSchema).ToList();

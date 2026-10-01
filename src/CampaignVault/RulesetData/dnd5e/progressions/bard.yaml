@@ -8,6 +8,8 @@ keyAbility: [Charisma]
 savingThrows: [Dexterity, Charisma]
 levels:
   1:
+    cantripsKnown: 2
+    spellsKnown: 4
     proficiencyBonus: 2
     features:
       - name: "Spellcasting"
@@ -16,6 +18,7 @@ levels:
       - name: "Bardic Inspiration (d6)"
         description: "Bonus action: creature gains d6 to add to one roll in 10 min. Cha mod uses per long rest."
   2:
+    spellsKnown: 5
     proficiencyBonus: 2
     features:
       - name: "Jack of All Trades"
@@ -24,6 +27,7 @@ levels:
         description: "Allies regain extra 1d6 HP during short rest."
     spellSlots: {1: 3}
   3:
+    spellsKnown: 6
     proficiencyBonus: 2
     features:
       - name: "Bard College"
@@ -44,6 +48,8 @@ levels:
                 description: "Mantle of Inspiration, Enthralling Performance, Mantle of Majesty, Unbreakable Majesty."
     spellSlots: {1: 4, 2: 2}
   4:
+    cantripsKnown: 3
+    spellsKnown: 7
     proficiencyBonus: 2
     features:
       - name: "Ability Score Improvement"
@@ -55,6 +61,7 @@ levels:
         description: "Double proficiency for two chosen skills."
     spellSlots: {1: 4, 2: 3}
   5:
+    spellsKnown: 8
     proficiencyBonus: 3
     features:
       - name: "Bardic Inspiration (d8)"
@@ -63,18 +70,21 @@ levels:
         description: "Regain all uses on short or long rest."
     spellSlots: {1: 4, 2: 3, 3: 2}
   6:
+    spellsKnown: 9
     proficiencyBonus: 3
     features:
       - name: "Countercharm"
         description: "Advantage on saves vs frightened/charmed. Allies within 30 ft also benefit."
     spellSlots: {1: 4, 2: 3, 3: 3}
   7:
+    spellsKnown: 10
     proficiencyBonus: 3
     features:
       - name: "College Feature"
         description: "Gain a feature from your bard college."
     spellSlots: {1: 4, 2: 3, 3: 3}
   8:
+    spellsKnown: 11
     proficiencyBonus: 3
     features:
       - name: "Ability Score Improvement"
@@ -86,9 +96,12 @@ levels:
         description: "Double proficiency for two more skills."
     spellSlots: {1: 4, 2: 3, 3: 3}
   9:
+    spellsKnown: 12
     proficiencyBonus: 4
     spellSlots: {1: 4, 2: 3, 3: 3, 4: 1}
   10:
+    cantripsKnown: 4
+    spellsKnown: 14
     proficiencyBonus: 4
     features:
       - name: "Bardic Inspiration (d10)"
@@ -99,6 +112,7 @@ levels:
         description: "Learn two spells from any class (count as bard spells)."
     spellSlots: {1: 4, 2: 3, 3: 3, 4: 2}
   11:
+    spellsKnown: 15
     proficiencyBonus: 4
     spellSlots: {1: 4, 2: 3, 3: 3, 4: 3}
   12:
@@ -111,9 +125,11 @@ levels:
             required: true
     spellSlots: {1: 4, 2: 3, 3: 3, 4: 3}
   13:
+    spellsKnown: 16
     proficiencyBonus: 5
     spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 1}
   14:
+    spellsKnown: 18
     proficiencyBonus: 5
     features:
       - name: "College Feature"
@@ -122,6 +138,7 @@ levels:
         description: "Learn two more spells from any class."
     spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 1}
   15:
+    spellsKnown: 19
     proficiencyBonus: 5
     spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2}
   16:
@@ -134,9 +151,11 @@ levels:
             required: true
     spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2}
   17:
+    spellsKnown: 20
     proficiencyBonus: 6
     spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1}
   18:
+    spellsKnown: 22
     proficiencyBonus: 6
     features:
       - name: "Magical Secrets"

@@ -20,6 +20,19 @@ public enum ToolProfile
 /// </summary>
 internal static class ToolProfiles
 {
+    /// <summary>
+    /// Tools the game client calls itself and the model never needs (the character builder: the model only drafts
+    /// builder JSON). Kept out of every tools/list so they cost the model nothing; still callable on "/" and "/build".
+    /// </summary>
+    public static readonly IReadOnlySet<string> ClientOnlyTools = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "character_builder",
+    };
+
+    /// <summary>The tools a tools/list shows: everything served except <see cref="ClientOnlyTools"/>.</summary>
+    public static List<Tool> Listed(IEnumerable<Tool> tools) =>
+        [.. tools.Where(t => !ClientOnlyTools.Contains(t.Name))];
+
     public static readonly IReadOnlySet<string> PlayTools = new HashSet<string>(StringComparer.Ordinal)
     {
         "take_turn", "get_entity", "search_world", "recall_history", "combat", "advance_world",
@@ -28,12 +41,14 @@ internal static class ToolProfiles
         "world_build",
     };
 
-    public static readonly IReadOnlySet<string> BuildTools = new HashSet<string>(StringComparer.Ordinal)
-    {
-        "create_campaign", "list_campaigns", "delete_campaign", "get_config",
-        "start_campaign_onboarding", "submit_onboarding_answer", "finalize_campaign_onboarding",
-        "world_build", "get_entity", "search_world", "lookup",
-    };
+    public static readonly IReadOnlySet<string> BuildTools = new HashSet<string>(
+        [
+            "create_campaign", "list_campaigns", "delete_campaign", "get_config",
+            "start_campaign_onboarding", "submit_onboarding_answer", "finalize_campaign_onboarding",
+            "world_build", "get_entity", "search_world", "lookup",
+            .. ClientOnlyTools,
+        ],
+        StringComparer.Ordinal);
 
     /// <summary>Every route MapMcp serves: "/" (all tools), "/play", "/build".</summary>
     public static readonly string[] Routes = ["/", "/play", "/build"];

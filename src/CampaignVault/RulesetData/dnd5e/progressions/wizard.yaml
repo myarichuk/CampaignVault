@@ -6,8 +6,11 @@ hitDie: d6
 aliases: [wizard]
 keyAbility: [Intelligence]
 savingThrows: [Intelligence, Wisdom]
+preparedSpells: { ability: Intelligence }
 levels:
   1:
+    cantripsKnown: 3
+    spellsKnown: 6
     proficiencyBonus: 2
     features:
       - name: "Spellcasting"
@@ -15,6 +18,7 @@ levels:
       - name: "Arcane Recovery"
         description: "Once per day on short rest, recover spell slots up to half your wizard level (rounded up)."
   2:
+    spellsKnown: 8
     proficiencyBonus: 2
     features:
       - name: "Arcane Tradition"
@@ -49,8 +53,11 @@ levels:
                 label: "School of Transmutation"
                 description: "Changing matter and energy."
   3:
+    spellsKnown: 10
     proficiencyBonus: 2
   4:
+    cantripsKnown: 4
+    spellsKnown: 12
     proficiencyBonus: 2
     features:
       - name: "Ability Score Improvement"
@@ -61,15 +68,19 @@ levels:
             required: true
             abilityOptions: [Strength, Dexterity, Constitution, Intelligence, Wisdom, Charisma]
   5:
+    spellsKnown: 14
     proficiencyBonus: 3
   6:
+    spellsKnown: 16
     proficiencyBonus: 3
     features:
       - name: "Arcane Tradition Feature"
         description: "Feature depends on your chosen school at level 2."
   7:
+    spellsKnown: 18
     proficiencyBonus: 3
   8:
+    spellsKnown: 20
     proficiencyBonus: 3
     features:
       - name: "Ability Score Improvement"
@@ -80,8 +91,11 @@ levels:
             required: true
             abilityOptions: [Strength, Dexterity, Constitution, Intelligence, Wisdom, Charisma]
   9:
+    spellsKnown: 22
     proficiencyBonus: 4
   10:
+    cantripsKnown: 5
+    spellsKnown: 24
     proficiencyBonus: 4
     features:
       - name: "Arcane Tradition Feature"
@@ -94,8 +108,10 @@ levels:
             required: true
             abilityOptions: [Strength, Dexterity, Constitution, Intelligence, Wisdom, Charisma]
   11:
+    spellsKnown: 26
     proficiencyBonus: 4
   12:
+    spellsKnown: 28
     proficiencyBonus: 4
     features:
       - name: "Ability Score Improvement"
@@ -106,8 +122,10 @@ levels:
             required: true
             abilityOptions: [Strength, Dexterity, Constitution, Intelligence, Wisdom, Charisma]
   13:
+    spellsKnown: 30
     proficiencyBonus: 5
   14:
+    spellsKnown: 32
     proficiencyBonus: 5
     features:
       - name: "Arcane Tradition Feature"
@@ -120,8 +138,10 @@ levels:
             required: true
             abilityOptions: [Strength, Dexterity, Constitution, Intelligence, Wisdom, Charisma]
   15:
+    spellsKnown: 34
     proficiencyBonus: 5
   16:
+    spellsKnown: 36
     proficiencyBonus: 5
     features:
       - name: "Ability Score Improvement"
@@ -132,13 +152,16 @@ levels:
             required: true
             abilityOptions: [Strength, Dexterity, Constitution, Intelligence, Wisdom, Charisma]
   17:
+    spellsKnown: 38
     proficiencyBonus: 6
   18:
+    spellsKnown: 40
     proficiencyBonus: 6
     features:
       - name: "Spell Mastery"
         description: "Choose a 1st- and 2nd-level spell to cast at will, without expending a slot."
   19:
+    spellsKnown: 42
     proficiencyBonus: 6
     features:
       - name: "Ability Score Improvement"
@@ -149,6 +172,7 @@ levels:
             required: true
             abilityOptions: [Strength, Dexterity, Constitution, Intelligence, Wisdom, Charisma]
   20:
+    spellsKnown: 44
     proficiencyBonus: 6
     features:
       - name: "Signature Spells"

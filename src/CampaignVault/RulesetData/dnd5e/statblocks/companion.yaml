@@ -1,0 +1,13 @@
+# The companion stat block the builder edits. Each key is a 5e system-stats field; the client draws the editor from this.
+name: companion
+system: dnd5e
+fields:
+  - { key: statBlockHp, label: Hit points, type: int, min: 1, max: 300, group: defense }
+  - { key: armorClass, label: Armor class, type: int, min: 5, max: 25, group: defense }
+  - { key: movement, label: Speed (ft), type: int, min: 0, max: 120, group: defense }
+  - { key: strength, label: STR, type: int, min: 1, max: 30, group: abilities }
+  - { key: dexterity, label: DEX, type: int, min: 1, max: 30, group: abilities }
+  - { key: constitution, label: CON, type: int, min: 1, max: 30, group: abilities }
+  - { key: intelligence, label: INT, type: int, min: 1, max: 30, group: abilities }
+  - { key: wisdom, label: WIS, type: int, min: 1, max: 30, group: abilities }
+  - { key: charisma, label: CHA, type: int, min: 1, max: 30, group: abilities }

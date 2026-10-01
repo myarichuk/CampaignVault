@@ -12,8 +12,7 @@ namespace CampaignVault.Services;
 /// </summary>
 public class ResourcePoolProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<string, List<RulesetTemplateLoader<ResourcePoolTemplate>>> _loaders =
-        new(StringComparer.OrdinalIgnoreCase);
+    private readonly RulesetContentLayers<ResourcePoolTemplate> _layers;
     private readonly Dictionary<string, IReadOnlyDictionary<string, ResourcePoolTemplate>?> _cache =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
@@ -22,37 +21,7 @@ public class ResourcePoolProvider : IRulesetYamlProvider
     public ResourcePoolProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
         _logger = logger;
-        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["pools"], PluginDataRoots.Additional);
-        foreach (var (systemSlug, subfolder, diskRoot) in discovered)
-        {
-            Register(systemSlug, diskRoot, systemSlug, subfolder, embeddedAssembly, logger);
-        }
-    }
-
-    private void Register(
-        string system,
-        string rulesetDataDirectory,
-        string systemSlug,
-        string subfolder,
-        Assembly embeddedAssembly,
-        ILogger? logger)
-    {
-        if (!_loaders.TryGetValue(system, out var list))
-        {
-            list = [];
-            _loaders[system] = list;
-        }
-
-        // First loader pulls embedded host defaults; later plugin roots are disk-only overlays.
-        var embeddedPrefix = list.Count == 0
-            ? $"CampaignVault.RulesetData.{systemSlug}.{subfolder}"
-            : $"CampaignVault.RulesetData.__plugin__.{systemSlug}.{subfolder}";
-
-        list.Add(new RulesetTemplateLoader<ResourcePoolTemplate>(
-            Path.Combine(rulesetDataDirectory, systemSlug, subfolder),
-            embeddedAssembly,
-            embeddedPrefix,
-            logger));
+        _layers = new RulesetContentLayers<ResourcePoolTemplate>(rulesetDataDirectory, embeddedAssembly, ["pools"], ResourcePoolTemplate.Merge, logger);
     }
 
     public IReadOnlyDictionary<string, ResourcePoolTemplate> GetPoolsForSystem(string system)
@@ -62,20 +31,7 @@ public class ResourcePoolProvider : IRulesetYamlProvider
             if (_cache.TryGetValue(system, out var cached) && cached != null)
                 return cached;
 
-            if (!_loaders.TryGetValue(system, out var loaders) || loaders.Count == 0)
-                return new Dictionary<string, ResourcePoolTemplate>();
-
-            var raw = new Dictionary<string, ResourcePoolTemplate>(StringComparer.OrdinalIgnoreCase);
-            foreach (var loader in loaders)
-            {
-                foreach (var (name, def) in loader.Load())
-                    raw[name] = def;
-            }
-            var resolver = new RulesetTemplateResolver<ResourcePoolTemplate>(
-                name => raw.GetValueOrDefault(name),
-                ResourcePoolTemplate.Merge);
-
-            var resolved = resolver.ResolveAll(raw, _logger);
+            var resolved = _layers.Resolve(system);
 
             _cache[system] = resolved;
             return resolved;

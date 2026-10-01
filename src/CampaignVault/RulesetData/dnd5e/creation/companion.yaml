@@ -1,0 +1,5 @@
+# Character builder recipe: a D&D 5e party companion, edited as a simplified stat block (statblocks/companion.yaml).
+name: companion
+system: dnd5e
+steps:
+  - { key: statblock, kind: identity, schema: companion, prompt: Stat block }

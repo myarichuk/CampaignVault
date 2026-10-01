@@ -4,8 +4,10 @@ system: dnd5e
 className: Cleric
 hitDie: d8
 savingThrows: [Wisdom, Charisma]
+preparedSpells: { ability: Wisdom }
 levels:
   1:
+    cantripsKnown: 3
     proficiencyBonus: 2
     features:
       - name: "Spellcasting"
@@ -49,6 +51,7 @@ levels:
     proficiencyBonus: 2
     spellSlots: {1: 4, 2: 2}
   4:
+    cantripsKnown: 4
     proficiencyBonus: 2
     features:
       - name: "Ability Score Improvement"
@@ -90,6 +93,7 @@ levels:
     proficiencyBonus: 4
     spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 1}
   10:
+    cantripsKnown: 5
     proficiencyBonus: 4
     features:
       - name: "Divine Intervention"

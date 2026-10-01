@@ -12,8 +12,7 @@ namespace CampaignVault.Services;
 /// </summary>
 public class ClassDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<string, RulesetTemplateLoader<ClassDefinition>> _loaders =
-        new(StringComparer.OrdinalIgnoreCase);
+    private readonly RulesetContentLayers<ClassDefinition> _layers;
     private readonly Dictionary<string, IReadOnlyDictionary<string, ClassDefinition>?> _cache =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly Lock _lock = new();
@@ -22,26 +21,7 @@ public class ClassDefinitionProvider : IRulesetYamlProvider
     public ClassDefinitionProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
         _logger = logger;
-        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["classes"], PluginDataRoots.Additional);
-        foreach (var (systemSlug, subfolder, diskRoot) in discovered)
-        {
-            Register(systemSlug, diskRoot, systemSlug, subfolder, embeddedAssembly, logger);
-        }
-    }
-
-    private void Register(
-        string system,
-        string rulesetDataDirectory,
-        string systemSlug,
-        string subfolder,
-        Assembly embeddedAssembly,
-        ILogger? logger)
-    {
-        _loaders[system] = new RulesetTemplateLoader<ClassDefinition>(
-            Path.Combine(rulesetDataDirectory, systemSlug, subfolder),
-            embeddedAssembly,
-            $"CampaignVault.RulesetData.{systemSlug}.{subfolder}",
-            logger);
+        _layers = new RulesetContentLayers<ClassDefinition>(rulesetDataDirectory, embeddedAssembly, ["classes"], ClassDefinition.Merge, logger);
     }
 
     public IReadOnlyDictionary<string, ClassDefinition> GetClassesForSystem(string system)
@@ -51,15 +31,7 @@ public class ClassDefinitionProvider : IRulesetYamlProvider
             if (_cache.TryGetValue(system, out var cached) && cached != null)
                 return cached;
 
-            if (!_loaders.TryGetValue(system, out var loader))
-                return new Dictionary<string, ClassDefinition>();
-
-            var raw = loader.Load();
-            var resolver = new RulesetTemplateResolver<ClassDefinition>(
-                raw.GetValueOrDefault,
-                ClassDefinition.Merge);
-
-            var resolved = resolver.ResolveAll(raw, _logger);
+            var resolved = _layers.Resolve(system);
 
             _cache[system] = resolved;
             return resolved;

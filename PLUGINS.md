@@ -485,15 +485,18 @@ Standard subdirectories (must match provider names):
 - `backgrounds/` — Background definitions (BackgroundDefinitionProvider)
 - `progressions/` — Class progression tables (ProgressionDefinitionProvider)
 - `items/` — Item/equipment definitions (ItemDefinitionProvider) — not restricted to weapons/armor; see below.
+- `creation/` — Character builder recipes, one file per kind: `pc`, `companion` (CreationRecipeProvider); see below.
+- `statblocks/` — Stat block schemas the builder edits (CreationRecipeProvider).
 
 Not found: No error. Providers return empty if subfolder missing.
 
 Multiple roots contributing the **same subfolder for the same system** (host + plugin "items" packs)
 are **merged** by the definition providers: each root with at least one `*.yaml` is loaded in order
-(host/embedded first, then plugin roots). Duplicate `name:` entries **last-wins** (plugin overlays
-host). Empty stub folders (e.g. only `.gitkeep`) are ignored so they cannot shadow host data.
-Prefer distinct, specific names (`kara_tur_wakizashi`, not `wakizashi`) when you intend coexistence
-rather than override.
+(host/embedded first, then plugin roots **sorted by plugin id**; the server logs the order at startup).
+Duplicate `name:` entries **last-wins** (plugin overlays host), and every such replacement is logged as a
+warning naming both sources. Empty stub folders (e.g. only `.gitkeep`) are ignored so they cannot shadow
+host data. Prefer distinct, specific names (`kara_tur_wakizashi`, not `wakizashi`) when you intend
+coexistence, and `patches:` (below) when you mean to change an existing entry.
 
 ---
 
@@ -519,18 +522,16 @@ duration: Instantaneous
 ### Race Definition
 
 ```yaml
-name: Dwarf
+name: dwarf
+system: dnd5e
 description: Bold and hardy dwarves
 size: Medium
-speed: 25
-ability_score_increases:
-  constitution: 2
-  wisdom: 1
-languages:
-  - Common
-  - Dwarvish
+baseSpeed: 25
+abilityBonuses:
+  Constitution: 2
+extraLanguages: [Dwarvish]
 traits:
-  - Darkvision 60 feet
+  - Darkvision
   - Dwarven Resilience
 ```
 
@@ -552,6 +553,105 @@ proficiencies:
 ```
 
 **Note:** Schema is system-agnostic. Define what makes sense for your system. Fields not matching any property are ignored.
+
+### Inheritance, list edits, patches and `requires:` (every template kind)
+
+These work the same in every folder (races, backgrounds, classes, feats, spells, items, creatures,
+conditions, pools, progressions).
+
+**`inherits: [parent]`** copies the parent's fields into the child; fields the child sets win. A plain
+list in the child (`traits: [...]`) **replaces** the parent's list, as it always has.
+
+**List edits** change a list without copying it. Add `+` to the key to append, `-` to remove:
+
+```yaml
+name: moon_elf
+inherits: [elf]
+traits+: [Moonlit Step]      # elf's traits, plus this one
+traits-: [Trance]            # ...minus this one
+extraLanguages: [Sylvan]     # plain key: replaces elf's list
+```
+
+- Edits apply on top of whatever the list resolved to (the template's own list, or the parent's).
+  They work without `inherits:` too.
+- Strings match case-insensitively. For lists of objects, an entry with the same `name` (or `id`) as
+  one already there replaces it in place; remove matches by `name`/`id`.
+- Appending a value that is already there is a no-op.
+- An edit on a key that isn't a list is ignored, with a warning in the server log.
+
+**`patches: <name>`** changes an existing template instead of replacing it or adding a new name:
+
+```yaml
+# RulesetData/dnd5e/races/elf_patch.yaml in your plugin
+patches: elf
+description: Elves of the Silver Marches.
+traits+: [Starlight Sense]
+```
+
+- The patch merges by inheritance rules, with the patch as the child: fields it sets win, list edits
+  apply, plain lists replace. The target keeps its name, parents and `requires:`.
+- Patches apply after every root has loaded (host first, then plugins by id), so a patch can target
+  core content or another plugin's. Templates that inherit from the target see the patched version.
+- A patch whose target doesn't exist is skipped, with a warning in the server log.
+
+**`requires:`** hides any template unless a plugin is loaded (and, optionally, a mode is running):
+
+```yaml
+name: shadow_operative
+system: dnd5e
+skillProficiencies: [Deception, Stealth]
+requires: { plugin: shadow-and-steel }          # optional: mode: heist
+```
+
+Hidden means left out of lists (the system handbook, spell and creature lookups, the character
+builder), not deleted: characters that already have it keep it, and it comes back when the plugin
+does. Children inherit `requires:` unless they set their own.
+
+### Character Builder Recipes (`creation/`, `statblocks/`)
+
+The client's character builder (the `character_builder` tool) walks a recipe: an ordered list of steps, one
+file per creation kind. A system without a `creation/pc.yaml` gets a single identity step (name, concept, look),
+so the builder works for every system. Recipes are templates like any other, so plugin roots, `patches:` and
+list edits apply. Steps match by `key:` in `steps+:` / `steps-:`.
+
+```yaml
+# RulesetData/dnd5e/creation/pc.yaml (shipped; shortened)
+name: pc
+system: dnd5e
+steps:
+  - { key: race, kind: pickOne, source: races }
+  - { key: class, kind: pickOne, source: classes }
+  - key: skills
+    kind: pickN
+    source: classSkills
+    countFrom: class.skillChoices.count     # a path: the chosen class template's field
+    exclude: background.skillProficiencies  # options to leave out
+  - { key: spells, kind: spells, source: spells, when: "class.casterType != None" }
+  - { key: identity, kind: identity }
+```
+
+A plugin adding a step:
+
+```yaml
+# MyPlugin/RulesetData/dnd5e/creation/deity.yaml
+patches: pc
+steps+:
+  - { key: deity, kind: pickOne, after: background, prompt: Deity, validators: [mypack.deityMatchesAlignment] }
+```
+
+- **kind:** `pickOne`, `pickN`, `abilityScores`, `allocate`, `spells`, `feats`, `identity`, `levelChoices`.
+  The client draws one widget per kind, so no client work is needed for a new step.
+- **source:** `races`, `classes`, `backgrounds`, `classSkills`, `skills`, `spells`, `feats`, `creatures`,
+  `abilities`, `startingEquipment`. Templates gated by `requires:` are never offered.
+- **Constraints are data, not code:** `count`, `countFrom` and `exclude` (paths), `when` (`path`,
+  `path == value` or `path != value`), `optional`. Anything else is a named validator.
+- **Where the choice goes:** the stats field named by `target:` or the key (`race`, `background`, `feats`);
+  otherwise a level-1 `levelUpChoices` record per value (5e class skills are derived from these).
+- **Validators** are C# classes implementing `IRecipeValidator` (PluginSdk, `CampaignVault.Rulesets.Creation`),
+  found by scanning plugin assemblies. A recipe naming a step kind, source or validator that doesn't exist stops
+  the server at startup with every problem listed.
+- **A whole system** that a recipe can't express can implement `ICharacterCreation` instead. Preview and
+  commit still run through the host's bootstrap pipeline and `world_build`.
 
 ### Item Definition
 

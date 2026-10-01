@@ -44,9 +44,14 @@ public static class CreatureQueryBuilder
         // Merge: build a name-keyed dictionary where homebrew overrides SRD (case-insensitive)
         var merged = new Dictionary<string, (bool isHomebrew, object creature)>(StringComparer.OrdinalIgnoreCase);
 
-        // Add all SRD creatures first
+        // Add all SRD creatures first (a plugin-gated one only while its plugin is loaded)
         foreach (var (name, def) in srdDict)
         {
+            if (!CampaignVault.Rulesets.FeatEffectRules.PluginAvailable(def.Requires))
+            {
+                continue;
+            }
+
             merged[name] = (false, def);
         }
 

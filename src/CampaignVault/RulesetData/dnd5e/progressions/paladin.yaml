@@ -5,6 +5,7 @@ className: Paladin
 hitDie: d10
 aliases: [paladin]
 savingThrows: [Wisdom, Charisma]
+preparedSpells: { ability: Charisma, levelDivisor: 2, fromLevel: 2 }
 levels:
   1:
     proficiencyBonus: 2

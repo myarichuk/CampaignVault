@@ -86,13 +86,22 @@ public class CampaignVaultModule : Autofac.Module
                 }
             }
 
-            PluginDataRoots.Additional =
-            [
-                .. plugins
-                    .SelectMany(p => p.RulesetDataRoots)
-                    .Concat(dataPlugins.SelectMany(p => p.RulesetDataRoots))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-            ];
+            // Content layers in plugin id order, so which plugin wins a name collision (and the order patches
+            // apply in) doesn't depend on folder layout or load order.
+            var dataRoots = plugins
+                .Select(p => (Id: OwnerId(p.Manifest?.Id, p.PackageDirectory), p.RulesetDataRoots))
+                .Concat(dataPlugins.Select(p => (Id: OwnerId(p.Manifest.Id, p.PackageDirectory), p.RulesetDataRoots)))
+                .OrderBy(p => p.Id, StringComparer.OrdinalIgnoreCase)
+                .SelectMany(p => p.RulesetDataRoots.Select(root => (p.Id, Root: root)))
+                .DistinctBy(r => r.Root, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            PluginDataRoots.Additional = [.. dataRoots.Select(r => r.Root)];
+            PluginDataRoots.RootOwners = dataRoots.ToDictionary(r => r.Root, r => r.Id, StringComparer.OrdinalIgnoreCase);
+            if (dataRoots.Count > 0)
+            {
+                _pluginLogger.LogInformation("Plugin rules content load order: {Order}",
+                    string.Join(", ", dataRoots.Select(r => r.Id).Distinct(StringComparer.OrdinalIgnoreCase)));
+            }
 
             PluginDataRoots.DeclaredCampaignOptions =
             [
@@ -159,6 +168,9 @@ public class CampaignVaultModule : Autofac.Module
         builder.RegisterInstance(eventSources).AsSelf().SingleInstance();
         ConventionRegistration.Register(builder, assemblies, _rulesetDataDirectory);
     }
+
+    private static string OwnerId(string? manifestId, string packageDirectory) =>
+        string.IsNullOrWhiteSpace(manifestId) ? Path.GetFileName(packageDirectory) : manifestId;
 
     private static class PluginBootstrapLogger
     {

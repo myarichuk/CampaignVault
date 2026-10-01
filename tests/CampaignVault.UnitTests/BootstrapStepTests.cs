@@ -129,7 +129,7 @@ public class BootstrapStepTests
 
         var createResult = await step.ApplyAsync(context, TestContext.Current.CancellationToken);
         Assert.NotNull(createResult);
-        Assert.Contains(createResult!.LlmHints, h => h.Contains("Fighter") && h.Contains("skillModifiers"));
+        Assert.Contains(createResult!.LlmHints, h => h.Contains("Fighter") && h.Contains("levelUpChoices"));
 
         // Level gain shouldn't repeat the hint once proficiencyBonus already exists at the same level.
         var levelGainResult = await step.ApplyLevelGainAsync(context, TestContext.Current.CancellationToken);

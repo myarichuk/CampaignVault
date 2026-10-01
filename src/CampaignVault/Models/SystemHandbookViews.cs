@@ -15,6 +15,11 @@ public record ClassHandbookEntry
 
     [JsonPropertyName("pools")]
     public List<string> Pools { get; init; } = [];
+
+    /// <summary>The level-1 class skill pick, e.g. "2 from Arcana, History" ("any" means every skill).</summary>
+    [JsonPropertyName("skillChoices")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? SkillChoices { get; init; }
 }
 
 public record ConditionHandbookEntry

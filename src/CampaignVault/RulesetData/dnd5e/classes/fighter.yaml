@@ -7,3 +7,4 @@ casterType: None
 savingThrows: [Strength, Constitution]
 pools: [action_surge, second_wind]
 aliases: [fighter]
+skillChoices: { count: 2, from: [Acrobatics, Animal Handling, Athletics, History, Insight, Intimidation, Perception, Survival] }

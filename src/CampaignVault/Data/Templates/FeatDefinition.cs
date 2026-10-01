@@ -37,9 +37,6 @@ public record FeatDefinition : RulesetTemplate
     /// </summary>
     public List<FeatEffect> Effects { get; init; } = [];
 
-    /// <summary>Plugin/mode gate for the whole feat: hidden and inert unless the plugin is loaded and, if named, the mode is running.</summary>
-    public FeatRequirement? Requires { get; init; }
-
     /// <summary>
     /// True when the feat's rules are prose the DM applies by judgment (no machine-readable effects). Marks it as knowingly
     /// unimplemented so the wiring audit does not report it.
@@ -59,7 +56,6 @@ public record FeatDefinition : RulesetTemplate
             Classes = child.Classes.Count > 0 ? child.Classes : parent.Classes,
             Level = child.Level ?? parent.Level,
             Effects = child.Effects.Count > 0 ? child.Effects : parent.Effects,
-            Requires = child.Requires ?? parent.Requires,
             Adjudicated = child.Adjudicated || parent.Adjudicated,
         };
 }

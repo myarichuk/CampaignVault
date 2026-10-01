@@ -71,6 +71,12 @@ public record LevelDefinition
     public int? AbilityBoosts { get; init; }
     public int? SpellLevelGained { get; init; }
 
+    /// <summary>Cantrips known from this level on (5e). Absent means the same as the level before.</summary>
+    public int? CantripsKnown { get; init; }
+
+    /// <summary>Spells known (known casters) or spellbook spells (wizard) from this level on (5e). Absent means the same as the level before.</summary>
+    public int? SpellsKnown { get; init; }
+
     /// <summary>Flattened choices from every feature at this level, tagged with their choice key and a prompt.</summary>
     public List<LevelUpChoiceDefinition> Choices =>
     [
@@ -98,6 +104,16 @@ public record ProgressionDefinition : RulesetTemplate
     public List<string> Pools { get; init; } = [];
     public Dictionary<int, LevelDefinition> Levels { get; init; } = [];
 
+    /// <summary>Prepared casters: how many spells they prepare each day. Null for known casters and non-casters.</summary>
+    public PreparedSpellsDefinition? PreparedSpells { get; init; }
+
+    /// <summary>The highest level at or below <paramref name="level"/> that sets <paramref name="pick"/>, or 0 when none does.</summary>
+    public int CountAtLevel(int level, Func<LevelDefinition, int?> pick) =>
+        Levels.Where(kv => kv.Key <= level && pick(kv.Value) is not null)
+            .OrderByDescending(kv => kv.Key)
+            .Select(kv => pick(kv.Value)!.Value)
+            .FirstOrDefault();
+
     public static ProgressionDefinition Merge(ProgressionDefinition child, ProgressionDefinition parent) =>
         child with
         {
@@ -115,6 +131,7 @@ public record ProgressionDefinition : RulesetTemplate
             SavingThrows = child.SavingThrows.Count > 0 ? child.SavingThrows : parent.SavingThrows,
             Pools = child.Pools.Count > 0 ? child.Pools : parent.Pools,
             Levels = MergeLevels(child.Levels, parent.Levels),
+            PreparedSpells = child.PreparedSpells ?? parent.PreparedSpells,
         };
 
     private static Dictionary<int, LevelDefinition> MergeLevels(
@@ -131,6 +148,21 @@ public record ProgressionDefinition : RulesetTemplate
         }
         return merged;
     }
+}
+
+/// <summary>
+/// Spells prepared per day: the <see cref="Ability"/> modifier plus the class level divided by <see cref="LevelDivisor"/>
+/// (rounded down), at least 1, from <see cref="FromLevel"/> on. 5e cleric/druid/wizard: divisor 1; paladin: 2 from level 2.
+/// </summary>
+public record PreparedSpellsDefinition
+{
+    public string Ability { get; init; } = null!;
+    public int LevelDivisor { get; init; } = 1;
+    public int FromLevel { get; init; } = 1;
+
+    /// <summary>The count for a class level and ability modifier, or 0 below <see cref="FromLevel"/>.</summary>
+    public int CountFor(int level, int abilityModifier) =>
+        level < FromLevel ? 0 : Math.Max(1, abilityModifier + level / Math.Max(1, LevelDivisor));
 }
 
 public enum CasterType { None, Full, Half, Third, Warlock, HalfRoundUp }

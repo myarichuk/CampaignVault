@@ -64,6 +64,8 @@ internal static class ToolCatalog
                 .Where(t => t.GetCustomAttribute<McpServerToolTypeAttribute>() != null)
                 .SelectMany(t => t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly))
                 .Where(m => m.GetCustomAttribute<McpServerToolAttribute>() != null)
+                // The model's catalog: client-only tools (the character builder) are never offered to it.
+                .Where(m => !CampaignVault.Schema.ToolProfiles.ClientOnlyTools.Contains(ToSnakeCase(m.Name)))
                 .Select(m =>
                 {
                     var description = m.GetCustomAttribute<DescriptionAttribute>()?.Description ?? "";

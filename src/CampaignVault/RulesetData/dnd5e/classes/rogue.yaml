@@ -7,3 +7,4 @@ casterType: None
 savingThrows: [Dexterity, Intelligence]
 pools: []
 aliases: [rogue]
+skillChoices: { count: 4, from: [Acrobatics, Athletics, Deception, Insight, Intimidation, Investigation, Perception, Performance, Persuasion, Sleight of Hand, Stealth] }

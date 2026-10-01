@@ -41,19 +41,23 @@ public static class SystemHandbookBuilder
             ? CampaignVault.Rulesets.FeatEffectRules.PluginAvailable(requires)
             : CampaignVault.Rulesets.FeatEffectRules.IsAvailable(requires, activeModeIds);
 
+        // Any template can be gated (requires:); one whose plugin isn't loaded (or mode isn't running) is hidden, not deleted.
         var classes = classProvider.GetClassesForSystem(system)
             .Values
+            .Where(c => Shown(c.Requires))
             .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
             .Select(ToClassEntry)
             .ToList();
 
         var races = raceProvider.GetRacesForSystem(system)
-            .Keys
+            .Where(kv => Shown(kv.Value.Requires))
+            .Select(kv => kv.Key)
             .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var backgrounds = backgroundProvider.GetBackgroundsForSystem(system)
-            .Keys
+            .Where(kv => Shown(kv.Value.Requires))
+            .Select(kv => kv.Key)
             .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -75,6 +79,7 @@ public static class SystemHandbookBuilder
 
         var creatureList = (creatureProvider?.GetCreaturesForSystem(system) ?? new Dictionary<string, CreatureDefinition>())
             .Values
+            .Where(c => Shown(c.Requires))
             .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -110,6 +115,9 @@ public static class SystemHandbookBuilder
             Name = def.Name,
             CasterType = (def.CasterType ?? CasterType.None).ToString(),
             HitDie = def.HitDie,
+            SkillChoices = def.SkillChoices is { Count: > 0 } skills
+                ? $"{skills.Count} from {string.Join(", ", skills.From)}"
+                : null,
             Pools = def.Pools,
         };
 

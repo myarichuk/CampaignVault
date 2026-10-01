@@ -11,8 +11,7 @@ namespace CampaignVault.Services;
 /// </summary>
 public class ConditionDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<string, List<RulesetTemplateLoader<ConditionDefinition>>> _loaders =
-        new(StringComparer.OrdinalIgnoreCase);
+    private readonly RulesetContentLayers<ConditionDefinition> _layers;
     private readonly Dictionary<string, IReadOnlyDictionary<string, ConditionDefinition>?> _cache =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
@@ -21,37 +20,7 @@ public class ConditionDefinitionProvider : IRulesetYamlProvider
     public ConditionDefinitionProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
         _logger = logger;
-        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["conditions"], PluginDataRoots.Additional);
-        foreach (var (systemSlug, subfolder, diskRoot) in discovered)
-        {
-            Register(systemSlug, diskRoot, systemSlug, subfolder, embeddedAssembly, logger);
-        }
-    }
-
-    private void Register(
-        string system,
-        string rulesetDataDirectory,
-        string systemSlug,
-        string subfolder,
-        Assembly embeddedAssembly,
-        ILogger? logger)
-    {
-        if (!_loaders.TryGetValue(system, out var list))
-        {
-            list = [];
-            _loaders[system] = list;
-        }
-
-        // First loader pulls embedded host defaults; later plugin roots are disk-only overlays.
-        var embeddedPrefix = list.Count == 0
-            ? $"CampaignVault.RulesetData.{systemSlug}.{subfolder}"
-            : $"CampaignVault.RulesetData.__plugin__.{systemSlug}.{subfolder}";
-
-        list.Add(new RulesetTemplateLoader<ConditionDefinition>(
-            Path.Combine(rulesetDataDirectory, systemSlug, subfolder),
-            embeddedAssembly,
-            embeddedPrefix,
-            logger));
+        _layers = new RulesetContentLayers<ConditionDefinition>(rulesetDataDirectory, embeddedAssembly, ["conditions"], ConditionDefinition.Merge, logger);
     }
 
     public IReadOnlyDictionary<string, ConditionDefinition> GetConditionsForSystem(string system)
@@ -61,20 +30,7 @@ public class ConditionDefinitionProvider : IRulesetYamlProvider
             if (_cache.TryGetValue(system, out var cached) && cached != null)
                 return cached;
 
-            if (!_loaders.TryGetValue(system, out var loaders) || loaders.Count == 0)
-                return new Dictionary<string, ConditionDefinition>();
-
-            var raw = new Dictionary<string, ConditionDefinition>(StringComparer.OrdinalIgnoreCase);
-            foreach (var loader in loaders)
-            {
-                foreach (var (name, def) in loader.Load())
-                    raw[name] = def;
-            }
-            var resolver = new RulesetTemplateResolver<ConditionDefinition>(
-                name => raw.GetValueOrDefault(name),
-                ConditionDefinition.Merge);
-
-            var resolved = resolver.ResolveAll(raw, _logger);
+            var resolved = _layers.Resolve(system);
 
             _cache[system] = resolved;
             return resolved;

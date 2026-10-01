@@ -10,8 +10,7 @@ namespace CampaignVault.Services;
 /// </summary>
 public class RaceDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<string, RulesetTemplateLoader<RaceDefinition>> _loaders =
-        new(StringComparer.OrdinalIgnoreCase);
+    private readonly RulesetContentLayers<RaceDefinition> _layers;
     private readonly Dictionary<string, IReadOnlyDictionary<string, RaceDefinition>?> _cache =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
@@ -20,26 +19,7 @@ public class RaceDefinitionProvider : IRulesetYamlProvider
     public RaceDefinitionProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
         _logger = logger;
-        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["races", "ancestries"], PluginDataRoots.Additional);
-        foreach (var (systemSlug, subfolder, diskRoot) in discovered)
-        {
-            Register(systemSlug, diskRoot, systemSlug, subfolder, embeddedAssembly, logger);
-        }
-    }
-
-    private void Register(
-        string system,
-        string rulesetDataDirectory,
-        string systemSlug,
-        string subfolder,
-        Assembly embeddedAssembly,
-        ILogger? logger)
-    {
-        _loaders[system] = new RulesetTemplateLoader<RaceDefinition>(
-            Path.Combine(rulesetDataDirectory, systemSlug, subfolder),
-            embeddedAssembly,
-            $"CampaignVault.RulesetData.{systemSlug}.{subfolder}",
-            logger);
+        _layers = new RulesetContentLayers<RaceDefinition>(rulesetDataDirectory, embeddedAssembly, ["races", "ancestries"], RaceDefinition.Merge, logger);
     }
 
     public IReadOnlyDictionary<string, RaceDefinition> GetRacesForSystem(string system)
@@ -49,15 +29,7 @@ public class RaceDefinitionProvider : IRulesetYamlProvider
             if (_cache.TryGetValue(system, out var cached) && cached != null)
                 return cached;
 
-            if (!_loaders.TryGetValue(system, out var loader))
-                return new Dictionary<string, RaceDefinition>();
-
-            var raw = loader.Load();
-            var resolver = new RulesetTemplateResolver<RaceDefinition>(
-                name => raw.GetValueOrDefault(name),
-                RaceDefinition.Merge);
-
-            var resolved = resolver.ResolveAll(raw, _logger);
+            var resolved = _layers.Resolve(system);
 
             _cache[system] = resolved;
             return resolved;

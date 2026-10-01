@@ -82,6 +82,10 @@ public class Dnd5eExtension : SystemExtension
     [JsonPropertyName("feats")]
     public List<string> Feats { get; set; } = [];
 
+    [Description("Cantrips, spells known or spellbook, and prepared spells (template names). Set by the character builder; slots are resource pools.")]
+    [JsonPropertyName("spells")]
+    public SpellRepertoire Spells { get; set; } = new();
+
     public int GetAbilityModifier(int score)
     {
         return (int)Math.Floor((score - 10) / 2.0);

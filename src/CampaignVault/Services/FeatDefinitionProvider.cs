@@ -11,8 +11,7 @@ namespace CampaignVault.Services;
 /// </summary>
 public class FeatDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<string, List<RulesetTemplateLoader<FeatDefinition>>> _loaders =
-        new(StringComparer.OrdinalIgnoreCase);
+    private readonly RulesetContentLayers<FeatDefinition> _layers;
     private readonly Dictionary<string, IReadOnlyDictionary<string, FeatDefinition>?> _cache =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
@@ -21,37 +20,7 @@ public class FeatDefinitionProvider : IRulesetYamlProvider
     public FeatDefinitionProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
         _logger = logger;
-        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["feats"], PluginDataRoots.Additional);
-        foreach (var (systemSlug, subfolder, diskRoot) in discovered)
-        {
-            Register(systemSlug, diskRoot, systemSlug, subfolder, embeddedAssembly, logger);
-        }
-    }
-
-    private void Register(
-        string system,
-        string rulesetDataDirectory,
-        string systemSlug,
-        string subfolder,
-        Assembly embeddedAssembly,
-        ILogger? logger)
-    {
-        if (!_loaders.TryGetValue(system, out var list))
-        {
-            list = [];
-            _loaders[system] = list;
-        }
-
-        // First loader pulls embedded host defaults; later plugin roots are disk-only overlays.
-        var embeddedPrefix = list.Count == 0
-            ? $"CampaignVault.RulesetData.{systemSlug}.{subfolder}"
-            : $"CampaignVault.RulesetData.__plugin__.{systemSlug}.{subfolder}";
-
-        list.Add(new RulesetTemplateLoader<FeatDefinition>(
-            Path.Combine(rulesetDataDirectory, systemSlug, subfolder),
-            embeddedAssembly,
-            embeddedPrefix,
-            logger));
+        _layers = new RulesetContentLayers<FeatDefinition>(rulesetDataDirectory, embeddedAssembly, ["feats"], FeatDefinition.Merge, logger);
     }
 
     public IReadOnlyDictionary<string, FeatDefinition> GetFeatsForSystem(string system)
@@ -61,20 +30,7 @@ public class FeatDefinitionProvider : IRulesetYamlProvider
             if (_cache.TryGetValue(system, out var cached) && cached != null)
                 return cached;
 
-            if (!_loaders.TryGetValue(system, out var loaders) || loaders.Count == 0)
-                return new Dictionary<string, FeatDefinition>();
-
-            var raw = new Dictionary<string, FeatDefinition>(StringComparer.OrdinalIgnoreCase);
-            foreach (var loader in loaders)
-            {
-                foreach (var (name, def) in loader.Load())
-                    raw[name] = def;
-            }
-            var resolver = new RulesetTemplateResolver<FeatDefinition>(
-                name => raw.GetValueOrDefault(name),
-                FeatDefinition.Merge);
-
-            var resolved = resolver.ResolveAll(raw, _logger);
+            var resolved = _layers.Resolve(system);
 
             // A typo'd effect kind in shipped or plugin YAML would silently do nothing; say so once, at load.
             foreach (var (name, def) in resolved)

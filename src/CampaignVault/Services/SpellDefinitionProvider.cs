@@ -9,8 +9,7 @@ namespace CampaignVault.Services;
 /// </summary>
 public class SpellDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<string, List<RulesetTemplateLoader<SpellDefinition>>> _loaders =
-        new(StringComparer.OrdinalIgnoreCase);
+    private readonly RulesetContentLayers<SpellDefinition> _layers;
     private readonly Dictionary<string, IReadOnlyDictionary<string, SpellDefinition>?> _cache =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, NameSearchIndex<SpellDefinition>> _nameIndexes =
@@ -21,37 +20,7 @@ public class SpellDefinitionProvider : IRulesetYamlProvider
     public SpellDefinitionProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
         _logger = logger;
-        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["spells"], PluginDataRoots.Additional);
-        foreach (var (systemSlug, subfolder, diskRoot) in discovered)
-        {
-            Register(systemSlug, diskRoot, systemSlug, subfolder, embeddedAssembly, logger);
-        }
-    }
-
-    private void Register(
-        string system,
-        string rulesetDataDirectory,
-        string systemSlug,
-        string subfolder,
-        Assembly embeddedAssembly,
-        ILogger? logger)
-    {
-        if (!_loaders.TryGetValue(system, out var list))
-        {
-            list = [];
-            _loaders[system] = list;
-        }
-
-        // First loader pulls embedded host defaults; later plugin roots are disk-only overlays.
-        var embeddedPrefix = list.Count == 0
-            ? $"CampaignVault.RulesetData.{systemSlug}.{subfolder}"
-            : $"CampaignVault.RulesetData.__plugin__.{systemSlug}.{subfolder}";
-
-        list.Add(new RulesetTemplateLoader<SpellDefinition>(
-            Path.Combine(rulesetDataDirectory, systemSlug, subfolder),
-            embeddedAssembly,
-            embeddedPrefix,
-            logger));
+        _layers = new RulesetContentLayers<SpellDefinition>(rulesetDataDirectory, embeddedAssembly, ["spells"], SpellDefinition.Merge, logger);
     }
 
     public IReadOnlyDictionary<string, SpellDefinition> GetSpellsForSystem(string system)
@@ -61,20 +30,7 @@ public class SpellDefinitionProvider : IRulesetYamlProvider
             if (_cache.TryGetValue(system, out var cached) && cached != null)
                 return cached;
 
-            if (!_loaders.TryGetValue(system, out var loaders) || loaders.Count == 0)
-                return new Dictionary<string, SpellDefinition>();
-
-            var raw = new Dictionary<string, SpellDefinition>(StringComparer.OrdinalIgnoreCase);
-            foreach (var loader in loaders)
-            {
-                foreach (var (name, def) in loader.Load())
-                    raw[name] = def;
-            }
-            var resolver = new RulesetTemplateResolver<SpellDefinition>(
-                name => raw.GetValueOrDefault(name),
-                SpellDefinition.Merge);
-
-            var resolved = resolver.ResolveAll(raw, _logger);
+            var resolved = _layers.Resolve(system);
 
             _cache[system] = resolved;
             return resolved;
@@ -116,6 +72,9 @@ public class SpellDefinitionProvider : IRulesetYamlProvider
         {
             hits = GetSpellsForSystem(system).Values.Select(s => new NameSearchHit<SpellDefinition>(s, 0));
         }
+
+        // A spell gated on a plugin that isn't loaded is hidden from lists, not deleted.
+        hits = hits.Where(h => CampaignVault.Rulesets.FeatEffectRules.PluginAvailable(h.Item.Requires));
 
         if (!string.IsNullOrWhiteSpace(className))
         {

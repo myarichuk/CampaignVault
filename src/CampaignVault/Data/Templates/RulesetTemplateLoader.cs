@@ -2,6 +2,8 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using YamlDotNet.RepresentationModel;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -41,9 +43,14 @@ public class RulesetTemplateLoader<T> where T : RulesetTemplate
         _logger = logger;
     }
 
-    public IReadOnlyDictionary<string, T> Load()
+    /// <summary>One folder's templates by name; <c>patches:</c> files are left out (see <see cref="LoadLayer"/>).</summary>
+    public IReadOnlyDictionary<string, T> Load() => LoadLayer().Templates;
+
+    /// <summary>One folder's templates by name, plus its <c>patches:</c> files, which the caller merges after every layer has loaded.</summary>
+    public (IReadOnlyDictionary<string, T> Templates, IReadOnlyList<T> Patches) LoadLayer()
     {
         var result = new Dictionary<string, T>(StringComparer.OrdinalIgnoreCase);
+        var patches = new List<T>();
         var prefix = _embeddedPrefix + ".";
 
         // 1. Load from embedded resources (baseline / shipped truth)
@@ -60,8 +67,10 @@ public class RulesetTemplateLoader<T> where T : RulesetTemplate
             var fileName = resourceName.Substring(prefix.Length);
             embeddedFiles[fileName] = yaml;
 
-            var template = Deserializer.Deserialize<T>(yaml);
-            if (template?.Name != null)
+            var template = Parse(yaml, resourceName);
+            if (template?.PatchTarget != null)
+                patches.Add(template);
+            else if (template?.Name != null)
                 result[template.Name] = template;
         }
 
@@ -138,7 +147,13 @@ public class RulesetTemplateLoader<T> where T : RulesetTemplate
                          .OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
             {
                 var yaml = File.ReadAllText(filePath);
-                var template = Deserializer.Deserialize<T>(yaml);
+                var template = Parse(yaml, filePath);
+                if (template?.PatchTarget != null)
+                {
+                    patches.Add(template);
+                    continue;
+                }
+
                 if (template?.Name == null)
                     continue;
 
@@ -153,7 +168,74 @@ public class RulesetTemplateLoader<T> where T : RulesetTemplate
             }
         }
 
-        return result;
+        return (result, patches);
+    }
+
+    // Cheap pre-check so the common file (no edits, no patch) takes the plain deserialize path unchanged.
+    private static readonly Regex EditKeys = new(@"^(patches|[A-Za-z_]\w*[+-])[ \t]*:", RegexOptions.Multiline | RegexOptions.Compiled);
+
+    /// <summary>
+    /// Deserializes one file. Top-level <c>&lt;list&gt;+:</c> / <c>&lt;list&gt;-:</c> keys become pending
+    /// <see cref="RulesetTemplate.ListOps"/> (typed by deserializing them as that list), and <c>patches: &lt;name&gt;</c>
+    /// marks the file as a patch. An edit naming no list property is skipped with a warning.
+    /// </summary>
+    private T? Parse(string yaml, string source)
+    {
+        if (!EditKeys.IsMatch(yaml))
+            return Deserializer.Deserialize<T>(yaml);
+
+        var stream = new YamlStream();
+        stream.Load(new StringReader(yaml));
+        if (stream.Documents.Count == 0 || stream.Documents[0].RootNode is not YamlMappingNode root)
+            return Deserializer.Deserialize<T>(yaml);
+
+        var plain = new YamlMappingNode();
+        var edits = new List<(string Key, bool Remove, YamlNode Value)>();
+        string? patchTarget = null;
+        foreach (var (keyNode, value) in root.Children)
+        {
+            var key = (keyNode as YamlScalarNode)?.Value ?? string.Empty;
+            if (key == "patches")
+                patchTarget = (value as YamlScalarNode)?.Value;
+            else if (key.Length > 1 && (key[^1] == '+' || key[^1] == '-'))
+                edits.Add((key[..^1].TrimEnd(), key[^1] == '-', value));
+            else
+                plain.Add(keyNode, value);
+        }
+
+        var template = Deserializer.Deserialize<T>(Emit(plain));
+        if (template == null)
+            return null;
+
+        var ops = new List<TemplateListOp>();
+        foreach (var (key, remove, value) in edits)
+        {
+            var prop = TemplateEdits.ListProperty(typeof(T), key);
+            if (prop == null)
+            {
+                _logger?.LogWarning("'{Key}{Op}:' in {Source} names no list on a {Kind}; the edit is ignored.",
+                    key, remove ? "-" : "+", source, typeof(T).Name);
+                continue;
+            }
+
+            var holder = Deserializer.Deserialize<T>(Emit(new YamlMappingNode { { key, value } }));
+            if (holder != null && prop.GetValue(holder) is System.Collections.IList items)
+                ops.Add(new TemplateListOp(prop.Name, remove, items));
+        }
+
+        template.ListOps = ops;
+        // A patch needs no name of its own: it takes the target's when it merges.
+        if (!string.IsNullOrWhiteSpace(patchTarget))
+            template.PatchTarget = patchTarget;
+
+        return template;
+    }
+
+    private static string Emit(YamlMappingNode node)
+    {
+        using var writer = new StringWriter();
+        new YamlStream(new YamlDocument(node)).Save(writer, assignAnchors: false);
+        return writer.ToString();
     }
 
     private string ManifestPath => Path.Combine(_diskDirectory, ManifestFileName);

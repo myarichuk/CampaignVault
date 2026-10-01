@@ -39,7 +39,7 @@ public class ToolListBudgetTests(ITestOutputHelper output)
     [Fact]
     public void ToolsList_StaysWithinBudget()
     {
-        var tools = BuildOptions().ToolCollection!.Select(t => t.ProtocolTool).ToList();
+        var tools = ToolProfiles.Listed(BuildOptions().ToolCollection!.Select(t => t.ProtocolTool));
         var json = JsonSerializer.Serialize(tools, McpJsonUtilities.DefaultOptions);
 
         output.WriteLine($"tools/list: {json.Length} chars, {tools.Count} tools");
@@ -49,8 +49,21 @@ public class ToolListBudgetTests(ITestOutputHelper output)
             string.Join(", ", tools.Select(t => $"{t.Name}={JsonSerializer.Serialize(t, McpJsonUtilities.DefaultOptions).Length}")));
     }
 
+    // What tools/list sends: client-only tools (the character builder) are served but never listed.
     private static string Serialize(McpServerPrimitiveCollection<McpServerTool>? tools) =>
-        JsonSerializer.Serialize(tools!.Select(t => t.ProtocolTool).ToList(), McpJsonUtilities.DefaultOptions);
+        JsonSerializer.Serialize(ToolProfiles.Listed(tools!.Select(t => t.ProtocolTool)), McpJsonUtilities.DefaultOptions);
+
+    [Fact]
+    public void ClientOnlyTools_AreServedOnBuild_ButNeverListed()
+    {
+        var all = BuildOptions().ToolCollection!;
+        var build = ToolProfiles.Filter(all, ToolProfile.Build)!;
+
+        Assert.Contains(all, t => t.ProtocolTool.Name == "character_builder");
+        Assert.Contains(build, t => t.ProtocolTool.Name == "character_builder");
+        Assert.DoesNotContain(ToolProfiles.Filter(all, ToolProfile.Play)!, t => t.ProtocolTool.Name == "character_builder");
+        Assert.DoesNotContain(ToolProfiles.Listed(build.Select(t => t.ProtocolTool)), t => t.Name == "character_builder");
+    }
 
     [Theory]
     [InlineData("/play", ToolProfile.Play, PlayCharBudget)]

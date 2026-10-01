@@ -12,8 +12,7 @@ namespace CampaignVault.Services;
 /// </summary>
 public class ProgressionDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<string, RulesetTemplateLoader<ProgressionDefinition>> _loaders =
-        new(StringComparer.OrdinalIgnoreCase);
+    private readonly RulesetContentLayers<ProgressionDefinition> _layers;
     private readonly Dictionary<string, IReadOnlyDictionary<string, ProgressionDefinition>?> _cache =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly Lock _lock = new();
@@ -22,26 +21,7 @@ public class ProgressionDefinitionProvider : IRulesetYamlProvider
     public ProgressionDefinitionProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
         _logger = logger;
-        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["progressions"], PluginDataRoots.Additional);
-        foreach (var (systemSlug, subfolder, diskRoot) in discovered)
-        {
-            Register(systemSlug, diskRoot, systemSlug, subfolder, embeddedAssembly, logger);
-        }
-    }
-
-    private void Register(
-        string system,
-        string rulesetDataDirectory,
-        string systemSlug,
-        string subfolder,
-        Assembly embeddedAssembly,
-        ILogger? logger)
-    {
-        _loaders[system] = new RulesetTemplateLoader<ProgressionDefinition>(
-            Path.Combine(rulesetDataDirectory, systemSlug, subfolder),
-            embeddedAssembly,
-            $"CampaignVault.RulesetData.{systemSlug}.{subfolder}",
-            logger);
+        _layers = new RulesetContentLayers<ProgressionDefinition>(rulesetDataDirectory, embeddedAssembly, ["progressions"], ProgressionDefinition.Merge, logger);
     }
 
     public IReadOnlyDictionary<string, ProgressionDefinition> GetProgressionsForSystem(string system)
@@ -51,15 +31,7 @@ public class ProgressionDefinitionProvider : IRulesetYamlProvider
             if (_cache.TryGetValue(system, out var cached) && cached != null)
                 return cached;
 
-            if (!_loaders.TryGetValue(system, out var loader))
-                return new Dictionary<string, ProgressionDefinition>();
-
-            var raw = loader.Load();
-            var resolver = new RulesetTemplateResolver<ProgressionDefinition>(
-                raw.GetValueOrDefault,
-                ProgressionDefinition.Merge);
-
-            var resolved = resolver.ResolveAll(raw, _logger);
+            var resolved = _layers.Resolve(system);
 
             _cache[system] = resolved;
             return resolved;

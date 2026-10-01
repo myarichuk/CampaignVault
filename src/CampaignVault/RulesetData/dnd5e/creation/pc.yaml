@@ -1,0 +1,24 @@
+# Character builder recipe: a D&D 5e player character. Steps run in this order; each step's choice is stored in the
+# draft under its key. Plugins add steps with `patches: pc` + `steps+:` (and `after: <key>` to place them).
+# Step kinds, sources and validators: CHARACTER_CREATION_PLAN.md / PLUGINS.md.
+name: pc
+system: dnd5e
+steps:
+  - { key: race, kind: pickOne, source: races, prompt: Race }
+  - { key: class, kind: pickOne, source: classes, prompt: Class }
+  - { key: background, kind: pickOne, source: backgrounds, prompt: Background }
+  - key: abilities
+    kind: abilityScores
+    prompt: Ability scores
+    methods:
+      standardArray: [15, 14, 13, 12, 10, 8]
+      pointBuy: { budget: 27, min: 8, max: 15, cost: { 8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9 } }
+      roll: 4d6dropLowest
+  - key: skills
+    kind: pickN
+    prompt: Skills
+    source: classSkills
+    countFrom: class.skillChoices.count
+    exclude: background.skillProficiencies
+  - { key: spells, kind: spells, source: spells, when: "class.casterType != None", prompt: Spells }
+  - { key: identity, kind: identity, prompt: Who they are }

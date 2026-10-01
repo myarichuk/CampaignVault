@@ -11,8 +11,7 @@ namespace CampaignVault.Services;
 /// </summary>
 public class ItemDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<string, List<RulesetTemplateLoader<ItemDefinition>>> _loaders =
-        new(StringComparer.OrdinalIgnoreCase);
+    private readonly RulesetContentLayers<ItemDefinition> _layers;
     private readonly Dictionary<string, IReadOnlyDictionary<string, ItemDefinition>?> _cache =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, NameSearchIndex<ItemDefinition>> _nameIndexes =
@@ -23,37 +22,7 @@ public class ItemDefinitionProvider : IRulesetYamlProvider
     public ItemDefinitionProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
         _logger = logger;
-        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["items"], PluginDataRoots.Additional);
-        foreach (var (systemSlug, subfolder, diskRoot) in discovered)
-        {
-            Register(systemSlug, diskRoot, systemSlug, subfolder, embeddedAssembly, logger);
-        }
-    }
-
-    private void Register(
-        string system,
-        string rulesetDataDirectory,
-        string systemSlug,
-        string subfolder,
-        Assembly embeddedAssembly,
-        ILogger? logger)
-    {
-        if (!_loaders.TryGetValue(system, out var list))
-        {
-            list = [];
-            _loaders[system] = list;
-        }
-
-        // Only the first loader for a system pulls embedded host defaults; later plugin roots are disk-only.
-        var embeddedPrefix = list.Count == 0
-            ? $"CampaignVault.RulesetData.{systemSlug}.{subfolder}"
-            : $"CampaignVault.RulesetData.__plugin__.{systemSlug}.{subfolder}";
-
-        list.Add(new RulesetTemplateLoader<ItemDefinition>(
-            Path.Combine(rulesetDataDirectory, systemSlug, subfolder),
-            embeddedAssembly,
-            embeddedPrefix,
-            logger));
+        _layers = new RulesetContentLayers<ItemDefinition>(rulesetDataDirectory, embeddedAssembly, ["items"], ItemDefinition.Merge, logger);
     }
 
     public IReadOnlyDictionary<string, ItemDefinition> GetItemsForSystem(string system)
@@ -63,22 +32,7 @@ public class ItemDefinitionProvider : IRulesetYamlProvider
             if (_cache.TryGetValue(system, out var cached) && cached != null)
                 return cached;
 
-            if (!_loaders.TryGetValue(system, out var loaders) || loaders.Count == 0)
-                return new Dictionary<string, ItemDefinition>();
-
-            // Merge roots in registration order; later plugin templates last-wins on name.
-            var raw = new Dictionary<string, ItemDefinition>(StringComparer.OrdinalIgnoreCase);
-            foreach (var loader in loaders)
-            {
-                foreach (var (name, def) in loader.Load())
-                    raw[name] = def;
-            }
-
-            var resolver = new RulesetTemplateResolver<ItemDefinition>(
-                name => raw.GetValueOrDefault(name),
-                ItemDefinition.Merge);
-
-            var resolved = resolver.ResolveAll(raw, _logger);
+            var resolved = _layers.Resolve(system);
 
             _cache[system] = resolved;
             return resolved;

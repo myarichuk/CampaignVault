@@ -11,8 +11,7 @@ namespace CampaignVault.Services;
 /// </summary>
 public class CreatureDefinitionProvider : IRulesetYamlProvider
 {
-    private readonly Dictionary<string, RulesetTemplateLoader<CreatureDefinition>> _loaders =
-        new(StringComparer.OrdinalIgnoreCase);
+    private readonly RulesetContentLayers<CreatureDefinition> _layers;
     private readonly Dictionary<string, IReadOnlyDictionary<string, CreatureDefinition>?> _cache =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
@@ -21,26 +20,7 @@ public class CreatureDefinitionProvider : IRulesetYamlProvider
     public CreatureDefinitionProvider(string rulesetDataDirectory, Assembly embeddedAssembly, ILogger? logger = null)
     {
         _logger = logger;
-        var discovered = RulesetDataSystemDiscovery.Discover(rulesetDataDirectory, embeddedAssembly, ["creatures"], PluginDataRoots.Additional);
-        foreach (var (systemSlug, subfolder, diskRoot) in discovered)
-        {
-            Register(systemSlug, diskRoot, systemSlug, subfolder, embeddedAssembly, logger);
-        }
-    }
-
-    private void Register(
-        string system,
-        string rulesetDataDirectory,
-        string systemSlug,
-        string subfolder,
-        Assembly embeddedAssembly,
-        ILogger? logger)
-    {
-        _loaders[system] = new RulesetTemplateLoader<CreatureDefinition>(
-            Path.Combine(rulesetDataDirectory, systemSlug, subfolder),
-            embeddedAssembly,
-            $"CampaignVault.RulesetData.{systemSlug}.{subfolder}",
-            logger);
+        _layers = new RulesetContentLayers<CreatureDefinition>(rulesetDataDirectory, embeddedAssembly, ["creatures"], CreatureDefinition.Merge, logger);
     }
 
     public IReadOnlyDictionary<string, CreatureDefinition> GetCreaturesForSystem(string system)
@@ -50,15 +30,7 @@ public class CreatureDefinitionProvider : IRulesetYamlProvider
             if (_cache.TryGetValue(system, out var cached) && cached != null)
                 return cached;
 
-            if (!_loaders.TryGetValue(system, out var loader))
-                return new Dictionary<string, CreatureDefinition>();
-
-            var raw = loader.Load();
-            var resolver = new RulesetTemplateResolver<CreatureDefinition>(
-                name => raw.GetValueOrDefault(name),
-                CreatureDefinition.Merge);
-
-            var resolved = resolver.ResolveAll(raw, _logger);
+            var resolved = _layers.Resolve(system);
 
             _cache[system] = resolved;
             return resolved;

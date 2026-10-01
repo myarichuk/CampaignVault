@@ -14,6 +14,7 @@ using CampaignVault.Models;
 using CampaignVault.Plugins;
 using CampaignVault.Rulesets;
 using CampaignVault.Rulesets.Bootstrap;
+using CampaignVault.Rulesets.Creation;
 using CampaignVault.Rulesets.Modes;
 using CampaignVault.Services;
 using CampaignVault.Tools;
@@ -81,6 +82,14 @@ internal static class ConventionRegistration
             RegisterCollection<IWorldChangeObserver>(builder, assembly);
             RegisterCollection<IWorldTimeObserver>(builder, assembly);
             RegisterCollection<IRollModifierProvider>(builder, assembly);
+            RegisterCollection<IRecipeValidator>(builder, assembly);
+
+            // A plugin's own character creation; the host's recipe engine is built per system, not resolved.
+            builder.RegisterAssemblyTypes(assembly)
+                .Where(t => t.IsAssignableTo<ICharacterCreation>() && !t.IsAbstract && t != typeof(RecipeCharacterCreation)
+                            && !t.IsAssignableTo<IRulesetModule>())
+                .As<ICharacterCreation>()
+                .InstancePerLifetimeScope();
         }
 
         // Register tools explicitly to ensure dependency order: ExplorationTools before DeepDiveTools
@@ -182,6 +191,8 @@ internal static class ConventionRegistration
             .SingleInstance();
 
         builder.RegisterType<CampaignDocumentKeys>().SingleInstance();
+        builder.RegisterType<CreationSources>().AsSelf().SingleInstance();
+        builder.RegisterType<CharacterCreationService>().AsSelf().InstancePerLifetimeScope();
         // Explicit (not namespace-convention) registration: InteractionModeSelector lives in
         // CampaignVault.Rulesets.Modes, which RegisterNameMatchedServices does not scan (it only matches
         // the exact namespaces listed in NameMatchedNamespaces, e.g. CampaignVault.Rulesets for
@@ -216,6 +227,9 @@ internal static class ConventionRegistration
             }
 
             ValidateHandlerCoverage(handlers);
+
+            // A recipe naming an unknown step kind, source or validator stops startup with every problem listed.
+            ctx.Resolve<CharacterCreationService>().ValidateRecipes();
         });
 
         builder.RegisterBuildCallback(WarnOnUnpublishedEventSubscriptions);

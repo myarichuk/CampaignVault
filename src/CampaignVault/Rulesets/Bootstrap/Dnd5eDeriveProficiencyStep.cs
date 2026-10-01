@@ -50,6 +50,7 @@ public sealed class Dnd5eDeriveProficiencyStep(
         var profChanged = !stats.Attributes.TryGetValue("proficiencyBonus", out var existing) || Math.Abs(existing - prof) >= 0.01f;
 
         var derivedSkills = DeriveBackgroundSkillModifiers(context, stats, prof);
+        derivedSkills.AddRange(DeriveChosenSkillModifiers(stats, prof));
         var derivedSaves = DeriveClassSavingThrowModifiers(context, stats, prof);
         var hints = isFirstDerivation ? BuildClassSkillChoiceHints(context, stats) : [];
 
@@ -81,17 +82,14 @@ public sealed class Dnd5eDeriveProficiencyStep(
     }
 
     /// <summary>
-    /// Class-granted skill proficiencies (e.g. Fighter chooses 2 from a class-specific list) are a player
-    /// choice with no fixed formula — we don't encode PHB skill-choice lists in our own data (the calling
-    /// LLM already knows them and would just be duplicating/maintaining a second copy). Instead, nudge once
-    /// at first bootstrap: if the character has a resolvable class and background-granted skills are the
-    /// only ones present, remind the LLM to pick and commit the class's skill proficiencies itself via a
-    /// character_update systemStats patch, mirroring the existing armor-equip hint in Dnd5eDeriveDefenseStep.
+    /// The class's level-1 skill picks are recorded as <c>levelUpChoices</c> with key <c>skills</c> (the character
+    /// builder writes them; the class YAML's <c>skillChoices</c> says how many from which list). Without any, remind the
+    /// caller once, at first derivation, to record them the same way rather than leave the class skills out.
     /// </summary>
-    private List<string> BuildClassSkillChoiceHints(BootstrapContext context, Dnd5eExtension stats)
+    private static List<string> BuildClassSkillChoiceHints(BootstrapContext context, Dnd5eExtension stats)
     {
         var classLevels = Dnd5eClassProfileResolver.ParseClassLevels(context.Character.ClassLevel, stats.ClassLevels);
-        if (classLevels.Count == 0)
+        if (classLevels.Count == 0 || stats.LevelUpChoices.Any(IsSkillChoice))
         {
             return [];
         }
@@ -99,17 +97,46 @@ public sealed class Dnd5eDeriveProficiencyStep(
         var classNames = string.Join("/", classLevels.Select(e => e.Class));
         return
         [
-            $"{context.Character.Name} ({classNames}) — remember to pick and commit class-granted skill proficiencies "
-            + "(per the class's PHB skill list, e.g. Fighter chooses 2, Rogue chooses 4) via a character_update systemStats patch: "
-            + "systemStats.skillModifiers[skillName] = ability modifier + proficiencyBonus. "
-            + "Background-granted skills are already derived automatically; class choices are not, since they're a player pick.",
+            $"{context.Character.Name} ({classNames}) has no class skill picks. Record them as systemStats.levelUpChoices "
+            + "[{ level: 1, key: \"skills\", value: \"<Skill>\" }, ...] (the class's count and list: lookup kind=handbook), "
+            + "and the engine derives their modifiers. Background skills are already derived.",
         ];
     }
 
     /// <summary>
+    /// Fills SkillModifiers for the class skills recorded as <c>skills</c> choices, using ability mod + proficiency bonus.
+    /// Never overwrites a skill the caller already set (DM override, Expertise, background).
+    /// </summary>
+    private static List<string> DeriveChosenSkillModifiers(Dnd5eExtension stats, int prof)
+    {
+        var applied = new List<string>();
+        foreach (var choice in stats.LevelUpChoices.Where(IsSkillChoice))
+        {
+            if (!Dnd5eSkillTable.GoverningAbility.TryGetValue(choice.Value, out var ability)
+                || stats.SkillModifiers.Keys.Any(k => k.Equals(choice.Value, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            // The table's spelling, so "sleight of hand" and "Sleight of Hand" are one skill.
+            var skill = Dnd5eSkillTable.GoverningAbility.Keys.First(k => k.Equals(choice.Value, StringComparison.OrdinalIgnoreCase));
+            stats.SkillModifiers[skill] = stats.GetAbilityModifier(GetAbilityScore(stats, ability)) + prof;
+            applied.Add(skill);
+        }
+
+        return applied;
+    }
+
+    private static bool IsSkillChoice(LevelUpChoiceRecord choice) =>
+        choice.Key.Equals(SkillsChoiceKey, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(choice.Value);
+
+    /// <summary>The <c>levelUpChoices</c> key class skill picks are recorded under.</summary>
+    public const string SkillsChoiceKey = "skills";
+
+    /// <summary>
     /// Fills SkillModifiers for skills granted by the character's background, using ability mod + proficiency bonus.
     /// Never overwrites a skill the caller already set (DM override, Expertise, etc.).
-    /// Does not derive class-granted "choose N skills" proficiencies — no class data currently records those choices.
+    /// Class skill picks are <see cref="DeriveChosenSkillModifiers"/>.
     /// </summary>
     private List<string> DeriveBackgroundSkillModifiers(BootstrapContext context, Dnd5eExtension stats, int prof)
     {

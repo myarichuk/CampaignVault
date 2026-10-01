@@ -4,7 +4,8 @@ namespace CampaignVault.Data.Templates;
 
 /// <summary>
 /// Resolves a template by walking its Inherits chain and merging parent values into the child.
-/// Decoupled from storage via a lookup delegate. The merge delegate is the only type-specific piece.
+/// Decoupled from storage via a lookup delegate. The merge delegate is the only type-specific piece; the edits every
+/// kind shares (<c>list+:</c>/<c>list-:</c>, an inherited <c>requires:</c>) are applied here (<see cref="TemplateEdits"/>).
 /// </summary>
 public class RulesetTemplateResolver<T> where T : RulesetTemplate
 {
@@ -51,7 +52,7 @@ public class RulesetTemplateResolver<T> where T : RulesetTemplate
     private T Resolve(T child, HashSet<string> stack)
     {
         if (child.Inherits.Count == 0)
-            return child;
+            return TemplateEdits.ApplyListOps(child);
 
         if (!stack.Add(child.Name))
             throw new InvalidOperationException(
@@ -65,10 +66,11 @@ public class RulesetTemplateResolver<T> where T : RulesetTemplate
                     $"Template '{parentName}' not found (referenced by '{child.Name}').");
 
             var resolvedParent = Resolve(rawParent, stack);
-            result = _merge(result, resolvedParent);
+            result = TemplateEdits.InheritBase(_merge(result, resolvedParent), resolvedParent);
         }
 
         stack.Remove(child.Name);
-        return result;
+        // The child's own list edits apply once, on top of everything it inherited.
+        return TemplateEdits.ApplyListOps(result);
     }
 }

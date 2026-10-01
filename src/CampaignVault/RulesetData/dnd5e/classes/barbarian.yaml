@@ -7,3 +7,4 @@ casterType: None
 savingThrows: [Strength, Constitution]
 pools: []
 aliases: [barbarian]
+skillChoices: { count: 2, from: [Animal Handling, Athletics, Intimidation, Nature, Perception, Survival] }
