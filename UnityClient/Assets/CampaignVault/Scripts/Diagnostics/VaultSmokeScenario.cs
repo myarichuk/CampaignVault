@@ -140,6 +140,7 @@ namespace CampaignVault.UnityClient.Diagnostics
                 // Starting level: the server rejects anything but a whole number, which used to loop the smoke run.
                 case AnswerType.Number: return "1";
                 case AnswerType.List: return VaultController.FormatListAnswer("Smoke Hero — human fighter");
+                case AnswerType.Party: return VaultController.PartyAnswer(OnboardingState.PartyBuildAtTable, 1, null);
                 default: return "A windswept frontier town on the edge of old ruins";
             }
         }

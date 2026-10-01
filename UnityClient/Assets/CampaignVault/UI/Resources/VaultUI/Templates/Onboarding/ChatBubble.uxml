@@ -1,0 +1,27 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- ChatBubbleViewModel: one message in the brainstorm chat. -->
+    <ui:VisualElement class="cv-chat">
+        <Bindings>
+            <cv:ClassBinding property="cls-gone" data-source-path="Gone" class-name="cv-dim" />
+            <cv:ClassBinding property="cls-mine" data-source-path="Mine" class-name="cv-chat--mine" />
+        </Bindings>
+        <ui:Label class="cv-caption">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Speaker" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-gone" data-source-path="Gone" class-name="cv-text-blood" />
+            </Bindings>
+        </ui:Label>
+        <cv:Repeater item-template="Common/RichText">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Paragraphs" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+        <cv:VaultButton class="cv-btn--ghost cv-btn--small cv-chat__toggle">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="Toggle" binding-mode="ToTarget" />
+                <ui:DataBinding property="label" data-source-path="ToggleLabel" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="CanToggle" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </cv:VaultButton>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,27 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- A question page opening: which campaign, how far along, the question, its help. Instanced by each question page. -->
+    <ui:VisualElement>
+        <ui:Label class="cv-caption">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Caption" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-body cv-muted">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Progress" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Progress" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label name="onboarding-question" class="cv-question">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Text" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-body cv-muted cv-italic">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Help" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Help" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

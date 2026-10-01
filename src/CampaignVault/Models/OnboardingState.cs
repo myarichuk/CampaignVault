@@ -132,7 +132,10 @@ public enum OnboardingAnswerType
     Enum,
     Boolean,
     List,
-    Number
+    Number,
+
+    /// <summary>JSON <see cref="OnboardingPartyAnswer"/>; the client's party step builds it.</summary>
+    Party
 }
 
 /// <summary>

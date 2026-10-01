@@ -1,0 +1,23 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- FeelPage: motion, sound and the story text size. -->
+    <ui:VisualElement>
+        <cv:VaultCard title="TABLE FEEL">
+            <cv:VaultSwitch name="feel-fx" text="Animations and motion">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="Fx" binding-mode="TwoWay" />
+                </Bindings>
+            </cv:VaultSwitch>
+            <cv:VaultSwitch name="feel-sound" text="Sound effects">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="Sound" binding-mode="TwoWay" />
+                </Bindings>
+            </cv:VaultSwitch>
+            <ui:Label text="STORY TEXT SIZE" class="cv-caption cv-field-caption" />
+            <cv:ContentPresenter name="feel-textsize">
+                <Bindings>
+                    <ui:DataBinding property="content" data-source-path="TextSize" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:ContentPresenter>
+        </cv:VaultCard>
+    </ui:VisualElement>
+</ui:UXML>

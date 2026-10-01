@@ -1,0 +1,11 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- SetupProviderPage -->
+    <ui:VisualElement>
+        <ui:Label text="Connect the model that will be your Dungeon Master. Pick a preset, paste your key and test it. You can keep several profiles and switch any time: campaigns don't belong to a model." class="cv-body" />
+        <cv:ContentPresenter name="setup-provider" class="cv-setup__provider">
+            <Bindings>
+                <ui:DataBinding property="content" data-source-path="Provider" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:ContentPresenter>
+    </ui:VisualElement>
+</ui:UXML>

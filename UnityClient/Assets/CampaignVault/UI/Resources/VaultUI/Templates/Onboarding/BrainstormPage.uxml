@@ -1,0 +1,38 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- BrainstormPageViewModel: the side chat with the DM about the current question. -->
+    <ui:VisualElement>
+        <ui:Label text="TALKING IT THROUGH WITH THE DM" class="cv-caption" />
+        <ui:Label class="cv-question">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Question" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label text="Say what you have in mind, even half an idea, or ask for suggestions. This conversation carries on through the whole setup, so nothing you settle here is lost when the next question comes. Nothing is saved until you answer." class="cv-body cv-muted cv-italic">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="ShowIntro" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-body cv-text-blood cv-chat__warning">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Trimmed" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Trimmed" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <cv:Repeater name="brainstorm-chat">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Items" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+        <ui:Label text="The DM is thinking…" class="cv-body cv-muted cv-italic cv-chat__thinking">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="Busy" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-body cv-text-blood">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Error" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Error" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

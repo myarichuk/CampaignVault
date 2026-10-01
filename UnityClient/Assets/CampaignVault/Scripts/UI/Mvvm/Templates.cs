@@ -43,7 +43,7 @@ namespace CampaignVault.UnityClient.UI.Mvvm
         }
     }
 
-    /// <summary>Text a view model hands to a label: what <see cref="Ui.Text"/> and <see cref="Ui.Rich"/> did when views built labels.</summary>
+    /// <summary>Text a view model hands to a label: what the element builders did when views built labels.</summary>
     public static class DisplayText
     {
         /// <summary>Plain text: rich-text tags in it are shown, never interpreted.</summary>

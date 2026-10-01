@@ -1,0 +1,83 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- PluginsPage: install, enable and remove server plugins. -->
+    <ui:Template name="Notice" src="../Common/Notice.uxml" />
+    <ui:VisualElement>
+        <cv:VaultCard class="cv-card--warning">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="ShowRestart" class-name="cv-hidden" invert="true" />
+                <ui:DataBinding property="title" data-source-path="RestartTitle" binding-mode="ToTarget" />
+            </Bindings>
+            <ui:Label text="The server restarts by itself in a moment to apply plugin changes (after the current turn, if one is running). The list below is what it loaded at its last start." class="cv-body" />
+            <ui:VisualElement class="cv-row cv-form__actions">
+                <cv:VaultButton name="plugins-restart" icon="refresh" class="cv-btn--primary">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="RestartNow" binding-mode="ToTarget" />
+                        <ui:DataBinding property="label" data-source-path="RestartLabel" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+            </ui:VisualElement>
+        </cv:VaultCard>
+        <cv:VaultCard title="INSTALL A PLUGIN">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="Manage" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <ui:Label text="Plugins add rules content (spells, items, creatures) or whole new mechanics. Put the plugin's .zip somewhere on this computer and enter its path. Installed plugins live in your app data and survive client updates." class="cv-body cv-muted" />
+            <ui:Label text="PATH TO THE .ZIP" class="cv-caption cv-field-caption" />
+            <cv:VaultField name="plugins-path" placeholder="/Users/you/Downloads/my-plugin.zip">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="ZipPath" binding-mode="TwoWay" />
+                </Bindings>
+            </cv:VaultField>
+            <ui:VisualElement class="cv-row cv-form__actions">
+                <cv:VaultButton name="plugins-install" label="INSTALL" icon="add" class="cv-btn--primary">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="Install" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+                <cv:VaultButton name="plugins-folder" label="OPEN PLUGINS FOLDER" icon="pack" class="cv-btn--ghost">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="OpenFolder" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+            </ui:VisualElement>
+        </cv:VaultCard>
+        <ui:VisualElement class="cv-row cv-plugins__intro">
+            <ui:Label class="cv-body cv-muted cv-grow">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Intro" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <cv:VaultButton name="plugins-reload" label="RELOAD" icon="refresh" class="cv-btn--small cv-btn--ghost">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="ReloadList" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+        </ui:VisualElement>
+        <cv:Repeater item-template="Common/ErrorText">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Errors" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+        <cv:Repeater name="plugins-list" item-template="Settings/PluginCard">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Plugins" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+        <cv:Repeater name="plugins-offline" item-template="Settings/OfflinePlugin">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Offline" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+        <ui:VisualElement class="cv-empty">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="Notice" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <ui:VisualElement picking-mode="Ignore" class="cv-icon cv-icon--plugins" />
+            <ui:Label class="cv-empty__text">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Notice" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

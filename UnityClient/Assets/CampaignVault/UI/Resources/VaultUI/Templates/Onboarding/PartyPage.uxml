@@ -1,0 +1,33 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- PartyPageViewModel: the starting level, the characters built so far, and the ways to fill the party. -->
+    <ui:Template name="Header" src="QuestionHeader.uxml" />
+    <ui:VisualElement>
+        <ui:Instance template="Header" />
+        <ui:VisualElement name="party-level" class="cv-onboarding__answer">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="ShowLevel" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <ui:Label class="cv-caption" text="STARTING LEVEL" />
+            <cv:Repeater item-template="Common/Choice" class="cv-row cv-onboarding__levels">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Levels" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+        </ui:VisualElement>
+        <ui:Label name="party-empty" class="cv-body cv-muted cv-onboarding__answer" text="No characters yet.">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="Empty" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <cv:Repeater name="party-members" item-template="Onboarding/PartyCard" class="cv-onboarding__members">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Members" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+        <cv:Repeater name="party-actions" item-template="Common/ActionButton" class="cv-onboarding__answer cv-onboarding__party-actions">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Actions" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,21 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- ToolRowViewModel: one switch, its blurb, and the tool's id on hover. -->
+    <ui:VisualElement class="cv-tool">
+        <Bindings>
+            <ui:DataBinding property="tooltip" data-source-path="Tooltip" binding-mode="ToTarget" />
+        </Bindings>
+        <cv:VaultSwitch>
+            <Bindings>
+                <ui:DataBinding property="name" data-source-path="Name" binding-mode="ToTarget" />
+                <ui:DataBinding property="text" data-source-path="Title" binding-mode="ToTarget" />
+                <ui:DataBinding property="value" data-source-path="Enabled" binding-mode="TwoWay" />
+            </Bindings>
+        </cv:VaultSwitch>
+        <ui:Label class="cv-tool__blurb">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Blurb" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Blurb" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

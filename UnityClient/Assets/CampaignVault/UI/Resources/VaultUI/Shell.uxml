@@ -1,7 +1,8 @@
-<ui:UXML xmlns:ui="UnityEngine.UIElements">
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
     <!--
-        The table. Static skeleton only: every region is filled and bound in
-        code (Scripts/UI/VaultClientUI.cs). Styles: UI/Theme/*.uss.
+        The table. The top bar binds to TopBarViewModel and the toasts to ToastsViewModel (set as data sources in
+        Scripts/UI/VaultClientUI.cs); the party, story, command bar and codex are templates cloned into the empty
+        regions. Styles: UI/Theme/*.uss.
     -->
     <ui:VisualElement name="Root" class="cv-root">
         <ui:VisualElement class="cv-backdrop" picking-mode="Ignore" />
@@ -12,22 +13,105 @@
                     <ui:VisualElement class="cv-icon cv-icon--crest" />
                     <ui:Label text="CAMPAIGN VAULT" class="cv-display cv-brand__name" />
                 </ui:VisualElement>
+                <!-- Both lines end in an ellipsis when the bar is too narrow; the tooltip always has them whole. -->
                 <ui:VisualElement name="Context" class="cv-context">
-                    <ui:Label name="ContextTitle" class="cv-context__title" />
-                    <ui:Label name="ContextMeta" class="cv-context__meta" />
+                    <Bindings>
+                        <ui:DataBinding property="tooltip" data-source-path="ContextFull" binding-mode="ToTarget" />
+                    </Bindings>
+                    <ui:Label name="ContextTitle" class="cv-context__title">
+                        <Bindings>
+                            <ui:DataBinding property="text" data-source-path="ContextTitle" binding-mode="ToTarget" />
+                        </Bindings>
+                    </ui:Label>
+                    <ui:Label name="ContextMeta" class="cv-context__meta">
+                        <Bindings>
+                            <ui:DataBinding property="text" data-source-path="ContextMeta" binding-mode="ToTarget" />
+                        </Bindings>
+                    </ui:Label>
                 </ui:VisualElement>
                 <ui:VisualElement class="cv-spacer" />
-                <ui:VisualElement name="TopActions" class="cv-row" />
+                <ui:VisualElement name="TopActions" class="cv-row">
+                    <!-- Status sigils: an icon in a gilt lozenge, a gem that carries the state. -->
+                    <cv:ClickArea name="sigil-server" silent="true" class="cv-sigil">
+                        <Bindings>
+                            <ui:DataBinding property="command" data-source-path="CheckServer" binding-mode="ToTarget" />
+                            <ui:DataBinding property="tooltip" data-source-path="ServerTip" binding-mode="ToTarget" />
+                            <cv:ClassBinding property="cls-ok" data-source-path="ServerOk" class-name="cv-sigil--ok" />
+                            <cv:ClassBinding property="cls-bad" data-source-path="ServerBad" class-name="cv-sigil--bad" />
+                            <cv:ClassBinding property="cls-busy" data-source-path="ServerBusy" class-name="cv-sigil--busy" />
+                        </Bindings>
+                        <ui:VisualElement picking-mode="Ignore" class="cv-icon cv-icon--server" />
+                        <ui:VisualElement picking-mode="Ignore" class="cv-sigil__gem" />
+                    </cv:ClickArea>
+                    <cv:ClickArea name="sigil-model" silent="true" class="cv-sigil">
+                        <Bindings>
+                            <ui:DataBinding property="command" data-source-path="OpenProvider" binding-mode="ToTarget" />
+                            <ui:DataBinding property="tooltip" data-source-path="ModelTip" binding-mode="ToTarget" />
+                            <cv:ClassBinding property="cls-ok" data-source-path="ModelOk" class-name="cv-sigil--ok" />
+                            <cv:ClassBinding property="cls-bad" data-source-path="ModelBad" class-name="cv-sigil--bad" />
+                            <cv:ClassBinding property="cls-busy" data-source-path="ModelBusy" class-name="cv-sigil--busy" />
+                        </Bindings>
+                        <ui:VisualElement picking-mode="Ignore" class="cv-icon cv-icon--spark" />
+                        <ui:VisualElement picking-mode="Ignore" class="cv-sigil__gem" />
+                    </cv:ClickArea>
+                    <ui:VisualElement class="cv-topbar__divider" />
+                    <cv:VaultButton name="top-textsize" label="Aa" tooltip="Story text size" class="cv-btn--ghost cv-btn--icon cv-textsize-btn">
+                        <Bindings>
+                            <ui:DataBinding property="command" data-source-path="ToggleTextMenu" binding-mode="ToTarget" />
+                        </Bindings>
+                    </cv:VaultButton>
+                    <cv:VaultButton name="top-campaigns" icon="campaigns" tooltip="Campaigns" class="cv-btn--icon cv-btn--ghost">
+                        <Bindings>
+                            <ui:DataBinding property="command" data-source-path="OpenCampaigns" binding-mode="ToTarget" />
+                        </Bindings>
+                    </cv:VaultButton>
+                    <cv:VaultButton name="top-codex" icon="quests" tooltip="Codex: quests, scene, pack and journal" class="cv-btn--icon cv-btn--ghost">
+                        <Bindings>
+                            <ui:DataBinding property="command" data-source-path="ToggleCodex" binding-mode="ToTarget" />
+                        </Bindings>
+                    </cv:VaultButton>
+                    <cv:VaultButton name="top-settings" icon="settings" tooltip="Settings" class="cv-btn--icon cv-btn--ghost">
+                        <Bindings>
+                            <ui:DataBinding property="command" data-source-path="ToggleSettings" binding-mode="ToTarget" />
+                        </Bindings>
+                    </cv:VaultButton>
+                    <cv:VaultButton name="top-leave" icon="exit" tooltip="Leave the table" class="cv-btn--icon cv-btn--ghost">
+                        <Bindings>
+                            <ui:DataBinding property="command" data-source-path="Leave" binding-mode="ToTarget" />
+                        </Bindings>
+                    </cv:VaultButton>
+                </ui:VisualElement>
             </ui:VisualElement>
             <ui:VisualElement name="Stage" class="cv-stage">
                 <ui:VisualElement name="Party" class="cv-party" />
                 <ui:VisualElement name="Center" class="cv-center">
-                    <ui:VisualElement name="Column" class="cv-center__column" />
+                    <ui:VisualElement name="Column" class="cv-center__column">
+                        <ui:VisualElement name="Log" class="cv-log-wrap" />
+                        <ui:VisualElement name="Command" class="cv-command-host" />
+                    </ui:VisualElement>
                 </ui:VisualElement>
                 <ui:VisualElement name="Codex" class="cv-codex" />
             </ui:VisualElement>
         </ui:VisualElement>
-        <ui:VisualElement name="Toasts" class="cv-toasts" picking-mode="Ignore" />
+        <!-- The "Aa" menu: a small popover under the top bar; any click outside closes it (VaultClientUI). -->
+        <ui:VisualElement name="TextMenu" class="cv-popover cv-popover--textsize cv-hidden">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="TextMenuOpen" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <ui:Label text="STORY TEXT" class="cv-caption cv-popover__title" />
+            <cv:ContentPresenter>
+                <Bindings>
+                    <ui:DataBinding property="content" data-source-path="TextSize" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:ContentPresenter>
+        </ui:VisualElement>
+        <ui:VisualElement name="Toasts" class="cv-toasts" picking-mode="Ignore">
+            <cv:LiveRepeater item-template="Shell/Toast" picking-mode="Ignore">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Toasts" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:LiveRepeater>
+        </ui:VisualElement>
         <ui:VisualElement name="OverlayLayer" class="cv-layer" picking-mode="Ignore" />
         <ui:VisualElement name="TooltipLayer" class="cv-layer" picking-mode="Ignore" />
     </ui:VisualElement>

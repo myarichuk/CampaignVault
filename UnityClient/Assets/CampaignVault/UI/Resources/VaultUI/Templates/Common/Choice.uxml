@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- A ChoiceViewModel: one button of a group, lit when it is the current choice. -->
+    <cv:VaultButton>
+        <Bindings>
+            <ui:DataBinding property="name" data-source-path="Name" binding-mode="ToTarget" />
+            <ui:DataBinding property="label" data-source-path="Label" binding-mode="ToTarget" />
+            <ui:DataBinding property="icon" data-source-path="Icon" binding-mode="ToTarget" />
+            <ui:DataBinding property="command" data-source-path="Pick" binding-mode="ToTarget" />
+            <cv:ClassBinding property="cls-selected" data-source-path="Selected" class-name="cv-btn--selected" />
+            <cv:ClassBinding property="cls-small" data-source-path="Small" class-name="cv-btn--small" />
+        </Bindings>
+    </cv:VaultButton>
+</ui:UXML>

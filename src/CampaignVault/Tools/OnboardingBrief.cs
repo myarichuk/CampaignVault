@@ -22,6 +22,15 @@ public static class OnboardingBrief
         var pcCreation = Answer(OnboardingQuestionCatalog.PcCreation);
         var roster = SplitList(Answer(OnboardingQuestionCatalog.PcRoster));
         var level = Answer(OnboardingQuestionCatalog.StartingLevel);
+        // The party step replaced the three questions above; an onboarding that answered them keeps the old wording.
+        OnboardingPartyAnswer? party = null;
+        if (pcCreation.Length == 0 && OnboardingPartyAnswer.TryParse(Answer(OnboardingQuestionCatalog.Party), out var parsedParty, out _))
+        {
+            party = parsedParty;
+            pcCreation = party.Mode;
+            level = party.Level.ToString();
+        }
+
         // Narrative campaigns skip the level question: no level to state.
         var levelled = !string.Equals(system, "Narrative", StringComparison.OrdinalIgnoreCase);
         if (levelled && level.Length == 0)
@@ -52,14 +61,31 @@ public static class OnboardingBrief
         Line(sb, "Companions for the solo PC", Answer(OnboardingQuestionCatalog.SoloCompanions));
         Line(sb, "Player characters", pcCreation switch
         {
+            OnboardingPartyAnswer.ModeBuildNow => "already built by the player (below)",
+            OnboardingPartyAnswer.ModeDmDrafts when party is { HasBuiltCharacters: true } => "drafted by the DM and reviewed by the player; already built (below)",
+            OnboardingPartyAnswer.ModeDmDrafts => "the DM pre-generates them for the player's approval",
+            OnboardingPartyAnswer.ModeBuildAtTable => "built with the player at the table, step by step",
             OnboardingQuestionCatalog.PcCreationDescribeNow => "described by the player (below)",
             OnboardingQuestionCatalog.PcCreationDmPregenerates => "the DM pre-generates them for the player's approval",
-            OnboardingQuestionCatalog.PcCreationBuildAtTable => "built with the player at the table, step by step",
             _ => pcCreation
         });
         foreach (var pc in roster)
         {
             sb.AppendLine($"  - {pc}");
+        }
+
+        var built = party is { HasBuiltCharacters: true };
+        if (built)
+        {
+            foreach (var id in party!.CharacterIds)
+            {
+                sb.AppendLine($"  - already built: {id}");
+            }
+
+            if (party.CompanionIds.Count > 0)
+            {
+                Line(sb, "Companions (already built)", string.Join(", ", party.CompanionIds));
+            }
         }
 
         if (levelled)
@@ -85,10 +111,15 @@ public static class OnboardingBrief
         var statLine = $"isPc=true, {(levelled ? $"level {level}, " : "")}full systemStats for the {system} ruleset, and their starting gear as items[] with holderId set (same batch)";
         switch (pcCreation)
         {
+            case OnboardingPartyAnswer.ModeBuildNow:
+            case OnboardingPartyAnswer.ModeDmDrafts when built:
+                sb.AppendLine($"{step++}. {(solo ? "The player character is" : "The player characters are")} already built (ids above). Do NOT world_build {(solo ? "it" : "them")}; they exist with full stats and gear. Place {(solo ? "it" : "them")} at the opening location.");
+                break;
             case OnboardingQuestionCatalog.PcCreationDmPregenerates:
+            case OnboardingPartyAnswer.ModeDmDrafts:
                 sb.AppendLine($"{step++}. Invent {pcWord} to fit the tone{(solo ? "" : " and the party answer")}. Show the player each one (name, ancestry, class, a one-line hook) and let them swap or tweak before you world_build them with {statLine}.");
                 break;
-            case OnboardingQuestionCatalog.PcCreationBuildAtTable:
+            case OnboardingPartyAnswer.ModeBuildAtTable: // same value as the old build-at-table option
                 sb.AppendLine($"{step++}. Before any scene, walk the player through creating {pcWord}: one decision per message (ancestry, class, background, ability scores, gear, name), each time offering a short numbered list of options from lookup kind=handbook. Then world_build them with {statLine}.");
                 break;
             default:

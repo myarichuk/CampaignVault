@@ -1,0 +1,37 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- A roll card (RollViewModel): the die carries the total, the ribbon the server's verdict. -->
+    <ui:VisualElement class="cv-roll">
+        <Bindings>
+            <cv:VariantBinding property="var-result" data-source-path="Outcome" class-prefix="cv-roll--result-" />
+            <cv:ClassBinding property="cls-enter" data-source-path="Entering" class-name="cv-roll--enter" />
+        </Bindings>
+        <ui:VisualElement class="cv-roll__die">
+            <ui:VisualElement picking-mode="Ignore" class="cv-icon cv-icon--d20 cv-roll__face" />
+            <ui:Label class="cv-roll__total">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Total" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+        <ui:VisualElement class="cv-roll__body">
+            <ui:Label class="cv-roll__label">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Label" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label class="cv-roll__detail">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Against" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="HasAgainst" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+        <ui:VisualElement class="cv-roll__ribbon">
+            <ui:Label class="cv-roll__verdict">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Verdict" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

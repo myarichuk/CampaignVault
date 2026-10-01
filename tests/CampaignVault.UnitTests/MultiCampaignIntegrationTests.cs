@@ -407,7 +407,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
                 OnboardingQuestionCatalog.StartingEra => startingEraAnswer,
                 OnboardingQuestionCatalog.System => "Dnd5e",
                 OnboardingQuestionCatalog.WorldSetting => "solo",
-                OnboardingQuestionCatalog.SoloCompanions => "no",
+                OnboardingQuestionCatalog.Party => BuildAtTableParty,
                 OnboardingQuestionCatalog.PlotSource => "generated-surprise",
                 OnboardingQuestionCatalog.SideQuestGeneration => "on-the-fly",
                 _ when current.AnswerType == OnboardingAnswerType.Enum => current.EnumOptions![0],
@@ -440,17 +440,34 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         Assert.Contains($"Year {expectedYear}", worldState.Data.Time.FormattedDate);
     }
 
+    private const string BuildAtTableParty = "{\"mode\":\"build-at-table\",\"level\":1}";
+
+    private async Task<string> StorePcAsync(string slug, string name, bool isPc = true)
+    {
+        var id = $"chars/{slug}-{name.ToLowerInvariant()}";
+        using var session = _store.OpenAsyncSession();
+        await session.StoreAsync(new Character { Id = id, Name = name, IsPc = isPc, IsPartyCompanion = !isPc, CampaignName = slug });
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return id;
+    }
+
     [Theory]
-    [InlineData("party-homebrew", OnboardingQuestionCatalog.PcCreationDescribeNow, true, true)]
-    [InlineData("party-existing", OnboardingQuestionCatalog.PcCreationDmPregenerates, true, false)]
-    [InlineData("solo", OnboardingQuestionCatalog.PcCreationBuildAtTable, false, false)]
+    [InlineData("party-homebrew", OnboardingPartyAnswer.ModeBuildNow, true)]
+    [InlineData("party-existing", OnboardingPartyAnswer.ModeDmDrafts, true)]
+    [InlineData("solo", OnboardingPartyAnswer.ModeBuildAtTable, false)]
     public async Task Onboarding_EveryPath_AsksAboutTheWorldAndPlayerCharacters(
-        string worldSetting, string pcCreation, bool expectPartyQuestion, bool expectRoster)
+        string worldSetting, string mode, bool expectPartyQuestion)
     {
         var repo = _fixture.CreateRepository();
         var onboarding = TestCampaignToolsFactory.CreateTool<OnboardingTools>(_fixture, repo);
         var sessions = TestCampaignToolsFactory.CreateTool<SessionTools>(_fixture, repo);
         var slug = "onboard-path-" + Guid.NewGuid().ToString("N")[..8];
+
+        // build-now arrives with built characters; dm-drafts with drafts the player already committed.
+        var lyra = mode == OnboardingPartyAnswer.ModeBuildAtTable ? null : await StorePcAsync(slug, "Lyra");
+        var party = lyra == null
+            ? $"{{\"mode\":\"{mode}\",\"level\":3}}"
+            : $"{{\"mode\":\"{mode}\",\"level\":3,\"characterIds\":[\"{lyra}\"]}}";
 
         var start = await onboarding.StartCampaignOnboarding(slug);
         Assert.True(start.Success);
@@ -465,13 +482,10 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
             {
                 OnboardingQuestionCatalog.System => "Dnd5e",
                 OnboardingQuestionCatalog.WorldSetting => worldSetting,
-                OnboardingQuestionCatalog.PcCreation => pcCreation,
-                OnboardingQuestionCatalog.PcRoster => "Lyra — elf ranger, exiled scout; Bram — dwarf cleric, lapsed priest",
-                OnboardingQuestionCatalog.StartingLevel => "3",
+                OnboardingQuestionCatalog.Party => party,
                 OnboardingQuestionCatalog.PlotSource => "user-provided",
                 OnboardingQuestionCatalog.PlotDirection => "A stolen crown and a drowned city",
                 OnboardingQuestionCatalog.OpeningScene => "The docks of Saltmere at dawn",
-                OnboardingQuestionCatalog.SoloCompanions => "yes",
                 _ when current.AnswerType == OnboardingAnswerType.Enum => current.EnumOptions![0],
                 _ => "A reasonable free-text answer for this question."
             };
@@ -481,34 +495,166 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         }
 
         Assert.Contains(OnboardingQuestionCatalog.HomebrewWorldDetails, asked);
-        Assert.Contains(OnboardingQuestionCatalog.PcCreation, asked);
-        Assert.Contains(OnboardingQuestionCatalog.StartingLevel, asked);
+        Assert.Contains(OnboardingQuestionCatalog.Party, asked);
         Assert.Contains(OnboardingQuestionCatalog.PlotDirection, asked);
         Assert.Contains(OnboardingQuestionCatalog.OpeningScene, asked);
         Assert.Equal(expectPartyQuestion, asked.Contains(OnboardingQuestionCatalog.PartyComposition));
-        Assert.Equal(!expectPartyQuestion, asked.Contains(OnboardingQuestionCatalog.SoloCompanions));
-        Assert.Equal(expectRoster, asked.Contains(OnboardingQuestionCatalog.PcRoster));
+        // The party step replaced these three, and solo companions live inside it.
+        Assert.DoesNotContain(OnboardingQuestionCatalog.PcCreation, asked);
+        Assert.DoesNotContain(OnboardingQuestionCatalog.PcRoster, asked);
+        Assert.DoesNotContain(OnboardingQuestionCatalog.StartingLevel, asked);
+        Assert.DoesNotContain(OnboardingQuestionCatalog.SoloCompanions, asked);
         // The plot follows the world directly, before any character questions.
         Assert.Equal(asked.IndexOf(OnboardingQuestionCatalog.HomebrewWorldDetails) + 1, asked.IndexOf(OnboardingQuestionCatalog.PlotSource));
-        Assert.True(asked.IndexOf(OnboardingQuestionCatalog.PlotDirection) < asked.IndexOf(OnboardingQuestionCatalog.PcCreation));
+        Assert.True(asked.IndexOf(OnboardingQuestionCatalog.PlotDirection) < asked.IndexOf(OnboardingQuestionCatalog.Party));
 
         var finalize = await onboarding.FinalizeCampaignOnboarding(slug);
         Assert.True(finalize.Success, finalize.Summary);
         var brief = finalize.Data!.SeedBrief;
-        Assert.Contains("isPc=true", brief);
-        Assert.Contains("level 3", brief);
+        Assert.Contains("Starting level: 3", brief);
         Assert.Contains("The docks of Saltmere at dawn", brief);
         Assert.Contains("A stolen crown and a drowned city", brief);
-        if (expectRoster)
+        if (lyra != null)
         {
-            Assert.Contains("Lyra — elf ranger, exiled scout", brief);
-            Assert.Contains("Bram — dwarf cleric, lapsed priest", brief);
+            // Pre-built characters are listed by id and must not be world_built again.
+            Assert.Contains(lyra, brief);
+            Assert.Contains("already built", brief);
+            Assert.Contains("Do NOT world_build", brief);
+            Assert.DoesNotContain("isPc=true", brief);
+        }
+        else
+        {
+            Assert.Contains("isPc=true", brief);
+            Assert.Contains("walk the player through creating", brief);
         }
 
-        // Until the party exists, start_session hands the brief back instead of just refusing.
+        // Until the world is seeded, start_session hands the brief back instead of just refusing. Pre-built
+        // characters are a party but stand nowhere yet, so that alone doesn't open a session.
         var session = await sessions.StartSession(slug);
         Assert.False(session.Success);
         Assert.Contains("CAMPAIGN SETUP BRIEF", session.Summary);
+        if (lyra != null)
+        {
+            Assert.Contains("no world yet", session.Summary);
+            using (var place = _store.OpenAsyncSession())
+            {
+                var pc = await place.LoadAsync<Character>(lyra, TestContext.Current.CancellationToken);
+                pc.CurrentLocationId = "locations/saltmere-docks";
+                await place.SaveChangesAsync(TestContext.Current.CancellationToken);
+            }
+
+            var started = await sessions.StartSession(slug);
+            Assert.True(started.Success, started.Summary);
+        }
+    }
+
+    [Fact]
+    public async Task Onboarding_DmDraftsWithNoDraftsYet_BriefAsksTheDmToDraftThem()
+    {
+        var brief = OnboardingBrief.Build("s", "S", "Dnd5e", new Dictionary<string, object>
+        {
+            [OnboardingQuestionCatalog.Party] = "{\"mode\":\"dm-drafts\",\"level\":2}"
+        });
+        Assert.Contains("pre-generates", brief);
+        Assert.Contains("Invent the player characters", brief);
+        Assert.Contains("level 2", brief);
+        await Task.CompletedTask;
+    }
+
+    [Fact]
+    public async Task Onboarding_PartyAnswer_RejectsBadShapesAndUnknownIds()
+    {
+        var question = OnboardingQuestionCatalog.GetQuestionSequence().Single(q => q.Key == OnboardingQuestionCatalog.Party);
+        Assert.NotNull(OnboardingQuestionCatalog.ValidateAnswer(question, "build-at-table"));
+        Assert.NotNull(OnboardingQuestionCatalog.ValidateAnswer(question, "{\"mode\":\"nope\"}"));
+        Assert.NotNull(OnboardingQuestionCatalog.ValidateAnswer(question, "{\"mode\":\"build-now\",\"characterIds\":[]}"));
+        Assert.NotNull(OnboardingQuestionCatalog.ValidateAnswer(question, "{\"mode\":\"build-at-table\",\"level\":21}"));
+        Assert.NotNull(OnboardingQuestionCatalog.ValidateAnswer(question, "{\"mode\":\"build-at-table\",\"characterIds\":\"x\"}"));
+        Assert.Null(OnboardingQuestionCatalog.ValidateAnswer(question, "{\"mode\":\"build-at-table\"}"));
+        Assert.Null(OnboardingQuestionCatalog.ValidateAnswer(question, "{\"mode\":\"build-now\",\"level\":20,\"characterIds\":[\"chars/x\"]}"));
+
+        // Shape is fine, but the character does not exist (or is a companion, not a PC).
+        var repo = _fixture.CreateRepository();
+        var onboarding = TestCampaignToolsFactory.CreateTool<OnboardingTools>(_fixture, repo);
+        var slug = "onboard-ids-" + Guid.NewGuid().ToString("N")[..8];
+        var dog = await StorePcAsync(slug, "Dog", isPc: false);
+        var current = (await onboarding.StartCampaignOnboarding(slug)).Data!.CurrentQuestion;
+        while (current is { Key: not OnboardingQuestionCatalog.Party })
+        {
+            string answer = current.Key switch
+            {
+                OnboardingQuestionCatalog.System => "Dnd5e",
+                OnboardingQuestionCatalog.WorldSetting => "solo",
+                OnboardingQuestionCatalog.PlotSource => "generated-surprise",
+                _ when current.AnswerType == OnboardingAnswerType.Enum => current.EnumOptions![0],
+                _ => "A reasonable free-text answer for this question."
+            };
+            var step = await onboarding.SubmitOnboardingAnswer(slug, answer);
+            Assert.True(step.Success, step.Summary);
+            current = step.Data!.CurrentQuestion;
+        }
+
+        Assert.NotNull(current);
+        var missing = await onboarding.SubmitOnboardingAnswer(slug, "{\"mode\":\"build-now\",\"characterIds\":[\"chars/ghost\"]}");
+        Assert.False(missing.Success);
+        var companionAsPc = await onboarding.SubmitOnboardingAnswer(slug, $"{{\"mode\":\"build-now\",\"characterIds\":[\"{dog}\"]}}");
+        Assert.False(companionAsPc.Success);
+        var companionOk = await onboarding.SubmitOnboardingAnswer(slug, $"{{\"mode\":\"build-at-table\",\"companionIds\":[\"{dog}\"]}}");
+        Assert.True(companionOk.Success, companionOk.Summary);
+    }
+
+    [Fact]
+    public async Task Onboarding_AlreadyAnsweredPcCreation_KeepsTheOldQuestionsAndWording()
+    {
+        var repo = _fixture.CreateRepository();
+        var onboarding = TestCampaignToolsFactory.CreateTool<OnboardingTools>(_fixture, repo);
+        var slug = "onboard-legacy-" + Guid.NewGuid().ToString("N")[..8];
+
+        var asked = new List<string>();
+        OnboardingQuestion? current = (await onboarding.StartCampaignOnboarding(slug)).Data!.CurrentQuestion;
+        var answeredLegacy = false;
+        while (current != null)
+        {
+            Assert.True(asked.Count < 30, "Onboarding question loop did not terminate.");
+            asked.Add(current.Key);
+            if (current.Key == OnboardingQuestionCatalog.Party && !answeredLegacy)
+            {
+                // The state saved before the party step existed: pc_creation is already in its answers.
+                using var session = _store.OpenAsyncSession();
+                var state = await repo.GetOnboardingStateAsync(session, slug);
+                state!.CollectedAnswers[OnboardingQuestionCatalog.PcCreation] = OnboardingQuestionCatalog.PcCreationDescribeNow;
+                state.NextQuestion = OnboardingQuestionCatalog.GetNextQuestion(state);
+                await repo.UpsertOnboardingStateAsync(session, state, slug);
+                await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+                answeredLegacy = true;
+                current = state.NextQuestion;
+                asked.Remove(OnboardingQuestionCatalog.Party);
+                continue;
+            }
+
+            string answer = current.Key switch
+            {
+                OnboardingQuestionCatalog.System => "Dnd5e",
+                OnboardingQuestionCatalog.WorldSetting => "solo",
+                OnboardingQuestionCatalog.PcRoster => "Lyra — elf ranger, exiled scout",
+                OnboardingQuestionCatalog.StartingLevel => "3",
+                OnboardingQuestionCatalog.PlotSource => "generated-surprise",
+                _ when current.AnswerType == OnboardingAnswerType.Enum => current.EnumOptions![0],
+                _ => "A reasonable free-text answer for this question."
+            };
+            var submit = await onboarding.SubmitOnboardingAnswer(slug, answer);
+            Assert.True(submit.Success, submit.Summary);
+            current = submit.Data!.CurrentQuestion;
+        }
+
+        Assert.DoesNotContain(OnboardingQuestionCatalog.Party, asked);
+        Assert.Contains(OnboardingQuestionCatalog.PcRoster, asked);
+        Assert.Contains(OnboardingQuestionCatalog.StartingLevel, asked);
+        var finalize = await onboarding.FinalizeCampaignOnboarding(slug);
+        Assert.True(finalize.Success, finalize.Summary);
+        Assert.Contains("described by the player", finalize.Data!.SeedBrief);
+        Assert.Contains("Lyra — elf ranger, exiled scout", finalize.Data.SeedBrief);
+        Assert.Contains("level 3", finalize.Data.SeedBrief);
     }
 
     [Fact]
@@ -529,6 +675,7 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
             {
                 OnboardingQuestionCatalog.System => "Narrative",
                 OnboardingQuestionCatalog.WorldSetting => "solo",
+                OnboardingQuestionCatalog.Party => BuildAtTableParty,
                 _ when current.AnswerType == OnboardingAnswerType.Enum => current.EnumOptions![0],
                 _ => "A reasonable free-text answer for this question."
             };
@@ -542,17 +689,5 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
         Assert.True(finalize.Success, finalize.Summary);
         Assert.DoesNotContain("Starting level", finalize.Data!.SeedBrief);
         Assert.DoesNotContain("level 1", finalize.Data.SeedBrief);
-    }
-
-    [Fact]
-    public async Task Onboarding_StartingLevel_RejectsOutOfRangeAndNonNumbers()
-    {
-        var question = OnboardingQuestionCatalog.GetQuestionSequence().Single(q => q.Key == OnboardingQuestionCatalog.StartingLevel);
-        Assert.NotNull(OnboardingQuestionCatalog.ValidateAnswer(question, "0"));
-        Assert.NotNull(OnboardingQuestionCatalog.ValidateAnswer(question, "21"));
-        Assert.NotNull(OnboardingQuestionCatalog.ValidateAnswer(question, "three"));
-        Assert.Null(OnboardingQuestionCatalog.ValidateAnswer(question, "1"));
-        Assert.Null(OnboardingQuestionCatalog.ValidateAnswer(question, "20"));
-        await Task.CompletedTask;
     }
 }

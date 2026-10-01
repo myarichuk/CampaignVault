@@ -73,9 +73,20 @@
 .cv-seg--streaming { color: var(--text-2); }
 
 .cv-voice { flex-direction: row; margin-bottom: 16px; }
-.cv-voice__bar { width: 3px; margin-right: 14px; background-color: var(--text-3); }
+.cv-voice__bar { width: 3px; margin-right: 14px; background-color: var(--speaker); }
 .cv-voice__body { flex-grow: 1; flex-shrink: 1; }
 .cv-nameplate { -unity-font-definition: url("../Fonts/SDF/Cinzel-Bold.asset"); font-size: var(--fs-xs); letter-spacing: 2.5px; margin-bottom: 2px; color: var(--text-3); white-space: normal; }
+.cv-voice .cv-nameplate { color: var(--speaker); }
+/* One of eight hues per speaker name (StoryText.SpeakerHue), the nameplate and the bar take it. */
+.cv-speaker--0 { --speaker: #9ED1FF; }
+.cv-speaker--1 { --speaker: #FFC79E; }
+.cv-speaker--2 { --speaker: #B8FFC7; }
+.cv-speaker--3 { --speaker: #FFADD9; }
+.cv-speaker--4 { --speaker: #D9CCFF; }
+.cv-speaker--5 { --speaker: #FFE699; }
+.cv-speaker--6 { --speaker: #A6FFF2; }
+.cv-speaker--7 { --speaker: #FF9E9E; }
+.cv-speaker--none { --speaker: #807866; }
 .cv-voice__line { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); font-size: var(--fs-story); color: var(--text-1); white-space: normal; }
 
 .cv-player { flex-direction: row; justify-content: flex-end; margin: 10px 0 20px 0; }
@@ -145,17 +156,17 @@
     border-left-width: 1px; border-color: rgba(0, 0, 0, 0.4);
 }
 .cv-roll__verdict { -unity-font-definition: url("../Fonts/SDF/Cinzel-Bold.asset"); font-size: 15px; letter-spacing: 2px; color: var(--text-1); -unity-text-align: middle-center; white-space: normal; }
-.cv-roll--success .cv-roll__ribbon { background-color: var(--leaf-dim); }
-.cv-roll--failure .cv-roll__ribbon { background-color: var(--blood-dim); }
-.cv-roll--crit-success { border-color: var(--gold); background-color: var(--gold-deep); }
-.cv-roll--crit-success .cv-roll__ribbon { background-color: var(--gold); }
-.cv-roll--crit-success .cv-roll__verdict { color: var(--ink-0); }
-.cv-roll--crit-success .cv-roll__face { -unity-background-image-tint-color: rgba(255, 224, 138, 0.3); }
-.cv-roll--crit-success .cv-roll__total { color: var(--crit); text-shadow: 0 0 12px rgba(255, 224, 138, 0.7); }
-.cv-roll--crit-failure { border-color: var(--blood); background-color: var(--blood-deep); }
-.cv-roll--crit-failure .cv-roll__ribbon { background-color: var(--blood); }
-.cv-roll--crit-failure .cv-roll__face { -unity-background-image-tint-color: rgba(214, 69, 69, 0.3); }
-.cv-roll--crit-failure .cv-roll__total { color: #FF8A8A; }
+.cv-roll--result-success .cv-roll__ribbon { background-color: var(--leaf-dim); }
+.cv-roll--result-failure .cv-roll__ribbon { background-color: var(--blood-dim); }
+.cv-roll--result-crit-success { border-color: var(--gold); background-color: var(--gold-deep); }
+.cv-roll--result-crit-success .cv-roll__ribbon { background-color: var(--gold); }
+.cv-roll--result-crit-success .cv-roll__verdict { color: var(--ink-0); }
+.cv-roll--result-crit-success .cv-roll__face { -unity-background-image-tint-color: rgba(255, 224, 138, 0.3); }
+.cv-roll--result-crit-success .cv-roll__total { color: var(--crit); text-shadow: 0 0 12px rgba(255, 224, 138, 0.7); }
+.cv-roll--result-crit-failure { border-color: var(--blood); background-color: var(--blood-deep); }
+.cv-roll--result-crit-failure .cv-roll__ribbon { background-color: var(--blood); }
+.cv-roll--result-crit-failure .cv-roll__face { -unity-background-image-tint-color: rgba(214, 69, 69, 0.3); }
+.cv-roll--result-crit-failure .cv-roll__total { color: #FF8A8A; }
 
 .cv-thinking { flex-direction: row; align-items: center; height: 26px; flex-shrink: 0; padding-left: 4px; opacity: 0; transition-property: opacity; transition-duration: var(--motion); }
 .cv-thinking--on { opacity: 1; }
@@ -174,7 +185,8 @@
     background-color: var(--ink-2);
     border-width: 1px; border-color: var(--line-strong);
 }
-.cv-command__quick { flex-direction: row; flex-wrap: wrap; margin-bottom: 8px; }
+.cv-command__quick { margin-bottom: 8px; }
+.cv-command__chips { flex-direction: row; flex-wrap: wrap; }
 .cv-command__quick .cv-btn { margin-right: 6px; margin-bottom: 4px; }
 .cv-command__row { flex-direction: row; align-items: flex-end; }
 .cv-command__input { flex-grow: 1; flex-shrink: 1; margin: 0 10px 0 0; }
@@ -400,3 +412,11 @@
 .cv-journal__actions { margin-top: 8px; }
 .cv-journal__actions > .cv-btn { margin-right: 8px; }
 .cv-codex__go { margin-left: 6px; }
+
+.cv-campaigns__bar { margin-bottom: 18px; }
+.cv-campaigns__bar > .cv-btn { margin-right: 8px; }
+
+/* The command bar's host in the column, and its gate row (CommandBar.uxml). */
+.cv-command-host { flex-shrink: 0; }
+.cv-command__gate { flex-direction: row; align-items: center; margin-bottom: 8px; }
+.cv-command__fix { margin-left: 8px; }

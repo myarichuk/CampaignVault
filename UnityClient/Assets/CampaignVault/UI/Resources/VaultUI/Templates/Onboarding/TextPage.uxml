@@ -1,0 +1,63 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- TextPageViewModel: a written answer, with the brainstorm helper. -->
+    <ui:Template name="Header" src="QuestionHeader.uxml" />
+    <ui:VisualElement>
+        <ui:Instance template="Header" />
+        <ui:VisualElement class="cv-onboarding__answer">
+            <cv:VaultField name="onboarding-answer" vertical-scroller-visibility="Auto">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="Draft" binding-mode="TwoWay" />
+                    <ui:DataBinding property="placeholder" data-source-path="Placeholder" binding-mode="ToTarget" />
+                    <ui:DataBinding property="multiline" data-source-path="Multiline" binding-mode="ToTarget" />
+                    <ui:DataBinding property="focusRequest" data-source-path="FocusRequest" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-multiline" data-source-path="Multiline" class-name="cv-field--multiline" />
+                </Bindings>
+            </cv:VaultField>
+            <ui:Label name="onboarding-count" class="cv-counter">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Count" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="CountVisible" class-name="cv-hidden" invert="true" />
+                    <cv:ClassBinding property="cls-over" data-source-path="Over" class-name="cv-counter--over" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label class="cv-body cv-muted cv-italic">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="OverNote" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Over" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+            <ui:VisualElement class="cv-row cv-onboarding__helpers">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="CanBrainstorm" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <cv:VaultButton name="onboarding-brainstorm" icon="spark" tooltip="One conversation with the DM for the whole setup. When you are happy, it writes the answer into this field for you to edit." class="cv-btn--small">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="Brainstorm" binding-mode="ToTarget" />
+                        <ui:DataBinding property="label" data-source-path="BrainstormLabel" binding-mode="ToTarget" />
+                        <ui:DataBinding property="enabledSelf" data-source-path="BrainstormEnabled" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+                <cv:VaultButton name="onboarding-writeup-field" icon="check" class="cv-btn--small cv-onboarding__writeup">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="WriteUp" binding-mode="ToTarget" />
+                        <ui:DataBinding property="label" data-source-path="WriteUpLabel" binding-mode="ToTarget" />
+                        <ui:DataBinding property="enabledSelf" data-source-path="BrainstormEnabled" binding-mode="ToTarget" />
+                        <ui:DataBinding property="tooltip" data-source-path="WriteUpTooltip" binding-mode="ToTarget" />
+                        <cv:ClassBinding property="cls-hidden" data-source-path="ShowWriteUp" class-name="cv-hidden" invert="true" />
+                    </Bindings>
+                </cv:VaultButton>
+            </ui:VisualElement>
+            <ui:Label text="The DM is writing it up…" class="cv-body cv-muted cv-italic">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Busy" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label class="cv-body cv-text-blood">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="BrainstormError" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="BrainstormError" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

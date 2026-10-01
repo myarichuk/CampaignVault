@@ -1,0 +1,9 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- The DM's narration (ProseViewModel). It dims while it is still streaming in. -->
+    <ui:Label class="cv-seg cv-seg--narration">
+        <Bindings>
+            <ui:DataBinding property="text" data-source-path="Text" binding-mode="ToTarget" />
+            <cv:ClassBinding property="cls-streaming" data-source-path="Streaming" class-name="cv-seg--streaming" />
+        </Bindings>
+    </ui:Label>
+</ui:UXML>

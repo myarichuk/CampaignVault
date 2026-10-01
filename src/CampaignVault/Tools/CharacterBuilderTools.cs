@@ -230,7 +230,19 @@ public partial class CharacterBuilderTools : CampaignToolBase, IMcpServerTool
     private async Task<string> SystemAsync(Raven.Client.Documents.Session.IAsyncDocumentSession s, string campaign, CharacterDraft draft)
     {
         var config = await s.LoadAsync<CampaignConfig>(_keys.Config(campaign));
-        var system = RulesetSystem.Canonicalize(config?.ActiveSystem ?? RulesetSystem.Dnd5e);
+        var active = config?.ActiveSystem;
+        if (string.IsNullOrWhiteSpace(active))
+        {
+            // Characters can be built during onboarding, before finalize writes the campaign's config: play the system chosen there.
+            var onboarding = await s.LoadAsync<OnboardingState>(_keys.StateOnboarding(campaign));
+            if (onboarding?.CollectedAnswers.TryGetValue(OnboardingQuestionCatalog.System, out var chosen) == true
+                && !string.IsNullOrWhiteSpace(chosen?.ToString()))
+            {
+                active = chosen.ToString();
+            }
+        }
+
+        var system = RulesetSystem.Canonicalize(active ?? RulesetSystem.Dnd5e);
         if (!string.IsNullOrWhiteSpace(draft.System) && !RulesetSystem.Canonicalize(draft.System).Equals(system, StringComparison.Ordinal))
             throw new ArgumentException($"The draft is for '{draft.System}', but campaign '{campaign}' plays {system}.");
 

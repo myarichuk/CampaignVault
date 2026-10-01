@@ -398,8 +398,8 @@ using widgets per step kind.
 
 ## Phase 2.5: UI architecture pass ("tie the shoelaces before running")
 
-> **Status:** U.1–U.3 done (uncommitted). The user widened the scope: *all* UI moves to UXML + binding, and
-> re-engineering or splitting existing code to get there is welcome. So U.4–U.6 are no longer optional follow-ups.
+> **Status:** U.1–U.6 done (uncommitted): Phase 2.5 is complete. The user widened the scope: *all* UI moves to UXML +
+> binding, and re-engineering or splitting existing code to get there was welcome.
 > - **U.1:** `Scripts/UI/Mvvm/` (`ViewModel` with `Set`/`SetList`/`Watch`, `ItemList.Sync`, `ITemplated`,
 >   `Templates`, `Display`), `Scripts/UI/Controls/` (`Repeater`, `ContentPresenter`, `ClassBinding`,
 >   `VariantBinding`, `VaultButton`, `VaultField`, `VaultBar`). The `Overlay` shell is `Shell/Modal.uxml` (from U.5),
@@ -423,11 +423,27 @@ using widgets per step kind.
 >   search and track fields live on page view models that last as long as the table, so switching tabs or a
 >   refresh never loses typing. EditMode `TableViewModelTests` (5).
 > - Snapshots compared before/after (`builder-*`, `n7-*-sheet-*`, `n7-*-codex-*`): same look.
->   Green: EditMode 200/200, PlayMode 13/13.
-> - **Next:** U.5 (onboarding, campaigns, settings, setup, provider form: `SettingsOverlays.cs`,
->   `WorldOverlays.cs`, `ProviderForm.cs`), then U.6 (story log, command bar, shell/top bar, toasts:
->   `StoryLogView.cs`, `CommandBar.cs`, `VaultClientUI.cs`, `Layers.cs` toasts). Done when
->   `UiConventionTests.Legacy` is empty and `Ui.cs`'s builders are used only by code nobody calls (then delete them).
+>   Green after U.4: EditMode 200/200, PlayMode 13/13. After U.5: EditMode 219/219, PlayMode 13/13 (snapshots p6-*, n6-*, n7-settings-advanced compared: same look).
+> - **U.5:** `Templates/{World,Settings,Setup,Onboarding,Dialogs}/*.uxml` with view models in `Scripts/UI/{World,Settings,Dialogs}/`:
+>   `CampaignsViewModel`, `OnboardingViewModel` (a page per state: start form, choice / yes-no / text question,
+>   brainstorm chat with a docked composer, status, done; the foot buttons are a list of `ActionViewModel`),
+>   `SettingsViewModel` (a page per tab: `ProviderFormViewModel`, `ServerPage`, `EmbeddedPage`, `FeelPage`,
+>   `PluginsPage`, `AdvancedPage`), `SetupViewModel`, `ConfirmViewModel`, `InspectorViewModel`.
+>   `SettingsOverlays.cs`, `WorldOverlays.cs` and `ProviderForm.cs` are gone; the overlays are thin classes.
+>   New controls: `VaultSwitch`, `VaultCard`, `VaultField.focusRequest`; shared `ChoiceViewModel`, `ActionViewModel`,
+>   `TabViewModel`. EditMode `SettingsViewModelTests` and `WorldViewModelTests` (19).
+> - **U.6:** the table itself. `Shell.uxml` now binds the top bar (`TopBarViewModel`: context, two status sigils,
+>   page buttons, the "Aa" menu with a persistent `TextSizeViewModel`) and the toasts (`ToastsViewModel`); the story
+>   log (`StoryLogViewModel`, one view model and one `Templates/Story/*.uxml` per segment kind, tool activity folded
+>   into an `ActivityStripViewModel`) and the command bar (`CommandBarViewModel`: gate, quick actions, ACT/STOP,
+>   history) are templates cloned into `#Log` and `#Command`. `StoryLogView` and `CommandBar` keep only what a
+>   binding can't do (scroll-follow, the keys of a multi-line box). New controls: `LiveRepeater` (an incremental list
+>   over an `ObservableCollection`: one insert/remove/swap per change, for the log that trims at the front and the
+>   toasts that fade; `Repeater`'s by-position reuse would re-bind everything), `VaultSpinner` (the thinking die).
+>   Speaker hues are `cv-speaker--N` classes, roll results `cv-roll--result-*`. `Ui.cs` is down to text helpers,
+>   `ToastHost` and `TextSizeControl.Build` are gone, and `UiConventionTests.Legacy` is empty. EditMode
+>   `ShellViewModelTests` (13). Green: EditMode 232/232, PlayMode 13/13 (`p4-table`, `p4-busy`, `p7-*` compared:
+>   same look).
 
 **Goal:** before phases 4 and 5 add more screens, the client's UI moves to UI Toolkit's intended split: UXML for
 structure (editable in UI Builder), USS for every visual decision, view models with runtime data binding for
@@ -507,6 +523,18 @@ commits, but U.1–U.3 must land before phase 4 starts.
 **Done when:** all three release artifacts build, and the contents check passes on one of
 them by unzipping it and listing the paths above.
 
+**Status (2026-10-01): local half done, CI half waiting on Michael.**
+- 3.2 on a local macOS build (`embed-server.sh osx-arm64`, then `BuildStandaloneOSX` with
+  `-vaultPrestagedServer`): `Build StandaloneOSX result=Succeeded errors=0` (1.0 GB). The player has
+  `system-prompt.md`, `system-prompt.narrative.md`, `skills/`, `Server/osx-arm64/` with
+  `Plugins/{MedievalWeapons,NecromancersGrimoire,ShadowAndSteel,TrailAndHearth}/RulesetData`, and a real
+  90 MB `models/embedding/model.onnx` (not an LFS pointer).
+- `plugin-skills/` is absent because no plugin ships a `SKILL.md` yet (`plugins/MedievalWeapons/skills`
+  is empty). `DmContentStager` only creates the folder when there is something to copy, so this is
+  expected, not a bug.
+- 3.1 not done: it needs the Release workflow dispatched from GitHub (no `gh` here, and it publishes a
+  release), and the Phase 2/2.5 work is uncommitted, so CI would not build it. 3.3 skipped (optional).
+
 ## Phase 4: Onboarding integration (the "party" step)
 
 **Goal:** the three PC questions become one party step that opens the builder.
@@ -540,6 +568,23 @@ them by unzipping it and listing the paths above.
 - Brief tests assert that pre-built PCs aren't rebuilt.
 - `VaultSmokeScenario.AnswerFor` and `TableTests` answer `Party` with `build-at-table`.
 - All suites are green.
+
+**Status (2026-10-01): 4.1, 4.2, 4.3 and 4.5 done; 4.4 (DM drafts) waits on open question 5.**
+- Server: one `party` question (`OnboardingAnswerType.Party`, JSON `OnboardingPartyAnswer`), ids checked
+  against the campaign's characters; legacy `pc_creation` states finish on the old questions and wording;
+  the brief lists built ids and says "Do NOT world_build". `start_session` keeps handing back the brief
+  until a PC stands somewhere (a built party alone isn't a seeded world). The builder plays the system chosen
+  in onboarding when no config exists yet.
+- Client: `PartyPageViewModel` (cards + EDIT, level 1..3, ADD / USE THIS PARTY / DM DRAFTS / BUILD AT THE
+  TABLE), the builder opens over the setup for the campaign being set up (`BuilderState.ForOnboarding`).
+  Roster helper removed.
+- Known gaps, by decision: solo companions are gone from onboarding until Phase 5 (`companionIds` takes built
+  ones only); starting level is capped at `MaxBuilderLevel` (3) in the client; characters built but not yet
+  submitted are not recovered if the app restarts mid-step (they stay in the campaign as PCs); DM DRAFTS
+  currently submits `dm-drafts` with no ids, so the DM invents the party from the brief (the old
+  `dm-pregenerates` behaviour) until 4.4.
+- PF2e/Narrative: the builder has no recipe for them yet (Phase 6); Narrative's party step offers only the
+  table and DM routes.
 
 ## Phase 5: Companions (simplified stat block)
 

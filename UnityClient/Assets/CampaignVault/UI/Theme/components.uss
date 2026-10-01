@@ -320,9 +320,12 @@
 .cv-toast--leave { opacity: 0; }
 .cv-toast .cv-icon { margin-right: var(--sp-3); }
 .cv-toast__text { flex-shrink: 1; white-space: normal; font-size: var(--fs-sm); color: var(--text-1); }
-.cv-toast--success { border-left-color: var(--leaf); }
-.cv-toast--warning { border-left-color: var(--ember); }
-.cv-toast--error { border-left-color: var(--blood); background-color: var(--blood-deep); }
+.cv-toast--kind-success { border-left-color: var(--leaf); }
+.cv-toast .cv-icon { -unity-background-image-tint-color: var(--gold); }
+.cv-toast--kind-success .cv-icon { -unity-background-image-tint-color: var(--leaf); }
+.cv-toast--kind-error .cv-icon { -unity-background-image-tint-color: var(--blood); }
+.cv-toast--kind-warning { border-left-color: var(--ember); }
+.cv-toast--kind-error { border-left-color: var(--blood); background-color: var(--blood-deep); }
 
 /* ----------------------------------------------------------------- tooltip */
 
@@ -370,3 +373,59 @@
 .cv-toolgroup__title { color: var(--gold); padding-bottom: 4px; margin-bottom: 6px; border-bottom-width: 1px; border-color: var(--line); }
 .cv-tool { margin-bottom: 8px; }
 .cv-tool__blurb { font-size: var(--fs-sm); color: var(--text-3); margin-left: 50px; margin-top: -6px; white-space: normal; }
+
+/* Page-level helpers shared by the dialogs (Templates/Common). */
+.cv-text-muted { color: var(--text-3); }
+.cv-dim { opacity: 0.45; }
+.cv-actions { flex-direction: row; justify-content: flex-end; flex-wrap: wrap; }
+.cv-actions > .cv-btn { margin-left: var(--sp-2); }
+.cv-choices { flex-direction: row; flex-wrap: wrap; }
+.cv-choices > .cv-btn { margin-right: 6px; margin-bottom: 6px; }
+
+/* The inspector's boxes: a long dump scrolls inside its box. */
+.cv-inspector__request .unity-base-text-field__input { min-height: 60px; max-height: 60px; }
+.cv-inspector__usage .unity-base-text-field__input { min-height: 120px; max-height: 120px; }
+.cv-inspector__response .unity-base-text-field__input { min-height: 280px; max-height: 280px; }
+.cv-inspector__tools .unity-base-text-field__input { min-height: 140px; max-height: 140px; }
+
+/* Forms (the provider editor, the settings pages). */
+.cv-form__group { margin-bottom: 12px; }
+.cv-form__new { margin-bottom: 6px; }
+.cv-form__column { margin-right: 12px; }
+.cv-form__status { margin-top: 10px; }
+.cv-form__actions { margin-top: 14px; flex-wrap: wrap; }
+.cv-form__actions > .cv-btn { margin-right: 8px; }
+.cv-form__note { font-size: 13px; margin-top: 12px; }
+.cv-form__port { max-width: 200px; }
+.cv-form__license .unity-base-text-field__input { min-height: 90px; }
+.cv-form__tool-action { margin-left: 8px; }
+.cv-plugins__intro { margin-top: 4px; margin-bottom: 12px; }
+.cv-plugins__state { margin-top: 6px; }
+.cv-setup__step { margin-bottom: 12px; }
+.cv-setup__provider { margin-top: 14px; }
+.cv-setup__choices { margin-top: 16px; }
+.cv-setup__choices > .cv-btn { margin-right: 8px; }
+
+/* Onboarding and the brainstorm chat. */
+.cv-invisible { visibility: hidden; }
+.cv-onboarding__systems { margin-bottom: 16px; }
+.cv-onboarding__answer { margin-top: 16px; }
+.cv-onboarding__choices > .cv-btn { margin-bottom: 8px; }
+.cv-onboarding__levels > .cv-btn { margin-right: 8px; margin-top: 6px; }
+.cv-onboarding__member { margin-top: 8px; }
+.cv-onboarding__party-actions > .cv-btn { margin-bottom: 8px; }
+.cv-onboarding__yesno > .cv-btn { margin-right: 8px; }
+.cv-onboarding__helpers { margin-top: 8px; flex-wrap: wrap; }
+.cv-onboarding__writeup { margin-left: 8px; }
+.cv-onboarding__resume { margin-top: 18px; }
+.cv-onboarding__resumebtn { margin-left: 8px; }
+.cv-onboarding__reply { margin-top: 12px; margin-bottom: 0; }
+.cv-onboarding__meters { margin-top: 4px; }
+.cv-onboarding__meters .cv-counter { margin-top: 0; }
+.cv-onboarding__conversation { -unity-text-align: upper-left; }
+.cv-chat { margin-top: 12px; }
+.cv-chat--mine .cv-body { color: var(--text-3); }
+.cv-chat__toggle { align-self: flex-start; }
+.cv-chat__divider { margin-top: 20px; white-space: normal; }
+.cv-chat__warning { margin-top: 12px; }
+.cv-chat__thinking { margin-top: 12px; }

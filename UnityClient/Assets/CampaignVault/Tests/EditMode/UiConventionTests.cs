@@ -22,17 +22,12 @@ namespace CampaignVault.UnityClient.Tests
             "_ghost.style.width",                                // and its lagging ghost
             "_bubble.style.left",                                // tooltip at the pointer
             "_bubble.style.top",
+            "style.rotate",                                      // VaultSpinner: the turning die
         };
 
         /// <summary>Not converted yet (U.3–U.6). Lower a number when a file loses inline styles; never raise one.</summary>
         private static readonly Dictionary<string, int> Legacy = new Dictionary<string, int>
         {
-            { "CommandBar.cs", 5 },
-            { "ProviderForm.cs", 19 },
-            { "SettingsOverlays.cs", 33 },
-            { "StoryLogView.cs", 6 },
-            { "VaultClientUI.cs", 6 },
-            { "WorldOverlays.cs", 32 },
         };
 
         private static string UiScripts { get { return Path.Combine(Application.dataPath, "CampaignVault", "Scripts", "UI"); } }

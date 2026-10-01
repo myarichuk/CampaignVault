@@ -45,13 +45,20 @@ UXML opens in UI Builder (Window → UI Toolkit → UI Builder) for visual editi
 | `ItemList.Sync` | Keeps item view models across refreshes by key, so their elements are reused, not rebuilt. |
 | `ITemplated` | A view model that names its template. `ContentPresenter` and `Repeater` clone it (one widget per step kind). |
 | `Repeater` | `itemsSource` → one cloned `item-template` per item, each item the data source of its element. No virtualization; lays out with flex inside the page's scroll. |
+| `LiveRepeater` | A list over an `ObservableCollection`: one element inserted, removed or swapped per change, the rest untouched. For lists that grow at the tail and trim at the head while read (the story log, toasts); `Repeater` re-binds by position. Expose the collection as an `IList` property, set once. |
 | `ContentPresenter` | `content` → the template the view model names, rebinding when only the data changed. |
 | `ClassBinding` | Toggles one or more USS classes from a bound value (`true`, non-empty string, non-zero, non-empty list). `invert="true"` with `cv-hidden` hides "nothing to show". |
 | `VaultButton` | The cv-btn: `label`, `icon`, `command`; plays the click cue. |
-| `VaultField` | The cv-field input with a bindable `placeholder`. Use `is-delayed="true"` to commit on blur/Enter. |
+| `VaultField` | The cv-field input with a bindable `placeholder`, and a `focusRequest` counter a view model bumps to focus it. Use `is-delayed="true"` to commit on blur/Enter, `password="true"` for secrets, `readonly="true"` for dumps. |
+| `VaultSwitch` | An on/off switch with a `text` caption; `value` binds two-way (a bool property whose setter calls the controller). |
+| `VaultSpinner` | An icon that turns while `spinning` (bind it); the rotation is the allowed runtime inline style. |
+| `VaultCard` | The cv-card with a bindable small-caps `title` as its first line. |
+| `ChoiceViewModel` + `Common/Choice` | One button of a group that shows whether it is the current choice (profiles, presets, rules). |
+| `ActionViewModel` + `Common/ActionButton` | A foot or toolbar button as data (label, icon, enabled, tooltip, primary/ghost/danger); a page that changes its buttons per state exposes a list of them. |
+| `TabViewModel` + `Common/Tab` | A tab in a row of tabs (settings, codex). |
 | `Overlay` | Every page sits in `Shell/Modal.uxml`. A page's `Template` fills the modal's regions from its top-level `toolbar` / `body` / `dock` / `foot` elements; `CreateViewModel()` is made on open and disposed on close. |
 | `Templates` | Loads and clones templates by path (`"Builder/OptionCard"`). |
-| `TooltipLayer` | Shows any element's `tooltip` (from UXML, a binding, or `Attach`) in the runtime bubble. A disabled button gets no hover, so its reason goes on a wrapper. |
+| `TooltipLayer` | Shows any element's `tooltip` (from UXML or a binding) in the runtime bubble. A disabled button gets no hover, so its reason goes on a wrapper. |
 
 ## A binding, start to finish
 
@@ -95,7 +102,26 @@ asserting what reached the view model.
 - **Screens:** PlayMode, driving real buttons by name, with a snapshot of each state in `Library/VaultSnapshots`.
   Compare snapshots before and after a UI change.
 
-## Not converted yet
+## Pages with several states
 
-Phase 2.5 of `CHARACTER_CREATION_PLAN.md` moves the remaining screens over. Until then, `UiConventionTests.Legacy`
-lists the files that still build UI in code. Their inline-style counts may only go down.
+A page that is a different thing at different times (the onboarding: a start form, a question, the brainstorm chat,
+a wait) exposes `Page` (a `ContentPresenter` shows the view model's template), `Dock` (the docked reply box, or
+null) and `Actions` (the foot buttons for that state). Page view models that must keep what was typed (the answer,
+the start form) are kept for the life of the dialog and updated, not re-made, when the same question refreshes.
+
+A dialog's tabs (Settings) each get a page view model made once per visit, so typing on one tab survives a trip to
+another. A page that must ask the server for something when it opens does so in `Enter()`, never in `Refresh()`
+(a failed load would otherwise loop).
+
+Behaviour a binding can't do (scrolling the chat to its newest message) stays in the page class, driven by a
+counter property on the view model (`ScrollTick`).
+
+## The table
+
+The shell is `Shell.uxml`: each region has its own data source (`TopBar` → `TopBarViewModel`, `Toasts` →
+`ToastsViewModel`, `Party`, `Log`, `Command`, `Codex`), so nothing inherits a view model it doesn't use. Two
+variant bindings with the same prefix on one element would clobber each other, and a prefix must not also start a
+state class (`cv-roll--result-*` is the variant, `cv-roll--enter` a `ClassBinding`). Several independent states on
+one element (a sigil that is ok, bad or busy) are one `ClassBinding` each.
+
+`UiConventionTests.Legacy` is empty: no file builds UI in code any more. Keep it that way.

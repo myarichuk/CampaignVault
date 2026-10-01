@@ -1,0 +1,19 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- YesNoPageViewModel -->
+    <ui:Template name="Header" src="QuestionHeader.uxml" />
+    <ui:VisualElement>
+        <ui:Instance template="Header" />
+        <ui:VisualElement class="cv-row cv-onboarding__answer cv-onboarding__yesno">
+            <cv:VaultButton name="answer-yes" label="YES" icon="check" class="cv-btn--primary">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="Yes" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+            <cv:VaultButton name="answer-no" label="NO" icon="close">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="No" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,17 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- SettingsViewModel: tabs in the toolbar, the open tab's page in the body. -->
+    <ui:VisualElement name="toolbar">
+        <cv:Repeater name="settings-tabs" item-template="Common/Tab" class="cv-tabs">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Tabs" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+    </ui:VisualElement>
+    <ui:VisualElement name="body">
+        <cv:ContentPresenter name="settings-page">
+            <Bindings>
+                <ui:DataBinding property="content" data-source-path="Page" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:ContentPresenter>
+    </ui:VisualElement>
+</ui:UXML>

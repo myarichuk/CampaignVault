@@ -1,0 +1,29 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- BrainstormComposerViewModel: the reply box docked under the chat, with its meters. -->
+    <ui:VisualElement>
+        <cv:VaultField name="brainstorm-reply" multiline="true" vertical-scroller-visibility="Auto" class="cv-field--multiline cv-onboarding__reply">
+            <Bindings>
+                <ui:DataBinding property="value" data-source-path="Draft" binding-mode="TwoWay" />
+                <ui:DataBinding property="placeholder" data-source-path="Placeholder" binding-mode="ToTarget" />
+                <ui:DataBinding property="enabledSelf" data-source-path="Enabled" binding-mode="ToTarget" />
+                <ui:DataBinding property="focusRequest" data-source-path="FocusRequest" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-invalid" data-source-path="Over" class-name="cv-field--invalid" />
+            </Bindings>
+        </cv:VaultField>
+        <ui:VisualElement class="cv-row cv-onboarding__meters">
+            <ui:Label name="brainstorm-conversation" tooltip="Every reply re-sends the whole conversation. Past the limit the middle messages stop being sent, and they are marked." class="cv-counter cv-grow cv-onboarding__conversation">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Conversation" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-over" data-source-path="ConversationOver" class-name="cv-counter--over" />
+                    <cv:ClassBinding property="cls-invisible" data-source-path="ConversationVisible" class-name="cv-invisible" invert="true" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label name="brainstorm-count" class="cv-counter cv-onboarding__count">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Count" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-over" data-source-path="Over" class-name="cv-counter--over" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

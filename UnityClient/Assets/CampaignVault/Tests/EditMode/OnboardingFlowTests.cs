@@ -5,6 +5,7 @@ using CampaignVault.UnityClient.AI;
 using CampaignVault.UnityClient.App;
 using CampaignVault.UnityClient.Json;
 using CampaignVault.UnityClient.UI;
+using CampaignVault.UnityClient.UI.World;
 
 namespace CampaignVault.UnityClient.Tests
 {
@@ -61,15 +62,15 @@ namespace CampaignVault.UnityClient.Tests
         [Test]
         public void Fold_ShortMessage_ShownWhole()
         {
-            Assert.IsNull(OnboardingOverlay.Fold("a half idea about smugglers", 600, 8));
-            Assert.IsNull(OnboardingOverlay.Fold(string.Empty, 600, 8));
+            Assert.IsNull(OnboardingText.Fold("a half idea about smugglers", 600, 8));
+            Assert.IsNull(OnboardingText.Fold(string.Empty, 600, 8));
         }
 
         [Test]
         public void Fold_LongMessage_CutsAtAWord()
         {
             string text = string.Join(" ", Enumerable.Repeat("smuggler", 200));
-            string folded = OnboardingOverlay.Fold(text, 100, 8);
+            string folded = OnboardingText.Fold(text, 100, 8);
             Assert.LessOrEqual(folded.Length, 102);
             StringAssert.EndsWith("smuggler …", folded);
         }
@@ -78,7 +79,7 @@ namespace CampaignVault.UnityClient.Tests
         public void Fold_ManyLines_KeepsTheFirstOnes()
         {
             string text = "one\ntwo\nthree\nfour";
-            Assert.AreEqual("one\ntwo …", OnboardingOverlay.Fold(text, 600, 2));
+            Assert.AreEqual("one\ntwo …", OnboardingText.Fold(text, 600, 2));
         }
 
         private static List<KeyValuePair<string, string>> Chat(params int[] sizes)
@@ -150,8 +151,8 @@ namespace CampaignVault.UnityClient.Tests
         [Test]
         public void ChoiceLabel_ReadsAsWords_UnknownPassesThrough()
         {
-            Assert.AreEqual("Build them with the DM, step by step", OnboardingOverlay.ChoiceLabel("build-at-table"));
-            Assert.AreEqual("Dnd5e", OnboardingOverlay.ChoiceLabel("Dnd5e"));
+            Assert.AreEqual("Build them with the DM, step by step", OnboardingText.ChoiceLabel("build-at-table"));
+            Assert.AreEqual("Dnd5e", OnboardingText.ChoiceLabel("Dnd5e"));
         }
 
         [Test]

@@ -1,0 +1,62 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- A CampaignCardViewModel: one campaign in the book. -->
+    <ui:VisualElement class="cv-campaign">
+        <Bindings>
+            <cv:ClassBinding property="cls-active" data-source-path="Active" class-name="cv-campaign--active" />
+        </Bindings>
+        <ui:Label class="cv-campaign__name">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Display" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-campaign__slug">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Slug" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:VisualElement class="cv-row">
+            <ui:VisualElement class="cv-chip cv-chip--arcane">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="System" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:VisualElement picking-mode="Ignore" class="cv-icon cv-icon--d20" />
+                <ui:Label>
+                    <Bindings>
+                        <ui:DataBinding property="text" data-source-path="System" binding-mode="ToTarget" />
+                    </Bindings>
+                </ui:Label>
+            </ui:VisualElement>
+            <ui:VisualElement class="cv-chip cv-chip--gold">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Active" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:VisualElement picking-mode="Ignore" class="cv-icon cv-icon--check" />
+                <ui:Label text="AT THE TABLE" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement class="cv-campaign__actions">
+            <cv:VaultButton label="PLAY" icon="d20" class="cv-btn--primary cv-btn--small">
+                <Bindings>
+                    <ui:DataBinding property="name" data-source-path="PlayName" binding-mode="ToTarget" />
+                    <ui:DataBinding property="command" data-source-path="Play" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Active" class-name="cv-hidden" />
+                </Bindings>
+            </cv:VaultButton>
+            <cv:VaultButton label="RETURN" icon="chevron" class="cv-btn--small">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="Return" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Active" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </cv:VaultButton>
+            <cv:VaultButton icon="trash" tooltip="Deletes the campaign and everything in it, for good. Tap twice to confirm." class="cv-btn--small cv-btn--danger">
+                <Bindings>
+                    <ui:DataBinding property="name" data-source-path="DeleteName" binding-mode="ToTarget" />
+                    <ui:DataBinding property="label" data-source-path="DeleteLabel" binding-mode="ToTarget" />
+                    <ui:DataBinding property="command" data-source-path="Delete" binding-mode="ToTarget" />
+                    <ui:DataBinding property="enabledSelf" data-source-path="CanDelete" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-armed" data-source-path="Armed" class-name="cv-btn--armed" />
+                </Bindings>
+            </cv:VaultButton>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

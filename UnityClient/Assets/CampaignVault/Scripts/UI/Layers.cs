@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.UIElements;
 using CampaignVault.UnityClient.App;
@@ -11,14 +10,13 @@ namespace CampaignVault.UnityClient.UI
 {
     /// <summary>
     /// Hover tooltips for runtime panels (VisualElement.tooltip only shows in the Editor). Any element's
-    /// <c>tooltip</c> (set in UXML, bound, or by <see cref="Attach(VisualElement, string)"/>) shows in one shared
+    /// <c>tooltip</c> (set in UXML or bound) shows in one shared
     /// bubble per panel, placed by the pointer and clamped to the screen. Disabled elements get no pointer events of
     /// their own, so a disabled button's reason goes on a wrapper.
     /// </summary>
     public static class TooltipLayer
     {
         private const long DelayMs = 450;
-        private static readonly ConditionalWeakTable<VisualElement, Func<string>> Live = new ConditionalWeakTable<VisualElement, Func<string>>();
         private static Label _bubble;
         private static VisualElement _owner;
         private static IVisualElementScheduledItem _pending;
@@ -38,18 +36,6 @@ namespace CampaignVault.UnityClient.UI
             watched.RegisterCallback<PointerLeaveEvent>(delegate { Hide(); _owner = null; });
         }
 
-        /// <summary>Code-built elements: the same as tooltip="…" in UXML.</summary>
-        public static void Attach(VisualElement target, string text)
-        {
-            target.tooltip = text;
-        }
-
-        /// <summary>Text read when the pointer arrives, for tooltips that describe live state.</summary>
-        public static void Attach(VisualElement target, Func<string> text)
-        {
-            Live.AddOrUpdate(target, text);
-        }
-
         private static void OnMove(PointerMoveEvent e)
         {
             var owner = Owner(e.target as VisualElement);
@@ -61,18 +47,11 @@ namespace CampaignVault.UnityClient.UI
 
         private static VisualElement Owner(VisualElement e)
         {
-            Func<string> live;
             for (; e != null; e = e.parent)
             {
-                if (Live.TryGetValue(e, out live) || !string.IsNullOrEmpty(e.tooltip)) { return e; }
+                if (!string.IsNullOrEmpty(e.tooltip)) { return e; }
             }
             return null;
-        }
-
-        private static string TextOf(VisualElement owner)
-        {
-            Func<string> live;
-            return Live.TryGetValue(owner, out live) ? live() : owner.tooltip;
         }
 
         private static void Show(VisualElement target, Vector2 position)
@@ -80,7 +59,7 @@ namespace CampaignVault.UnityClient.UI
             if (_bubble == null) { return; }
             _pending = _bubble.schedule.Execute(() =>
             {
-                string text = TextOf(target);
+                string text = target.tooltip;
                 if (target.panel == null || _owner != target || string.IsNullOrEmpty(text)) { return; }
                 _bubble.text = text;
                 var layer = _bubble.parent;
@@ -100,42 +79,6 @@ namespace CampaignVault.UnityClient.UI
         {
             if (_pending != null) { _pending.Pause(); _pending = null; }
             if (_bubble != null) { _bubble.AddToClassList("cv-tooltip--hidden"); }
-        }
-    }
-
-    /// <summary>Transient notices, bottom left: slide in, linger, fade out. Errors linger longer.</summary>
-    public sealed class ToastHost
-    {
-        private const int MaxToasts = 4;
-        private readonly VisualElement _host;
-
-        public ToastHost(VisualElement host, VaultAppState state)
-        {
-            _host = host;
-            _host.pickingMode = PickingMode.Ignore;
-            state.Toast += Show;
-        }
-
-        public void Show(string message, ToastKind kind)
-        {
-            var toast = Ui.El("cv-toast cv-toast--" + kind.ToString().ToLowerInvariant());
-            string icon = kind == ToastKind.Error || kind == ToastKind.Warning ? "warning" : kind == ToastKind.Success ? "check" : "spark";
-            string tint = kind == ToastKind.Error ? "blood" : kind == ToastKind.Success ? "leaf" : "gold";
-            toast.Add(Ui.Icon(icon, "cv-icon--" + tint));
-            toast.Add(Ui.Text(message, "cv-toast__text"));
-            toast.RegisterCallback<ClickEvent>(delegate { Dismiss(toast); });
-            _host.Add(toast);
-            Ui.Enter(toast, "cv-toast--enter", true);
-            while (_host.childCount > MaxToasts) { _host.RemoveAt(0); }
-            long linger = kind == ToastKind.Error ? 8000 : kind == ToastKind.Warning ? 6000 : 4200;
-            toast.schedule.Execute(() => { Dismiss(toast); }).StartingIn(linger);
-        }
-
-        private static void Dismiss(VisualElement toast)
-        {
-            if (toast.parent == null || toast.ClassListContains("cv-toast--leave")) { return; }
-            toast.AddToClassList("cv-toast--leave");
-            toast.schedule.Execute(() => { toast.RemoveFromHierarchy(); }).StartingIn(300);
         }
     }
 
@@ -194,7 +137,6 @@ namespace CampaignVault.UnityClient.UI
             Dock = Root.Q("modal-dock");
             Foot = Root.Q("modal-foot");
             Root.RegisterCallback<ClickEvent>(delegate { if (CanDismiss) { host.Close(this); } });
-            BuildContent();
         }
 
         /// <summary>A fresh copy of the page's template on every open, so nothing from the last visit shows for a frame.</summary>
@@ -219,12 +161,9 @@ namespace CampaignVault.UnityClient.UI
             }
         }
 
-        /// <summary>Code-built content and code-behind hooks; a page with a template may need none.</summary>
-        protected virtual void BuildContent() { }
-
         internal void Opened()
         {
-            Ui.SetText(_title, Title.ToUpperInvariant());
+            _title.text = DisplayText.Plain(Title.ToUpperInvariant());
             if (Template != null)
             {
                 CloneTemplate();
@@ -255,7 +194,7 @@ namespace CampaignVault.UnityClient.UI
         protected void Close() { Host.Close(this); }
 
         /// <summary>A title that depends on what the page shows (the character's name).</summary>
-        protected void SetTitle(string title) { Ui.SetText(_title, (title ?? string.Empty).ToUpperInvariant()); }
+        protected void SetTitle(string title) { _title.text = DisplayText.Plain((title ?? string.Empty).ToUpperInvariant()); }
 
         /// <summary>A size variant of the modal for what the page shows (a stat block is narrower than a sheet).</summary>
         protected void SetModalClass(string className, bool on) { _modal.EnableInClassList(className, on); }

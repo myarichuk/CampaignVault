@@ -1,0 +1,27 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- Consecutive tool activity folded into one strip (ActivityStripViewModel); a click on the head opens it. -->
+    <ui:VisualElement class="cv-activity cv-seg">
+        <Bindings>
+            <cv:ClassBinding property="cls-open" data-source-path="Open" class-name="cv-activity--open" />
+        </Bindings>
+        <cv:ClickArea silent="true" class="cv-activity__head">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="Toggle" binding-mode="ToTarget" />
+            </Bindings>
+            <ui:VisualElement picking-mode="Ignore" class="cv-icon cv-icon--chevron cv-activity__chevron" />
+            <ui:VisualElement picking-mode="Ignore" class="cv-icon cv-icon--inspect" />
+            <ui:Label class="cv-activity__title">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Title" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+        </cv:ClickArea>
+        <ui:VisualElement class="cv-activity__items">
+            <cv:Repeater item-template="Story/ActivityLine">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Lines" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

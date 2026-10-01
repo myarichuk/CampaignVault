@@ -1,0 +1,16 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- An ActionViewModel: a foot or toolbar button. -->
+    <cv:VaultButton>
+        <Bindings>
+            <ui:DataBinding property="name" data-source-path="Name" binding-mode="ToTarget" />
+            <ui:DataBinding property="label" data-source-path="Label" binding-mode="ToTarget" />
+            <ui:DataBinding property="icon" data-source-path="Icon" binding-mode="ToTarget" />
+            <ui:DataBinding property="command" data-source-path="Run" binding-mode="ToTarget" />
+            <ui:DataBinding property="enabledSelf" data-source-path="Enabled" binding-mode="ToTarget" />
+            <ui:DataBinding property="tooltip" data-source-path="Tooltip" binding-mode="ToTarget" />
+            <cv:ClassBinding property="cls-primary" data-source-path="Primary" class-name="cv-btn--primary" />
+            <cv:ClassBinding property="cls-ghost" data-source-path="Ghost" class-name="cv-btn--ghost" />
+            <cv:ClassBinding property="cls-danger" data-source-path="Danger" class-name="cv-btn--danger" />
+        </Bindings>
+    </cv:VaultButton>
+</ui:UXML>

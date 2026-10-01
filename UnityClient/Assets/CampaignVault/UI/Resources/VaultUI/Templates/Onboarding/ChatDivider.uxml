@@ -1,0 +1,9 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- ChatDividerViewModel: where the setup moved on to the next question. -->
+    <ui:Label class="cv-caption cv-text-gold cv-chat__divider">
+        <Bindings>
+            <ui:DataBinding property="text" data-source-path="Text" binding-mode="ToTarget" />
+            <cv:ClassBinding property="cls-gone" data-source-path="Gone" class-name="cv-dim" />
+        </Bindings>
+    </ui:Label>
+</ui:UXML>

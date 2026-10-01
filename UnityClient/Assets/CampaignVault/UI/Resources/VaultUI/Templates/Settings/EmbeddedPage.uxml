@@ -1,0 +1,73 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- EmbeddedPage: the server inside desktop builds, and its database license. -->
+    <ui:VisualElement>
+        <cv:VaultCard title="EMBEDDED SERVER">
+            <ui:Label text="Ships inside desktop builds. Runs on 127.0.0.1 only, with no token, keeping campaigns in this device's app data." class="cv-body cv-muted" />
+            <ui:Label text="PORT" class="cv-caption cv-field-caption" />
+            <cv:VaultField name="embedded-port" placeholder="5275" class="cv-form__port">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="Port" binding-mode="TwoWay" />
+                </Bindings>
+            </cv:VaultField>
+            <cv:VaultSwitch name="embedded-autostart" text="Start automatically when the client opens">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="AutoStart" binding-mode="TwoWay" />
+                </Bindings>
+            </cv:VaultSwitch>
+            <ui:VisualElement class="cv-row cv-form__actions">
+                <cv:VaultButton name="embedded-stop" label="STOP SERVER" icon="stop" class="cv-btn--danger">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="Stop" binding-mode="ToTarget" />
+                        <cv:ClassBinding property="cls-hidden" data-source-path="Running" class-name="cv-hidden" invert="true" />
+                    </Bindings>
+                </cv:VaultButton>
+                <cv:VaultButton name="embedded-start" icon="server" class="cv-btn--primary">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="Start" binding-mode="ToTarget" />
+                        <ui:DataBinding property="label" data-source-path="StartLabel" binding-mode="ToTarget" />
+                        <cv:ClassBinding property="cls-hidden" data-source-path="Running" class-name="cv-hidden" />
+                    </Bindings>
+                </cv:VaultButton>
+            </ui:VisualElement>
+            <ui:Label name="embedded-status" class="cv-body cv-form__status">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Message" binding-mode="ToTarget" />
+                    <cv:VariantBinding property="var-tone" data-source-path="MessageTone" class-prefix="cv-text-" />
+                </Bindings>
+            </ui:Label>
+        </cv:VaultCard>
+        <cv:VaultCard title="DATABASE LICENSE (RAVENDB)">
+            <ui:Label text="Campaigns are stored in RavenDB, which asks every installation for a license key. The Community license is free and is renewed once a year: request it from RavenDB, then paste the JSON it sends you here (or the path to the file). Without one the database still runs, under RavenDB's open-source AGPL terms." class="cv-body cv-muted" />
+            <ui:Label name="license-status" class="cv-body cv-form__status">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="LicenseNote" binding-mode="ToTarget" />
+                    <cv:VariantBinding property="var-tone" data-source-path="LicenseTone" class-prefix="cv-text-" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label text="LICENSE JSON OR FILE PATH" class="cv-caption cv-field-caption" />
+            <cv:VaultField name="license-input" multiline="true" vertical-scroller-visibility="Auto" placeholder="paste the license JSON, or the path to the file" class="cv-field--multiline cv-form__license">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="LicenseInput" binding-mode="TwoWay" />
+                </Bindings>
+            </cv:VaultField>
+            <ui:VisualElement class="cv-row cv-form__actions">
+                <cv:VaultButton name="license-save" label="SAVE LICENSE" icon="check" class="cv-btn--primary">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="SaveLicense" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+                <cv:VaultButton name="license-get" label="GET A FREE LICENSE" icon="spark" class="cv-btn--ghost">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="GetLicense" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+                <cv:VaultButton name="license-remove" label="REMOVE" class="cv-btn--ghost">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="RemoveLicense" binding-mode="ToTarget" />
+                        <cv:ClassBinding property="cls-hidden" data-source-path="HasLicense" class-name="cv-hidden" invert="true" />
+                    </Bindings>
+                </cv:VaultButton>
+            </ui:VisualElement>
+        </cv:VaultCard>
+    </ui:VisualElement>
+</ui:UXML>

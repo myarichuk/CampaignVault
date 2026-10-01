@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- StatusPageViewModel: a waiting or failed state, with an optional error under it. -->
+    <ui:Template name="Notice" src="../Common/Notice.uxml" />
+    <ui:VisualElement>
+        <ui:Instance template="Notice" />
+        <ui:Label class="cv-body cv-text-blood">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Error" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Error" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

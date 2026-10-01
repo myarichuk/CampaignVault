@@ -1,0 +1,21 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- One notice (ToastViewModel). The kind picks its colours in USS; Entering/Leaving drive the slide and fade. -->
+    <cv:ClickArea name="toast" silent="true" class="cv-toast">
+        <Bindings>
+            <ui:DataBinding property="command" data-source-path="Dismiss" binding-mode="ToTarget" />
+            <cv:VariantBinding property="var-kind" data-source-path="Kind" class-prefix="cv-toast--kind-" />
+            <cv:ClassBinding property="cls-enter" data-source-path="Entering" class-name="cv-toast--enter" />
+            <cv:ClassBinding property="cls-leave" data-source-path="Leaving" class-name="cv-toast--leave" />
+        </Bindings>
+        <ui:VisualElement picking-mode="Ignore" class="cv-icon">
+            <Bindings>
+                <cv:VariantBinding property="var-icon" data-source-path="Icon" class-prefix="cv-icon--" />
+            </Bindings>
+        </ui:VisualElement>
+        <ui:Label class="cv-toast__text">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Message" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+    </cv:ClickArea>
+</ui:UXML>

@@ -106,6 +106,22 @@ public class CharacterBuilderToolsTests(RavenDBFixture fixture) : IClassFixture<
         Assert.Contains(spells.Data.Options!, o => o.Id == "fire_bolt" && o.Group == SpellGroups.Cantrips);
     }
 
+    [Fact]
+    public async Task BeforeFinalize_TheBuilderPlaysTheSystemChosenInOnboarding()
+    {
+        var slug = "builder-onboarding-" + Guid.NewGuid().ToString("N")[..8];
+        var onboarding = TestCampaignToolsFactory.CreateTool<OnboardingTools>(fixture);
+        var builder = TestCampaignToolsFactory.CreateTool<CharacterBuilderTools>(fixture);
+        Assert.True((await onboarding.StartCampaignOnboarding(slug)).Success);
+        Assert.True((await onboarding.SubmitOnboardingAnswer(slug, slug)).Success);
+        Assert.True((await onboarding.SubmitOnboardingAnswer(slug, "Pathfinder2e")).Success);
+
+        var steps = await builder.CharacterBuilder("steps", new CharacterDraft { Kind = "pc" }, slug);
+
+        // No pf2e recipe yet (phase 6), but it is the pf2e one that was asked for, not a silent 5e sheet.
+        Assert.False(steps.Success && steps.Data!.System == "dnd5e", steps.Summary);
+    }
+
     private async Task<Character> Load(string slug, string id)
     {
         using var session = fixture.Store.OpenAsyncSession();

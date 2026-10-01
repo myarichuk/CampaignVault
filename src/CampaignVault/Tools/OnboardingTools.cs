@@ -130,6 +130,18 @@ Example: submit_onboarding_answer('dragon-heist', 'Dnd5e')")]
                     Summary: validationError);
             }
 
+            if (state.NextQuestion.Key == OnboardingQuestionCatalog.Party)
+            {
+                var partyError = await CheckPartyIdsAsync(session, effective, answer);
+                if (partyError != null)
+                {
+                    return new ToolResult<OnboardingAnswerResponse>(
+                        false,
+                        Error: "InvalidAnswer",
+                        Summary: partyError);
+                }
+            }
+
             // Record the answer
             state.CollectedAnswers[state.NextQuestion.Key] = answer;
 
@@ -347,6 +359,40 @@ Example: finalize_campaign_onboarding('dragon-heist')")]
         }
 
         return settings;
+    }
+
+    /// <summary>The party answer's ids must be characters of this campaign: PCs for characterIds, party companions for companionIds.</summary>
+    private static async Task<string?> CheckPartyIdsAsync(Raven.Client.Documents.Session.IAsyncDocumentSession session, string campaign, string answer)
+    {
+        if (!OnboardingPartyAnswer.TryParse(answer, out var party, out _))
+        {
+            return null;
+        }
+
+        var ids = party.CharacterIds.Concat(party.CompanionIds).ToArray();
+        if (ids.Length == 0)
+        {
+            return null;
+        }
+
+        var loaded = await session.LoadAsync<Character>(ids);
+        foreach (var id in party.CharacterIds)
+        {
+            if (!loaded.TryGetValue(id, out var pc) || pc is null || pc.CampaignName != campaign || !pc.IsPc)
+            {
+                return $"'{id}' is not a player character in this campaign. Build it in the character builder first.";
+            }
+        }
+
+        foreach (var id in party.CompanionIds)
+        {
+            if (!loaded.TryGetValue(id, out var companion) || companion is null || companion.CampaignName != campaign)
+            {
+                return $"'{id}' is not a character in this campaign.";
+            }
+        }
+
+        return null;
     }
 
     private static string DetermineBranchingPath(OnboardingState state)

@@ -1,0 +1,22 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- TextSizeViewModel: smaller / current / larger story text. -->
+    <ui:VisualElement class="cv-textsize">
+        <cv:VaultButton tooltip="Smaller story text (Ctrl/Cmd −)" name="textsize-smaller" label="A−" class="cv-btn--small cv-textsize__step">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="Smaller" binding-mode="ToTarget" />
+                <ui:DataBinding property="enabledSelf" data-source-path="CanSmaller" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultButton>
+        <ui:Label name="textsize-value" class="cv-textsize__value">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Label" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <cv:VaultButton tooltip="Larger story text (Ctrl/Cmd +)" name="textsize-larger" label="A+" class="cv-btn--small cv-textsize__step cv-textsize__step--up">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="Larger" binding-mode="ToTarget" />
+                <ui:DataBinding property="enabledSelf" data-source-path="CanLarger" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultButton>
+    </ui:VisualElement>
+</ui:UXML>

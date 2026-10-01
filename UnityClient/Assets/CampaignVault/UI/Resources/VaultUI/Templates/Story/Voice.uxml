@@ -1,0 +1,21 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- An NPC's line (VoiceViewModel). The speaker's hue is a "cv-speaker" class that the bar and the nameplate take. -->
+    <ui:VisualElement class="cv-voice">
+        <Bindings>
+            <cv:VariantBinding property="var-hue" data-source-path="Hue" class-prefix="cv-speaker--" />
+        </Bindings>
+        <ui:VisualElement class="cv-voice__bar" />
+        <ui:VisualElement class="cv-voice__body">
+            <ui:Label class="cv-nameplate">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Speaker" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label class="cv-voice__line">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Line" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

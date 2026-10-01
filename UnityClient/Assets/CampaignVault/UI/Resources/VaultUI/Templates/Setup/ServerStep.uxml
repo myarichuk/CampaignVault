@@ -1,0 +1,28 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- SetupServerPage -->
+    <ui:VisualElement>
+        <ui:Label text="Your game is run by an AI Dungeon Master that plays through the CampaignVault server, which keeps every campaign safe. Desktop builds start a server on this machine automatically; if you host one elsewhere, enter its address." class="cv-body" />
+        <ui:Label text="SERVER URL" class="cv-caption cv-field-caption" />
+        <cv:VaultField name="setup-url" placeholder="http://localhost:5275">
+            <Bindings>
+                <ui:DataBinding property="value" data-source-path="Url" binding-mode="TwoWay" />
+            </Bindings>
+        </cv:VaultField>
+        <cv:VaultButton name="setup-check" label="SAVE AND CHECK" icon="refresh">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="SaveAndCheck" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultButton>
+        <ui:Label name="setup-status" class="cv-body cv-form__status">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Status" binding-mode="ToTarget" />
+                <cv:VariantBinding property="var-tone" data-source-path="StatusTone" class-prefix="cv-text-" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label text="The built-in server stores campaigns in RavenDB, which asks for a license key. The Community key is free: add it any time under Settings → Embedded." class="cv-body cv-muted cv-form__status">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="ShowLicense" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

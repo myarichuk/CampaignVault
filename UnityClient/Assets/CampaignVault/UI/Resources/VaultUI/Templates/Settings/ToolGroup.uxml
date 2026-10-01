@@ -1,0 +1,15 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- ToolGroupViewModel: a titled group of tool switches. -->
+    <ui:VisualElement class="cv-toolgroup">
+        <ui:Label class="cv-caption cv-toolgroup__title">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Title" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <cv:Repeater item-template="Settings/ToolRow">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Tools" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,30 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- SetupViewModel: first-run steps. -->
+    <ui:VisualElement name="body">
+        <ui:Label name="setup-step" class="cv-caption cv-setup__step">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="StepTitle" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <cv:ContentPresenter name="setup-page">
+            <Bindings>
+                <ui:DataBinding property="content" data-source-path="Page" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:ContentPresenter>
+    </ui:VisualElement>
+    <ui:VisualElement name="foot">
+        <cv:VaultButton name="setup-back" label="BACK" class="cv-btn--ghost">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="Back" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="ShowBack" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </cv:VaultButton>
+        <cv:VaultButton name="setup-next" icon="chevron" class="cv-btn--primary">
+            <Bindings>
+                <ui:DataBinding property="label" data-source-path="NextLabel" binding-mode="ToTarget" />
+                <ui:DataBinding property="command" data-source-path="Next" binding-mode="ToTarget" />
+                <ui:DataBinding property="enabledSelf" data-source-path="CanNext" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultButton>
+    </ui:VisualElement>
+</ui:UXML>

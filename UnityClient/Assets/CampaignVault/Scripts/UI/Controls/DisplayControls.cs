@@ -58,6 +58,54 @@ namespace CampaignVault.UnityClient.UI.Controls
     }
 
     /// <summary>
+    /// An icon that turns while <see cref="spinning"/> (the thinking die). The rotation is a runtime value with no
+    /// class equivalent, the allowed kind of inline style; the timer runs only while it spins.
+    /// </summary>
+    [UxmlElement]
+    public partial class VaultSpinner : VisualElement
+    {
+        private IVisualElementScheduledItem _tick;
+        private bool _spinning;
+        private float _angle;
+
+        public VaultSpinner()
+        {
+            pickingMode = PickingMode.Ignore;
+            RegisterCallback<DetachFromPanelEvent>(delegate { Stop(); });
+            RegisterCallback<AttachToPanelEvent>(delegate { if (_spinning) { Start(); } });
+        }
+
+        [UxmlAttribute, CreateProperty]
+        public bool spinning
+        {
+            get { return _spinning; }
+            set
+            {
+                if (_spinning == value) { return; }
+                _spinning = value;
+                if (value) { Start(); } else { Stop(); }
+            }
+        }
+
+        private void Start()
+        {
+            if (_tick != null || panel == null) { return; }
+            _tick = schedule.Execute(() =>
+            {
+                _angle = (_angle + 6f) % 360f;
+                style.rotate = new Rotate(_angle);
+            }).Every(33);
+        }
+
+        private void Stop()
+        {
+            if (_tick == null) { return; }
+            _tick.Pause();
+            _tick = null;
+        }
+    }
+
+    /// <summary>
     /// Sets one class from a bound value: <c>class-prefix</c> + value ("cv-chip--" + "gold", "cv-check--rank" + 3),
     /// replacing whichever class with that prefix was there. An empty value leaves none. For a variant the data
     /// picks; a yes/no state is a <see cref="ClassBinding"/>.

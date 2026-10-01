@@ -69,7 +69,7 @@ namespace CampaignVault.UnityClient.App
 
     public enum OnboardingPhase { Idle, Working, Question, ReadyToFinalize, Done, Failed }
 
-    public enum AnswerType { Text, Choice, YesNo, List, Number }
+    public enum AnswerType { Text, Choice, YesNo, List, Number, Party }
 
     public sealed class OnboardingQuestion
     {
@@ -80,8 +80,23 @@ namespace CampaignVault.UnityClient.App
         public List<string> Options = new List<string>();
     }
 
+    /// <summary>One character built for the party during onboarding, with the draft that made it (for EDIT).</summary>
+    public sealed class PartyMember
+    {
+        public string Id = string.Empty;
+        public string Name = string.Empty;
+        public string ClassLine = string.Empty;
+        public int Level = 1;
+        public string Kind = "pc";
+        public CharacterDraft Draft = new CharacterDraft();
+    }
+
     public sealed class OnboardingState
     {
+        public const string PartyBuildNow = "build-now";
+        public const string PartyDmDrafts = "dm-drafts";
+        public const string PartyBuildAtTable = "build-at-table";
+
         // Must match the server's onboarding "system" question options verbatim.
         public static readonly string[] SystemOptions = { "Dnd5e", "Pathfinder2e", "Narrative" };
         public static readonly string[] SystemLabels = { "D&D 5e", "Pathfinder 2e", "Narrative" };
@@ -102,6 +117,10 @@ namespace CampaignVault.UnityClient.App
         public string SeedBrief = string.Empty;
         /// <summary>Answers recorded so far (question key → answer), as the server reports them.</summary>
         public readonly Dictionary<string, string> Answers = new Dictionary<string, string>();
+        /// <summary>The party step: characters built so far (kept across the builder round trips), and the starting level.</summary>
+        public readonly List<PartyMember> Party = new List<PartyMember>();
+        public int PartyLevel = 1;
+
         /// <summary>Pre-fills the current question's field (a brainstormed write-up); cleared per question.</summary>
         public string Draft = string.Empty;
         /// <summary>The brainstorm reply being typed, kept across repaints.</summary>
@@ -206,6 +225,8 @@ namespace CampaignVault.UnityClient.App
         public string Error = string.Empty;
         /// <summary>Set once committed; committing again updates this character.</summary>
         public string CommittedId = string.Empty;
+        /// <summary>The draft belongs to the campaign being set up (the onboarding party step), not the one at the table.</summary>
+        public bool ForOnboarding;
         /// <summary>Bumped on every draft change, so a slow reply about an older draft is dropped.</summary>
         public int Revision;
 
@@ -240,6 +261,7 @@ namespace CampaignVault.UnityClient.App
 
         public void Reset(string slug, string system, string kind)
         {
+            ForOnboarding = false;
             Slug = slug ?? string.Empty;
             System = system ?? string.Empty;
             Draft = new CharacterDraft { Kind = kind ?? "pc" };
@@ -381,6 +403,13 @@ namespace CampaignVault.UnityClient.App
         public event Action SetupRequested;
         /// <summary>Chat was tried with no campaign at the table: the UI should open the campaign book.</summary>
         public event Action CampaignsRequested;
+        /// <summary>The onboarding party step wants the builder: a new character (empty id) or the one with this id.</summary>
+        public event Action<string> PartyBuilderRequested;
+
+        public void RequestPartyBuilder(string editId)
+        {
+            if (PartyBuilderRequested != null) { PartyBuilderRequested(editId ?? string.Empty); }
+        }
 
         public void Notify(StateArea area)
         {

@@ -1,0 +1,8 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- A tool call inside a strip (ActivityLineViewModel). -->
+    <ui:Label class="cv-activity__item">
+        <Bindings>
+            <ui:DataBinding property="text" data-source-path="Text" binding-mode="ToTarget" />
+        </Bindings>
+    </ui:Label>
+</ui:UXML>

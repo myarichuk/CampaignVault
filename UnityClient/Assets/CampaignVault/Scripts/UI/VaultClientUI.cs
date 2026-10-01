@@ -4,6 +4,8 @@ using UnityEngine.UIElements;
 using CampaignVault.UnityClient.App;
 using CampaignVault.UnityClient.Diagnostics;
 using CampaignVault.UnityClient.Server;
+using CampaignVault.UnityClient.UI.Settings;
+using CampaignVault.UnityClient.UI.Shell;
 
 namespace CampaignVault.UnityClient.UI
 {
@@ -28,13 +30,10 @@ namespace CampaignVault.UnityClient.UI
         private VisualElement _root;
         private VisualElement _shell;
         private VisualElement _codexHost;
-        private Label _contextTitle;
-        private Label _contextMeta;
-        private string _contextFull = string.Empty;
-        private VisualElement _serverSigil;
-        private VisualElement _modelSigil;
+        private TopBarViewModel _topBar;
+        private ToastsViewModel _toasts;
         private VisualElement _textMenu;
-        private Button _textButton;
+        private VisualElement _textButton;
 
         private OverlayHost _overlays;
         private CommandBar _command;
@@ -96,7 +95,8 @@ namespace CampaignVault.UnityClient.UI
             _overlays = new OverlayHost(_root.Q("OverlayLayer"));
             // Back at the table, the keyboard goes straight to the command box.
             _overlays.AllClosed += delegate { if (_command != null) { _command.Focus(); } };
-            new ToastHost(_root.Q("Toasts"), _state);
+            _toasts = new ToastsViewModel(_state, Delay);
+            _root.Q("Toasts").dataSource = _toasts;
 
             _campaigns = new CampaignsOverlay(_state, _controller, OpenOnboarding);
             _onboarding = new OnboardingOverlay(_state, _controller);
@@ -107,11 +107,8 @@ namespace CampaignVault.UnityClient.UI
             _builder = new CharacterBuilderOverlay(_state, _controller);
 
             BuildTopBar();
-            var column = _root.Q("Column");
-            var logWrap = Ui.El("cv-log-wrap");
-            column.Add(logWrap);
-            _log = new StoryLogView(logWrap, _state);
-            _command = new CommandBar(column, _state, _controller);
+            _log = new StoryLogView(_root.Q("Log"), _state, Delay);
+            _command = new CommandBar(_root.Q("Command"), _state, _controller);
             new PartyFramesView(_root.Q("Party"), _state, _controller, OpenSheet, OpenCampaigns, delegate { OpenBuilder("pc"); });
             _codexHost = _root.Q("Codex");
             Codex = new CodexView(_codexHost, _state, _controller, OpenSheet);
@@ -121,6 +118,7 @@ namespace CampaignVault.UnityClient.UI
             _state.Changed += OnChanged;
             _state.SetupRequested += OpenSetup;
             _state.CampaignsRequested += OpenCampaigns;
+            _state.PartyBuilderRequested += OpenPartyBuilder;
             OnChanged(StateArea.All);
         }
 
@@ -159,140 +157,46 @@ namespace CampaignVault.UnityClient.UI
 
         // ------------------------------------------------------------- top bar
 
+        /// <summary>The top bar is Shell.uxml bound to <see cref="TopBarViewModel"/>; what is left here is leaving the table and the "Aa" menu's outside click.</summary>
         private void BuildTopBar()
         {
-            _contextTitle = _root.Q<Label>("ContextTitle");
-            _contextMeta = _root.Q<Label>("ContextMeta");
-            // Both lines end in an ellipsis when the bar is too narrow; the tooltip always has them whole.
-            TooltipLayer.Attach(_contextTitle.parent, delegate { return _contextFull; });
-            var actions = _root.Q("TopActions");
-
-            _serverSigil = Sigil("server");
-            _serverSigil.RegisterCallback<ClickEvent>(delegate { _controller.Run(_controller.CheckConnection()); });
-            TooltipLayer.Attach(_serverSigil, ServerTooltip);
-            actions.Add(_serverSigil);
-            _modelSigil = Sigil("spark");
-            _modelSigil.RegisterCallback<ClickEvent>(delegate { OpenSettings(0); });
-            TooltipLayer.Attach(_modelSigil, ModelTooltip);
-            actions.Add(_modelSigil);
-            actions.Add(Ui.El("cv-topbar__divider"));
-
-            _textButton = Ui.Button("Aa", null, "cv-btn--ghost cv-btn--icon cv-textsize-btn", ToggleTextMenu);
-            TooltipLayer.Attach(_textButton, "Story text size");
-            actions.Add(_textButton);
-            actions.Add(Ui.IconButton("campaigns", "Campaigns", "cv-btn--ghost", OpenCampaigns));
-            actions.Add(Ui.IconButton("quests", "Codex: quests, scene, pack and journal", "cv-btn--ghost", ToggleCodex));
-            actions.Add(Ui.IconButton("settings", "Settings", "cv-btn--ghost", delegate { _overlays.Toggle(_settings); }));
-            actions.Add(Ui.IconButton("exit", "Leave the table", "cv-btn--ghost", delegate
-            {
-                _overlays.Open(new ConfirmOverlay("Leave the table?", "The embedded server stops with the client. Everything the Dungeon Master committed is already saved.", "LEAVE", false, _boot.Quit));
-            }));
-
-            // The "Aa" menu: a small popover under the top bar; any click outside closes it.
-            _textMenu = Ui.El("cv-popover cv-popover--textsize");
-            _textMenu.Add(Ui.Text("STORY TEXT", "cv-caption cv-popover__title"));
-            _textMenu.Add(TextSizeControl.Build(_state, _controller));
-            _textMenu.style.display = DisplayStyle.None;
-            _root.Add(_textMenu);
+            _topBar = new TopBarViewModel(_state, _controller, OpenCampaigns, ToggleCodex, delegate { _overlays.Toggle(_settings); },
+                delegate { OpenSettings(SettingsViewModel.ProviderTab); }, ConfirmLeave);
+            _topBar.Refresh();
+            _root.Q("TopBar").dataSource = _topBar;
+            _textMenu = _root.Q("TextMenu");
+            _textMenu.dataSource = _topBar;
+            _textButton = _root.Q("top-textsize");
             _root.RegisterCallback<PointerDownEvent>(delegate (PointerDownEvent e)
             {
                 var target = e.target as VisualElement;
-                if (_textMenu.style.display == DisplayStyle.None || target == null) { return; }
+                if (!_topBar.TextMenuOpen || target == null) { return; }
                 if (_textMenu.Contains(target) || _textButton.Contains(target)) { return; }
-                _textMenu.style.display = DisplayStyle.None;
+                _topBar.ShowTextMenu(false);
             }, TrickleDown.TrickleDown);
         }
 
-        private void ToggleTextMenu() { ShowTextMenu(_textMenu.style.display == DisplayStyle.None); }
+        private void ConfirmLeave()
+        {
+            _overlays.Open(new ConfirmOverlay("Leave the table?", "The embedded server stops with the client. Everything the Dungeon Master committed is already saved.", "LEAVE", false, _boot.Quit));
+        }
+
+        /// <summary>Runs an action after a delay on the panel's own clock (toasts fade, rolls land).</summary>
+        private void Delay(System.Action action, long milliseconds)
+        {
+            _root.schedule.Execute(action).StartingIn(milliseconds);
+        }
 
         /// <summary>The "Aa" story text menu (public for tests and snapshots).</summary>
-        public void ShowTextMenu(bool open) { _textMenu.style.display = open ? DisplayStyle.Flex : DisplayStyle.None; }
-
-        private static VisualElement Sigil(string icon)
-        {
-            var sigil = Ui.El("cv-sigil");
-            sigil.Add(Ui.Icon(icon));
-            var gem = Ui.El("cv-sigil__gem");
-            gem.pickingMode = PickingMode.Ignore;
-            sigil.Add(gem);
-            return sigil;
-        }
-
-        private string ServerTooltip()
-        {
-            string state;
-            switch (_state.Connection)
-            {
-                case ConnectionStatus.Healthy: state = "connected"; break;
-                case ConnectionStatus.Down: state = "unreachable" + (_state.ConnectionMessage.Length > 0 ? " (" + _state.ConnectionMessage + ")" : string.Empty); break;
-                case ConnectionStatus.Checking: state = "checking…"; break;
-                default: state = "not checked yet"; break;
-            }
-            return "Campaign server: " + state + ". Click to check again.";
-        }
-
-        private string ModelTooltip()
-        {
-            string reason;
-            if (!_state.ProviderReady(out reason)) { return "No working Dungeon Master: " + reason + " Click to set one up."; }
-            var driver = _state.Driver;
-            string state = driver.IsBusy ? "thinking…" : !string.IsNullOrEmpty(driver.LastError) ? "last turn failed: " + driver.LastError : "ready";
-            return "Dungeon Master: " + _state.Byok.Model + ", " + state + ". Click to change it.";
-        }
+        public void ShowTextMenu(bool open) { _topBar.ShowTextMenu(open); }
 
         private void OnChanged(StateArea area)
         {
-            if ((area & (StateArea.Campaign | StateArea.Session | StateArea.Pc)) != 0) { PaintContext(); }
-            if ((area & (StateArea.Connection | StateArea.Busy)) != 0) { PaintServerSigil(); }
-            if ((area & (StateArea.Driver | StateArea.Providers)) != 0) { PaintModelSigil(); }
             if ((area & StateArea.Preferences) != 0)
             {
                 _root.EnableInClassList("reduced-motion", !_state.FxEnabled);
                 TextSizeControl.Apply(_root, _state.StoryTextSize);
             }
-        }
-
-        private void PaintContext()
-        {
-            var s = _state.Session;
-            string title = s != null && s.CampaignDisplay.Length > 0 ? s.CampaignDisplay
-                : _state.HasCampaign ? Ui.PrettyId(_state.CampaignSlug) : "No campaign at the table";
-            Ui.SetText(_contextTitle, title.ToUpperInvariant());
-            string meta;
-            if (!_state.HasCampaign) { meta = "Open the campaign book to begin."; }
-            else if (s == null) { meta = "The session hasn't opened yet."; }
-            else
-            {
-                meta = "Session " + s.SessionNumber;
-                if (s.Time.Length > 0) { meta += " · " + ShortTime(s.Time); }
-                var pc = _state.PcMember;
-                if (pc != null && pc.Location.Length > 0) { meta += " · " + Ui.PrettyId(pc.Location); }
-            }
-            Ui.SetText(_contextMeta, meta);
-            _contextFull = title + "\n" + meta;
-        }
-
-        /// <summary>"Day 1, Month 1, Year 1492 (A drowned mill town…) — Dawn" → "Day 1, Month 1, Year 1492 — Dawn".</summary>
-        internal static string ShortTime(string time)
-        {
-            return System.Text.RegularExpressions.Regex.Replace(time ?? string.Empty, @"\s*\([^)]*\)", string.Empty).Trim();
-        }
-
-        private void PaintServerSigil()
-        {
-            _serverSigil.EnableInClassList("cv-sigil--ok", _state.Connection == ConnectionStatus.Healthy);
-            _serverSigil.EnableInClassList("cv-sigil--bad", _state.Connection == ConnectionStatus.Down);
-            _serverSigil.EnableInClassList("cv-sigil--busy", _state.Connection == ConnectionStatus.Checking || _state.IsBusy("embedded"));
-        }
-
-        private void PaintModelSigil()
-        {
-            var driver = _state.Driver;
-            string reason;
-            bool ready = _state.ProviderReady(out reason);
-            _modelSigil.EnableInClassList("cv-sigil--busy", driver.IsBusy);
-            _modelSigil.EnableInClassList("cv-sigil--bad", !ready || (!driver.IsBusy && !string.IsNullOrEmpty(driver.LastError)));
-            _modelSigil.EnableInClassList("cv-sigil--ok", ready && !driver.IsBusy && string.IsNullOrEmpty(driver.LastError));
         }
 
         // -------------------------------------------------------------- layout
@@ -335,6 +239,14 @@ namespace CampaignVault.UnityClient.UI
             _overlays.Open(_builder);
         }
 
+        /// <summary>The builder for the campaign being set up, over the onboarding page: a new character or the one with this id.</summary>
+        public void OpenPartyBuilder(string editId)
+        {
+            if (_overlays.IsOpen(_builder)) { return; }
+            _builder.SetPartyTarget(editId);
+            _overlays.Open(_builder);
+        }
+
         public CharacterBuilderOverlay Builder { get { return _builder; } }
 
         public void OpenSheet(string id)
@@ -348,7 +260,7 @@ namespace CampaignVault.UnityClient.UI
         {
             if (e.keyCode == KeyCode.Escape)
             {
-                if (_textMenu.style.display != DisplayStyle.None) { _textMenu.style.display = DisplayStyle.None; e.StopPropagation(); return; }
+                if (_topBar.TextMenuOpen) { _topBar.ShowTextMenu(false); e.StopPropagation(); return; }
                 if (_overlays.CloseTop()) { e.StopPropagation(); }
                 return;
             }

@@ -1,0 +1,24 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- OnboardingViewModel: the open page, the docked reply box, and the foot buttons. -->
+    <ui:VisualElement name="body">
+        <cv:ContentPresenter name="onboarding-page">
+            <Bindings>
+                <ui:DataBinding property="content" data-source-path="Page" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:ContentPresenter>
+    </ui:VisualElement>
+    <ui:VisualElement name="dock">
+        <cv:ContentPresenter name="onboarding-dock">
+            <Bindings>
+                <ui:DataBinding property="content" data-source-path="Dock" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:ContentPresenter>
+    </ui:VisualElement>
+    <ui:VisualElement name="foot">
+        <cv:Repeater name="onboarding-actions" item-template="Common/ActionButton" class="cv-actions">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Actions" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+    </ui:VisualElement>
+</ui:UXML>

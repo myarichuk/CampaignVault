@@ -1,0 +1,12 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- A quick action under the command box (QuickActionViewModel). -->
+    <cv:VaultButton class="cv-btn--small cv-btn--ghost">
+        <Bindings>
+            <ui:DataBinding property="name" data-source-path="Name" binding-mode="ToTarget" />
+            <ui:DataBinding property="label" data-source-path="Label" binding-mode="ToTarget" />
+            <ui:DataBinding property="icon" data-source-path="Icon" binding-mode="ToTarget" />
+            <ui:DataBinding property="tooltip" data-source-path="Tooltip" binding-mode="ToTarget" />
+            <ui:DataBinding property="command" data-source-path="Run" binding-mode="ToTarget" />
+        </Bindings>
+    </cv:VaultButton>
+</ui:UXML>

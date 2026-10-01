@@ -1045,6 +1045,7 @@ namespace CampaignVault.UnityClient.App
                 else if (text.Contains("bool")) { n = 2; }
                 else if (text.Contains("list") || text.Contains("array")) { n = 3; }
                 else if (text.Contains("number") || text.Contains("int")) { n = 4; }
+                else if (text.Contains("party")) { n = 5; }
             }
             switch (n)
             {
@@ -1052,6 +1053,7 @@ namespace CampaignVault.UnityClient.App
                 case 2: q.Type = AnswerType.YesNo; break;
                 case 3: q.Type = AnswerType.List; break;
                 case 4: q.Type = AnswerType.Number; break;
+                case 5: q.Type = AnswerType.Party; break;
                 default: q.Type = AnswerType.Text; break;
             }
             return q;
@@ -1070,16 +1072,6 @@ namespace CampaignVault.UnityClient.App
             JsonValue next = null;
             yield return PostAnswer(answer, delegate (JsonValue p) { next = p; });
             if (next != null) { yield return AdvanceOnboarding(next); }
-        }
-
-        /// <summary>"Name — detail" lines as one party answer; also primes the DM prompt's party line.</summary>
-        public IEnumerator SubmitRosterAnswer(string rosterText)
-        {
-            var entries = RosterParser.Parse(rosterText);
-            if (entries.Count == 0) { yield break; }
-            string answer = RosterParser.FormatPartyLine(entries);
-            _s.Prompts.PartyLine = answer;
-            yield return SubmitOnboardingAnswer(answer);
         }
 
         private IEnumerator PostAnswer(string answer, Action<JsonValue> done)
@@ -1103,6 +1095,12 @@ namespace CampaignVault.UnityClient.App
             if (ob.Question != null && ob.Question.Key == "pc_roster" && _s.Prompts != null && _s.Prompts.PartyLine.Length == 0)
             {
                 _s.Prompts.PartyLine = TextSanitizer.Clean(answer.Replace("\n", "; "), 600);
+            }
+            if (ob.Question != null && ob.Question.Key == "party" && _s.Prompts != null)
+            {
+                var names = new List<string>();
+                foreach (var m in ob.Party) { names.Add(m.ClassLine.Length > 0 ? m.Name + " — " + m.ClassLine : m.Name); }
+                if (names.Count > 0 && answer.Contains("\"" + OnboardingState.PartyBuildAtTable + "\"") == false) { _s.Prompts.PartyLine = TextSanitizer.Clean(string.Join("; ", names.ToArray()), 600); }
             }
             done(result.Data.Data);
         }
@@ -1262,6 +1260,8 @@ namespace CampaignVault.UnityClient.App
             ob.SeedBrief = string.Empty;
             ob.Answers.Clear();
             ob.Draft = string.Empty;
+            ob.Party.Clear();
+            ob.PartyLevel = 1;
             ob.ClearBrainstorm();
             SetOnboarding(OnboardingPhase.Idle, string.Empty);
         }

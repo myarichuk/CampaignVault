@@ -1,0 +1,20 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- OfflinePluginViewModel: installed on disk, not loaded by the server yet. -->
+    <cv:VaultCard>
+        <Bindings>
+            <ui:DataBinding property="title" data-source-path="Title" binding-mode="ToTarget" />
+        </Bindings>
+        <ui:Label class="cv-body cv-muted">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Note" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:VisualElement class="cv-row cv-form__actions">
+            <cv:VaultButton label="UNINSTALL" icon="trash" class="cv-btn--ghost cv-btn--small">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="Uninstall" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+        </ui:VisualElement>
+    </cv:VaultCard>
+</ui:UXML>

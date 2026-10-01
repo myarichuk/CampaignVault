@@ -71,13 +71,19 @@ public class SessionTools : CampaignToolBase, IMcpServerTool
                 .Where(c => c.CampaignName == effective && (c.IsPc || c.IsPartyCompanion))
                 .ToListAsync();
 
-            if (party.Count == 0)
+            // A campaign fresh out of onboarding keeps its setup brief until a player character stands somewhere:
+            // characters built in the builder exist before the world does, so "has a party" alone isn't "seeded".
+            var brief = existingCampaign.Metadata.TryGetValue(OnboardingBrief.MetadataKey, out var b) ? b : null;
+            var unseeded = !string.IsNullOrWhiteSpace(brief)
+                && !party.Any(m => m.IsPc && !string.IsNullOrEmpty(m.CurrentLocationId));
+            if (party.Count == 0 || unseeded)
             {
-                // A campaign fresh out of onboarding: hand the DM the player's answers so it seeds the
-                // party and world from them instead of asking the player to repeat everything.
-                var brief = existingCampaign.Metadata.TryGetValue(OnboardingBrief.MetadataKey, out var b) ? b : null;
+                // Hand the DM the player's answers so it seeds the party and world from them instead of asking the player to repeat everything.
+                var problem = party.Count == 0
+                    ? $"Campaign '{effective}' has no party members. Seed at least one character with IsPc via world_build before start_session."
+                    : $"Campaign '{effective}' has its party but no world yet: no player character has a currentLocationId. world_build the opening location and set it on the player characters before start_session.";
                 return new ToolResult<SessionStartView>(false, Error: ToolErrors.InvalidArgument,
-                    Summary: $"Campaign '{effective}' has no party members. Seed at least one character with IsPc via world_build before start_session."
+                    Summary: problem
                         + (string.IsNullOrWhiteSpace(brief) ? "" : "\n\nThis campaign came from onboarding and hasn't been seeded yet. Follow its setup brief:\n" + brief));
             }
 

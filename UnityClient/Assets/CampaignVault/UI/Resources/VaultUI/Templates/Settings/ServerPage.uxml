@@ -1,0 +1,54 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- ServerPage: server address, connector, bearer token. -->
+    <ui:VisualElement>
+        <cv:VaultCard title="CAMPAIGN SERVER">
+            <ui:Label text="SERVER URL" class="cv-caption cv-field-caption" />
+            <cv:VaultField name="server-url" placeholder="http://localhost:5275">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="Url" binding-mode="TwoWay" />
+                </Bindings>
+            </cv:VaultField>
+            <ui:VisualElement class="cv-row">
+                <cv:VaultButton name="server-check" label="SAVE AND CHECK" icon="refresh" class="cv-btn--primary">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="SaveAndCheck" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+            </ui:VisualElement>
+            <ui:Label name="server-status" class="cv-body cv-form__status">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Status" binding-mode="ToTarget" />
+                    <cv:VariantBinding property="var-tone" data-source-path="StatusTone" class-prefix="cv-text-" />
+                </Bindings>
+            </ui:Label>
+        </cv:VaultCard>
+        <cv:VaultCard title="CONNECTOR">
+            <ui:Label text="Play offers the live-session tools (cheaper per turn). Build adds campaign setup tools for world building." class="cv-body cv-muted" />
+            <cv:Repeater name="server-connectors" item-template="Common/Choice" class="cv-choices cv-form__status">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Connectors" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+        </cv:VaultCard>
+        <cv:VaultCard title="BEARER TOKEN">
+            <ui:Label text="Only if your server requires one. Kept in memory for this run, never saved." class="cv-body cv-muted" />
+            <cv:VaultField name="server-token" password="true" placeholder="server bearer token" class="cv-form__status">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="Token" binding-mode="TwoWay" />
+                </Bindings>
+            </cv:VaultField>
+            <ui:VisualElement class="cv-row cv-form__actions">
+                <cv:VaultButton name="server-token-set" label="SET TOKEN" icon="key">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="SetToken" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+                <cv:VaultButton name="server-token-clear" label="CLEAR" class="cv-btn--ghost">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="ClearToken" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+            </ui:VisualElement>
+        </cv:VaultCard>
+    </ui:VisualElement>
+</ui:UXML>

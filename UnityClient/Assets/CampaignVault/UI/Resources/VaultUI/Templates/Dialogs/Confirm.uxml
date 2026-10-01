@@ -1,0 +1,25 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- ConfirmViewModel: a question and its two answers. -->
+    <ui:VisualElement name="body">
+        <ui:Label class="cv-body">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Message" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+    <ui:VisualElement name="foot">
+        <cv:VaultButton name="confirm-cancel" label="CANCEL" class="cv-btn--ghost">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="Cancel" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultButton>
+        <cv:VaultButton name="confirm-ok">
+            <Bindings>
+                <ui:DataBinding property="label" data-source-path="ConfirmLabel" binding-mode="ToTarget" />
+                <ui:DataBinding property="command" data-source-path="Confirm" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-danger" data-source-path="Danger" class-name="cv-btn--danger" />
+                <cv:ClassBinding property="cls-primary" data-source-path="Primary" class-name="cv-btn--primary" />
+            </Bindings>
+        </cv:VaultButton>
+    </ui:VisualElement>
+</ui:UXML>

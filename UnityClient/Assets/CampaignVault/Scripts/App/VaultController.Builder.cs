@@ -26,25 +26,61 @@ namespace CampaignVault.UnityClient.App
         /// Opens the builder for the campaign at the table. The draft is kept while the app runs: reopening resumes
         /// it, and a committed character stays loaded so changes update it.
         /// </summary>
-        public IEnumerator BeginBuilder(string kind)
+        public IEnumerator BeginBuilder(string kind, bool forOnboarding = false, string editId = null)
         {
             var b = _s.Builder;
+            var ob = _s.Onboarding;
             kind = string.IsNullOrEmpty(kind) ? "pc" : kind;
-            if (!_s.HasCampaign)
+            string slug = forOnboarding ? ob.Slug : _s.CampaignSlug;
+            if (slug.Length == 0)
             {
-                b.Error = "Pick a campaign first.";
+                b.Error = forOnboarding ? "Start the campaign first." : "Pick a campaign first.";
                 _s.Notify(StateArea.Builder);
                 yield break;
             }
-            if (b.Slug == _s.CampaignSlug && b.Draft.Kind == kind && b.Steps.Count > 0) { yield break; }
-            yield return NewBuilderDraft(kind);
+            string system = forOnboarding ? RulesetOf(ob.System) : _s.Ruleset;
+            if (forOnboarding && !string.IsNullOrEmpty(editId))
+            {
+                var member = ob.Party.Find(delegate (PartyMember m) { return m.Id == editId; });
+                if (member != null)
+                {
+                    // The draft that built the character, so the builder shows its choices and saves over it.
+                    b.Reset(slug, system, member.Kind);
+                    b.ForOnboarding = true;
+                    b.Draft = CharacterDraft.FromJson(member.Draft.ToJson());
+                    b.Draft.Id = member.Id;
+                    b.CommittedId = member.Id;
+                    yield return LoadDraftSteps();
+                    yield break;
+                }
+            }
+            bool resume = b.ForOnboarding == forOnboarding && b.Slug == slug && b.Draft.Kind == kind && b.Steps.Count > 0
+                && !(forOnboarding && b.CommittedId.Length > 0);
+            if (resume) { yield break; }
+            yield return StartDraft(kind, slug, system, forOnboarding);
         }
 
-        /// <summary>Starts over with an empty draft (BUILD ANOTHER).</summary>
+        /// <summary>Starts over with an empty draft (BUILD ANOTHER), for the same campaign as the last one.</summary>
         public IEnumerator NewBuilderDraft(string kind)
         {
             var b = _s.Builder;
-            b.Reset(_s.CampaignSlug, _s.Ruleset, string.IsNullOrEmpty(kind) ? "pc" : kind);
+            bool forOnboarding = b.ForOnboarding;
+            yield return StartDraft(kind, forOnboarding ? _s.Onboarding.Slug : _s.CampaignSlug,
+                forOnboarding ? RulesetOf(_s.Onboarding.System) : _s.Ruleset, forOnboarding);
+        }
+
+        private IEnumerator StartDraft(string kind, string slug, string system, bool forOnboarding)
+        {
+            var b = _s.Builder;
+            b.Reset(slug, system, string.IsNullOrEmpty(kind) ? "pc" : kind);
+            b.ForOnboarding = forOnboarding;
+            if (forOnboarding) { b.Draft.Level = _s.Onboarding.PartyLevel; }
+            yield return LoadDraftSteps();
+        }
+
+        private IEnumerator LoadDraftSteps()
+        {
+            var b = _s.Builder;
             _s.Notify(StateArea.Builder);
             yield return BuilderSteps();
             if (b.Steps.Count == 0) { yield break; }
@@ -52,6 +88,17 @@ namespace CampaignVault.UnityClient.App
             _s.Notify(StateArea.Builder);
             yield return BuilderOptions(b.Current);
             yield return BuilderPreview();
+        }
+
+        /// <summary>The onboarding "system" answer as the ruleset id the server reports.</summary>
+        internal static string RulesetOf(string onboardingSystem)
+        {
+            switch (onboardingSystem)
+            {
+                case "Pathfinder2e": return "pf2e";
+                case "Narrative": return "narrative";
+                default: return "dnd5e";
+            }
         }
 
         public void BuilderGoTo(string key)
@@ -458,7 +505,8 @@ namespace CampaignVault.UnityClient.App
                 string who = b.Draft.Name.Length > 0 ? b.Draft.Name : "The character";
                 _s.RaiseToast(update ? who + " is updated." : who + " is saved to the campaign.", ToastKind.Success);
                 // The first player character built is the one the player plays.
-                if (b.Draft.Kind == "pc" && string.IsNullOrEmpty(_s.PcId) && id.Length > 0) { SetPcId(id); }
+                if (b.ForOnboarding) { RecordPartyMember(b, id); }
+                else if (b.Draft.Kind == "pc" && string.IsNullOrEmpty(_s.PcId) && id.Length > 0) { SetPcId(id); }
                 _s.Notify(StateArea.Builder);
             }
             finally { _s.EndBusy("builder-commit"); }

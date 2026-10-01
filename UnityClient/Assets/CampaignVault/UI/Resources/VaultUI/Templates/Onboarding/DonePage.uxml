@@ -1,0 +1,16 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- DonePageViewModel: the campaign is ready. -->
+    <ui:VisualElement>
+        <ui:Label text="THE CAMPAIGN IS READY" class="cv-caption" />
+        <cv:Repeater item-template="Common/RichText">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Summary" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+        <cv:Repeater item-template="Common/RichMuted">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Steps" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+    </ui:VisualElement>
+</ui:UXML>

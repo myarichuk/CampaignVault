@@ -18,6 +18,8 @@ public static class OnboardingQuestionCatalog
     public const string SideQuestGeneration = "side_quest_generation";
     public const string Factions = "factions";
     public const string HomebrewWorldDetails = "homebrew_world_details";
+    public const string Party = "party";
+    // Replaced by Party. Kept so onboardings that already answered them keep their answers and wording.
     public const string PcCreation = "pc_creation";
     public const string PcRoster = "pc_roster";
     public const string StartingLevel = "starting_level";
@@ -181,67 +183,16 @@ public static class OnboardingQuestionCatalog
                 HelpText = "Helps with encounter difficulty and with generating characters if you let the DM make them."
             },
 
-            // Q6b: Solo companions (solo only)
+            // Q7: The party: who the player characters are and how they get built (the client opens the
+            // character builder from here). Companions fold into the same answer.
 
             new OnboardingQuestion
             {
-                Key = SoloCompanions,
-                Text = "Would you like the system to generate companion NPCs for the solo player? (yes/no)",
-                AnswerType = OnboardingAnswerType.Enum,
-                EnumOptions = ["yes", "no"],
-                HelpText = "Companions travel with the player character and can fight alongside them."
-            },
-
-            // Q7: How the player characters come to be
-
-            new OnboardingQuestion
-            {
-                Key = PcCreation,
-                Text = "How should the player characters be made?",
-                AnswerType = OnboardingAnswerType.Enum,
-                EnumOptions = [PcCreationDescribeNow, PcCreationDmPregenerates, PcCreationBuildAtTable],
+                Key = Party,
+                Text = "Who is in the party? Build the characters now, let the DM draft them for you to review, or build them at the table.",
+                AnswerType = OnboardingAnswerType.Party,
                 HelpText =
-                    "'describe-now': you describe each character next. 'dm-pregenerates': the DM invents characters that fit and shows them to you before play. 'build-at-table': the DM walks you through character creation, one choice at a time, before the first scene.",
-                BranchingRules = new Dictionary<string, OnboardingBranchingRule>
-                {
-                    {
-                        PcCreationDmPregenerates, new OnboardingBranchingRule
-                        {
-                            TriggerValue = PcCreationDmPregenerates,
-                            SkipQuestions = [PcRoster]
-                        }
-                    },
-                    {
-                        PcCreationBuildAtTable, new OnboardingBranchingRule
-                        {
-                            TriggerValue = PcCreationBuildAtTable,
-                            SkipQuestions = [PcRoster]
-                        }
-                    }
-                }
-            },
-
-            // Q7b: The player characters themselves (describe-now only)
-
-            new OnboardingQuestion
-            {
-                Key = PcRoster,
-                Text =
-                    "Describe each player character, one per line: Name — ancestry and class, plus a line of concept (e.g. 'Lyra — elf ranger, exiled scout hunting her brother's killer').",
-                AnswerType = OnboardingAnswerType.List,
-                HelpText = "The DM builds full character sheets from these. Anything you leave out, the DM fills in to fit."
-            },
-
-            // Q8: Starting level (skipped for Narrative: no levels)
-
-            new OnboardingQuestion
-            {
-                Key = StartingLevel,
-                Text = "What level do the player characters start at? (1–20)",
-                AnswerType = OnboardingAnswerType.Number,
-                MinValue = 1,
-                MaxValue = 20,
-                HelpText = "Level 1 is a fresh start; 3 gives everyone their subclass."
+                    "Answer is JSON: { \"mode\": \"build-now|dm-drafts|build-at-table\", \"level\": 1, \"characterIds\": [], \"companionIds\": [] }. 'build-now': the characters were built in the character builder (ids listed). 'dm-drafts': the DM drafts them, the player reviews each in the builder. 'build-at-table': the DM walks the player through creation before the first scene. The level is the starting level (ignored for Narrative)."
             },
 
             // Q9: Opening scene
@@ -281,6 +232,60 @@ public static class OnboardingQuestionCatalog
     }
 
     /// <summary>
+    /// The three questions the party step replaced. Only an onboarding that already answered
+    /// <see cref="PcCreation"/> still walks them (it finishes with the wording it started with).
+    /// </summary>
+    private static List<OnboardingQuestion> GetLegacyPcQuestions()
+    {
+        return
+        [
+            new OnboardingQuestion
+            {
+                Key = PcCreation,
+                Text = "How should the player characters be made?",
+                AnswerType = OnboardingAnswerType.Enum,
+                EnumOptions = [PcCreationDescribeNow, PcCreationDmPregenerates, PcCreationBuildAtTable],
+                HelpText =
+                    "'describe-now': you describe each character next. 'dm-pregenerates': the DM invents characters that fit and shows them to you before play. 'build-at-table': the DM walks you through character creation, one choice at a time, before the first scene.",
+                BranchingRules = new Dictionary<string, OnboardingBranchingRule>
+                {
+                    {
+                        PcCreationDmPregenerates, new OnboardingBranchingRule
+                        {
+                            TriggerValue = PcCreationDmPregenerates,
+                            SkipQuestions = [PcRoster]
+                        }
+                    },
+                    {
+                        PcCreationBuildAtTable, new OnboardingBranchingRule
+                        {
+                            TriggerValue = PcCreationBuildAtTable,
+                            SkipQuestions = [PcRoster]
+                        }
+                    }
+                }
+            },
+            new OnboardingQuestion
+            {
+                Key = PcRoster,
+                Text =
+                    "Describe each player character, one per line: Name — ancestry and class, plus a line of concept (e.g. 'Lyra — elf ranger, exiled scout hunting her brother's killer').",
+                AnswerType = OnboardingAnswerType.List,
+                HelpText = "The DM builds full character sheets from these. Anything you leave out, the DM fills in to fit."
+            },
+            new OnboardingQuestion
+            {
+                Key = StartingLevel,
+                Text = "What level do the player characters start at? (1–20)",
+                AnswerType = OnboardingAnswerType.Number,
+                MinValue = 1,
+                MaxValue = 20,
+                HelpText = "Level 1 is a fresh start; 3 gives everyone their subclass."
+            }
+        ];
+    }
+
+    /// <summary>
     /// Get the next question based on current state.
     /// Returns null if onboarding is complete.
     /// </summary>
@@ -310,11 +315,19 @@ public static class OnboardingQuestionCatalog
         var allQuestions = GetQuestionSequence();
         var questionsToAsk = new List<OnboardingQuestion>();
         var skipSet = new HashSet<string>(state.SkippedQuestions);
+        // An onboarding that already answered the old pc_creation question finishes on the old questions.
+        var legacy = state.CollectedAnswers.ContainsKey(PcCreation);
 
         foreach (var question in allQuestions)
         {
             if (skipSet.Contains(question.Key))
             {
+                continue;
+            }
+
+            if (question.Key == Party && legacy)
+            {
+                questionsToAsk.AddRange(GetLegacyPcQuestions().Where(q => !skipSet.Contains(q.Key)));
                 continue;
             }
 
@@ -330,8 +343,7 @@ public static class OnboardingQuestionCatalog
     /// </summary>
     public static List<string> ApplyBranchingRules(OnboardingState state, string questionKey, object answer)
     {
-        var allQuestions = GetQuestionSequence();
-        var question = allQuestions.FirstOrDefault(q => q.Key == questionKey);
+        var question = GetQuestionSequence().Concat(GetLegacyPcQuestions()).FirstOrDefault(q => q.Key == questionKey);
         if (question?.BranchingRules == null)
         {
             return [];
@@ -380,6 +392,13 @@ public static class OnboardingQuestionCatalog
                 if (string.IsNullOrWhiteSpace(answerStr))
                 {
                     return "Please provide at least one item.";
+                }
+                break;
+
+            case OnboardingAnswerType.Party:
+                if (!OnboardingPartyAnswer.TryParse(answerStr, out _, out var partyError))
+                {
+                    return partyError;
                 }
                 break;
 

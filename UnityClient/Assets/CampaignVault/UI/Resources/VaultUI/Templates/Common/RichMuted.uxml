@@ -1,0 +1,8 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <!-- A string item (already display-safe from the view model) as muted prose. -->
+    <ui:Label class="cv-body cv-muted">
+        <Bindings>
+            <ui:DataBinding property="text" binding-mode="ToTarget" />
+        </Bindings>
+    </ui:Label>
+</ui:UXML>

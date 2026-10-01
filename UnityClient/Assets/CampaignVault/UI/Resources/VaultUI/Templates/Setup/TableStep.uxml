@@ -1,0 +1,18 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- SetupTablePage -->
+    <ui:VisualElement>
+        <ui:Label text="You're connected. A short guided questionnaire (name, rules, tone, party) creates your campaign and hands it to the Dungeon Master." class="cv-body" />
+        <ui:VisualElement class="cv-row cv-setup__choices">
+            <cv:VaultButton name="setup-create" label="CREATE A CAMPAIGN" icon="add" class="cv-btn--primary">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="Create" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+            <cv:VaultButton name="setup-open" label="OPEN MY CAMPAIGNS" icon="campaigns">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="Open" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

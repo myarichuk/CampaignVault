@@ -24,28 +24,6 @@ namespace CampaignVault.UnityClient.UI.Table
         [CreateProperty] public string NoticeIcon { get; private set; }
     }
 
-    /// <summary>A codex tab, named "codex-tab-&lt;key&gt;".</summary>
-    public sealed class CodexTabViewModel : ViewModel, IKeyed
-    {
-        private bool _active;
-
-        public CodexTabViewModel(string key, string label, Action select)
-        {
-            Key = key;
-            Name = "codex-tab-" + key;
-            Label = label.ToUpperInvariant();
-            Icon = key;
-            Select = select;
-        }
-
-        public string Key { get; private set; }
-        [CreateProperty] public string Name { get; private set; }
-        [CreateProperty] public string Label { get; private set; }
-        [CreateProperty] public string Icon { get; private set; }
-        [CreateProperty] public bool Active { get { return _active; } set { Set(ref _active, value); } }
-        [CreateProperty] public Action Select { get; private set; }
-    }
-
     /// <summary>
     /// The codex drawer (Templates/Table/Codex.uxml): Quests, Scene, Pack and Journal. Each tab is a page view model
     /// kept for the life of the table, so what's typed in one (a handoff, a search) survives switching tabs.
@@ -72,17 +50,17 @@ namespace CampaignVault.UnityClient.UI.Table
                 new PackPage(state, controller),
                 new JournalPage(state, controller),
             };
-            Tabs = new List<CodexTabViewModel>();
+            Tabs = new List<TabViewModel>();
             string[] keys = { "quests", "scene", "pack", "journal" };
             for (int i = 0; i < keys.Length; i++)
             {
                 int index = i;
-                Tabs.Add(new CodexTabViewModel(keys[i], keys[i], delegate { Show(index); }));
+                Tabs.Add(new TabViewModel(keys[i], "codex-tab-" + keys[i], keys[i], keys[i], delegate { Show(index); }));
             }
             Watch(state, Relevant);
         }
 
-        [CreateProperty] public List<CodexTabViewModel> Tabs { get; private set; }
+        [CreateProperty] public List<TabViewModel> Tabs { get; private set; }
         /// <summary>The open tab's page, or the "choose a campaign" notice.</summary>
         [CreateProperty] public ViewModel Page { get { return _page; } private set { Set(ref _page, value); } }
 
@@ -294,7 +272,7 @@ namespace CampaignVault.UnityClient.UI.Table
             var s = State.Session;
             var pc = State.PcMember;
             Place = pc != null && pc.Location.Length > 0 ? DisplayText.Plain(Ui.PrettyId(pc.Location)) : string.Empty;
-            Time = s.Time.Length > 0 ? DisplayText.Plain(VaultClientUI.ShortTime(s.Time)) : string.Empty;
+            Time = s.Time.Length > 0 ? DisplayText.Plain(Shell.TopBarViewModel.ShortTime(s.Time)) : string.Empty;
             Doing = pc != null && pc.Activity.Length > 0 ? DisplayText.Plain(DescribeActivity(pc.Name, pc.Activity)) : string.Empty;
             Unplaced = Place.Length + Time.Length + Doing.Length == 0 ? "The Dungeon Master hasn't placed the party yet." : string.Empty;
 

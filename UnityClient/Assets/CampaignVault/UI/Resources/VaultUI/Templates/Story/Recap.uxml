@@ -1,0 +1,20 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- A session boundary (RecapViewModel): a gilt rule with the heading, then the "previously…" text. -->
+    <ui:VisualElement class="cv-recap">
+        <ui:VisualElement class="cv-recap__head">
+            <ui:VisualElement class="cv-recap__rule" />
+            <ui:Label class="cv-recap__title">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Title" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <ui:VisualElement class="cv-recap__rule" />
+        </ui:VisualElement>
+        <ui:Label class="cv-recap__text">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Text" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Text" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

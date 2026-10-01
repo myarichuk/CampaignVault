@@ -1,0 +1,24 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- The campaign book (CampaignsViewModel). -->
+    <ui:Template name="Notice" src="../Common/Notice.uxml" />
+    <ui:VisualElement name="body">
+        <ui:VisualElement class="cv-row cv-campaigns__bar">
+            <cv:VaultButton name="campaign-new" label="NEW CAMPAIGN" icon="add" class="cv-btn--primary">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="NewCampaign" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+            <cv:VaultButton name="campaign-refresh" label="REFRESH" icon="refresh" class="cv-btn--ghost">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="ReloadList" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+        </ui:VisualElement>
+        <ui:Instance template="Notice" />
+        <cv:Repeater name="campaign-cards" item-template="World/CampaignCard" class="cv-campaigns">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Cards" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+    </ui:VisualElement>
+</ui:UXML>

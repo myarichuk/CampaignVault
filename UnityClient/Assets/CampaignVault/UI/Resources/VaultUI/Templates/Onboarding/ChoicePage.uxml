@@ -1,0 +1,12 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- ChoicePageViewModel: one button per option. -->
+    <ui:Template name="Header" src="QuestionHeader.uxml" />
+    <ui:VisualElement>
+        <ui:Instance template="Header" />
+        <cv:Repeater name="onboarding-choices" item-template="Common/Choice" class="cv-onboarding__answer cv-onboarding__choices">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Options" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+    </ui:VisualElement>
+</ui:UXML>

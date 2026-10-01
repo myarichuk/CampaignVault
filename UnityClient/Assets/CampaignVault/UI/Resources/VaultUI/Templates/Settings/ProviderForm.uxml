@@ -1,0 +1,130 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- ProviderFormViewModel: the AI provider editor, shown in Settings and in first-run Setup. -->
+    <ui:VisualElement class="cv-form">
+        <ui:Label text="PROFILES" class="cv-caption" />
+        <ui:VisualElement class="cv-row cv-form__group">
+            <cv:Repeater name="provider-profiles" item-template="Common/Choice" class="cv-choices">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Profiles" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+            <cv:VaultButton name="provider-new" label="NEW" icon="add" class="cv-btn--small cv-btn--ghost cv-form__new">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="NewProfile" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+        </ui:VisualElement>
+
+        <ui:Label text="PRESET" class="cv-caption" />
+        <cv:Repeater name="provider-presets" item-template="Common/Choice" class="cv-choices cv-form__group">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Presets" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+
+        <ui:Label text="PROFILE NAME" class="cv-caption cv-field-caption" />
+        <cv:VaultField name="provider-name" placeholder="Profile name">
+            <Bindings>
+                <ui:DataBinding property="value" data-source-path="Name" binding-mode="TwoWay" />
+            </Bindings>
+        </cv:VaultField>
+        <ui:Label text="ENDPOINT (OPENAI-COMPATIBLE BASE URL)" class="cv-caption cv-field-caption" />
+        <cv:VaultField name="provider-url" placeholder="https://api.openai.com/v1">
+            <Bindings>
+                <ui:DataBinding property="value" data-source-path="BaseUrl" binding-mode="TwoWay" />
+            </Bindings>
+        </cv:VaultField>
+        <ui:Label text="MODEL" class="cv-caption cv-field-caption" />
+        <cv:VaultField name="provider-model" placeholder="model id">
+            <Bindings>
+                <ui:DataBinding property="value" data-source-path="Model" binding-mode="TwoWay" />
+            </Bindings>
+        </cv:VaultField>
+
+        <ui:VisualElement class="cv-row">
+            <ui:VisualElement class="cv-grow cv-form__column">
+                <ui:Label text="TEMPERATURE 0–2" class="cv-caption cv-field-caption" />
+                <cv:VaultField name="provider-temperature" placeholder="1">
+                    <Bindings>
+                        <ui:DataBinding property="value" data-source-path="Temperature" binding-mode="TwoWay" />
+                    </Bindings>
+                </cv:VaultField>
+            </ui:VisualElement>
+            <ui:VisualElement class="cv-grow">
+                <ui:Label text="MAX REPLY TOKENS" class="cv-caption cv-field-caption" />
+                <cv:VaultField name="provider-max-tokens" placeholder="provider default">
+                    <Bindings>
+                        <ui:DataBinding property="value" data-source-path="MaxTokens" binding-mode="TwoWay" />
+                    </Bindings>
+                </cv:VaultField>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:Label text="REASONING EFFORT (OPENROUTER ONLY)" class="cv-caption" />
+        <cv:Repeater name="provider-efforts" item-template="Common/Choice" class="cv-choices cv-form__group">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Efforts" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+
+        <cv:VaultSwitch name="provider-stream" text="Stream replies as they're written">
+            <Bindings>
+                <ui:DataBinding property="value" data-source-path="Stream" binding-mode="TwoWay" />
+            </Bindings>
+        </cv:VaultSwitch>
+        <cv:VaultSwitch name="provider-storyteller" text="Separate storyteller pass (the scene is written by a call that sees no tool data)">
+            <Bindings>
+                <ui:DataBinding property="value" data-source-path="Storyteller" binding-mode="TwoWay" />
+            </Bindings>
+        </cv:VaultSwitch>
+
+        <ui:Label text="API KEY" class="cv-caption" />
+        <cv:VaultField name="provider-key" password="true">
+            <Bindings>
+                <ui:DataBinding property="value" data-source-path="Key" binding-mode="TwoWay" />
+                <ui:DataBinding property="placeholder" data-source-path="KeyPlaceholder" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultField>
+        <ui:Label class="cv-body cv-muted">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="KeyState" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+
+        <ui:Label name="provider-status" class="cv-body cv-form__status">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Status" binding-mode="ToTarget" />
+                <cv:VariantBinding property="var-tone" data-source-path="StatusTone" class-prefix="cv-text-" />
+            </Bindings>
+        </ui:Label>
+
+        <ui:VisualElement class="cv-row cv-form__actions">
+            <cv:VaultButton name="provider-save" label="SAVE PROFILE" icon="check" class="cv-btn--primary">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="Save" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+            <cv:VaultButton name="provider-test" label="TEST CONNECTION" icon="spark">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="Test" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+            <cv:VaultButton name="provider-forget" label="FORGET KEY" icon="key" class="cv-btn--ghost">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="Forget" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+            <cv:VaultButton name="provider-delete" label="DELETE PROFILE" icon="trash" class="cv-btn--danger">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="Delete" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="CanDelete" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </cv:VaultButton>
+        </ui:VisualElement>
+        <ui:Label class="cv-muted cv-body cv-form__note">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Note" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

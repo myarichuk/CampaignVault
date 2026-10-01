@@ -1,0 +1,75 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- Where the player acts (CommandBarViewModel), cloned into Shell.uxml's #Command. -->
+    <ui:VisualElement class="cv-thinking">
+        <Bindings>
+            <cv:ClassBinding property="cls-on" data-source-path="Working" class-name="cv-thinking--on" />
+        </Bindings>
+        <cv:VaultSpinner class="cv-icon cv-icon--d20">
+            <Bindings>
+                <ui:DataBinding property="spinning" data-source-path="Spinning" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultSpinner>
+        <ui:Label class="cv-thinking__text">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="ThinkingText" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+    <ui:VisualElement class="cv-command cv-frame">
+        <!-- Without a working provider nothing here can do anything: say why and where to fix it. -->
+        <ui:VisualElement class="cv-command__gate">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="GateVisible" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <ui:Label class="cv-body cv-text-blood cv-grow">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="GateText" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <cv:VaultButton name="CommandSetUp" label="SET UP THE DM" icon="settings" class="cv-btn--small cv-btn--primary cv-command__fix">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="SetUp" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+        </ui:VisualElement>
+        <ui:VisualElement class="cv-command__quick">
+            <Bindings>
+                <ui:DataBinding property="enabledSelf" data-source-path="Ready" binding-mode="ToTarget" />
+            </Bindings>
+            <cv:Repeater item-template="Table/QuickAction" class="cv-command__chips">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Quicks" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+        </ui:VisualElement>
+        <ui:VisualElement class="cv-command__row">
+            <cv:VaultField name="CommandInput" multiline="true" vertical-scroller-visibility="Auto" class="cv-field--multiline cv-command__input">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="Draft" binding-mode="TwoWay" />
+                    <ui:DataBinding property="placeholder" data-source-path="Placeholder" binding-mode="ToTarget" />
+                    <ui:DataBinding property="enabledSelf" data-source-path="Ready" binding-mode="ToTarget" />
+                    <ui:DataBinding property="focusRequest" data-source-path="FocusRequest" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultField>
+            <cv:VaultButton name="CommandAct" class="cv-command__send">
+                <Bindings>
+                    <ui:DataBinding property="label" data-source-path="ActLabel" binding-mode="ToTarget" />
+                    <ui:DataBinding property="icon" data-source-path="ActIcon" binding-mode="ToTarget" />
+                    <ui:DataBinding property="command" data-source-path="Act" binding-mode="ToTarget" />
+                    <ui:DataBinding property="enabledSelf" data-source-path="CanAct" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-primary" data-source-path="Working" class-name="cv-btn--primary" invert="true" />
+                    <cv:ClassBinding property="cls-danger" data-source-path="Working" class-name="cv-btn--danger" />
+                </Bindings>
+            </cv:VaultButton>
+        </ui:VisualElement>
+        <ui:VisualElement class="cv-command__hint">
+            <ui:Label text="ENTER TO ACT" class="cv-caption" />
+            <ui:Label text="SHIFT+ENTER NEW LINE" class="cv-caption" />
+            <ui:Label text="UP TO RECALL" class="cv-caption" />
+        </ui:VisualElement>
+        <ui:VisualElement picking-mode="Ignore" class="cv-frame__corner cv-frame__corner--tl" />
+        <ui:VisualElement picking-mode="Ignore" class="cv-frame__corner cv-frame__corner--tr" />
+        <ui:VisualElement picking-mode="Ignore" class="cv-frame__corner cv-frame__corner--bl" />
+        <ui:VisualElement picking-mode="Ignore" class="cv-frame__corner cv-frame__corner--br" />
+    </ui:VisualElement>
+</ui:UXML>

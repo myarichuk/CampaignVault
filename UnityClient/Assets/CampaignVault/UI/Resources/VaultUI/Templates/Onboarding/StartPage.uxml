@@ -1,0 +1,49 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- StartPageViewModel: name the campaign, pick its rules, or resume one. -->
+    <ui:VisualElement>
+        <ui:Label text="Name your campaign and choose its rules. The rules lock in when you finish; nothing is written to the world until then." class="cv-body" />
+        <ui:Label text="CAMPAIGN NAME" class="cv-caption cv-field-caption" />
+        <cv:VaultField name="onboarding-name" placeholder="e.g. The Sunken Crown">
+            <Bindings>
+                <ui:DataBinding property="value" data-source-path="Name" binding-mode="TwoWay" />
+            </Bindings>
+        </cv:VaultField>
+        <ui:Label text="DISPLAY NAME (OPTIONAL)" class="cv-caption cv-field-caption" />
+        <cv:VaultField name="onboarding-display" placeholder="shown on the campaign card">
+            <Bindings>
+                <ui:DataBinding property="value" data-source-path="Display" binding-mode="TwoWay" />
+            </Bindings>
+        </cv:VaultField>
+        <ui:Label text="RULES" class="cv-caption" />
+        <cv:Repeater name="onboarding-systems" item-template="Common/Choice" class="cv-choices cv-onboarding__systems">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Systems" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+        <ui:Label name="onboarding-slug" class="cv-mono cv-muted">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="SlugPreview" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-body cv-text-blood">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Error" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Error" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <cv:VaultCard title="RESUME ONE YOU STARTED" class="cv-onboarding__resume">
+            <ui:VisualElement class="cv-row">
+                <cv:VaultField name="onboarding-resume-slug" placeholder="campaign id" class="cv-grow cv-field--flush">
+                    <Bindings>
+                        <ui:DataBinding property="value" data-source-path="ResumeSlug" binding-mode="TwoWay" />
+                    </Bindings>
+                </cv:VaultField>
+                <cv:VaultButton name="onboarding-resume" label="RESUME" icon="chevron" class="cv-onboarding__resumebtn">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="Resume" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+            </ui:VisualElement>
+        </cv:VaultCard>
+    </ui:VisualElement>
+</ui:UXML>

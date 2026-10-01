@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- The player's own line (PlayerViewModel). -->
+    <ui:VisualElement class="cv-player">
+        <ui:VisualElement class="cv-player__bubble">
+            <ui:VisualElement picking-mode="Ignore" class="cv-icon cv-icon--send" />
+            <ui:Label class="cv-player__text">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Text" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,18 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- A line from the client or the server (SystemLineViewModel); errors are red. -->
+    <ui:VisualElement class="cv-system cv-seg">
+        <Bindings>
+            <cv:ClassBinding property="cls-error" data-source-path="Error" class-name="cv-system--error" />
+        </Bindings>
+        <ui:VisualElement picking-mode="Ignore" class="cv-icon">
+            <Bindings>
+                <cv:VariantBinding property="var-icon" data-source-path="Icon" class-prefix="cv-icon--" />
+            </Bindings>
+        </ui:VisualElement>
+        <ui:Label class="cv-system__text">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Text" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,53 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- PluginCardViewModel: one plugin the server listed. -->
+    <cv:VaultCard>
+        <Bindings>
+            <ui:DataBinding property="name" data-source-path="Name" binding-mode="ToTarget" />
+            <ui:DataBinding property="title" data-source-path="Title" binding-mode="ToTarget" />
+        </Bindings>
+        <ui:Label class="cv-caption">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Meta" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-body">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Description" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Description" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label class="cv-body cv-muted">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Adds" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Adds" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <cv:Repeater item-template="Common/ErrorText">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Errors" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+        <ui:Label class="cv-body cv-plugins__state">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="State" binding-mode="ToTarget" />
+                <cv:VariantBinding property="var-tone" data-source-path="StateTone" class-prefix="cv-text-" />
+            </Bindings>
+        </ui:Label>
+        <cv:VaultSwitch text="Enabled">
+            <Bindings>
+                <ui:DataBinding property="value" data-source-path="Enabled" binding-mode="TwoWay" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="CanManage" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </cv:VaultSwitch>
+        <ui:VisualElement class="cv-row">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="CanUninstall" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <cv:VaultButton label="UNINSTALL" icon="trash" class="cv-btn--ghost cv-btn--small">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="Uninstall" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+        </ui:VisualElement>
+    </cv:VaultCard>
+</ui:UXML>

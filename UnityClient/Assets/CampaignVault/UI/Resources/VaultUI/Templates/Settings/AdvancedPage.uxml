@@ -1,0 +1,69 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- AdvancedPage: the prompt, the Dungeon Master's tools, troubleshooting, data location. -->
+    <ui:VisualElement>
+        <cv:VaultCard title="DUNGEON MASTER PROMPT">
+            <ui:Label name="advanced-prompt" class="cv-body">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Prompt" binding-mode="ToTarget" />
+                    <cv:VariantBinding property="var-tone" data-source-path="PromptTone" class-prefix="cv-text-" />
+                </Bindings>
+            </ui:Label>
+        </cv:VaultCard>
+        <cv:VaultCard title="WHAT THE DUNGEON MASTER CAN DO">
+            <ui:VisualElement class="cv-row cv-plugins__intro">
+                <ui:Label text="Switch off anything you don't want the Dungeon Master to do. Switched-off abilities are never offered to the model." class="cv-body cv-muted cv-grow" />
+                <cv:VaultButton name="tools-all" label="ENABLE ALL" icon="check" class="cv-btn--small cv-form__tool-action">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="EnableAll" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+                <cv:VaultButton name="tools-reload" label="RELOAD" icon="refresh" class="cv-btn--small cv-btn--ghost cv-form__tool-action">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="ReloadTools" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+            </ui:VisualElement>
+            <cv:Repeater item-template="Common/ErrorText">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Errors" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+            <ui:VisualElement class="cv-empty">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Notice" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:VisualElement picking-mode="Ignore" class="cv-icon cv-icon--plugins" />
+                <ui:Label class="cv-empty__text">
+                    <Bindings>
+                        <ui:DataBinding property="text" data-source-path="Notice" binding-mode="ToTarget" />
+                    </Bindings>
+                </ui:Label>
+            </ui:VisualElement>
+            <cv:Repeater name="tool-groups" item-template="Settings/ToolGroup">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Groups" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+        </cv:VaultCard>
+        <cv:VaultCard title="TROUBLESHOOTING">
+            <ui:VisualElement class="cv-row">
+                <cv:VaultButton name="advanced-setup" label="RUN FIRST-TIME SETUP" icon="spark">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="RunSetup" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+            </ui:VisualElement>
+            <ui:Label text="Press F12 at the table for the inspector: the last request, the raw model reply and the tool log." class="cv-body cv-muted" />
+        </cv:VaultCard>
+        <cv:VaultCard title="DATA ON THIS DEVICE">
+            <ui:VisualElement class="cv-kv">
+                <ui:Label text="APP DATA" class="cv-kv__key" />
+            <ui:Label class="cv-kv__value">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="AppData" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            </ui:VisualElement>
+        </cv:VaultCard>
+    </ui:VisualElement>
+</ui:UXML>

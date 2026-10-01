@@ -90,7 +90,9 @@ namespace CampaignVault.UnityClient.PlayTests
                 var q = s.Onboarding.Question;
                 Assert.IsNotNull(q, s.Onboarding.Error);
                 yield return c.SubmitOnboardingAnswer(q.Type == AnswerType.Choice ? q.Options[0] : q.Type == AnswerType.YesNo ? "yes"
-                    : q.Type == AnswerType.Number ? "1" : "A lantern-lit river town");
+                    : q.Type == AnswerType.Number ? "1"
+                    : q.Type == AnswerType.Party ? VaultController.PartyAnswer(OnboardingState.PartyBuildAtTable, 1, null)
+                    : "A lantern-lit river town");
             }
             Assert.AreEqual(OnboardingPhase.Done, s.Onboarding.Phase, s.Onboarding.Error);
             string slug = s.CampaignSlug;

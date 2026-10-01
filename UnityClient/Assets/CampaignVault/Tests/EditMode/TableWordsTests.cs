@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using CampaignVault.UnityClient.Model;
 using CampaignVault.UnityClient.UI;
+using CampaignVault.UnityClient.UI.Table;
 
 namespace CampaignVault.UnityClient.Tests
 {
@@ -30,12 +31,12 @@ namespace CampaignVault.UnityClient.Tests
         public void RollCard_TotalTargetAndVerdictWords()
         {
             var roll = new RollInfo { Label = "Perception", Detail = "17 vs DC 14", Verdict = "CriticalSuccess" };
-            Assert.AreEqual(17, StoryLogView.RollTotal(roll));
-            Assert.AreEqual("against DC 14", StoryLogView.RollAgainst(roll));
-            Assert.AreEqual("Critical Success", StoryLogView.VerdictWords(roll.Verdict));
-            Assert.AreEqual("Critical hit", StoryLogView.VerdictWords("Critical hit"));
-            Assert.AreEqual(21, StoryLogView.RollTotal(new RollInfo { Total = 21, Detail = "vs AC 15" }));
-            Assert.AreEqual(0, StoryLogView.RollTotal(new RollInfo { Detail = "no number" }));
+            Assert.AreEqual(17, StoryText.RollTotal(roll));
+            Assert.AreEqual("against DC 14", StoryText.RollAgainst(roll));
+            Assert.AreEqual("Critical Success", StoryText.VerdictWords(roll.Verdict));
+            Assert.AreEqual("Critical hit", StoryText.VerdictWords("Critical hit"));
+            Assert.AreEqual(21, StoryText.RollTotal(new RollInfo { Total = 21, Detail = "vs AC 15" }));
+            Assert.AreEqual(0, StoryText.RollTotal(new RollInfo { Detail = "no number" }));
         }
     }
 }

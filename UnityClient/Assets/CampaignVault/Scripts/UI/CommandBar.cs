@@ -1,189 +1,41 @@
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 using CampaignVault.UnityClient.App;
+using CampaignVault.UnityClient.UI.Controls;
+using CampaignVault.UnityClient.UI.Mvvm;
+using CampaignVault.UnityClient.UI.Table;
 
 namespace CampaignVault.UnityClient.UI
 {
     /// <summary>
-    /// Where the player acts: a multi-line field (Enter acts, Shift+Enter
-    /// breaks the line, Up recalls earlier lines), quick actions that either
-    /// act at once or start the sentence, and one button that is ACT while
-    /// the table is idle and STOP while the DM resolves. Esc never discards
-    /// what was typed.
+    /// Where the player acts: layout in Templates/Table/CommandBar.uxml, state and history in
+    /// <see cref="CommandBarViewModel"/>. What is left here is what a binding can't do: the keys of a multi-line box
+    /// (Enter acts, Shift+Enter breaks the line, Up and Down recall, Esc leaves the box but keeps the words) and the
+    /// poll for the driver's status while it works. Esc never discards what was typed.
     /// </summary>
     public sealed class CommandBar
     {
-        private const int HistoryLimit = 50;
+        private readonly CommandBarViewModel _vm;
+        private readonly VaultField _input;
 
-        private sealed class QuickAction
+        public CommandBar(VisualElement host, VaultAppState state, VaultController controller)
         {
-            public readonly string Label;
-            public readonly string Icon;
-            public readonly string Text;
-            /// <summary>True: act at once. False: put the words in the box to finish.</summary>
-            public readonly bool Immediate;
-            public readonly string Tooltip;
-
-            public QuickAction(string label, string icon, string text, bool immediate, string tooltip)
-            {
-                Label = label; Icon = icon; Text = text; Immediate = immediate; Tooltip = tooltip;
-            }
-        }
-
-        private static readonly QuickAction[] Quick =
-        {
-            new QuickAction("LOOK", "look", "I take a careful look around.", true, "Look around (acts now)"),
-            new QuickAction("SEARCH", "search", "I search the area thoroughly.", true, "Search the area (acts now)"),
-            new QuickAction("TALK", "talk", "I say, “", false, "Start a line of dialogue"),
-            new QuickAction("ATTACK", "attack", "I attack ", false, "Start an attack: name the target"),
-            new QuickAction("REST", "rest", "We take a short rest.", false, "Propose a rest (edit, then Enter)"),
-            new QuickAction("OUT OF CHARACTER", "ooc", "OOC: ", false, "Talk to the DM out of character"),
-        };
-
-        private readonly VaultAppState _state;
-        private readonly VaultController _controller;
-        private readonly VisualElement _gate;
-        private readonly Label _gateText;
-        private readonly VisualElement _quick;
-        private readonly TextField _input;
-        private readonly Button _act;
-        private readonly VisualElement _thinking;
-        private readonly Label _thinkingText;
-        private readonly VisualElement _thinkingDie;
-        private readonly List<string> _history = new List<string>();
-        private int _recall = -1;
-        private string _draft = string.Empty;
-        private bool _busyShown;
-        private float _spin;
-
-        public CommandBar(VisualElement column, VaultAppState state, VaultController controller)
-        {
-            _state = state;
-            _controller = controller;
-
-            _thinking = Ui.El("cv-thinking");
-            _thinkingDie = Ui.Icon("d20");
-            _thinking.Add(_thinkingDie);
-            _thinkingText = Ui.Text(string.Empty, "cv-thinking__text");
-            _thinking.Add(_thinkingText);
-            column.Add(_thinking);
-
-            var bar = Ui.Frame(Ui.El("cv-command"));
-
-            // Without a working provider nothing here can do anything: say why and where to fix it.
-            _gate = Ui.El("cv-row");
-            _gate.style.alignItems = Align.Center;
-            _gate.style.marginBottom = 8;
-            _gateText = Ui.Text(string.Empty, "cv-body cv-text-blood cv-grow");
-            _gate.Add(_gateText);
-            var fix = Ui.Button("SET UP THE DM", "settings", "cv-btn--small cv-btn--primary", delegate { _state.RequestSetup(); });
-            fix.style.marginLeft = 8;
-            _gate.Add(fix);
-            bar.Add(_gate);
-
-            _quick = Ui.El("cv-command__quick");
-            foreach (var q in Quick)
-            {
-                var captured = q;
-                var b = Ui.Button(q.Label, q.Icon, "cv-btn--small cv-btn--ghost", delegate { UseQuick(captured); });
-                TooltipLayer.Attach(b, q.Tooltip);
-                _quick.Add(b);
-            }
-            bar.Add(_quick);
-
-            var row = Ui.El("cv-command__row");
-            _input = Ui.Field("What do you do?", null, true, "cv-command__input");
-            _input.name = "CommandInput";
+            _vm = new CommandBarViewModel(state, controller);
+            Templates.CloneInto("Table/CommandBar", host);
+            _vm.Refresh();
+            host.dataSource = _vm;
+            _input = host.Q<VaultField>("CommandInput");
             _input.RegisterCallback<KeyDownEvent>(OnKeyDown, TrickleDown.TrickleDown);
-            row.Add(_input);
-            _act = Ui.Button("ACT", "send", "cv-btn--primary cv-command__send", OnActOrStop);
-            _act.name = "CommandAct";
-            row.Add(_act);
-            bar.Add(row);
-
-            var hint = Ui.El("cv-command__hint");
-            hint.Add(Ui.Text("ENTER TO ACT", "cv-caption"));
-            hint.Add(Ui.Text("SHIFT+ENTER NEW LINE", "cv-caption"));
-            hint.Add(Ui.Text("UP TO RECALL", "cv-caption"));
-            bar.Add(hint);
-            column.Add(bar);
-
-            state.Changed += delegate (StateArea area)
-            {
-                if ((area & (StateArea.Driver | StateArea.Busy)) != 0) { PaintBusy(); }
-                if ((area & (StateArea.Campaign | StateArea.Session)) != 0) { PaintPlaceholder(); }
-                if ((area & (StateArea.Providers | StateArea.Driver)) != 0) { PaintGate(); }
-            };
-            // The driver's status text changes between Notify calls: poll it while busy.
-            _thinking.schedule.Execute(Tick).Every(33);
-            PaintBusy();
-            PaintPlaceholder();
-            PaintGate();
+            host.schedule.Execute(_vm.Tick).Every(33);
         }
 
-        private void PaintGate()
-        {
-            string reason;
-            bool ready = _state.ProviderReady(out reason);
-            _gate.style.display = ready ? DisplayStyle.None : DisplayStyle.Flex;
-            if (!ready) { Ui.SetText(_gateText, "The Dungeon Master isn't set up: " + reason); }
-            _input.SetEnabled(ready);
-            _quick.SetEnabled(ready);
-            // STOP must stay reachable mid-turn even if the provider just failed.
-            _act.SetEnabled(ready || Working);
-            PaintPlaceholder();
-        }
-
-        /// <summary>The empty box says what the next line will do: nothing yet, open the session, or play.</summary>
-        private void PaintPlaceholder()
-        {
-            string notReady;
-            string text = !_state.ProviderReady(out notReady) ? "Set up the Dungeon Master's AI provider to play."
-                : !_state.HasCampaign ? "Choose a campaign to begin (the campaign book, top right)…"
-                : _state.SetupPending && _state.Session == null ? "Tell the DM about your characters, or answer their questions…"
-                : _state.Session == null ? "What do you do? Your first line opens the session."
-                : "What do you do?";
-            _input.textEdition.placeholder = text;
-        }
-
+        public CommandBarViewModel ViewModel { get { return _vm; } }
         public TextField Input { get { return _input; } }
 
-        public void Focus() { _input.Focus(); }
+        public void Focus() { _vm.RequestFocus(); }
 
         /// <summary>Puts words in the box (for other panels: "use item", "talk to X").</summary>
-        public void Prefill(string text)
-        {
-            _input.value = text;
-            _input.Focus();
-            _input.SelectRange(text.Length, text.Length);
-        }
-
-        private void UseQuick(QuickAction q)
-        {
-            if (q.Immediate && _input.value.Trim().Length == 0) { Submit(q.Text); return; }
-            string current = _input.value.TrimEnd();
-            Prefill(current.Length > 0 ? current + " " + q.Text : q.Text);
-        }
-
-        private void OnActOrStop()
-        {
-            if (_state.Driver.IsBusy) { _controller.CancelTurn(); return; }
-            Submit(_input.value);
-        }
-
-        private void Submit(string text)
-        {
-            text = (text ?? string.Empty).Trim();
-            if (text.Length == 0) { return; }
-            if (!_controller.SendPlayerText(text)) { return; }
-            if (_history.Count == 0 || _history[_history.Count - 1] != text) { _history.Add(text); }
-            while (_history.Count > HistoryLimit) { _history.RemoveAt(0); }
-            _recall = -1;
-            _input.value = string.Empty;
-            // Keep the keyboard in the box: every line shouldn't cost a click.
-            _input.schedule.Execute(() => { _input.Focus(); }).StartingIn(1);
-        }
+        public void Prefill(string text) { _vm.Prefill(text); }
 
         private void OnKeyDown(KeyDownEvent e)
         {
@@ -194,25 +46,26 @@ namespace CampaignVault.UnityClient.UI
                 e.StopImmediatePropagation();
                 if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter)
                 {
-                    if (_state.Driver.IsBusy) { _state.RaiseToast("The DM is still resolving the last action.", ToastKind.Info); }
-                    else { Submit(_input.value); }
+                    // The binding carries typing to the view model on the panel's next update; this key can come sooner.
+                    _vm.Draft = _input.value;
+                    if (_vm.Enter(_input.value)) { _input.value = string.Empty; }
                 }
                 return;
             }
-            if (e.keyCode == KeyCode.UpArrow && _history.Count > 0 && CaretOnFirstLine())
+            if (e.keyCode == KeyCode.UpArrow && CaretOnFirstLine())
             {
+                string older = _vm.RecallOlder(_input.value);
+                if (older == null) { return; }
                 e.StopImmediatePropagation();
-                if (_recall < 0) { _draft = _input.value; _recall = _history.Count; }
-                _recall = Mathf.Max(0, _recall - 1);
-                ShowRecall();
+                Show(older);
                 return;
             }
-            if (e.keyCode == KeyCode.DownArrow && _recall >= 0 && CaretOnLastLine())
+            if (e.keyCode == KeyCode.DownArrow && CaretOnLastLine())
             {
+                string newer = _vm.RecallNewer();
+                if (newer == null) { return; }
                 e.StopImmediatePropagation();
-                _recall++;
-                if (_recall >= _history.Count) { _recall = -1; _input.value = _draft; }
-                else { ShowRecall(); }
+                Show(newer);
                 return;
             }
             if (e.keyCode == KeyCode.Escape)
@@ -222,9 +75,8 @@ namespace CampaignVault.UnityClient.UI
             }
         }
 
-        private void ShowRecall()
+        private void Show(string text)
         {
-            string text = _history[_recall];
             _input.value = text;
             _input.SelectRange(text.Length, text.Length);
         }
@@ -241,39 +93,6 @@ namespace CampaignVault.UnityClient.UI
             string v = _input.value ?? string.Empty;
             int caret = Mathf.Clamp(_input.cursorIndex, 0, v.Length);
             return v.IndexOf('\n', caret) < 0;
-        }
-
-        /// <summary>A turn is running, or the session is opening ahead of one.</summary>
-        private bool Working
-        {
-            get { return (_state.Driver != null && _state.Driver.IsBusy) || _state.IsBusy("session"); }
-        }
-
-        private void PaintBusy()
-        {
-            bool busy = Working;
-            if (busy == _busyShown) { return; }
-            _busyShown = busy;
-            Ui.SetButtonText(_act, busy ? "STOP" : "ACT");
-            _act.EnableInClassList("cv-btn--primary", !busy);
-            _act.EnableInClassList("cv-btn--danger", busy);
-            var icon = _act.Q(className: "cv-icon");
-            icon.EnableInClassList("cv-icon--send", !busy);
-            icon.EnableInClassList("cv-icon--stop", busy);
-            _thinking.EnableInClassList("cv-thinking--on", busy);
-        }
-
-        private void Tick()
-        {
-            PaintBusy();
-            if (!_busyShown) { return; }
-            string status = _state.Driver.IsBusy ? _state.Driver.Status : "the table is being set: opening the session…";
-            Ui.SetText(_thinkingText, string.IsNullOrEmpty(status) ? "the DM is thinking…" : status);
-            if (_state.FxEnabled)
-            {
-                _spin = (_spin + 6f) % 360f;
-                _thinkingDie.style.rotate = new Rotate(_spin);
-            }
         }
     }
 }

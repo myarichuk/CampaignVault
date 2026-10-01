@@ -246,6 +246,10 @@ namespace CampaignVault.UnityClient.UI.Controls
         [CreateProperty]
         public Action command { get; set; }
 
+        /// <summary>No click sound (the status sigils, toasts and activity strips were always silent).</summary>
+        [UxmlAttribute]
+        public bool silent { get; set; }
+
         private void OnClick(ClickEvent e)
         {
             for (var t = e.target as VisualElement; t != null && t != this; t = t.parent)
@@ -253,7 +257,7 @@ namespace CampaignVault.UnityClient.UI.Controls
                 if (t is Button) { return; }
             }
             if (command == null) { return; }
-            VaultSfx.Play(VaultSfx.Cue.Click);
+            if (!silent) { VaultSfx.Play(VaultSfx.Cue.Click); }
             command();
         }
     }
@@ -274,5 +278,23 @@ namespace CampaignVault.UnityClient.UI.Controls
             get { return textEdition.placeholder; }
             set { textEdition.placeholder = value ?? string.Empty; }
         }
+
+        /// <summary>
+        /// Each time this number goes up the field takes focus (a new question asks for typing). A binding can't call
+        /// Focus(), so the view model bumps a counter instead.
+        /// </summary>
+        [CreateProperty]
+        public int focusRequest
+        {
+            get { return _focusRequest; }
+            set
+            {
+                if (value == _focusRequest) { return; }
+                _focusRequest = value;
+                // The caret goes after the text: a prefilled line is for finishing, not replacing.
+                if (value > 0) { schedule.Execute(() => { Focus(); SelectRange(text.Length, text.Length); }).StartingIn(50); }
+            }
+        }
+        private int _focusRequest;
     }
 }

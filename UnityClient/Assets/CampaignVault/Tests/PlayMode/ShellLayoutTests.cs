@@ -149,7 +149,7 @@ namespace CampaignVault.UnityClient.PlayTests
             VaultClientUI host = null;
             VaultAppState state = null;
             yield return Host(1920, 1080, delegate (VaultClientUI ui, VaultAppState s, VaultController c) { host = ui; state = s; });
-            var content = host.Log.ScrollView.contentContainer;
+            var content = host.Log.ScrollView.Q<CampaignVault.UnityClient.UI.Controls.LiveRepeater>();
             var watch = Stopwatch.StartNew();
             for (int i = 0; i < 1000; i++)
             {
@@ -161,6 +161,7 @@ namespace CampaignVault.UnityClient.PlayTests
             Assert.AreEqual(VaultTranscript.MaxSegments, state.Transcript.Segments.Count);
             Assert.AreEqual(state.Transcript.Segments.Count, host.Log.EntryCount, "one entry per segment, trimmed in step");
             Assert.LessOrEqual(content.childCount, VaultTranscript.MaxSegments, "no orphaned elements");
+            Assert.AreEqual(host.Log.ViewModel.Stories.Count, content.childCount, "one element per item, patched in step");
             Assert.Less(watch.ElapsedMilliseconds, 1500, "appending stays cheap past the cap (no rebuilds)");
         }
     }
