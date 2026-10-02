@@ -8,3 +8,5 @@ abilityBonuses:
   Constitution: 1
 size: Medium
 baseSpeed: 30
+darkvision: 60
+skills: [Intimidation]

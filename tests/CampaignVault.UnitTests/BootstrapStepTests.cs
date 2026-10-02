@@ -390,7 +390,7 @@ public class BootstrapStepTests
 
         Assert.Equal(expectedCon, stats.Constitution);
         Assert.Equal(25, stats.Movement);
-        Assert.Contains("Darkvision", character.DistinctiveFeatures);
+        Assert.Contains("Darkvision 60 ft.", character.DistinctiveFeatures);
     }
 
     [Fact]

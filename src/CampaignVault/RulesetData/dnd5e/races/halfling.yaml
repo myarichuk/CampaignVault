@@ -7,3 +7,5 @@ abilityBonuses:
   Dexterity: 2
 size: Small
 baseSpeed: 25
+effects:
+  - { kind: advantage, on: save, assert: [againstFear], when: "the saving throw is against being frightened" }

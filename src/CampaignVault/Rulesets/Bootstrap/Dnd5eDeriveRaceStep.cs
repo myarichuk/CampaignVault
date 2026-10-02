@@ -51,6 +51,15 @@ public sealed class Dnd5eDeriveRaceStep(RaceDefinitionProvider raceProvider) : I
             stats.Movement = speed;
         }
 
-        RaceTraitStamper.StampSizeAndTraits(character, race.Size, race.Traits);
+        if (race.Darkvision is not > 0)
+        {
+            RaceTraitStamper.StampSizeAndTraits(character, race.Size, race.Traits);
+            return;
+        }
+
+        // The range replaces the bare trait, also one stamped before races had it.
+        static bool Bare(string trait) => trait.Equals("Darkvision", StringComparison.OrdinalIgnoreCase);
+        character.DistinctiveFeatures = [.. character.DistinctiveFeatures.Where(f => !Bare(f))];
+        RaceTraitStamper.StampSizeAndTraits(character, race.Size, [.. race.Traits.Where(t => !Bare(t)), $"Darkvision {race.Darkvision} ft."]);
     }
 }

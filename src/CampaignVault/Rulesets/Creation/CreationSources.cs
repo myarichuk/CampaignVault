@@ -48,6 +48,9 @@ public sealed class CreationSources(
     /// <summary>PF2e boosts: the abilities the chosen ancestry doesn't boost already (its free boosts).</summary>
     public const string AncestryBoosts = "ancestryBoosts";
 
+    /// <summary>5e: the abilities a race's <c>abilityChoice</c> may raise (all but its <c>exclude</c>).</summary>
+    public const string RaceAbilities = "raceAbilities";
+
     /// <summary>PF2e boosts: the six abilities (the background's two; <c>pf2e.boosts</c> checks one is from its pair).</summary>
     public const string BackgroundBoosts = "backgroundBoosts";
 
@@ -68,7 +71,7 @@ public sealed class CreationSources(
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         Races, Classes, Backgrounds, ClassSkills, Skills, Spells, Feats, Creatures, Companions, StartingEquipment, Abilities,
-        Heritages, BackgroundSkills, UntrainedSkills, AncestryBoosts, BackgroundBoosts, KeyAbilities,
+        Heritages, BackgroundSkills, UntrainedSkills, AncestryBoosts, RaceAbilities, BackgroundBoosts, KeyAbilities,
         AncestryFeats, ClassFeats, SkillFeats, GeneralFeats, Deities, Patrons, Lineages,
     };
 
@@ -180,6 +183,11 @@ public sealed class CreationSources(
             {
                 var boosted = (picks.Race?.AbilityBonuses ?? []).Where(kv => kv.Value > 0).Select(kv => kv.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
                 return [.. AbilityNames.Where(a => !boosted.Contains(a)).Select(a => new CreationOption(a, a))];
+            }
+            case "raceabilities":
+            {
+                var excluded = picks.Race?.AbilityChoice?.Exclude ?? [];
+                return [.. AbilityNames.Where(a => !excluded.Contains(a, StringComparer.OrdinalIgnoreCase)).Select(a => new CreationOption(a, a))];
             }
             case "backgroundboosts":
                 return [.. AbilityNames.Select(a => new CreationOption(a, a))];

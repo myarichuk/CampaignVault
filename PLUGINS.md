@@ -535,7 +535,24 @@ extraLanguages: [Dwarvish]
 traits:
   - Darkvision
   - Dwarven Resilience
+# 5e mechanics (each optional):
+darkvision: 60                                   # shown with the traits as "Darkvision 60 ft."
+effects:                                         # the effect vocabulary, applied to the character's rolls
+  - { kind: resistance, damageType: poison }
+  - { kind: advantage, on: save, assert: [againstPoison], when: "the saving throw is against poison" }
+proficiencies: { weapons: [battleaxe, warhammer], armor: [], tools: [] }
+skills: [Perception]                             # fixed skill proficiencies
+spells: { 1: [light], 3: [faerie_fire] }         # by character level: cantrips to the cantrips, others to known
+abilityChoice: { count: 2, exclude: [Charisma] } # +1 to that many different abilities of the player's choice
+skillChoices: 2                                  # skills of the player's choice
+bonusFeats: 1                                    # a feat of the player's choice at level 1
 ```
+
+The 5e `pc` recipe asks for a race's choices in steps shown only for a race that has them: `raceAbilities` (an
+`allocate` step from the `raceAbilities` source, each pick +1 to that score), `raceSkills` (a `pickN` with
+`target: skills`, so its picks are skill proficiencies like the class's) and `raceFeat` (a `pickOne` of feats with
+`target: feats`). A subrace is a race with `inherits: [dwarf]` and `effects+:` / `traits+:` for what it adds.
+A feat taken this way doesn't ask its own choices (a half-feat's ability); the DM records those.
 
 ### Class Definition
 
@@ -552,12 +569,12 @@ proficiencies: { armor: [light, medium, heavy, shields], weapons: [simple, marti
 multiclassProficiencies: { armor: [light, medium, shields], weapons: [simple, martial] } # 5e, a later class
 ```
 
-**5e proficiencies.** `proficiencies:` (here, on a class feature, and later on races, backgrounds and feats) takes
+**5e proficiencies.** `proficiencies:` (here, on a class feature, a race or a feat) takes
 `armor` (`light`, `medium`, `heavy`, `shields`), `weapons` (`simple`, `martial`, or item names such as
 `crossbow_hand`) and `tools` (names such as `thieves_tools`). The sheet's `armorProficiencies`,
 `weaponProficiencies` and `toolProficiencies` hold the union of everything the character has: the starting class's
-`proficiencies`, each later class's `multiclassProficiencies`, its class features' and the background's
-`toolProficiencies`. Derivation only adds, so an entry the DM writes stays. Once `weaponProficiencies` is set, an
+`proficiencies`, each later class's `multiclassProficiencies`, its class features', race's and feats', and the
+background's `toolProficiencies`. Derivation only adds, so an entry the DM writes stays. Once `weaponProficiencies` is set, an
 attack with a weapon it doesn't cover (by the item's `simple`/`martial` tag or its name) gets no proficiency bonus,
 and the roll note says why. A choice ("three musical instruments") stays in the description.
 

@@ -237,8 +237,9 @@ public sealed class RecipeCharacterCreation(
     };
 
     /// <summary>
-    /// The base score the draft chose for an ability plus the chosen race's bonus, or null before abilities are chosen.
-    /// Racial bonuses come from the race template only, never from the client.
+    /// The base score the draft chose for an ability plus the chosen race's bonus, its picks of abilities to raise (a
+    /// race's abilities of choice) and the level choices' increases, or null before abilities are chosen. Racial bonuses
+    /// come from the race template only, never from the client.
     /// </summary>
     public int? AbilityScore(string kind, CharacterDraft draft, string ability)
     {
@@ -251,7 +252,10 @@ public sealed class RecipeCharacterCreation(
 
         var race = ChosenTemplate(steps, draft, CreationSources.Races) as RaceDefinition;
         var bonus = race?.AbilityBonuses.FirstOrDefault(kv => kv.Key.Equals(ability, StringComparison.OrdinalIgnoreCase)).Value ?? 0;
-        return found.Value + bonus + Increases(kind, draft).Where(i => i.Ability.Equals(ability, StringComparison.OrdinalIgnoreCase)).Sum(i => i.Amount);
+        var allocated = steps.Where(s => s.Kind == CreationStepKinds.Allocate)
+            .Sum(s => draft.GetList(s.Key).Count(p => p.Equals(ability, StringComparison.OrdinalIgnoreCase)));
+        return found.Value + bonus + allocated
+               + Increases(kind, draft).Where(i => i.Ability.Equals(ability, StringComparison.OrdinalIgnoreCase)).Sum(i => i.Amount);
     }
 
     /// <summary>The issue key for the draft's level (it belongs to no step).</summary>

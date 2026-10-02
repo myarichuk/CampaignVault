@@ -8,7 +8,8 @@ public sealed class Dnd5eDeriveProficiencyStep(
     ClassDefinitionProvider? classProvider = null,
     BackgroundDefinitionProvider? backgroundProvider = null,
     ProgressionDefinitionProvider? progressionProvider = null,
-    FeatDefinitionProvider? featProvider = null) : IBootstrapStep, ILevelGainStep
+    FeatDefinitionProvider? featProvider = null,
+    RaceDefinitionProvider? raceProvider = null) : IBootstrapStep, ILevelGainStep
 {
     public string Name => "dnd5e.derive_proficiency";
 
@@ -142,24 +143,21 @@ public sealed class Dnd5eDeriveProficiencyStep(
     public const string SkillsChoiceKey = "skills";
 
     /// <summary>
-    /// Fills SkillModifiers for skills granted by the character's background, using ability mod + proficiency bonus.
-    /// Never overwrites a skill the caller already set (DM override, Expertise, etc.).
+    /// Fills SkillModifiers for skills granted by the character's background and race, using ability mod + proficiency
+    /// bonus. Never overwrites a skill the caller already set (DM override, Expertise, etc.).
     /// Class skill picks are <see cref="DeriveChosenSkillModifiers"/>.
     /// </summary>
     private List<string> DeriveBackgroundSkillModifiers(BootstrapContext context, Dnd5eExtension stats, int prof)
     {
         var applied = new List<string>();
-        if (backgroundProvider is null || string.IsNullOrWhiteSpace(stats.Background))
+        var skills = new List<string>(CharacterRace.Of(context.Character, RulesetSystem.Dnd5e, raceProvider)?.Skills ?? []);
+        if (backgroundProvider is not null && !string.IsNullOrWhiteSpace(stats.Background)
+            && backgroundProvider.TryGet(RulesetSystem.Dnd5e, stats.Background, out var background) && background is not null)
         {
-            return applied;
+            skills.AddRange(background.SkillProficiencies);
         }
 
-        if (!backgroundProvider.TryGet(RulesetSystem.Dnd5e, stats.Background, out var background) || background is null)
-        {
-            return applied;
-        }
-
-        foreach (var skill in background.SkillProficiencies)
+        foreach (var skill in skills)
         {
             if (stats.SkillModifiers.ContainsKey(skill))
             {
@@ -248,6 +246,10 @@ public sealed class Dnd5eDeriveProficiencyStep(
 
         grants.AddRange(CharacterClassFeatures.Proficiencies(context.Character, RulesetSystem.Dnd5e, progressionProvider));
         grants.AddRange(CharacterFeats.Proficiencies(context.Character, RulesetSystem.Dnd5e, featProvider));
+        if (CharacterRace.Of(context.Character, RulesetSystem.Dnd5e, raceProvider)?.Proficiencies is { } racial)
+        {
+            grants.Add(racial);
+        }
 
         if (backgroundProvider is not null && !string.IsNullOrWhiteSpace(stats.Background)
             && backgroundProvider.TryGet(RulesetSystem.Dnd5e, stats.Background, out var background) && background is not null)

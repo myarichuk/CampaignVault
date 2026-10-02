@@ -6,19 +6,20 @@ namespace CampaignVault.Rulesets.Bootstrap;
 /// <summary>
 /// Adds the spells a character's class features give outright (a domain's, an oath's, a circle's: the feature's
 /// <c>spells:</c>) to its prepared list, once the class level reaches them, and the spells its feats give (their own and
-/// the ones picked for them) to its known list. A cantrip goes to the cantrips instead when <paramref name="spells"/> can
+/// the ones picked for them) and its race gives by character level to its known list. A cantrip goes to the cantrips instead when <paramref name="spells"/> can
 /// tell. Runs at creation and on every level gained, so a subclass picked at level 3 brings its level-3 spells; a spell
 /// already listed (prepared, known or cantrip) is left alone.
 /// </summary>
 public sealed class Dnd5eGrantClassSpellsStep(
     ProgressionDefinitionProvider? progressions,
     FeatDefinitionProvider? feats = null,
-    SpellDefinitionProvider? spells = null) : IBootstrapStep, ILevelGainStep
+    SpellDefinitionProvider? spells = null,
+    RaceDefinitionProvider? races = null) : IBootstrapStep, ILevelGainStep
 {
     public string Name => "dnd5e.grant_class_spells";
 
     public bool CanApply(BootstrapContext context) =>
-        (progressions is not null || feats is not null) && context.Character.SystemStats is Dnd5eExtension;
+        (progressions is not null || feats is not null || races is not null) && context.Character.SystemStats is Dnd5eExtension;
 
     public Task<BootstrapStepResult?> ApplyAsync(BootstrapContext context, CancellationToken ct = default) =>
         Task.FromResult(Grant(context));
@@ -34,7 +35,9 @@ public sealed class Dnd5eGrantClassSpellsStep(
         var fromFeatures = CharacterClassFeatures.GrantedSpells(context.Character, context.ActiveSystem, progressions)
             .Where(listed.Add)
             .ToList();
+        // On a level gain the hit point step, which runs first, has already moved the level on.
         var fromFeats = CharacterFeats.Spells(context.Character, context.ActiveSystem, feats)
+            .Concat(CharacterRace.Spells(context.Character, context.ActiveSystem, races, stats.Level ?? 1))
             .Where(listed.Add)
             .ToList();
         if (fromFeatures.Count == 0 && fromFeats.Count == 0)
@@ -49,7 +52,7 @@ public sealed class Dnd5eGrantClassSpellsStep(
         return new BootstrapStepResult
         {
             StepName = Name,
-            Message = $"Added the spells {context.Character.Name}'s class features and feats give: {string.Join(", ", added)}.",
+            Message = $"Added the spells {context.Character.Name}'s class features, feats and race give: {string.Join(", ", added)}.",
         };
     }
 

@@ -33,10 +33,10 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         _spellDefinitionProvider = spellDefinitionProvider;
         _creatureDefinitionProvider = creatureDefinitionProvider;
         var hpStep = new Dnd5eDeriveHitPointsStep(_rollService, progressionProvider, featProvider);
-        var profStep = new Dnd5eDeriveProficiencyStep(classProvider, backgroundProvider, progressionProvider, featProvider);
+        var profStep = new Dnd5eDeriveProficiencyStep(classProvider, backgroundProvider, progressionProvider, featProvider, raceProvider);
         var passiveStep = new Dnd5eDerivePassivePerceptionStep();
         var spellStep = new Dnd5eDeriveSpellcastingStep(progressionProvider);
-        var grantStep = new Dnd5eGrantClassSpellsStep(progressionProvider, featProvider, spellDefinitionProvider);
+        var grantStep = new Dnd5eGrantClassSpellsStep(progressionProvider, featProvider, spellDefinitionProvider, raceProvider);
         List<IBootstrapStep> steps = raceProvider != null ? [new Dnd5eDeriveRaceStep(raceProvider)] : [];
         steps.AddRange([hpStep, new Dnd5eDeriveDefenseStep(progressionProvider), profStep, passiveStep, spellStep, grantStep]);
         _bootstrap = new CharacterBootstrapPipeline(

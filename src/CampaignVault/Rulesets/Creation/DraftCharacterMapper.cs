@@ -12,16 +12,17 @@ namespace CampaignVault.Rulesets.Creation;
 /// <list type="bullet">
 /// <item>the class pick (source <c>classes</c>) sets the class/level text, <c>classLevels</c>, <c>level</c> and <c>hitDie</c>;</item>
 /// <item>ability scores go to the stats fields named after each ability (<c>strength</c>, ...), without racial bonuses;</item>
-/// <item>each boost (allocate) pick adds 1 to the ability's modifier field (<c>strengthMod</c>, ...);</item>
+/// <item>each boost (allocate) pick adds 1 to the ability's modifier field (PF2e <c>strengthMod</c>, ...), or else to its
+/// score (5e <c>strength</c>: a race's abilities of choice);</item>
 /// <item>spells go to <c>spells</c>; any other step goes to the stats field named by its <c>target:</c> or key
-/// (<c>race</c>, <c>background</c>, <c>feats</c>);</item>
+/// (<c>race</c>, <c>background</c>), a pick joining a list field (<c>feats</c>);</item>
 /// <item>level choices (<see cref="LevelChoiceSlot"/>) are recorded per slot at its level, as level_up records them; an
 /// ability score improvement also raises the scores (after the ability step, whatever the order), and a feat taken
 /// instead joins the stats' <c>feats</c>;</item>
 /// <item>identity fields named in <see cref="PsychologyFields"/> (descriptors, drives, fears) go to the character's
 /// psychology (traits, wants, fears), not its stats;</item>
-/// <item>a step with no such field is recorded as a level-1 choice (<c>levelUpChoices</c>, one record per value),
-/// which the bootstrap steps read (5e class skills).</item>
+/// <item>a step with no such field is recorded as a level-1 choice (<c>levelUpChoices</c>, one record per value) under its
+/// <c>target:</c> or key, which the bootstrap steps read (5e skills: key or target <c>skills</c>).</item>
 /// </list>
 /// </summary>
 internal static class DraftCharacterMapper
@@ -108,8 +109,8 @@ internal static class DraftCharacterMapper
 
                     break;
                 default:
-                    if (!TrySet(stats, step.Target ?? step.Key, value))
-                        Record(stats, step.Key, draft.GetList(step.Key), 1);
+                    if (!TrySet(stats, step.Target ?? step.Key, value) && !Join(stats, step.Target ?? step.Key, draft.GetList(step.Key)))
+                        Record(stats, step.Target ?? step.Key, draft.GetList(step.Key), 1);
                     break;
             }
         }
@@ -213,10 +214,25 @@ internal static class DraftCharacterMapper
             TrySet(stats, "hitDie", JsonSerializer.SerializeToElement(hitDie, Json));
     }
 
-    /// <summary>+1 to the stats field <c>&lt;ability&gt;Mod</c>; false when there is no such whole-number field.</summary>
+    /// <summary>Adds the picks to the stats' list field of that name (<c>feats</c>); false when there is no such list.</summary>
+    private static bool Join(SystemExtension stats, string name, IReadOnlyList<string> picks)
+    {
+        if (FindProperty(stats, name)?.GetValue(stats) is not List<string> list)
+            return false;
+
+        list.AddRange(picks.Where(p => !list.Contains(p, StringComparer.OrdinalIgnoreCase)));
+        return true;
+    }
+
+    /// <summary>
+    /// +1 to the stats field <c>&lt;ability&gt;Mod</c> (PF2e), else to the score <c>&lt;ability&gt;</c> (5e); false when
+    /// there is no such whole-number field.
+    /// </summary>
     private static bool Boost(SystemExtension stats, string ability)
     {
-        var prop = FindProperty(stats, ability.Trim() + "Mod");
+        var prop = FindProperty(stats, ability.Trim() + "Mod") is { PropertyType: var t } mod && t == typeof(int)
+            ? mod
+            : FindProperty(stats, ability.Trim());
         if (prop?.PropertyType != typeof(int))
             return false;
 

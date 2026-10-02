@@ -774,6 +774,54 @@ public class CharacterCreationTests : IDisposable
     }
 
     [Fact]
+    public async Task ARaceWithChoices_AsksForThem_AndThePreviewAppliesThem()
+    {
+        var service = Service();
+        var human = Dnd5e("wizard", 1, intel: 15, con: 13);
+        var halfElf = human.With("race", "half-elf");
+
+        Assert.DoesNotContain("raceAbilities", Keys(service.Steps(RulesetSystem.Dnd5e, human)));
+        Assert.DoesNotContain("raceSkills", Keys(service.Steps(RulesetSystem.Dnd5e, human)));
+        var steps = service.Steps(RulesetSystem.Dnd5e, halfElf);
+        Assert.Contains("raceAbilities", Keys(steps));
+        Assert.Contains("raceSkills", Keys(steps));
+        Assert.DoesNotContain(service.Options(RulesetSystem.Dnd5e, "raceAbilities", halfElf), o => o.Id == "Charisma");
+        Assert.Contains(service.Validate(RulesetSystem.Dnd5e, halfElf.With("raceAbilities", new[] { "Charisma", "Intelligence" })),
+            i => i.Step == "raceAbilities" && !i.IsWarning);
+
+        var preview = await service.PreviewAsync(RulesetSystem.Dnd5e, halfElf
+            .With("raceAbilities", new[] { "Intelligence", "Constitution" })
+            .With("raceSkills", new[] { "Persuasion", "Stealth" }));
+
+        var stats = Assert.IsType<Dnd5eExtension>(preview.Character.SystemStats);
+        Assert.Equal((16, 14), (stats.Intelligence, stats.Constitution));
+        Assert.True(stats.SkillModifiers.ContainsKey("Persuasion"));
+        Assert.True(stats.SkillModifiers.ContainsKey("Stealth"));
+        Assert.Contains("Darkvision 60 ft.", preview.Character.DistinctiveFeatures);
+    }
+
+    [Fact]
+    public async Task ARacesBonusFeat_IsAStep_AndJoinsTheFeats()
+    {
+        var races = Path.Combine(_root, "host", "dnd5e", "races");
+        Directory.CreateDirectory(races);
+        File.WriteAllText(Path.Combine(races, "versatile_folk.yaml"), """
+            name: versatile_folk
+            system: dnd5e
+            abilityChoice: { count: 2 }
+            bonusFeats: 1
+            skillChoices: 1
+            """);
+        var service = Service();
+        var draft = Dnd5e("fighter", 1, str: 15).With("race", "versatile_folk");
+        Assert.Contains("raceFeat", Keys(service.Steps(RulesetSystem.Dnd5e, draft)));
+
+        var preview = await service.PreviewAsync(RulesetSystem.Dnd5e, draft.With("raceFeat", "grappler"));
+
+        Assert.Contains("grappler", Assert.IsType<Dnd5eExtension>(preview.Character.SystemStats).Feats);
+    }
+
+    [Fact]
     public void Validate_AboveTheRecipesMaxLevel_IsAnError_5eAndPf2eTo20()
     {
         var service = Service();

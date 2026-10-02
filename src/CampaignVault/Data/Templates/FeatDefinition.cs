@@ -82,8 +82,10 @@ public record FeatDefinition : RulesetTemplate
     /// <summary>5e: spells it lets the player choose (see <see cref="FeatSpellChoice"/>), added like <see cref="Spells"/>.</summary>
     public List<FeatSpellChoice> SpellChoices { get; init; } = [];
 
-    /// <summary>Whether taking it asks the player anything beyond the feat itself.</summary>
-    public bool HasChoices => AbilityIncrease is { Choose.Count: not 1 } || SkillChoices > 0 || SpellChoices.Count > 0;
+    /// <summary>Whether it gives anything besides roll effects: an ability, proficiencies, saves, skills, hit points, spells.</summary>
+    public bool HasGrants =>
+        AbilityIncrease is not null || Proficiencies is not null || SavingThrows.Count > 0 || SavingThrowOfIncrease
+        || SkillChoices > 0 || HpPerLevel != 0 || Spells.Count > 0 || SpellChoices.Count > 0;
 
     public static FeatDefinition Merge(FeatDefinition child, FeatDefinition parent) =>
         child with

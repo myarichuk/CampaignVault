@@ -102,7 +102,8 @@ internal static class FeatEffectRules
 
     /// <summary>
     /// The effects live for each character now: SRD/YAML feats overlaid by homebrew CustomFeat of the same name, then the
-    /// class features and picked options of its progression (<paramref name="progressions"/>), filtered by plugin/mode.
+    /// class features and picked options of its progression (<paramref name="progressions"/>) and its 5e race's
+    /// (<paramref name="races"/>), filtered by plugin/mode.
     /// Homebrew is read straight from the index (like the casting gate) to avoid a repository dependency cycle.
     /// </summary>
     public static async Task<Dictionary<string, List<ActiveFeatEffect>>> ResolveAsync(
@@ -112,10 +113,11 @@ internal static class FeatEffectRules
         IEnumerable<Character> characters,
         string? campaignName,
         IReadOnlyCollection<string> activeModeIds,
-        ProgressionDefinitionProvider? progressions = null)
+        ProgressionDefinitionProvider? progressions = null,
+        RaceDefinitionProvider? races = null)
     {
         var result = new Dictionary<string, List<ActiveFeatEffect>>(StringComparer.OrdinalIgnoreCase);
-        var involved = characters.Where(c => KnownFeatNames(c.SystemStats).Count > 0 || progressions is not null).ToList();
+        var involved = characters.Where(c => KnownFeatNames(c.SystemStats).Count > 0 || progressions is not null || races is not null).ToList();
         if (involved.Count == 0)
             return result;
 
@@ -123,6 +125,7 @@ internal static class FeatEffectRules
         foreach (var character in involved)
         {
             var live = CharacterClassFeatures.Effects(character, system, progressions)
+                .Concat(CharacterRace.Effects(character, system, races))
                 .Where(a => IsAvailable(a.Effect.Requires, activeModeIds))
                 .ToList();
             foreach (var name in KnownFeatNames(character.SystemStats).Select(CombatFeatureRules.Norm).Distinct())
@@ -151,7 +154,7 @@ internal static class FeatEffectRules
         foreach (var (key, def) in featProvider.GetFeatsForSystem(system))
         {
             var entry = new CatalogFeat(def.Name ?? key, def.Effects, def.Requires, def.Adjudicated,
-                def.CastingWaivers.Count > 0 || def.ExtraPools.Count > 0, Homebrew: false);
+                def.CastingWaivers.Count > 0 || def.ExtraPools.Count > 0 || def.HasGrants, Homebrew: false);
             catalog[CombatFeatureRules.Norm(key)] = entry;
             if (!string.IsNullOrWhiteSpace(def.Name))
                 catalog[CombatFeatureRules.Norm(def.Name)] = entry;
