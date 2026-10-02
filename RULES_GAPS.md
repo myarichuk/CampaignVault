@@ -31,7 +31,7 @@ Rules content and features left out on purpose, or deferred. Each entry says why
 ## Planned
 
 - **Scripted effects (not built, on purpose).** The effect vocabulary now covers numeric bonuses, advantage,
-  extra damage dice, critical range and resistance. A sandboxed script (Jint: no host access, a time and memory cap)
+  extra damage dice, critical range, resistance, flat damage reduction, and initiative, speed and passive bonuses. A sandboxed script (Jint: no host access, a time and memory cap)
   could express the rest. We hold off because a script is code: it can't be validated, previewed or tagged the way
   data can, and a DM-written one would run model-written code. Plugin authors who need more already have C#
   (`IRollModifierProvider`, recipe validators). If scripts come, they'd be plugin-only files that return the same

@@ -20,6 +20,12 @@ CampaignVault install, and restart the host.
 See [PLUGINS.md](https://github.com/myarichuk/CampaignVault/blob/master/PLUGINS.md) in
 the main repository for the full plugin architecture, trust model, and quick-start guide.
 
+## 0.15.0
+
+- **Effect kinds** (`FeatEffectKinds`): `initiativeBonus`, `speedBonus` (feet), `passiveBonus` (`subject` Perception or
+  Investigation) and `damageReduction` (flat, before resistance, optionally for some damage types). `resistance` and
+  `damageReduction` take several comma-separated damage types.
+
 ## 0.14.0
 
 - **Proficiencies** (`ProficiencyGrants`: `armor`, `weapons`, `tools`): what a class, class feature, race, background or
