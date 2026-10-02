@@ -25,6 +25,9 @@ the main repository for the full plugin architecture, trust model, and quick-sta
 - **Proficiencies** (`ProficiencyGrants`: `armor`, `weapons`, `tools`): what a class, class feature, race, background or
   feat gives. `FeatureDefinition.Proficiencies` joins a feature's to the sheet; `Dnd5eExtension` gains
   `armorProficiencies`, `weaponProficiencies` and `toolProficiencies`.
+- **Pools** (`ResourcePoolTemplate`): `grantedOnly`, `maxFrom` (`PoolMaxFormula`: ability modifier, proficiency
+  bonus, level multiple, flat part, minimum), `die`/`dieByLevel` and `recoveryByLevel`; `ResourcePool.Die`.
+  `FeatureDefinition.Pools` grants pools by name from a class feature (a subclass's).
 
 ## 0.13.0
 

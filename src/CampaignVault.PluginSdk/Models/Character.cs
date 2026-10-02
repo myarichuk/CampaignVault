@@ -484,6 +484,10 @@ public record ResourcePool
     /// <summary>Last day when this pool was recovered (for LongRest, ShortRest, Daily).</summary>
     [System.Text.Json.Serialization.JsonPropertyName("lastRecoveredDay")]
     public int? LastRecoveredDay { get; set; }
+
+    /// <summary>The die one use rolls (superiority dice: <c>d8</c>), when the pool's template names one.</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("die")]
+    public string? Die { get; set; }
 }
 
 public record SpatialPosition

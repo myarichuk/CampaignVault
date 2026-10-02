@@ -95,6 +95,9 @@ public record FeatureDefinition
     /// <summary>Armor, weapon and tool proficiencies it gives (a domain's heavy armor), joined to the sheet's from its level.</summary>
     public ProficiencyGrants? Proficiencies { get; init; }
 
+    /// <summary>Resource pools it gives by name (a subclass's superiority dice), sized by the pool's own rules from its level.</summary>
+    public List<string> Pools { get; init; } = [];
+
     /// <summary>
     /// Spells it gives by class level, always prepared and not counted against the day's picks (a domain's, an oath's, a
     /// circle's): spell ids. They join the character's prepared list when the class level is reached.

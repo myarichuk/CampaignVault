@@ -75,7 +75,8 @@ Rules content and features left out on purpose, or deferred. Each entry says why
   choices), shown on the sheet and to the DM. The engine applies the ones the effect vocabulary covers (fighting
   styles, Improved Critical, Divine Strike, Colossus Slayer, Draconic Resilience's hit points and armor class,
   Unarmored Defense); the rest (Cutting Words, Sculpt Spells, Rage's resistances…) are adjudicated by the DM from
-  the text, because they need state the vocabulary doesn't have (a rage, a reaction, a pool).
+  the text, because they need state the vocabulary doesn't have (a rage, a reaction). A feature can grant a pool
+  (`pools:`), sized from the character (`maxFrom`) with a die that grows by level; Bardic Inspiration uses that.
 - **The Land druid's bonus cantrip** isn't counted by the spells step. Granted spells are all added as prepared.
 - **Homebrew PF2e feats in the builder.** A campaign's own feat has no category, ancestry or class list in its document,
   so the PF2e feat steps (which filter by those) don't offer it; 5e's improvement feats and spell lists do.
