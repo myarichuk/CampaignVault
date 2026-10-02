@@ -118,6 +118,10 @@ internal static class DraftCharacterMapper
         if (levels is { Slots.Count: > 0 })
             ApplyLevelChoices(stats, levels);
 
+        // The background's gold starts the purse (the gold pool keeps a current value it already has).
+        if (Background(draft, system, steps, sources) is { Gold: > 0 } background)
+            stats.ResourcePools["gold"] = new ResourcePool { Current = background.Gold, Max = background.Gold, Recovery = RecoveryType.Never };
+
         // A companion has no class, so its level is the draft's.
         if (character.IsPartyCompanion)
             TrySet(stats, "level", JsonSerializer.SerializeToElement(level, Json));
@@ -213,6 +217,12 @@ internal static class DraftCharacterMapper
         if (cls?.HitDie is { } hitDie)
             TrySet(stats, "hitDie", JsonSerializer.SerializeToElement(hitDie, Json));
     }
+
+    /// <summary>The background template the draft picked (a pickOne step from <c>backgrounds</c>), or null.</summary>
+    internal static BackgroundDefinition? Background(CharacterDraft draft, string system, IReadOnlyList<CreationStep> steps, CreationSources sources) =>
+        steps.Where(s => s.Kind == CreationStepKinds.PickOne && string.Equals(s.Source, CreationSources.Backgrounds, StringComparison.OrdinalIgnoreCase))
+            .Select(s => draft.GetString(s.Key) is { } id ? sources.Template(system, s.Source, id) as BackgroundDefinition : null)
+            .FirstOrDefault(b => b is not null);
 
     /// <summary>Adds the picks to the stats' list field of that name (<c>feats</c>); false when there is no such list.</summary>
     private static bool Join(SystemExtension stats, string name, IReadOnlyList<string> picks)

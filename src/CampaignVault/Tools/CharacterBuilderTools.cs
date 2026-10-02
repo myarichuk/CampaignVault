@@ -67,6 +67,7 @@ public partial class CharacterBuilderTools : CampaignToolBase, IMcpServerTool
 {
     private readonly CharacterCreationService _creation;
     private readonly WorldBuilderTools _worldBuilder;
+    private readonly ItemDefinitionProvider? _items;
 
     public CharacterBuilderTools(
         CampaignRepository repository,
@@ -74,10 +75,12 @@ public partial class CharacterBuilderTools : CampaignToolBase, IMcpServerTool
         CharacterCreationService creation,
         CharacterBootstrapOrchestrator bootstrap,
         ResourcePoolInitializer? poolInitializer = null,
-        ILogger<CharacterBuilderTools>? logger = null)
+        ILogger<CharacterBuilderTools>? logger = null,
+        ItemDefinitionProvider? items = null)
         : base(repository, keys, logger)
     {
         _creation = creation;
+        _items = items;
         // The same world_build path the model uses, so commit can't drift from it.
         _worldBuilder = new WorldBuilderTools(repository, keys, bootstrap, poolInitializer);
     }
@@ -197,6 +200,7 @@ public partial class CharacterBuilderTools : CampaignToolBase, IMcpServerTool
     {
         // Validate and build the request in a read-only session; world_build then writes in its own.
         CharacterUpsertRequest? request = null;
+        List<ItemUpsertRequest> items = [];
         var prepared = await ExecuteForCampaignAsync(campaignName, async (effective, s) =>
         {
             var system = await SystemAsync(s, effective, draft);
@@ -235,13 +239,16 @@ public partial class CharacterBuilderTools : CampaignToolBase, IMcpServerTool
                 SystemStats = character.SystemStats,
                 Psychology = Psychology(existing, character, _creation.PsychologyFields(system, draft)),
             };
+            if (!exists)
+                items = StartingItems(system, id, _creation.StartingItems(system, draft));
             return new ToolResult<CharacterBuilderResult>(true, result);
         }, saveChanges: false);
 
         if (!prepared.Success || request is null)
             return prepared;
 
-        var built = await _worldBuilder.WorldBuild(new WorldBuildBatch { Characters = [request] }, campaignName);
+        var built = await _worldBuilder.WorldBuild(
+            new WorldBuildBatch { Characters = [request], Items = items.Count > 0 ? items : null }, campaignName);
         if (!built.Success)
             return new ToolResult<CharacterBuilderResult>(false, prepared.Data, built.Summary, built.Error);
 
@@ -255,6 +262,35 @@ public partial class CharacterBuilderTools : CampaignToolBase, IMcpServerTool
             }, $"Committed {request.Name} as {request.Id}. {built.Summary}");
         }, saveChanges: false);
         return stored;
+    }
+
+    /// <summary>
+    /// A new character's starting items, held by it: an item template's by its id (world_build copies the template's
+    /// fields in, and its description here), or a plain named item.
+    /// </summary>
+    private List<ItemUpsertRequest> StartingItems(string system, string characterId, IReadOnlyList<StartingItem> equipment)
+    {
+        var slug = characterId.Split('/').Last();
+        var items = new List<ItemUpsertRequest>();
+        foreach (var (entry, index) in equipment.Select((e, i) => (e, i)))
+        {
+            var name = entry.Name ?? (entry.Item is { } id ? CreationSources.Label(id) : null);
+            if (string.IsNullOrWhiteSpace(name))
+                continue;
+
+            var template = entry.Item is { } item && _items?.TryGet(system, item, out var found) == true ? found : null;
+            items.Add(new ItemUpsertRequest
+            {
+                Id = $"items/{slug}-start-{index + 1}",
+                Name = name,
+                Description = template?.Description ?? name,
+                HolderId = characterId,
+                Quantity = Math.Max(1, entry.Quantity),
+                DefinitionName = entry.Item,
+            });
+        }
+
+        return items;
     }
 
     /// <summary>

@@ -897,6 +897,25 @@ A pool is sized by `levelToMaxMap` (or `defaultMax`) or by `maxFrom`: the abilit
 character doesn't have the pool. Something grants a `grantedOnly` pool by name: a feat's `extraPools`, or a class
 feature's `pools: [gambit_dice]` (a subclass's, once picked and reached). `spell_slots_*` pools follow the caster level.
 
+### Background Definition
+
+```yaml
+name: acolyte
+system: dnd5e
+skillProficiencies: [Insight, Religion]
+toolProficiencies: []
+languages: [Two of your choice]
+feature: Shelter of the Faithful
+equipment:                                # what a character built with it starts holding
+  - { item: dagger }                      # an item template: its fields are copied in
+  - { name: Prayer book }                 # a plain item
+  - { name: Stick of incense, quantity: 5 }
+gold: 15                                  # starts the gold pool
+```
+
+The character builder gives a new character its background's equipment on commit (not again when the same draft id is
+committed), and the gold fills its `gold` pool, which otherwise starts empty.
+
 ### Feat Definition (5e)
 
 ```yaml

@@ -5,3 +5,11 @@ description: You have spent your life in service to a temple
 skillProficiencies: [Insight, Religion]
 languages: [Two of your choice]
 feature: Shelter of the Faithful
+equipment:
+  - { name: Holy symbol }
+  - { name: Prayer book }
+  - { name: Stick of incense, quantity: 5 }
+  - { name: Vestments }
+  - { name: Common clothes }
+  - { name: Belt pouch }
+gold: 15

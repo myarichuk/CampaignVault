@@ -88,6 +88,10 @@ public sealed class CharacterCreationService
                 Recipe(system).LevelPicks(draft.Kind, draft),
                 Recipe(system).Increases(draft.Kind, draft)));
 
+    /// <summary>What the draft's background starts the character with (items to give it on its first commit).</summary>
+    public IReadOnlyList<StartingItem> StartingItems(string system, CharacterDraft draft) =>
+        DraftCharacterMapper.Background(draft, system, Steps(system, draft), _sources)?.Equipment ?? [];
+
     /// <summary>The level choices the draft's class has at its level: every levelChoices step's slots, or one step's.</summary>
     public IReadOnlyList<LevelChoiceSlot> LevelSlots(string system, CharacterDraft draft, string? stepKey = null) =>
         Recipe(system).LevelSlots(draft.Kind, draft, stepKey);
