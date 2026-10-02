@@ -93,6 +93,8 @@ Rules content and features left out on purpose, or deferred. Each entry says why
 - **Level-up details.** A 5e feat taken instead of an improvement has its prerequisites checked, and its own choices
   (a half-feat's ability, skills, spells) are slots once it is picked (PF2e level-ups don't pick feats in the menu yet).
   A feat taken at creation outside an improvement (a race's bonus feat) doesn't ask its choices, and a race's innate
-  spells are listed but their once-a-day use is the DM's; a multiclass
-  character's level-up records picks at the class's level; deities' narrowing of a cleric's domains isn't applied to a
-  level-up (the original choice is kept).
+  spells are listed but their once-a-day use is the DM's. A level-up pick
+  records the class that gave it, at that class's level, so a multiclass character's subclass or style picks stay with
+  their class (records from before this name no class and still match by key alone). A deity, patron or lineage the character took at creation
+  is recorded and narrows later level-up choices the way it did in the builder (a patron's pact boon at level 3); the
+  shipped cleric's domains are only asked at level 1, so nothing there changes.

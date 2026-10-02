@@ -487,7 +487,7 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
 
             // The class's features and choices at the new level, plus those of the options it picked (a subclass's).
             var found = progressionProvider.TryGetProgression(system, className, out var progression);
-            var picked = CharacterClassFeatures.Picked(character.SystemStats, multiclass: true);
+            var picked = CharacterClassFeatures.Picked(character.SystemStats, multiclass: true, progression?.ClassName);
             var features = found
                 ? [.. progression!.FeaturesUpTo(targetLevel, picked).Where(f => f.Level == targetLevel).Select(f => f.Feature)]
                 : levelDef.Features;

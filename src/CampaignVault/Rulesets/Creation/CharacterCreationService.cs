@@ -86,7 +86,14 @@ public sealed class CharacterCreationService
             new LevelChoicesApplied(
                 Recipe(system).LevelSlots(draft.Kind, draft),
                 Recipe(system).LevelPicks(draft.Kind, draft),
-                Recipe(system).Increases(draft.Kind, draft)));
+                Recipe(system).Increases(draft.Kind, draft),
+                ClassOf(system, draft)));
+
+    /// <summary>The draft's class as its progression names it, so the level choices recorded at creation say which class gave them.</summary>
+    private string? ClassOf(string system, CharacterDraft draft) =>
+        draft.GetList("class").FirstOrDefault() is { } id && _sources.ProgressionProvider.TryGetProgression(system, id, out var progression)
+            ? progression.ClassName
+            : null;
 
     /// <summary>What the draft's background starts the character with (items to give it on its first commit).</summary>
     public IReadOnlyList<StartingItem> StartingItems(string system, CharacterDraft draft) =>

@@ -81,8 +81,8 @@ jobs:
         env:
           TAG: ${{ inputs.tag }}
         run: |
-          sudo chown -R "$(id -u):$(id -g)" UnityClient/Builds
-          cd "UnityClient/Builds/${{ matrix.target }}"
+          sudo chown -R "$(id -u):$(id -g)" build
+          cd "build/${{ matrix.target }}"
           rm -rf ./*_BurstDebugInformation_DoNotShip ./*_BackUpThisFolder_ButDontShipItWithYourGame
           zip -qry "$GITHUB_WORKSPACE/CampaignVault-$TAG-${{ matrix.name }}.zip" .
 

@@ -272,21 +272,21 @@ internal static class DraftCharacterMapper
             var increases = slot.IsAsi ? slot.Increases(chosen) : [];
             if (increases.Count > 0)
             {
-                Record(stats, slot.Key, [string.Join(", ", increases.Select(i => $"{i.Ability} +{i.Amount}"))], slot.Level);
+                Record(stats, slot.Key, [string.Join(", ", increases.Select(i => $"{i.Ability} +{i.Amount}"))], slot.Level, levels.Class);
                 continue;
             }
 
             var ids = chosen.Select(p => slot.Options.FirstOrDefault(o => o.Id.Equals(p, StringComparison.OrdinalIgnoreCase))?.Id ?? p).ToList();
-            Record(stats, slot.Key, ids, slot.Level);
+            Record(stats, slot.Key, ids, slot.Level, levels.Class);
             if (slot.IsAsi && FindProperty(stats, "feats")?.GetValue(stats) is List<string> feats)
                 feats.AddRange(ids.Where(id => !feats.Contains(id, StringComparer.OrdinalIgnoreCase)));
         }
     }
 
-    private static void Record(SystemExtension stats, string key, IReadOnlyList<string> values, int level)
+    private static void Record(SystemExtension stats, string key, IReadOnlyList<string> values, int level, string? className = null)
     {
         foreach (var value in values)
-            stats.LevelUpChoices.Add(new LevelUpChoiceRecord { Level = level, Key = key, Value = value });
+            stats.LevelUpChoices.Add(new LevelUpChoiceRecord { Level = level, Class = className, Key = key, Value = value });
     }
 
     /// <summary>Writes a JSON value to the stats field with that JSON name (or property name); false when there is none or it doesn't fit.</summary>
@@ -312,4 +312,5 @@ internal static class DraftCharacterMapper
 internal sealed record LevelChoicesApplied(
     IReadOnlyList<LevelChoiceSlot> Slots,
     IReadOnlyDictionary<string, IReadOnlyList<string>> Picks,
-    IReadOnlyList<(string Ability, int Amount)> Increases);
+    IReadOnlyList<(string Ability, int Amount)> Increases,
+    string? Class = null);

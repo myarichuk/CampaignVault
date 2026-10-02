@@ -24,13 +24,15 @@ public sealed class LevelUpPlannerTests : IDisposable
 
     private LevelUpPlanner Planner() => Create(Path.Combine(_root, "host"));
 
-    internal static LevelUpPlanner Create(string host)
+    internal static LevelUpPlanner Create(string host, string? pluginRoot = null)
     {
         Directory.CreateDirectory(host);
-        var progressions = new ProgressionDefinitionProvider(host, Asm);
+        IReadOnlyList<string> roots = pluginRoot is null ? [] : [pluginRoot];
+        var progressions = new ProgressionDefinitionProvider(host, Asm, null, roots);
         var sources = new CreationSources(
             new RaceDefinitionProvider(host, Asm), new ClassDefinitionProvider(host, Asm), new BackgroundDefinitionProvider(host, Asm),
-            new FeatDefinitionProvider(host, Asm), new SpellDefinitionProvider(host, Asm), new CreatureDefinitionProvider(host, Asm), progressions);
+            new FeatDefinitionProvider(host, Asm), new SpellDefinitionProvider(host, Asm), new CreatureDefinitionProvider(host, Asm), progressions,
+            new NamedPowerProvider(host, Asm, null, roots));
         return new LevelUpPlanner(sources, progressions);
     }
 
@@ -189,5 +191,51 @@ public sealed class LevelUpPlannerTests : IDisposable
         Assert.Contains(
             planner.Validate(plan, ione, new Dictionary<string, List<string>> { ["5.skillIncrease"] = ["Athletics"], ["5.attributeBoosts"] = ["Strength", "Dexterity", "Constitution", "Wisdom"] }),
             p => p.Contains("master needs level 7"));
+    }
+
+    [Fact]
+    public void ThePatronAWarlockTookAtCreation_StillNarrowsTheChoicesOfALaterLevel()
+    {
+        var plugin = Path.Combine(_root, "plugin", "dnd5e", "powers");
+        Directory.CreateDirectory(plugin);
+        File.WriteAllText(Path.Combine(plugin, "chain_patron.yaml"), "name: chain_patron\ntype: patron\nclasses: [warlock]\nnarrows: { pactBoon: [chain] }\n");
+        var planner = Create(Path.Combine(_root, "host"), Path.Combine(_root, "plugin"));
+        var warlock = new Character
+        {
+            Name = "Ode",
+            ClassLevel = "Human Warlock 2",
+            SystemStats = new Dnd5eExtension { Level = 2, Charisma = 16, Constitution = 14, HitDie = "d8" },
+        };
+
+        var before = planner.Plan(warlock, RulesetSystem.Dnd5e)!.Slots.Single(s => s.Key == "pactBoon");
+        Assert.True(before.Options.Count > 1);
+
+        warlock.SystemStats!.LevelUpChoices.Add(new LevelUpChoiceRecord { Level = 1, Key = "patron", Value = "chain_patron" });
+        var after = planner.Plan(warlock, RulesetSystem.Dnd5e)!.Slots.Single(s => s.Key == "pactBoon");
+        Assert.Equal(["chain"], after.Options.Select(o => o.Id));
+    }
+
+    [Fact]
+    public void ALevelUpPickIsRecordedAgainstItsClass_SoAMulticlassKeepsEachClassesPicksApart()
+    {
+        var planner = Planner();
+        var hild = Fighter5e(3);
+        var plan = planner.Plan(hild, RulesetSystem.Dnd5e)!;
+        planner.Apply(plan, hild, Picks("4.asiOrFeat", "Strength", "Constitution"));
+
+        var record = Assert.Single(((Dnd5eExtension)hild.SystemStats!).LevelUpChoices, r => r.Key == "asiOrFeat");
+        Assert.Equal(4, record.Level);
+        Assert.Equal("fighter", record.Class, ignoreCase: true);
+
+        var stats = new Dnd5eExtension();
+        stats.LevelUpChoices.Add(new LevelUpChoiceRecord { Level = 3, Class = "Fighter", Key = "subclass", Value = "champion" });
+        stats.LevelUpChoices.Add(new LevelUpChoiceRecord { Level = 3, Class = "Wizard", Key = "subclass", Value = "evocation" });
+        stats.LevelUpChoices.Add(new LevelUpChoiceRecord { Level = 7, Key = "fightingStyle", Value = "archery" });
+
+        Assert.Equal(["champion"], CharacterClassFeatures.Picked(stats, true, "fighter")(3, "subclass"));
+        Assert.Equal(["evocation"], CharacterClassFeatures.Picked(stats, true, "Wizard")(3, "subclass"));
+        Assert.Empty(CharacterClassFeatures.Picked(stats, true, "Wizard")(4, "subclass"));
+        // An older record names no class and, with several classes, still matches by key alone.
+        Assert.Equal(["archery"], CharacterClassFeatures.Picked(stats, true, "Wizard")(1, "fightingStyle"));
     }
 }

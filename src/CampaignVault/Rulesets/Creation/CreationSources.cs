@@ -84,6 +84,15 @@ public sealed class CreationSources(
         _ => null,
     };
 
+    /// <summary>The powers source a recipe step key stands for (<c>deity</c> → deities), or null for another key.</summary>
+    public static string? PowerSource(string? stepKey) => stepKey?.ToLowerInvariant() switch
+    {
+        "deity" => Deities,
+        "patron" => Patrons,
+        "lineage" => Lineages,
+        _ => null,
+    };
+
     /// <summary>The feat category a feats source lists (PF2e <c>category:</c>), or null for another source.</summary>
     public static string? FeatCategory(string? source) => source?.ToLowerInvariant() switch
     {

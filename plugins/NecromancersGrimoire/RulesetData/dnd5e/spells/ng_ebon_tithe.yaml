@@ -1,0 +1,28 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# Exact a token of life: Constitution save, 2d6 necrotic, half on success.
+# Balance anchor: ng_spirit_siphon (2nd, 3d6, no rider) — one die smaller
+# in exchange for protection instead of raw damage. Temp-HP rider is
+# prose-arbitrated: you gain temporary hit points equal to half the
+# necrotic damage dealt.
+name: ng_ebon_tithe
+system: dnd5e
+level: 2
+classes: [wizard, warlock, cleric]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+damageType: necrotic
+damageAtSlotLevel:
+  2: 2d6
+  3: 3d6
+  4: 4d6
+  5: 5d6
+  6: 6d6
+  7: 7d6
+  8: 8d6
+  9: 9d6
+saveType: constitution
+saveSuccess: half

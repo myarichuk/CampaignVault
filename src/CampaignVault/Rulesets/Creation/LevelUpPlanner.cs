@@ -6,7 +6,7 @@ using CampaignVault.Services;
 namespace CampaignVault.Rulesets.Creation;
 
 /// <summary>The class gaining a level, the level it reaches in it, and the choices that level asks for.</summary>
-public sealed record LevelUpPlan(string ClassName, int ClassLevel, int CharacterLevel, IReadOnlyList<LevelChoiceSlot> Slots);
+public sealed record LevelUpPlan(string ClassName, int ClassLevel, int CharacterLevel, IReadOnlyList<LevelChoiceSlot> Slots, string? ProgressionClass = null);
 
 /// <summary>
 /// A level-up for an existing character, using the slots the builder uses (<see cref="LevelChoiceSlots"/>): which choices
@@ -39,16 +39,28 @@ public sealed class LevelUpPlanner(CreationSources sources, ProgressionDefinitio
 
         var classLevel = entry.Level + 1;
         var level = XpThresholdCalculator.GetCurrentLevel(character) + 1;
-        var recorded = CharacterClassFeatures.Picked(character.SystemStats, entries.Count > 1);
+        var recorded = CharacterClassFeatures.Picked(character.SystemStats, entries.Count > 1, progression.ClassName);
         IEnumerable<string> Picked(int at, string key) =>
             at == classLevel && picks?.GetValueOrDefault($"{at}.{key}") is { } now ? now : recorded(at, key);
         var slots = LevelChoiceSlots.For(
                 progression, classLevel, sources.AsiFeats(system), "levelUp", null, CreationSources.SkillNames(system),
                 Picked, sources.FeatChoices(system))
             .Where(s => s.Level == classLevel)
+            .Select(slot => PowersOf(character, system).Aggregate(slot, RecipeCharacterCreation.NarrowedBy))
             .ToList();
-        return new LevelUpPlan(entry.Class, classLevel, level, slots);
+        return new LevelUpPlan(entry.Class, classLevel, level, slots, progression.ClassName);
     }
+
+    /// <summary>
+    /// The named powers (god, patron, bloodline) the character picked at creation, which the builder recorded as level 1
+    /// choices under their step's key. They narrow a later class choice the way they narrowed it in the builder.
+    /// </summary>
+    private List<NamedPowerDefinition> PowersOf(Character character, string system) =>
+    [
+        .. (character.SystemStats?.LevelUpChoices ?? [])
+            .Select(r => CreationSources.PowerSource(r.Key) is { } source ? sources.Power(system, source, r.Value) : null)
+            .OfType<NamedPowerDefinition>(),
+    ];
 
     /// <summary>A slot in the wire shape menus and models read.</summary>
     public static PendingLevelUpSlot Describe(LevelChoiceSlot slot) => new()
@@ -219,7 +231,7 @@ public sealed class LevelUpPlanner(CreationSources sources, ProgressionDefinitio
             }
         }
 
-        DraftCharacterMapper.ApplyLevelChoices(stats, new LevelChoicesApplied(plan.Slots, canonical, increases));
+        DraftCharacterMapper.ApplyLevelChoices(stats, new LevelChoicesApplied(plan.Slots, canonical, increases, plan.ProgressionClass));
         foreach (var slot in plan.Slots.Where(s => canonical.ContainsKey(s.Id)))
         {
             var pick = canonical[slot.Id][0];

@@ -87,11 +87,10 @@ public sealed class CharacterLevelUpTools(
             var name = character.Name;
             if (!apply)
             {
-                var picked = CharacterClassFeatures.Picked(character.SystemStats, multiclass: false);
                 var features = plan is null
                     ? []
                     : CharacterClassFeatures.Classes(character, config.ActiveSystem, progressions)
-                        .SelectMany(c => c.Progression.FeaturesUpTo(plan.ClassLevel, picked).Where(f => f.Level == plan.ClassLevel))
+                        .SelectMany(c => c.Progression.FeaturesUpTo(plan.ClassLevel, CharacterClassFeatures.Picked(character.SystemStats, multiclass: false, c.Progression.ClassName)).Where(f => f.Level == plan.ClassLevel))
                         .Select(f => CharacterClassFeatures.View(f, plan.ClassLevel))
                         .ToList();
                 return new ToolResult<CharacterLevelUpResult>(true, new CharacterLevelUpResult

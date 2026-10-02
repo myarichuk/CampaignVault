@@ -312,7 +312,7 @@ public sealed class RecipeCharacterCreation(
     /// A power joins its class choice: the slot offers only the options the power names (a god's domains), unless none of
     /// them is an option there, in which case the power doesn't apply to this class and the slot stays whole.
     /// </summary>
-    private static LevelChoiceSlot NarrowedBy(LevelChoiceSlot slot, NamedPowerDefinition power)
+    internal static LevelChoiceSlot NarrowedBy(LevelChoiceSlot slot, NamedPowerDefinition power)
     {
         var offers = power.OffersFor(slot.Key);
         if (slot.Type != nameof(ChoiceType.Enum) || offers.Count == 0)

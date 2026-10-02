@@ -1,0 +1,28 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# Reap vitality directly: Constitution save, 4d8 necrotic, half on success.
+# Balance anchor: ng_soul_rend (3rd, 5d8, no rider) — one die smaller in
+# exchange for the lifesteal rider; cf. vampiric_touch (3d6 but repeatable
+# with concentration). Lifesteal rider is prose-arbitrated (the engine has
+# no damage-to-healing linkage): you regain hit points equal to half the
+# necrotic damage dealt, no effect on constructs/undead at the GM's call.
+name: ng_red_harvest
+system: dnd5e
+level: 3
+classes: [wizard, warlock]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+damageType: necrotic
+damageAtSlotLevel:
+  3: 4d8
+  4: 5d8
+  5: 6d8
+  6: 7d8
+  7: 8d8
+  8: 9d8
+  9: 10d8
+saveType: constitution
+saveSuccess: half

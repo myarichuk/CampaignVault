@@ -49,7 +49,9 @@ before building).
 
 Menu items (`CampaignVault > Build > …`) or CLI, either way they call into
 `Assets/CampaignVault/Editor/BuildTools.cs`, which bootstraps the scene,
-builds, and writes to `UnityClient/Builds/<Target>/`:
+builds, and writes to `UnityClient/Builds/<Target>/`. Under game-ci
+(CI passes `-customBuildPath`), the build honors that path instead, since
+game-ci validates the file exists there after Unity exits:
 
 ```bash
 unity run UnityClient --editor-version 6000.6.3f1 \
