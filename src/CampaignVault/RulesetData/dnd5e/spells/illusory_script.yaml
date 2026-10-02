@@ -2,6 +2,7 @@
 name: illusory_script
 system: dnd5e
 level: 1
+school: illusion
 classes: [bard, warlock, wizard]
 concentration: false
 castingTime: 1 minute

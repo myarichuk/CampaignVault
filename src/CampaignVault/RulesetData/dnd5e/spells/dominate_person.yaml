@@ -3,6 +3,7 @@ name: dominate_person
 system: dnd5e
 tags: [charm, compulsion]
 level: 5
+school: enchantment
 classes: [bard, sorcerer, wizard]
 concentration: true
 castingTime: 1 action

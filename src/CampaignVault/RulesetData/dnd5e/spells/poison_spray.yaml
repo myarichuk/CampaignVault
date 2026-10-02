@@ -2,6 +2,7 @@
 name: poison_spray
 system: dnd5e
 level: 0
+school: conjuration
 classes: [druid, sorcerer, warlock, wizard]
 concentration: false
 castingTime: 1 action

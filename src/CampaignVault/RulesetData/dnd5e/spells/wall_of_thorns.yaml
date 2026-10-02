@@ -2,6 +2,7 @@
 name: wall_of_thorns
 system: dnd5e
 level: 6
+school: conjuration
 classes: [druid]
 concentration: true
 castingTime: 1 action

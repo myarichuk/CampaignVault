@@ -2,6 +2,7 @@
 name: raise_dead
 system: dnd5e
 level: 5
+school: necromancy
 classes: [bard, cleric, paladin]
 concentration: false
 castingTime: 1 hour

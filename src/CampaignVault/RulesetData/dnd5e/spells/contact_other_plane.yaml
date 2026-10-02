@@ -2,6 +2,7 @@
 name: contact_other_plane
 system: dnd5e
 level: 5
+school: divination
 classes: [warlock, wizard]
 concentration: false
 castingTime: 1 minute

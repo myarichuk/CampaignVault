@@ -2,6 +2,7 @@
 name: legend_lore
 system: dnd5e
 level: 5
+school: divination
 classes: [bard, cleric, wizard]
 concentration: false
 castingTime: 10 minutes

@@ -3,6 +3,7 @@ name: enthrall
 system: dnd5e
 tags: [charm]
 level: 2
+school: enchantment
 classes: [bard, warlock]
 concentration: false
 castingTime: 1 action

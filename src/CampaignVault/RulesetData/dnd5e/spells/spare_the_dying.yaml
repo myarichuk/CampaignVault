@@ -2,6 +2,7 @@
 name: spare_the_dying
 system: dnd5e
 level: 0
+school: necromancy
 classes: [cleric]
 concentration: false
 castingTime: 1 action

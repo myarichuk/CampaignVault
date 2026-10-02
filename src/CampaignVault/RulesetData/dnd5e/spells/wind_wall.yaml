@@ -2,6 +2,7 @@
 name: wind_wall
 system: dnd5e
 level: 3
+school: evocation
 classes: [druid, ranger]
 concentration: true
 castingTime: 1 action

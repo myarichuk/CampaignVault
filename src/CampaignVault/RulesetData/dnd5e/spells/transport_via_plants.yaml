@@ -2,6 +2,7 @@
 name: transport_via_plants
 system: dnd5e
 level: 6
+school: conjuration
 classes: [druid]
 concentration: false
 castingTime: 1 action

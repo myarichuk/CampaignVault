@@ -2,6 +2,7 @@
 name: dispel_magic
 system: dnd5e
 level: 3
+school: abjuration
 classes: [bard, cleric, druid, paladin, sorcerer, warlock, wizard]
 concentration: false
 castingTime: 1 action

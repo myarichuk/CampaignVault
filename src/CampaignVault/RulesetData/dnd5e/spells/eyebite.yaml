@@ -2,6 +2,7 @@
 name: eyebite
 system: dnd5e
 level: 6
+school: necromancy
 classes: [bard, sorcerer, warlock, wizard]
 concentration: true
 castingTime: 1 action

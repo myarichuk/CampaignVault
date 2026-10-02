@@ -2,6 +2,7 @@
 name: disguise_self
 system: dnd5e
 level: 1
+school: illusion
 classes: [bard, sorcerer, wizard]
 concentration: false
 castingTime: 1 action

@@ -2,6 +2,7 @@
 name: scrying
 system: dnd5e
 level: 5
+school: divination
 classes: [bard, cleric, druid, warlock, wizard]
 concentration: true
 castingTime: 10 minutes

@@ -2,6 +2,7 @@
 name: blindness_deafness
 system: dnd5e
 level: 2
+school: necromancy
 classes: [bard, cleric, sorcerer, wizard]
 concentration: false
 castingTime: 1 action

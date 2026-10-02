@@ -3,6 +3,7 @@ name: geas
 system: dnd5e
 tags: [compulsion]
 level: 5
+school: enchantment
 classes: [bard, cleric, druid, paladin, wizard]
 concentration: false
 castingTime: 1 minute

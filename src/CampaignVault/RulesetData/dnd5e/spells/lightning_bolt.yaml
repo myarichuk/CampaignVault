@@ -2,6 +2,7 @@
 name: lightning_bolt
 system: dnd5e
 level: 3
+school: evocation
 classes: [sorcerer, wizard]
 concentration: false
 castingTime: 1 action

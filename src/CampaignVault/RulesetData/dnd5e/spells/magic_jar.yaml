@@ -2,6 +2,7 @@
 name: magic_jar
 system: dnd5e
 level: 6
+school: necromancy
 classes: [wizard]
 concentration: false
 castingTime: 1 minute

@@ -2,6 +2,7 @@
 name: tiny_hut
 system: dnd5e
 level: 3
+school: evocation
 classes: [bard, wizard]
 concentration: false
 castingTime: 1 minute

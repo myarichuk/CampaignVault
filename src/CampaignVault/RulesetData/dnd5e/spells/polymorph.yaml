@@ -2,6 +2,7 @@
 name: polymorph
 system: dnd5e
 level: 4
+school: transmutation
 classes: [bard, druid, sorcerer, wizard]
 concentration: true
 castingTime: 1 action

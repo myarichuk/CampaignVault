@@ -2,6 +2,7 @@
 name: find_steed
 system: dnd5e
 level: 2
+school: conjuration
 classes: [paladin]
 concentration: false
 castingTime: 10 minutes

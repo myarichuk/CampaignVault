@@ -2,6 +2,7 @@
 name: ice_storm
 system: dnd5e
 level: 4
+school: evocation
 classes: [druid, sorcerer, wizard]
 concentration: false
 castingTime: 1 action

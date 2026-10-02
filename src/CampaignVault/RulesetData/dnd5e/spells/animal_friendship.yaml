@@ -3,6 +3,7 @@ name: animal_friendship
 system: dnd5e
 tags: [charm]
 level: 1
+school: enchantment
 classes: [bard, druid, ranger]
 concentration: false
 castingTime: 1 action

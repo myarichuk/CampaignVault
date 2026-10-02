@@ -2,6 +2,7 @@
 name: stinking_cloud
 system: dnd5e
 level: 3
+school: conjuration
 classes: [bard, sorcerer, wizard]
 concentration: true
 castingTime: 1 action

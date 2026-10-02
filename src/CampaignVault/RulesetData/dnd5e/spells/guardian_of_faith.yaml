@@ -2,6 +2,7 @@
 name: guardian_of_faith
 system: dnd5e
 level: 4
+school: conjuration
 classes: [cleric]
 concentration: false
 castingTime: 1 action

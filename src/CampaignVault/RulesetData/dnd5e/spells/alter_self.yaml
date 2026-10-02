@@ -2,6 +2,7 @@
 name: alter_self
 system: dnd5e
 level: 2
+school: transmutation
 classes: [sorcerer, wizard]
 concentration: true
 castingTime: 1 action

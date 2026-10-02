@@ -2,6 +2,7 @@
 name: power_word_kill
 system: dnd5e
 level: 9
+school: enchantment
 classes: [bard, sorcerer, warlock, wizard]
 concentration: false
 castingTime: 1 action

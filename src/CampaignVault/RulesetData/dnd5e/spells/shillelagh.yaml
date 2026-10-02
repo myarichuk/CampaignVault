@@ -2,6 +2,7 @@
 name: shillelagh
 system: dnd5e
 level: 0
+school: transmutation
 classes: [druid]
 concentration: false
 castingTime: 1 bonus action

@@ -2,6 +2,7 @@
 name: create_or_destroy_water
 system: dnd5e
 level: 1
+school: transmutation
 classes: [cleric, druid]
 concentration: false
 castingTime: 1 action

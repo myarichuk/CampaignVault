@@ -2,6 +2,7 @@
 name: regenerate
 system: dnd5e
 level: 7
+school: transmutation
 classes: [bard, cleric, druid]
 concentration: false
 castingTime: 1 minute

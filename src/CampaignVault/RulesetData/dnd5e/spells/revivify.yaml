@@ -2,6 +2,7 @@
 name: revivify
 system: dnd5e
 level: 3
+school: conjuration
 classes: [cleric, paladin]
 concentration: false
 castingTime: 1 action

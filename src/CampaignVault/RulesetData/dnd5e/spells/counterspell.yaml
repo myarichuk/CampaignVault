@@ -2,6 +2,7 @@
 name: counterspell
 system: dnd5e
 level: 3
+school: abjuration
 classes: [sorcerer, warlock, wizard]
 concentration: false
 castingTime: 1 reaction

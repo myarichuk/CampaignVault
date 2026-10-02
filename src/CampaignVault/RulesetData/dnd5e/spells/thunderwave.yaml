@@ -2,6 +2,7 @@
 name: thunderwave
 system: dnd5e
 level: 1
+school: evocation
 classes: [bard, druid, sorcerer, wizard]
 concentration: false
 castingTime: 1 action

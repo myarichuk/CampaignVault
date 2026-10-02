@@ -2,6 +2,7 @@
 name: beacon_of_hope
 system: dnd5e
 level: 3
+school: abjuration
 classes: [cleric]
 concentration: true
 castingTime: 1 action

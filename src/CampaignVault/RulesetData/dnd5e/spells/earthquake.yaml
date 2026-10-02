@@ -2,6 +2,7 @@
 name: earthquake
 system: dnd5e
 level: 8
+school: evocation
 classes: [cleric, druid, sorcerer]
 concentration: true
 castingTime: 1 action

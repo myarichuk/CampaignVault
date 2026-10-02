@@ -2,6 +2,7 @@
 name: enhance_ability
 system: dnd5e
 level: 2
+school: transmutation
 classes: [bard, cleric, druid, sorcerer]
 concentration: true
 castingTime: 1 action

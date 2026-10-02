@@ -2,6 +2,7 @@
 name: clone
 system: dnd5e
 level: 8
+school: necromancy
 classes: [wizard]
 concentration: false
 castingTime: 1 hour

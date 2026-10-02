@@ -2,6 +2,7 @@
 name: shapechange
 system: dnd5e
 level: 9
+school: transmutation
 classes: [druid, wizard]
 concentration: true
 castingTime: 1 action

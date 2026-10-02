@@ -2,6 +2,7 @@
 name: create_undead
 system: dnd5e
 level: 6
+school: necromancy
 classes: [cleric, warlock, wizard]
 concentration: false
 castingTime: 1 minute

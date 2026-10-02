@@ -2,6 +2,7 @@
 name: reincarnate
 system: dnd5e
 level: 5
+school: transmutation
 classes: [druid]
 concentration: false
 castingTime: 1 hour

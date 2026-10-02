@@ -2,6 +2,7 @@
 name: mislead
 system: dnd5e
 level: 5
+school: illusion
 classes: [bard, wizard]
 concentration: true
 castingTime: 1 action

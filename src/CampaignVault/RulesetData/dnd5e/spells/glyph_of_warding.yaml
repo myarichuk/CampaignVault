@@ -2,6 +2,7 @@
 name: glyph_of_warding
 system: dnd5e
 level: 3
+school: abjuration
 classes: [bard, cleric, wizard]
 concentration: false
 castingTime: 1 hour

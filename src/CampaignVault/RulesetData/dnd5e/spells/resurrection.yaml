@@ -2,6 +2,7 @@
 name: resurrection
 system: dnd5e
 level: 7
+school: necromancy
 classes: [bard, cleric]
 concentration: false
 castingTime: 1 hour

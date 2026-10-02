@@ -2,6 +2,7 @@
 name: true_strike
 system: dnd5e
 level: 0
+school: divination
 classes: [bard, sorcerer, warlock, wizard]
 concentration: true
 castingTime: 1 action

@@ -2,6 +2,7 @@
 name: magic_circle
 system: dnd5e
 level: 3
+school: abjuration
 classes: [cleric, paladin, warlock, wizard]
 concentration: false
 castingTime: 1 minute

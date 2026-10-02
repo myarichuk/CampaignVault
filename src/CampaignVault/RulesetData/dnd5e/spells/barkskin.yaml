@@ -2,6 +2,7 @@
 name: barkskin
 system: dnd5e
 level: 2
+school: transmutation
 classes: [druid, ranger]
 concentration: true
 castingTime: 1 action

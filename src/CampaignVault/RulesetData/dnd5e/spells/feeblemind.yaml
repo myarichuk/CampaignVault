@@ -3,6 +3,7 @@ name: feeblemind
 system: dnd5e
 tags: [mental]
 level: 8
+school: enchantment
 classes: [bard, druid, warlock, wizard]
 concentration: false
 castingTime: 1 action

@@ -2,6 +2,7 @@
 name: freedom_of_movement
 system: dnd5e
 level: 4
+school: abjuration
 classes: [bard, cleric, druid, ranger]
 concentration: false
 castingTime: 1 action

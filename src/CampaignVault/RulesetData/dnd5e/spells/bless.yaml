@@ -2,6 +2,7 @@
 name: bless
 system: dnd5e
 level: 1
+school: enchantment
 classes: [cleric, paladin]
 concentration: true
 castingTime: 1 action

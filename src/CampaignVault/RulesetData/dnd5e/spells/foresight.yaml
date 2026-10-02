@@ -2,6 +2,7 @@
 name: foresight
 system: dnd5e
 level: 9
+school: divination
 classes: [bard, druid, warlock, wizard]
 concentration: false
 castingTime: 1 minute

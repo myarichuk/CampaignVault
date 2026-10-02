@@ -2,6 +2,7 @@
 name: black_tentacles
 system: dnd5e
 level: 4
+school: conjuration
 classes: [wizard]
 concentration: true
 castingTime: 1 action

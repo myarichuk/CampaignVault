@@ -2,6 +2,7 @@
 name: instant_summons
 system: dnd5e
 level: 6
+school: conjuration
 classes: [wizard]
 concentration: false
 castingTime: 1 minute

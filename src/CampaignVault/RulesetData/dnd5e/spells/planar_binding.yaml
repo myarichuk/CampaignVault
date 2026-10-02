@@ -2,6 +2,7 @@
 name: planar_binding
 system: dnd5e
 level: 5
+school: abjuration
 classes: [bard, cleric, druid, wizard]
 concentration: false
 castingTime: 1 hour

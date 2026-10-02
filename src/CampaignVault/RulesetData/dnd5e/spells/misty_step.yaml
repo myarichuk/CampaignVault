@@ -2,6 +2,7 @@
 name: misty_step
 system: dnd5e
 level: 2
+school: conjuration
 classes: [sorcerer, warlock, wizard]
 concentration: false
 castingTime: 1 bonus action

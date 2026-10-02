@@ -2,6 +2,7 @@
 name: antilife_shell
 system: dnd5e
 level: 5
+school: abjuration
 classes: [druid]
 concentration: true
 castingTime: 1 action

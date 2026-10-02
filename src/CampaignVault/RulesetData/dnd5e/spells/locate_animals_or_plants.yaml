@@ -2,6 +2,7 @@
 name: locate_animals_or_plants
 system: dnd5e
 level: 2
+school: divination
 classes: [bard, druid, ranger]
 concentration: false
 castingTime: 1 action

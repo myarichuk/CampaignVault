@@ -2,6 +2,7 @@
 name: commune_with_nature
 system: dnd5e
 level: 5
+school: divination
 classes: [druid, ranger]
 concentration: false
 castingTime: 1 minute

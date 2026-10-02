@@ -2,6 +2,7 @@
 name: astral_projection
 system: dnd5e
 level: 9
+school: necromancy
 classes: [cleric, warlock, wizard]
 concentration: false
 castingTime: 1 hour

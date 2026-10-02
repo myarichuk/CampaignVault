@@ -2,6 +2,7 @@
 name: compulsion
 system: dnd5e
 level: 4
+school: enchantment
 classes: [bard]
 concentration: true
 castingTime: 1 action

@@ -2,6 +2,7 @@
 name: conjure_animals
 system: dnd5e
 level: 3
+school: conjuration
 classes: [druid, ranger]
 concentration: true
 castingTime: 1 action

@@ -2,6 +2,7 @@
 name: insect_plague
 system: dnd5e
 level: 5
+school: conjuration
 classes: [cleric, druid, sorcerer]
 concentration: true
 castingTime: 1 action

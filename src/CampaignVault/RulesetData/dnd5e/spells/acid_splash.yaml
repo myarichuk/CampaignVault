@@ -2,6 +2,7 @@
 name: acid_splash
 system: dnd5e
 level: 0
+school: conjuration
 classes: [sorcerer, wizard]
 concentration: false
 castingTime: 1 action

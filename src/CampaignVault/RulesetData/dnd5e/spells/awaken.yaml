@@ -2,6 +2,7 @@
 name: awaken
 system: dnd5e
 level: 5
+school: transmutation
 classes: [bard, druid]
 concentration: false
 castingTime: 8 hours

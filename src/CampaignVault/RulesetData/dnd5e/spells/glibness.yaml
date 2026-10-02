@@ -2,6 +2,7 @@
 name: glibness
 system: dnd5e
 level: 8
+school: transmutation
 classes: [bard, warlock]
 concentration: false
 castingTime: 1 action

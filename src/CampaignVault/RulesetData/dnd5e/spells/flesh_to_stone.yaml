@@ -2,6 +2,7 @@
 name: flesh_to_stone
 system: dnd5e
 level: 6
+school: transmutation
 classes: [warlock, wizard]
 concentration: true
 castingTime: 1 action

@@ -2,6 +2,7 @@
 name: resistance
 system: dnd5e
 level: 0
+school: abjuration
 classes: [cleric, druid]
 concentration: true
 castingTime: 1 action

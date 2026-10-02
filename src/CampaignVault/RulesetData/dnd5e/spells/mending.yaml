@@ -2,6 +2,7 @@
 name: mending
 system: dnd5e
 level: 0
+school: transmutation
 classes: [bard, cleric, druid, sorcerer, wizard]
 concentration: false
 castingTime: 1 minute

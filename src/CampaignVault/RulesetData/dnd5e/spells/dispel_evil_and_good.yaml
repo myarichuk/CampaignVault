@@ -2,6 +2,7 @@
 name: dispel_evil_and_good
 system: dnd5e
 level: 5
+school: abjuration
 classes: [cleric, paladin]
 concentration: true
 castingTime: 1 action

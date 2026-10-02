@@ -2,6 +2,7 @@
 name: fly
 system: dnd5e
 level: 3
+school: transmutation
 classes: [sorcerer, warlock, wizard]
 concentration: true
 castingTime: 1 action

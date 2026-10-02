@@ -2,6 +2,7 @@
 name: sequester
 system: dnd5e
 level: 7
+school: transmutation
 classes: [wizard]
 concentration: false
 castingTime: 1 action

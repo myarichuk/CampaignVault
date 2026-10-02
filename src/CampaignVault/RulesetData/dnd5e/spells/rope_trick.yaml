@@ -2,6 +2,7 @@
 name: rope_trick
 system: dnd5e
 level: 2
+school: transmutation
 classes: [wizard]
 concentration: false
 castingTime: 1 action

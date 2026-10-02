@@ -2,6 +2,7 @@
 name: sacred_flame
 system: dnd5e
 level: 0
+school: evocation
 classes: [cleric]
 concentration: false
 castingTime: 1 action

@@ -2,6 +2,7 @@
 name: prismatic_wall
 system: dnd5e
 level: 9
+school: abjuration
 classes: [wizard]
 concentration: false
 castingTime: 1 action

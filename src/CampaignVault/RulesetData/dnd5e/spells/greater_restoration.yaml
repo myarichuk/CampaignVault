@@ -2,6 +2,7 @@
 name: greater_restoration
 system: dnd5e
 level: 5
+school: abjuration
 classes: [bard, cleric, druid]
 concentration: false
 castingTime: 1 action

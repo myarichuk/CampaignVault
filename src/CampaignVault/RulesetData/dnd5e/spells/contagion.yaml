@@ -2,6 +2,7 @@
 name: contagion
 system: dnd5e
 level: 5
+school: necromancy
 classes: [cleric, druid]
 concentration: false
 castingTime: 1 action

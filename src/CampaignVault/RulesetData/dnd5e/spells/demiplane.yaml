@@ -2,6 +2,7 @@
 name: demiplane
 system: dnd5e
 level: 8
+school: conjuration
 classes: [warlock, wizard]
 concentration: false
 castingTime: 1 action

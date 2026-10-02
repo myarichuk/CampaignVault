@@ -3,6 +3,7 @@ name: mass_suggestion
 system: dnd5e
 tags: [charm, compulsion]
 level: 6
+school: enchantment
 classes: [bard, sorcerer, warlock, wizard]
 concentration: false
 castingTime: 1 action

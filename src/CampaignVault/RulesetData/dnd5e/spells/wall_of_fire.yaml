@@ -2,6 +2,7 @@
 name: wall_of_fire
 system: dnd5e
 level: 4
+school: evocation
 classes: [druid, sorcerer, wizard]
 concentration: true
 castingTime: 1 action

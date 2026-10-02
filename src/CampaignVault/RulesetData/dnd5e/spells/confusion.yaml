@@ -3,6 +3,7 @@ name: confusion
 system: dnd5e
 tags: [mental]
 level: 4
+school: enchantment
 classes: [bard, druid, sorcerer, wizard]
 concentration: true
 castingTime: 1 action

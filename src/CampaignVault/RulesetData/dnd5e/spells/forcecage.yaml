@@ -2,6 +2,7 @@
 name: forcecage
 system: dnd5e
 level: 7
+school: evocation
 classes: [bard, warlock, wizard]
 concentration: false
 castingTime: 1 action

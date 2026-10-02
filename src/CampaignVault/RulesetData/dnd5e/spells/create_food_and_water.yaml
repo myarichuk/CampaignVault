@@ -2,6 +2,7 @@
 name: create_food_and_water
 system: dnd5e
 level: 3
+school: conjuration
 classes: [cleric, druid, paladin]
 concentration: false
 castingTime: 1 action

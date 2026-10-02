@@ -3,6 +3,7 @@ name: antipathy_sympathy
 system: dnd5e
 tags: [compulsion]
 level: 8
+school: enchantment
 classes: [druid, wizard]
 concentration: false
 castingTime: 1 hour

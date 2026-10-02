@@ -2,6 +2,7 @@
 name: invisibility
 system: dnd5e
 level: 2
+school: illusion
 classes: [bard, sorcerer, warlock, wizard]
 concentration: true
 castingTime: 1 action

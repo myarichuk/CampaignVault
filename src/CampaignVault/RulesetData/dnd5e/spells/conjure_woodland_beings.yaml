@@ -2,6 +2,7 @@
 name: conjure_woodland_beings
 system: dnd5e
 level: 4
+school: conjuration
 classes: [druid, ranger]
 concentration: true
 castingTime: 1 action

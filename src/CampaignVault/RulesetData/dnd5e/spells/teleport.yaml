@@ -2,6 +2,7 @@
 name: teleport
 system: dnd5e
 level: 7
+school: conjuration
 classes: [bard, sorcerer, wizard]
 concentration: false
 castingTime: 1 action

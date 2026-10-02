@@ -2,6 +2,7 @@
 name: shield
 system: dnd5e
 level: 1
+school: abjuration
 classes: [sorcerer, wizard]
 concentration: false
 castingTime: 1 reaction

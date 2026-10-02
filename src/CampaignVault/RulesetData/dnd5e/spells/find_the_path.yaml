@@ -2,6 +2,7 @@
 name: find_the_path
 system: dnd5e
 level: 6
+school: divination
 classes: [bard, cleric, druid]
 concentration: true
 castingTime: 1 minute

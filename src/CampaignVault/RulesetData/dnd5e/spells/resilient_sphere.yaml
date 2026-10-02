@@ -2,6 +2,7 @@
 name: resilient_sphere
 system: dnd5e
 level: 4
+school: evocation
 classes: [wizard]
 concentration: true
 castingTime: 1 action

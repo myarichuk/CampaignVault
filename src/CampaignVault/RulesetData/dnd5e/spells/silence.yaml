@@ -2,6 +2,7 @@
 name: silence
 system: dnd5e
 level: 2
+school: illusion
 classes: [bard, cleric, ranger]
 concentration: true
 castingTime: 1 action

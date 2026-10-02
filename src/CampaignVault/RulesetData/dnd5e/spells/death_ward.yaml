@@ -2,6 +2,7 @@
 name: death_ward
 system: dnd5e
 level: 4
+school: abjuration
 classes: [cleric, paladin]
 concentration: false
 castingTime: 1 action

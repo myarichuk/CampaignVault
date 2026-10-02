@@ -2,6 +2,7 @@
 name: move_earth
 system: dnd5e
 level: 6
+school: transmutation
 classes: [druid, sorcerer, wizard]
 concentration: true
 castingTime: 1 action

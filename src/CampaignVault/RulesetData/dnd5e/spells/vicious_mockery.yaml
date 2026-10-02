@@ -3,6 +3,7 @@ name: vicious_mockery
 system: dnd5e
 tags: [mental]
 level: 0
+school: enchantment
 classes: [bard]
 concentration: false
 castingTime: 1 action

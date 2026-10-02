@@ -2,6 +2,7 @@
 name: control_water
 system: dnd5e
 level: 4
+school: transmutation
 classes: [cleric, druid, wizard]
 concentration: true
 castingTime: 1 action

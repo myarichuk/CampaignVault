@@ -44,6 +44,9 @@ public record SpellDefinition : RulesetTemplate
     /// <summary>0 = cantrip.</summary>
     public int? Level { get; init; }
 
+    /// <summary>dnd5e: the school of magic (<c>evocation</c>, <c>abjuration</c>...), for lists limited to some schools.</summary>
+    public string? School { get; init; }
+
     public List<string> Classes { get; init; } = [];
     public bool? Concentration { get; init; }
     public string? CastingTime { get; init; }
@@ -157,6 +160,7 @@ public record SpellDefinition : RulesetTemplate
             System = !string.IsNullOrEmpty(child.System) ? child.System : parent.System,
             Description = child.Description ?? parent.Description,
             Level = child.Level ?? parent.Level,
+            School = child.School ?? parent.School,
             Concentration = child.Concentration ?? parent.Concentration,
             CastingTime = child.CastingTime ?? parent.CastingTime,
             Classes = child.Classes.Count > 0 ? child.Classes : parent.Classes,

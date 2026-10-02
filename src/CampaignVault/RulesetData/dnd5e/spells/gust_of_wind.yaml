@@ -2,6 +2,7 @@
 name: gust_of_wind
 system: dnd5e
 level: 2
+school: evocation
 classes: [druid, sorcerer, wizard]
 concentration: true
 castingTime: 1 action

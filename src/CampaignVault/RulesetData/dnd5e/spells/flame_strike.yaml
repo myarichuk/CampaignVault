@@ -2,6 +2,7 @@
 name: flame_strike
 system: dnd5e
 level: 5
+school: evocation
 classes: [cleric]
 concentration: false
 castingTime: 1 action

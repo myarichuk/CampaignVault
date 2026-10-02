@@ -2,6 +2,7 @@
 name: flaming_sphere
 system: dnd5e
 level: 2
+school: conjuration
 classes: [druid, wizard]
 concentration: true
 castingTime: 1 action

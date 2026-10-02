@@ -2,6 +2,7 @@
 name: light
 system: dnd5e
 level: 0
+school: evocation
 classes: [bard, cleric, sorcerer, wizard]
 concentration: false
 castingTime: 1 action

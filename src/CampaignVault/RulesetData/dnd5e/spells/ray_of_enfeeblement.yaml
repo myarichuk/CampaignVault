@@ -2,6 +2,7 @@
 name: ray_of_enfeeblement
 system: dnd5e
 level: 2
+school: necromancy
 classes: [warlock, wizard]
 concentration: true
 castingTime: 1 action

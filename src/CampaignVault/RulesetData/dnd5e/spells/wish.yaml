@@ -2,6 +2,7 @@
 name: wish
 system: dnd5e
 level: 9
+school: conjuration
 classes: [sorcerer, wizard]
 concentration: false
 castingTime: 1 action

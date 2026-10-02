@@ -2,6 +2,7 @@
 name: control_weather
 system: dnd5e
 level: 8
+school: transmutation
 classes: [cleric, druid, wizard]
 concentration: true
 castingTime: 10 minutes

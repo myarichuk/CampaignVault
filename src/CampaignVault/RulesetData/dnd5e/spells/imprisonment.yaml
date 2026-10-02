@@ -2,6 +2,7 @@
 name: imprisonment
 system: dnd5e
 level: 9
+school: abjuration
 classes: [warlock, wizard]
 concentration: false
 castingTime: 1 minute

@@ -2,6 +2,7 @@
 name: mass_healing_word
 system: dnd5e
 level: 3
+school: evocation
 classes: [cleric]
 concentration: false
 castingTime: 1 bonus action
