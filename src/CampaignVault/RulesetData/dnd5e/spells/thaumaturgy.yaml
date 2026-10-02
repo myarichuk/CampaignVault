@@ -2,6 +2,7 @@
 name: thaumaturgy
 system: dnd5e
 level: 0
+school: transmutation
 classes: [cleric]
 concentration: false
 castingTime: 1 action

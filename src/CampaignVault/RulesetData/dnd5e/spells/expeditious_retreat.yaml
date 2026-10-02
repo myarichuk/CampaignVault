@@ -2,6 +2,7 @@
 name: expeditious_retreat
 system: dnd5e
 level: 1
+school: transmutation
 classes: [sorcerer, warlock, wizard]
 concentration: true
 castingTime: 1 bonus action

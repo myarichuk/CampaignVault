@@ -8,3 +8,5 @@ savingThrows: [Strength, Constitution]
 pools: [action_surge, second_wind]
 aliases: [fighter]
 skillChoices: { count: 2, from: [Acrobatics, Animal Handling, Athletics, History, Insight, Intimidation, Perception, Survival] }
+proficiencies: { armor: [light, medium, heavy, shields], weapons: [simple, martial] }
+multiclassProficiencies: { armor: [light, medium, shields], weapons: [simple, martial] }

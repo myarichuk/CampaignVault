@@ -2,6 +2,7 @@
 name: blight
 system: dnd5e
 level: 4
+school: necromancy
 classes: [druid, sorcerer, warlock, wizard]
 concentration: false
 castingTime: 1 action

@@ -2,6 +2,7 @@
 name: chill_touch
 system: dnd5e
 level: 0
+school: necromancy
 classes: [sorcerer, warlock, wizard]
 concentration: false
 castingTime: 1 action

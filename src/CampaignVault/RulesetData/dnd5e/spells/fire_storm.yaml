@@ -2,6 +2,7 @@
 name: fire_storm
 system: dnd5e
 level: 7
+school: evocation
 classes: [cleric, druid, sorcerer]
 concentration: false
 castingTime: 1 action

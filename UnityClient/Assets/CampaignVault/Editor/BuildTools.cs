@@ -66,15 +66,45 @@ namespace CampaignVault.UnityClient.Editor
         [MenuItem("CampaignVault/Build/WebGL")]
         public static void BuildWebGL() { Build(BuildTarget.WebGL, "web"); }
 
+        /// <summary>
+        /// Reads a game-ci style command-line argument (e.g. -customBuildPath).
+        /// Returns null when running from the editor menu or when absent.
+        /// </summary>
+        private static string? GetCommandLineArg(string name)
+        {
+            var args = System.Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length - 1; i++)
+            {
+                if (args[i] == name && !string.IsNullOrEmpty(args[i + 1]))
+                    return args[i + 1];
+            }
+            return null;
+        }
+
         private static void Build(BuildTarget target, string outputName)
         {
             EnsureMainSceneBootstrapped();
 
-            string platformDir = Path.Combine(OutputRoot, target.ToString());
-            Directory.CreateDirectory(platformDir);
-            string locationPathName = target == BuildTarget.WebGL
-                ? platformDir
-                : Path.Combine(platformDir, outputName);
+            // game-ci's unity-builder passes -customBuildPath and validates the
+            // file exists there after Unity exits; ignoring it fails the job
+            // even when the player build itself succeeds.
+            string locationPathName;
+            string? customPath = GetCommandLineArg("-customBuildPath");
+            if (!string.IsNullOrEmpty(customPath))
+            {
+                string? parent = Path.GetDirectoryName(customPath);
+                if (!string.IsNullOrEmpty(parent))
+                    Directory.CreateDirectory(parent);
+                locationPathName = customPath;
+            }
+            else
+            {
+                string platformDir = Path.Combine(OutputRoot, target.ToString());
+                Directory.CreateDirectory(platformDir);
+                locationPathName = target == BuildTarget.WebGL
+                    ? platformDir
+                    : Path.Combine(platformDir, outputName);
+            }
 
             var options = new BuildPlayerOptions
             {

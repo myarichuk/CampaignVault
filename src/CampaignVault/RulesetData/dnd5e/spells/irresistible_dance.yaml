@@ -3,6 +3,7 @@ name: irresistible_dance
 system: dnd5e
 tags: [compulsion]
 level: 6
+school: enchantment
 classes: [bard, wizard]
 concentration: true
 castingTime: 1 action

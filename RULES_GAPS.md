@@ -31,7 +31,7 @@ Rules content and features left out on purpose, or deferred. Each entry says why
 ## Planned
 
 - **Scripted effects (not built, on purpose).** The effect vocabulary now covers numeric bonuses, advantage,
-  extra damage dice, critical range and resistance. A sandboxed script (Jint: no host access, a time and memory cap)
+  extra damage dice, critical range, resistance, flat damage reduction, and initiative, speed and passive bonuses. A sandboxed script (Jint: no host access, a time and memory cap)
   could express the rest. We hold off because a script is code: it can't be validated, previewed or tagged the way
   data can, and a DM-written one would run model-written code. Plugin authors who need more already have C#
   (`IRollModifierProvider`, recipe validators). If scripts come, they'd be plugin-only files that return the same
@@ -75,7 +75,8 @@ Rules content and features left out on purpose, or deferred. Each entry says why
   choices), shown on the sheet and to the DM. The engine applies the ones the effect vocabulary covers (fighting
   styles, Improved Critical, Divine Strike, Colossus Slayer, Draconic Resilience's hit points and armor class,
   Unarmored Defense); the rest (Cutting Words, Sculpt Spells, Rage's resistances…) are adjudicated by the DM from
-  the text, because they need state the vocabulary doesn't have (a rage, a reaction, a pool).
+  the text, because they need state the vocabulary doesn't have (a rage, a reaction). A feature can grant a pool
+  (`pools:`), sized from the character (`maxFrom`) with a die that grows by level; Bardic Inspiration uses that.
 - **The Land druid's bonus cantrip** isn't counted by the spells step. Granted spells are all added as prepared.
 - **Homebrew PF2e feats in the builder.** A campaign's own feat has no category, ancestry or class list in its document,
   so the PF2e feat steps (which filter by those) don't offer it; 5e's improvement feats and spell lists do.
@@ -89,7 +90,11 @@ Rules content and features left out on purpose, or deferred. Each entry says why
 - **5e Expertise** (bard 3 and 10, rogue 1 and 6), ranger favored enemy and natural explorer.
 - **PF2e** Perception ranks, Lore skills, prerequisites written only as prose, and class proficiency increases by
   level.
-- **Level-up details.** A 5e feat taken instead of an improvement has its prerequisites checked (PF2e level-ups don't pick
-  feats in the menu yet); a multiclass
-  character's level-up records picks at the class's level; deities' narrowing of a cleric's domains isn't applied to a
-  level-up (the original choice is kept).
+- **Level-up details.** A 5e feat taken instead of an improvement has its prerequisites checked, and its own choices
+  (a half-feat's ability, skills, spells) are slots once it is picked (PF2e level-ups don't pick feats in the menu yet).
+  A feat taken at creation outside an improvement (a race's bonus feat) doesn't ask its choices, and a race's innate
+  spells are listed but their once-a-day use is the DM's. A level-up pick
+  records the class that gave it, at that class's level, so a multiclass character's subclass or style picks stay with
+  their class (records from before this name no class and still match by key alone). A deity, patron or lineage the character took at creation
+  is recorded and narrows later level-up choices the way it did in the builder (a patron's pact boon at level 3); the
+  shipped cleric's domains are only asked at level 1, so nothing there changes.

@@ -3,6 +3,7 @@ name: zone_of_truth
 system: dnd5e
 tags: [compulsion]
 level: 2
+school: enchantment
 classes: [bard, cleric, paladin]
 concentration: false
 castingTime: 1 action

@@ -2,6 +2,7 @@
 name: clairvoyance
 system: dnd5e
 level: 3
+school: divination
 classes: [bard, cleric, sorcerer, wizard]
 concentration: true
 castingTime: 10 minutes

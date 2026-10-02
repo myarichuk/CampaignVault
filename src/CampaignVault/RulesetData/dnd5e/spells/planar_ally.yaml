@@ -2,6 +2,7 @@
 name: planar_ally
 system: dnd5e
 level: 6
+school: conjuration
 classes: [cleric]
 concentration: false
 castingTime: 10 minutes

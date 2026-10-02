@@ -2,6 +2,7 @@
 name: animal_messenger
 system: dnd5e
 level: 2
+school: enchantment
 classes: [bard, druid, ranger]
 concentration: false
 castingTime: 1 action

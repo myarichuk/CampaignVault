@@ -2,6 +2,7 @@
 name: blink
 system: dnd5e
 level: 3
+school: transmutation
 classes: [sorcerer, wizard]
 concentration: false
 castingTime: 1 action

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CampaignVault.Data.Templates;
+using CampaignVault.Models;
 
 namespace CampaignVault.Rulesets.Creation;
 
@@ -54,6 +55,14 @@ public sealed record LevelChoiceSlot
 
     public bool IsAsi => Type == nameof(ChoiceType.AsiOrFeat);
 
+    /// <summary>
+    /// A 5e half-feat's ability pick: each pick (one of <see cref="Abilities"/>) rises by this much. 0 for any other slot.
+    /// </summary>
+    public int IncreaseAmount { get; init; }
+
+    /// <summary>Whether a pick here raises an ability score: an improvement or a half-feat's ability.</summary>
+    public bool GivesIncrease => IsAsi || IncreaseAmount > 0;
+
     /// <summary>PF2e attribute boosts: <see cref="Picks"/> different attributes, each +1.</summary>
     public bool IsBoosts => Type == nameof(ChoiceType.AttributeBoosts);
 
@@ -66,9 +75,22 @@ public sealed record LevelChoiceSlot
     /// <summary>A pick names an option once per character (a subclass, an invocation); boosts and increases repeat across levels.</summary>
     public bool Unique => !IsAsi && !IsBoosts && !IsSkillIncrease;
 
-    /// <summary>The ability score increases a pick list gives: one ability is +2, two are +1 each. Empty for a feat.</summary>
+    /// <summary>
+    /// The ability score increases a pick list gives: one ability is +2, two are +1 each (a half-feat's pick by its
+    /// amount). Empty for a feat.
+    /// </summary>
     public IReadOnlyList<(string Ability, int Amount)> Increases(IReadOnlyList<string> picks)
     {
+        if (IncreaseAmount > 0 && Abilities is not null)
+        {
+            return
+            [
+                .. picks.Select(p => Abilities.FirstOrDefault(a => a.Equals(p, StringComparison.OrdinalIgnoreCase)))
+                    .OfType<string>()
+                    .Select(a => (a, IncreaseAmount)),
+            ];
+        }
+
         if (!IsAsi || picks.Count is 0 or > 2 || Abilities is null)
             return [];
 
@@ -80,6 +102,14 @@ public sealed record LevelChoiceSlot
     }
 }
 
+/// <summary>
+/// What the slots of a feat taken at an improvement need (5e): the feat by id, and the spells of some classes' lists at a
+/// spell level, as options.
+/// </summary>
+public sealed record FeatChoiceSource(
+    Func<string, FeatDefinition?> Feat,
+    Func<IReadOnlyList<string>, int, IReadOnlyList<CreationOption>> Spells);
+
 /// <summary>Reads and builds the level choice slots of a draft.</summary>
 public static class LevelChoiceSlots
 {
@@ -87,9 +117,10 @@ public static class LevelChoiceSlots
     /// Every choice of the class's progression at levels 1 to <paramref name="level"/> of the given types (all when empty),
     /// in level order, for the levelChoices step <paramref name="step"/>. Spell picks are the spells step's, so
     /// SpellSelection choices are left out. A choice with no options of its own (a later invocation) offers the options of
-    /// the same key at another level; a skill increase or proficiency offers the system's skills, attribute boosts the
+    /// the same key at another level, less those whose prerequisites the character doesn't meet at the slot's level; a skill increase or proficiency offers the system's skills, attribute boosts the
     /// abilities. A picked option's features add their choices (a hunter's prey once the hunter is picked):
-    /// <paramref name="picked"/> gives the picks by level and choice key.
+    /// <paramref name="picked"/> gives the picks by level and choice key. A feat picked at an improvement adds its own
+    /// choices after it (<see cref="FeatSlots"/>) when <paramref name="featChoices"/> is given.
     /// </summary>
     public static IReadOnlyList<LevelChoiceSlot> For(
         ProgressionDefinition progression,
@@ -98,11 +129,14 @@ public static class LevelChoiceSlots
         string step,
         IReadOnlyCollection<string>? types = null,
         IReadOnlyList<string>? skills = null,
-        Func<int, string, IEnumerable<string>>? picked = null)
+        Func<int, string, IEnumerable<string>>? picked = null,
+        FeatChoiceSource? featChoices = null)
     {
+        picked ??= (_, _) => [];
         var slots = new List<LevelChoiceSlot>();
-        foreach (var (at, choice) in progression.ChoicesUpTo(level, picked ?? ((_, _) => [])).Select(g => (g.Level, g.Choice)))
+        foreach (var gained in progression.ChoicesUpTo(level, picked))
         {
+            var (at, choice) = (gained.Level, gained.Choice);
             if (choice.Type == ChoiceType.SpellSelection)
                 continue;
 
@@ -135,6 +169,12 @@ public static class LevelChoiceSlots
                             .. feats.Select(f => f with { Group = id }),
                         ],
                     });
+                    if (featChoices is not null)
+                    {
+                        foreach (var feat in picked(at, choice.Key).Select(featChoices.Feat).OfType<FeatDefinition>())
+                            slots.AddRange(FeatSlots(feat, at, step, featChoices));
+                    }
+
                     break;
                 case ChoiceType.AttributeBoosts:
                     slots.Add(slot with
@@ -148,7 +188,7 @@ public static class LevelChoiceSlots
                     slots.Add(slot with { Options = [.. (skills ?? []).Select(k => new CreationOption(k, k, null, id))] });
                     break;
                 default:
-                    var options = progression.OptionsFor(choice);
+                    var options = progression.OptionsFor(gained, picked);
                     slots.Add(slot with
                     {
                         Options = [.. options.Select(o => new CreationOption(o.Id, o.Label == o.Id ? Humanize(o.Id) : o.Label, o.Description, id) { Homebrew = o.Homebrew })],
@@ -159,6 +199,52 @@ public static class LevelChoiceSlots
         }
 
         return slots;
+    }
+
+    /// <summary>
+    /// The choices a feat taken at level <paramref name="at"/> asks, each a slot <c>&lt;level&gt;.&lt;feat&gt;.&lt;what&gt;</c>:
+    /// the ability a half-feat raises (key <c>&lt;feat&gt;.ability</c>), its skills (key <c>skills</c>, like a class's skill
+    /// picks) and its spells (key <c>&lt;feat&gt;.spells</c>). A half-feat with one ability needs no pick.
+    /// </summary>
+    public static IEnumerable<LevelChoiceSlot> FeatSlots(FeatDefinition feat, int at, string step, FeatChoiceSource source)
+    {
+        var title = $"Level {at} · {CreationSources.Label(feat.Name)}";
+        if (feat.AbilityIncrease is { Choose.Count: not 1 } increase)
+        {
+            var abilities = increase.Choose.Count > 0 ? increase.Choose : [.. CreationSources.AbilityNames];
+            var id = $"{at}.{feat.Name}.ability";
+            yield return new LevelChoiceSlot
+            {
+                Id = id, Level = at, Key = $"{feat.Name}.ability", Title = $"{title}: ability +{increase.Amount}",
+                Type = nameof(ChoiceType.Enum), Required = true, Step = step,
+                Abilities = abilities, IncreaseAmount = increase.Amount,
+                Options = [.. abilities.Select(a => new CreationOption(a, a, null, id))],
+            };
+        }
+
+        if (feat.SkillChoices > 0)
+        {
+            var id = $"{at}.{feat.Name}.skills";
+            yield return new LevelChoiceSlot
+            {
+                Id = id, Level = at, Key = Bootstrap.Dnd5eDeriveProficiencyStep.SkillsChoiceKey, Title = $"{title}: skills",
+                Type = nameof(ChoiceType.SkillProficiency), Required = true, Picks = feat.SkillChoices, Step = step,
+                Options = [.. CreationSources.SkillNames(RulesetSystem.Dnd5e).Select(k => new CreationOption(k, k, null, id))],
+            };
+        }
+
+        for (var i = 0; i < feat.SpellChoices.Count; i++)
+        {
+            var choice = feat.SpellChoices[i];
+            var id = $"{at}.{feat.Name}.spells{(i == 0 ? "" : i + 1)}";
+            yield return new LevelChoiceSlot
+            {
+                Id = id, Level = at, Key = $"{feat.Name}.spells",
+                Title = $"{title}: {(choice.Level == 0 ? "cantrips" : $"level {choice.Level} spells")}",
+                Type = nameof(ChoiceType.Enum), Required = true, Picks = Math.Max(1, choice.Count), Step = step,
+                Options = [.. source.Spells(choice.Lists, choice.Level).Select(o => o with { Group = id })],
+            };
+        }
     }
 
     /// <summary>The draft's picks per slot id: each value as a list (a string counts as one). Empty when the step has no object.</summary>

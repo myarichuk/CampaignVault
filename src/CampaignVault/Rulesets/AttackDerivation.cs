@@ -44,6 +44,7 @@ internal sealed record DerivedAttack(int ToHit, int Damage, string Note)
             : (str, "STR");
 
         var prof = CombatFeatureRules.ProficiencyBonus(stats);
+        var proficient = CombatFeatureRules.IsWeaponProficient(stats, action);
 
         var toHit = 0;
         var damage = 0;
@@ -53,9 +54,10 @@ internal sealed record DerivedAttack(int ToHit, int Damage, string Note)
 
         if (!explicitBonus)
         {
-            toHit += mod + prof;
+            toHit += mod + (proficient ? prof : 0);
             hitParts.Add($"{label} {Signed(mod)}");
-            if (prof != 0) hitParts.Add($"prof {Signed(prof)}");
+            if (!proficient) notes.Add("not proficient with this weapon (weaponProficiencies): no proficiency bonus");
+            else if (prof != 0) hitParts.Add($"prof {Signed(prof)}");
             else notes.Add("no proficiencyBonus on the sheet (stat-block creatures should pass bonus)");
 
             if (action.Parameters.TryGetValue("itemToHitBonus", out var item) && int.TryParse(item, out var itemBonus) && itemBonus != 0)

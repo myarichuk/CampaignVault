@@ -2,6 +2,7 @@
 name: shocking_grasp
 system: dnd5e
 level: 0
+school: evocation
 classes: [sorcerer, wizard]
 concentration: false
 castingTime: 1 action

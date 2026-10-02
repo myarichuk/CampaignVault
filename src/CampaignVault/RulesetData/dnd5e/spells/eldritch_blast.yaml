@@ -2,6 +2,7 @@
 name: eldritch_blast
 system: dnd5e
 level: 0
+school: evocation
 classes: [warlock]
 concentration: false
 castingTime: 1 action

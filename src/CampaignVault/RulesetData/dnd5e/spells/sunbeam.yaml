@@ -2,6 +2,7 @@
 name: sunbeam
 system: dnd5e
 level: 6
+school: evocation
 classes: [druid, sorcerer, wizard]
 concentration: true
 castingTime: 1 action

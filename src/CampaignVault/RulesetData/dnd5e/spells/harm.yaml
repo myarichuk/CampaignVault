@@ -2,6 +2,7 @@
 name: harm
 system: dnd5e
 level: 6
+school: necromancy
 classes: [cleric]
 concentration: false
 castingTime: 1 action

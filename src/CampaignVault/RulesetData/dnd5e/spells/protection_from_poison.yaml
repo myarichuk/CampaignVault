@@ -2,6 +2,7 @@
 name: protection_from_poison
 system: dnd5e
 level: 2
+school: abjuration
 classes: [cleric, druid, paladin, ranger]
 concentration: false
 castingTime: 1 action

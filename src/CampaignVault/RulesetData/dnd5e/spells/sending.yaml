@@ -2,6 +2,7 @@
 name: sending
 system: dnd5e
 level: 3
+school: evocation
 classes: [bard, cleric, wizard]
 concentration: false
 castingTime: 1 action

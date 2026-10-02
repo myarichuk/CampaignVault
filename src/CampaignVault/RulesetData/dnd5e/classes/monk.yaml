@@ -8,3 +8,5 @@ savingThrows: [Strength, Dexterity]
 pools: [ki_points]
 aliases: [monk]
 skillChoices: { count: 2, from: [Acrobatics, Athletics, History, Insight, Religion, Stealth] }
+proficiencies: { weapons: [simple, shortsword] }
+multiclassProficiencies: { weapons: [simple, shortsword] }

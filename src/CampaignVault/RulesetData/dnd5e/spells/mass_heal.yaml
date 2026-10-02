@@ -2,6 +2,7 @@
 name: mass_heal
 system: dnd5e
 level: 9
+school: conjuration
 classes: [cleric]
 concentration: false
 castingTime: 1 action

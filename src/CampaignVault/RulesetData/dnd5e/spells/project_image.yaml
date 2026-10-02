@@ -2,6 +2,7 @@
 name: project_image
 system: dnd5e
 level: 7
+school: illusion
 classes: [bard, wizard]
 concentration: true
 castingTime: 1 action

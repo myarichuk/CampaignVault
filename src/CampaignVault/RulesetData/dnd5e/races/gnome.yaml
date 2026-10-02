@@ -7,3 +7,8 @@ abilityBonuses:
   Intelligence: 2
 size: Small
 baseSpeed: 25
+darkvision: 60
+effects:
+  - { kind: advantage, on: save, subject: Intelligence, assert: [againstMagic], when: "the saving throw is against magic" }
+  - { kind: advantage, on: save, subject: Wisdom, assert: [againstMagic], when: "the saving throw is against magic" }
+  - { kind: advantage, on: save, subject: Charisma, assert: [againstMagic], when: "the saving throw is against magic" }

@@ -5,6 +5,7 @@ using CampaignVault.Data;
 using CampaignVault.Models;
 using CampaignVault.Rulesets.Creation;
 using CampaignVault.Tools;
+using Raven.Client.Documents;
 using Xunit;
 
 namespace CampaignVault.Tests;
@@ -53,6 +54,25 @@ public class CharacterBuilderToolsTests(RavenDBFixture fixture) : IClassFixture<
         Assert.Equal(b.SavingThrowModifiers.OrderBy(kv => kv.Key), a.SavingThrowModifiers.OrderBy(kv => kv.Key));
         Assert.Equal(b.Attributes["proficiencyBonus"], a.Attributes["proficiencyBonus"]);
         Assert.Equal(["fire_bolt", "light", "mage_hand"], a.Spells.Cantrips);
+    }
+
+    [Fact]
+    public async Task Commit_GivesANewCharacterItsBackgroundsEquipmentAndGold_Once()
+    {
+        var slug = "builder-gear-" + Guid.NewGuid().ToString("N")[..8];
+        var builder = TestCampaignToolsFactory.CreateTool<CharacterBuilderTools>(fixture);
+
+        var committed = await builder.CharacterBuilder("commit", CharacterCreationTests.Wizard(), slug);
+        Assert.True(committed.Success, committed.Summary);
+        var id = committed.Data!.Character!.Id;
+        var again = await builder.CharacterBuilder("commit", CharacterCreationTests.Wizard() with { Id = id }, slug);
+        Assert.True(again.Success, again.Summary);
+
+        using var session = fixture.Store.OpenAsyncSession();
+        var items = await session.Query<Item>().Customize(c => c.WaitForNonStaleResults()).Where(i => i.HolderId == id).ToListAsync();
+        Assert.Equal(6, items.Count);
+        Assert.Contains(items, i => i is { Name: "Stick of incense", Quantity: 5 });
+        Assert.Equal(15, Assert.IsType<Dnd5eExtension>((await Load(slug, id)).SystemStats).ResourcePools["gold"].Current);
     }
 
     [Fact]

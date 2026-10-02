@@ -2,6 +2,7 @@
 name: vampiric_touch
 system: dnd5e
 level: 3
+school: necromancy
 classes: [warlock, wizard]
 concentration: true
 castingTime: 1 action

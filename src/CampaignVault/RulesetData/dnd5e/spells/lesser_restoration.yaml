@@ -2,6 +2,7 @@
 name: lesser_restoration
 system: dnd5e
 level: 2
+school: abjuration
 classes: [bard, cleric, druid, paladin, ranger]
 concentration: false
 castingTime: 1 action

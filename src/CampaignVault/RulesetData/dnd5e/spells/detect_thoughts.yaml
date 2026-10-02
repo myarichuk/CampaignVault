@@ -2,6 +2,7 @@
 name: detect_thoughts
 system: dnd5e
 level: 2
+school: divination
 classes: [bard, sorcerer, wizard]
 concentration: true
 castingTime: 1 action

@@ -2,6 +2,7 @@
 name: spiritual_weapon
 system: dnd5e
 level: 2
+school: evocation
 classes: [cleric]
 concentration: false
 castingTime: 1 bonus action

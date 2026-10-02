@@ -70,8 +70,65 @@ public record ChoiceOption
     /// </summary>
     public Dictionary<int, List<FeatureDefinition>> Features { get; init; } = [];
 
+    /// <summary>
+    /// 5e: spellcasting the option gives a class that has none of its own (a subclass that casts from another class's
+    /// list). Its caster type counts toward spell slots, its ability sets the save DC, and the builder offers its spells.
+    /// </summary>
+    public OptionSpellcasting? Spellcasting { get; init; }
+
+    /// <summary>What a character needs before the option is offered (a class level, an option picked earlier). Null: nothing.</summary>
+    public OptionPrerequisite? Prerequisite { get; init; }
+
     /// <summary>Set for options that came from a plugin or the campaign (a <see cref="ClassOptionDefinition"/>), not the shipped rules.</summary>
     public bool Homebrew { get; init; }
+}
+
+/// <summary>
+/// What a character needs before an option is offered: a class level, and an option it picked earlier in the class (a
+/// pact, a path). The builder and level-up leave it out of a choice until both are met:
+/// <code>
+/// prerequisite: { level: 5, option: emberPact }   # class level 5 or higher, and emberPact picked at some choice
+/// </code>
+/// </summary>
+public record OptionPrerequisite
+{
+    /// <summary>The lowest class level the option is offered at; 0 for any.</summary>
+    public int Level { get; init; }
+
+    /// <summary>The id of an option the character must have picked in the class (any choice), or null.</summary>
+    public string? Option { get; init; }
+
+    /// <summary>Whether a character at class level <paramref name="level"/> with the options <paramref name="picked"/> qualifies.</summary>
+    public bool MetBy(int level, IEnumerable<string> picked) =>
+        level >= Level && (string.IsNullOrEmpty(Option) || picked.Contains(Option, StringComparer.OrdinalIgnoreCase));
+}
+
+/// <summary>
+/// Spellcasting an option (a subclass) gives a class without its own:
+/// <code>
+/// spellcasting:
+///   casterType: Third                     # counts toward spell slots like any caster of the type
+///   ability: Intelligence
+///   list: wizard                          # the class whose spell list it learns from
+///   schools: [abjuration, evocation]      # leveled spells limited to these schools...
+///   anySchoolAt: [3, 8]                   # ...except one more pick from any school at each of these class levels
+///   cantripsKnown: { 3: 2, 10: 3 }        # by class level, the highest reached wins
+///   spellsKnown: { 3: 3, 4: 4, 7: 5 }
+/// </code>
+/// </summary>
+public record OptionSpellcasting
+{
+    public CasterType CasterType { get; init; } = CasterType.Third;
+    public string? Ability { get; init; }
+    public string? List { get; init; }
+    public List<string> Schools { get; init; } = [];
+    public List<int> AnySchoolAt { get; init; } = [];
+    public Dictionary<int, int> CantripsKnown { get; init; } = [];
+    public Dictionary<int, int> SpellsKnown { get; init; } = [];
+
+    /// <summary>The count at <paramref name="level"/> from a by-level table: the highest reached level's, else 0.</summary>
+    public static int AtLevel(Dictionary<int, int> table, int level) =>
+        table.Where(kv => kv.Key <= level).OrderByDescending(kv => kv.Key).Select(kv => kv.Value).FirstOrDefault();
 }
 
 /// <summary>
@@ -91,6 +148,12 @@ public record FeatureDefinition
 
     /// <summary>Armor class without armor (Unarmored Defense: 10 + Dexterity + Constitution). The best one the character has wins.</summary>
     public UnarmoredArmorClass? UnarmoredArmorClass { get; init; }
+
+    /// <summary>Armor, weapon and tool proficiencies it gives (a domain's heavy armor), joined to the sheet's from its level.</summary>
+    public ProficiencyGrants? Proficiencies { get; init; }
+
+    /// <summary>Resource pools it gives by name (a subclass's superiority dice), sized by the pool's own rules from its level.</summary>
+    public List<string> Pools { get; init; } = [];
 
     /// <summary>
     /// Spells it gives by class level, always prepared and not counted against the day's picks (a domain's, an oath's, a
@@ -193,20 +256,45 @@ public record ProgressionDefinition : RulesetTemplate
             .FirstOrDefault();
 
     /// <summary>
-    /// A choice's options: its own, or when it has none (a later "learn one more invocation"), those of the same key at
-    /// another level.
+    /// A choice's options: its own, or when it has none (a later "learn one more invocation", "two more maneuvers"), those
+    /// of the same key elsewhere: in the features of the option it came from (<paramref name="from"/>, a subclass), then
+    /// at another level of the class.
     /// </summary>
-    public List<ChoiceOption> OptionsFor(LevelUpChoiceDefinition choice)
+    public List<ChoiceOption> OptionsFor(LevelUpChoiceDefinition choice, ChoiceOption? from = null)
     {
         var own = choice.Options.Count > 0
             ? choice.Options
-            : Levels.Values.SelectMany(l => l.Choices).FirstOrDefault(c => c.Key == choice.Key && c.Options.Count > 0)?.Options ?? [];
+            : NestedChoices(from).FirstOrDefault(c => c.Key == choice.Key && c.Options.Count > 0)?.Options
+                ?? Levels.Values.SelectMany(l => l.Choices).FirstOrDefault(c => c.Key == choice.Key && c.Options.Count > 0)?.Options
+                ?? [];
         // Plugin options join only a choice that already offers some, so "asiOrFeat" and the like stay untouched.
         if (own.Count == 0 || !ExtraOptions.TryGetValue(choice.Key, out var extra))
             return HideOptions.Count == 0 ? own : [.. own.Where(o => !IsHidden(o))];
 
         return [.. own.Concat(extra.Where(e => !own.Any(o => o.Id.Equals(e.Id, StringComparison.OrdinalIgnoreCase)))).Where(o => !IsHidden(o))];
     }
+
+    /// <summary>
+    /// The options of a choice gained at a class level that the character qualifies for: <see cref="OptionsFor(LevelUpChoiceDefinition, ChoiceOption?)"/>
+    /// less those whose <see cref="ChoiceOption.Prerequisite"/> it doesn't meet at that level with the options
+    /// <paramref name="picked"/> names up to it.
+    /// </summary>
+    public List<ChoiceOption> OptionsFor(GainedChoice gained, Func<int, string, IEnumerable<string>> picked)
+    {
+        var options = OptionsFor(gained.Choice, gained.From);
+        if (!options.Any(o => o.Prerequisite is not null))
+            return options;
+
+        var have = PickedOptions(gained.Level, picked).Select(o => o.Id).ToList();
+        return [.. options.Where(o => o.Prerequisite?.MetBy(gained.Level, have) ?? true)];
+    }
+
+    /// <summary>The choices the features of <paramref name="option"/> ask, keyed like a level's.</summary>
+    private static IEnumerable<LevelUpChoiceDefinition> NestedChoices(ChoiceOption? option) =>
+        option is null
+            ? []
+            : option.Features.Values.SelectMany(list => list)
+                .SelectMany(f => f.Choices.Select(kv => kv.Value with { Key = kv.Key }));
 
     private bool IsHidden(ChoiceOption option) => HideOptions.Contains(option.Id, StringComparer.OrdinalIgnoreCase);
 
@@ -242,7 +330,7 @@ public record ProgressionDefinition : RulesetTemplate
             {
                 var choice = def with { Key = key, Prompt = def.Prompt ?? gained.Feature.Name };
                 choices.Add(new GainedChoice(gained.Level, choice, gained.From));
-                var available = OptionsFor(choice);
+                var available = OptionsFor(choice, gained.From);
                 foreach (var id in picked(gained.Level, key))
                 {
                     var option = available.FirstOrDefault(o => o.Id.Equals(id, StringComparison.OrdinalIgnoreCase));

@@ -2,6 +2,7 @@
 name: holy_aura
 system: dnd5e
 level: 8
+school: abjuration
 classes: [cleric]
 concentration: true
 castingTime: 1 action

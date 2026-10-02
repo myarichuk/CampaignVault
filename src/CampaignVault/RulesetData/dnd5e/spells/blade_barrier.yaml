@@ -2,6 +2,7 @@
 name: blade_barrier
 system: dnd5e
 level: 6
+school: evocation
 classes: [cleric]
 concentration: true
 castingTime: 1 action

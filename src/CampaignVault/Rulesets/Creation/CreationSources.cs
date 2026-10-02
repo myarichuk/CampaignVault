@@ -48,6 +48,9 @@ public sealed class CreationSources(
     /// <summary>PF2e boosts: the abilities the chosen ancestry doesn't boost already (its free boosts).</summary>
     public const string AncestryBoosts = "ancestryBoosts";
 
+    /// <summary>5e: the abilities a race's <c>abilityChoice</c> may raise (all but its <c>exclude</c>).</summary>
+    public const string RaceAbilities = "raceAbilities";
+
     /// <summary>PF2e boosts: the six abilities (the background's two; <c>pf2e.boosts</c> checks one is from its pair).</summary>
     public const string BackgroundBoosts = "backgroundBoosts";
 
@@ -68,7 +71,7 @@ public sealed class CreationSources(
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         Races, Classes, Backgrounds, ClassSkills, Skills, Spells, Feats, Creatures, Companions, StartingEquipment, Abilities,
-        Heritages, BackgroundSkills, UntrainedSkills, AncestryBoosts, BackgroundBoosts, KeyAbilities,
+        Heritages, BackgroundSkills, UntrainedSkills, AncestryBoosts, RaceAbilities, BackgroundBoosts, KeyAbilities,
         AncestryFeats, ClassFeats, SkillFeats, GeneralFeats, Deities, Patrons, Lineages,
     };
 
@@ -78,6 +81,15 @@ public sealed class CreationSources(
         "deities" => NamedPowerDefinition.Deity,
         "patrons" => NamedPowerDefinition.Patron,
         "lineages" => NamedPowerDefinition.Lineage,
+        _ => null,
+    };
+
+    /// <summary>The powers source a recipe step key stands for (<c>deity</c> → deities), or null for another key.</summary>
+    public static string? PowerSource(string? stepKey) => stepKey?.ToLowerInvariant() switch
+    {
+        "deity" => Deities,
+        "patron" => Patrons,
+        "lineage" => Lineages,
         _ => null,
     };
 
@@ -166,7 +178,7 @@ public sealed class CreationSources(
             case "abilities":
                 return [.. AbilityNames.Select(a => new CreationOption(a, a))];
             case "spells":
-                return classTemplate is null ? [] : SpellOptions(system, classTemplate, picks.MaxSpellLevel, CharacterClassFeatures.ExpandedSpells(picks.Granted, picks.Level));
+                return classTemplate is null ? [] : SpellOptions(system, classTemplate, picks, CharacterClassFeatures.ExpandedSpells(picks.Granted, picks.Level));
             case "heritages":
                 return [.. (picks.Race?.Heritages ?? []).Select(h => new CreationOption(h.Name, h.Label ?? Label(h.Name), h.Description))];
             case "backgroundskills":
@@ -180,6 +192,11 @@ public sealed class CreationSources(
             {
                 var boosted = (picks.Race?.AbilityBonuses ?? []).Where(kv => kv.Value > 0).Select(kv => kv.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
                 return [.. AbilityNames.Where(a => !boosted.Contains(a)).Select(a => new CreationOption(a, a))];
+            }
+            case "raceabilities":
+            {
+                var excluded = picks.Race?.AbilityChoice?.Exclude ?? [];
+                return [.. AbilityNames.Where(a => !excluded.Contains(a, StringComparer.OrdinalIgnoreCase)).Select(a => new CreationOption(a, a))];
             }
             case "backgroundboosts":
                 return [.. AbilityNames.Select(a => new CreationOption(a, a))];
@@ -289,6 +306,18 @@ public sealed class CreationSources(
             .Select(FeatOption),
     ];
 
+    /// <summary>What the slots of a feat taken at an improvement offer: the feat, and spells of some lists at a level.</summary>
+    public FeatChoiceSource FeatChoices(string system) => new(
+        id => feats.TryGet(system, id, out var feat) ? feat : null,
+        (lists, level) =>
+        [
+            .. lists.SelectMany(list => spells.QuerySpells(system, list, classProvider: classes))
+                .Where(s => (s.Level ?? 0) == level && FeatEffectRules.PluginAvailable(s.Requires))
+                .DistinctBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(s => new CreationOption(s.Name, Label(s.Name), s.Description) { Homebrew = s.Homebrew }),
+        ]);
+
     /// <summary>A feat as an option: its summary, and the prerequisite text (its checkable part is feat.prerequisites's).</summary>
     private static CreationOption FeatOption(FeatDefinition feat)
     {
@@ -306,9 +335,15 @@ public sealed class CreationSources(
         return [.. from.Select(s => new CreationOption(s, s))];
     }
 
-    private IReadOnlyList<CreationOption> SpellOptions(string system, ClassDefinition classTemplate, int maxSpellLevel, IReadOnlyList<string> expanded)
+    private IReadOnlyList<CreationOption> SpellOptions(string system, ClassDefinition classTemplate, CreationPicks picks, IReadOnlyList<string> expanded)
     {
-        var options = spells.QuerySpells(system, classTemplate.Name, classProvider: classes)
+        var maxSpellLevel = picks.MaxSpellLevel;
+        // A subclass that casts learns from another class's list, its leveled spells limited to its schools until it
+        // has an any-school pick.
+        var casting = picks.OptionCasting;
+        var listClass = casting?.List ?? classTemplate.Name;
+        var anySchool = casting is null || casting.Schools.Count == 0 || casting.AnySchoolAt.Any(l => l <= picks.Level);
+        var options = spells.QuerySpells(system, listClass, classProvider: classes)
             .Where(s => (s.Level ?? 0) <= maxSpellLevel)
             .ToList();
         // The campaign's own spells for this class (HomebrewScope) join the shipped ones, tagged homebrew.
@@ -329,13 +364,20 @@ public sealed class CreationSources(
 
         return
         [
-            .. options.Select(s => new CreationOption(
-                s.Name,
-                Label(s.Name),
-                s.Description,
-                (s.Level ?? 0) == 0 ? SpellGroups.Cantrips : SpellGroups.Known) { Homebrew = s.Homebrew }),
+            .. options
+                .Where(s => anySchool || (s.Level ?? 0) == 0 || InSchools(s, casting!))
+                .Select(s => new CreationOption(
+                    s.Name,
+                    Label(s.Name),
+                    casting is { Schools.Count: > 0 } && (s.Level ?? 0) > 0 && !InSchools(s, casting)
+                        ? $"{s.Description} (outside {string.Join("/", casting.Schools)}: one of the any-school picks)".Trim()
+                        : s.Description,
+                    (s.Level ?? 0) == 0 ? SpellGroups.Cantrips : SpellGroups.Known) { Homebrew = s.Homebrew }),
         ];
     }
+
+    private static bool InSchools(SpellDefinition spell, OptionSpellcasting casting) =>
+        spell.School is { } school && casting.Schools.Contains(school, StringComparer.OrdinalIgnoreCase);
 
     private static IReadOnlyList<CreationOption> Templates<T>(IEnumerable<T> templates) where T : RulesetTemplate =>
     [
@@ -373,4 +415,13 @@ public sealed record CreationPicks(
 {
     /// <summary>The class feature options picked so far that give something (a racket's skills and key attribute).</summary>
     public IReadOnlyList<ChoiceOption> Granted { get; init; } = [];
+
+    /// <summary>
+    /// 5e: the spellcasting a picked option gives a class without its own (a subclass that casts), or null. Only used when
+    /// the class itself casts nothing.
+    /// </summary>
+    public OptionSpellcasting? OptionCasting =>
+        Class?.CasterType is null or CasterType.None
+            ? Granted.Select(o => o.Spellcasting).OfType<OptionSpellcasting>().FirstOrDefault()
+            : null;
 }

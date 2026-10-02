@@ -2,6 +2,7 @@
 name: dream
 system: dnd5e
 level: 5
+school: illusion
 classes: [bard, warlock, wizard]
 concentration: false
 castingTime: 1 minute

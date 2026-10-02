@@ -24,18 +24,19 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         SpellDefinitionProvider? spellDefinitionProvider = null,
         CreatureDefinitionProvider? creatureDefinitionProvider = null,
         RollModifierPipeline? rollModifiers = null,
-        ProgressionDefinitionProvider? progressionProvider = null)
+        ProgressionDefinitionProvider? progressionProvider = null,
+        FeatDefinitionProvider? featProvider = null)
     {
         if (rollModifiers is not null)
             Pipeline = rollModifiers;
         _rollService = rollService ?? throw new ArgumentNullException(nameof(rollService));
         _spellDefinitionProvider = spellDefinitionProvider;
         _creatureDefinitionProvider = creatureDefinitionProvider;
-        var hpStep = new Dnd5eDeriveHitPointsStep(_rollService, progressionProvider);
-        var profStep = new Dnd5eDeriveProficiencyStep(classProvider, backgroundProvider);
-        var passiveStep = new Dnd5eDerivePassivePerceptionStep();
-        var spellStep = new Dnd5eDeriveSpellcastingStep();
-        var grantStep = new Dnd5eGrantClassSpellsStep(progressionProvider);
+        var hpStep = new Dnd5eDeriveHitPointsStep(_rollService, progressionProvider, featProvider);
+        var profStep = new Dnd5eDeriveProficiencyStep(classProvider, backgroundProvider, progressionProvider, featProvider, raceProvider);
+        var passiveStep = new Dnd5eDerivePassivePerceptionStep(featProvider, progressionProvider, raceProvider);
+        var spellStep = new Dnd5eDeriveSpellcastingStep(progressionProvider);
+        var grantStep = new Dnd5eGrantClassSpellsStep(progressionProvider, featProvider, spellDefinitionProvider, raceProvider);
         List<IBootstrapStep> steps = raceProvider != null ? [new Dnd5eDeriveRaceStep(raceProvider)] : [];
         steps.AddRange([hpStep, new Dnd5eDeriveDefenseStep(progressionProvider), profStep, passiveStep, spellStep, grantStep]);
         _bootstrap = new CharacterBootstrapPipeline(
@@ -324,11 +325,11 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             sneakMsg = note;
         }
 
-        finalDamage = ApplyTargetDamageReduction(finalDamage, targetStats, action.DamageType);
-        finalDamage = ApplyFeatResistance(finalDamage, action.DamageType, targetEffects);
-
         // Dice features add on a hit (Divine Strike): rolled again on a critical hit, mitigated by their own type.
         var extraNotes = new List<string>();
+        finalDamage = ApplyTargetDamageReduction(finalDamage, targetStats, action.DamageType);
+        finalDamage = ApplyFeatResistance(finalDamage, action.DamageType, targetEffects, action, extraNotes);
+
         var extraMsg = "";
         foreach (var extra in action.ActionType == RulesetActionType.Attack ? FeatEffectRules.ExtraDamage(action, actorEffects, extraNotes) : [])
         {
@@ -336,7 +337,8 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             if (isCrit)
                 rolled += (await _rollService.RollAsync(new RollRequest { Tag = "extraDamageCrit", Expression = extra.Dice, Mechanic = DiceMechanic.Standard }, ct)).Result;
             var type = extra.DamageType ?? action.DamageType;
-            var dealt = ApplyFeatResistance(ApplyTargetDamageReduction(rolled, targetStats, type), type, targetEffects);
+            var dealt = ApplyTargetDamageReduction(rolled, targetStats, type);
+            dealt = FeatEffectRules.ResistsDamage(targetEffects, type, action) ? dealt / 2 : dealt;
             finalDamage += dealt;
             extraMsg += $" {extra.Source} +{dealt}{(string.IsNullOrWhiteSpace(extra.DamageType) ? "" : " " + extra.DamageType)}.";
         }
@@ -695,9 +697,18 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     /// Applies the target's damage-type multiplier and flat damage reduction, shared by the hit
     /// and miss-splash paths so both agree on mitigation.
     /// </summary>
-    /// <summary>Halves damage of a type the target resists through a feature or feat (rounded down).</summary>
-    private static int ApplyFeatResistance(int damage, string? damageType, IReadOnlyList<ActiveFeatEffect> targetEffects) =>
-        FeatEffectRules.ResistsDamage(targetEffects, damageType) ? damage / 2 : damage;
+    /// <summary>
+    /// Takes off the flat reduction the target's effects give for this attack (once, with the hit's own damage: pass
+    /// <paramref name="action"/>), then halves damage of a type the target resists through a feature, race or feat
+    /// (rounded down).
+    /// </summary>
+    private static int ApplyFeatResistance(
+        int damage, string? damageType, IReadOnlyList<ActiveFeatEffect> targetEffects, RulesetAction? action = null, List<string>? notes = null)
+    {
+        if (action is not null)
+            damage = Math.Max(0, damage - FeatEffectRules.DamageReduction(targetEffects, damageType, action, notes ?? []));
+        return FeatEffectRules.ResistsDamage(targetEffects, damageType, action, notes) ? damage / 2 : damage;
+    }
 
     private static int ApplyTargetDamageReduction(int damage, Dnd5eExtension targetStats, string? actionDamageType)
     {

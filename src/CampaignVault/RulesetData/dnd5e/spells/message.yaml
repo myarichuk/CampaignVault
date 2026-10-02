@@ -2,6 +2,7 @@
 name: message
 system: dnd5e
 level: 0
+school: transmutation
 classes: [bard, sorcerer, wizard]
 concentration: false
 castingTime: 1 action

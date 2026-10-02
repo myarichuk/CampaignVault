@@ -2,6 +2,7 @@
 name: banishment
 system: dnd5e
 level: 4
+school: abjuration
 classes: [cleric, paladin, sorcerer, warlock, wizard]
 concentration: true
 castingTime: 1 action

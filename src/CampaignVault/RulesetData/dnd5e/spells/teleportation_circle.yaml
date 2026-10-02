@@ -2,6 +2,7 @@
 name: teleportation_circle
 system: dnd5e
 level: 5
+school: conjuration
 classes: [bard, sorcerer, wizard]
 concentration: false
 castingTime: 1 minute

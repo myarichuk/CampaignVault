@@ -2,6 +2,7 @@
 name: moonbeam
 system: dnd5e
 level: 2
+school: evocation
 classes: [druid]
 concentration: true
 castingTime: 1 action

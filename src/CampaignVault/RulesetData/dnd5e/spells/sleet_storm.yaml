@@ -2,6 +2,7 @@
 name: sleet_storm
 system: dnd5e
 level: 3
+school: conjuration
 classes: [druid, sorcerer, wizard]
 concentration: true
 castingTime: 1 action

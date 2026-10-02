@@ -2,6 +2,7 @@
 name: incendiary_cloud
 system: dnd5e
 level: 8
+school: conjuration
 classes: [sorcerer, wizard]
 concentration: true
 castingTime: 1 action

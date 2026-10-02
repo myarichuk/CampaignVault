@@ -2,6 +2,7 @@
 name: finger_of_death
 system: dnd5e
 level: 7
+school: necromancy
 classes: [sorcerer, warlock, wizard]
 concentration: false
 castingTime: 1 action

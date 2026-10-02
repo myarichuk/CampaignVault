@@ -50,24 +50,127 @@ levels:
     proficiencyBonus: 2
     features:
       - name: "Eldritch Invocations"
-        description: "Choose two invocations (e.g., Agonizing Blast, Devil's Sight)."
+        description: "Choose two invocations. Some need a warlock level or a pact boon, and are offered once you have it."
         choices:
           invocation:
             type: FeatSelection
             required: true
             count: 2
             options:
-              - agonizingBlast
-              - armorOfShadows
-              - beastSpeech
-              - devilSight
-              - eldritchSight
-              - eldritchSpear
-              - eyesOfTheRuneKeeper
-              - fiendishVigor
-              - gazeOfTwoMinds
-              - mistyVisions
-              - repellingBlast
+              - id: agonizingBlast
+                label: "Agonizing Blast"
+                description: "Needs the eldritch blast cantrip. Each beam of eldritch blast that hits adds your Charisma modifier to its damage."
+              - id: armorOfShadows
+                label: "Armor of Shadows"
+                description: "Cast mage armor on yourself whenever you like, without a spell slot or material components."
+              - id: ascendantStep
+                label: "Ascendant Step"
+                description: "Cast levitate on yourself whenever you like, without a spell slot or material components."
+                prerequisite: { level: 9 }
+              - id: beastSpeech
+                label: "Beast Speech"
+                description: "Cast speak with animals whenever you like, without a spell slot."
+              - id: beguilingInfluence
+                label: "Beguiling Influence"
+                description: "You become proficient in Deception and Persuasion."
+              - id: bewitchingWhispers
+                label: "Bewitching Whispers"
+                description: "Once per long rest, cast compulsion using a warlock spell slot."
+                prerequisite: { level: 7 }
+              - id: bookOfAncientSecrets
+                label: "Book of Ancient Secrets"
+                description: "Your Book of Shadows holds rituals: two 1st-level ritual spells from any class's list to start. You can copy in more rituals you find, of a level up to half your warlock level rounded up (2 hours and 50 gp of ink per spell level), and cast any of them as rituals only."
+                prerequisite: { option: tome }
+              - id: chainsOfCarceri
+                label: "Chains of Carceri"
+                description: "Cast hold monster on a celestial, fiend or elemental whenever you like, without a spell slot or material components. A creature it was used on can't be targeted again until you finish a long rest."
+                prerequisite: { level: 15, option: chain }
+              - id: devilSight
+                label: "Devil's Sight"
+                description: "You see normally in darkness, magical or not, out to 120 feet."
+              - id: dreadfulWord
+                label: "Dreadful Word"
+                description: "Once per long rest, cast confusion using a warlock spell slot."
+                prerequisite: { level: 7 }
+              - id: eldritchSight
+                label: "Eldritch Sight"
+                description: "Cast detect magic whenever you like, without a spell slot."
+              - id: eldritchSpear
+                label: "Eldritch Spear"
+                description: "Needs the eldritch blast cantrip. Its range becomes 300 feet."
+              - id: eyesOfTheRuneKeeper
+                label: "Eyes of the Rune Keeper"
+                description: "You can read any writing."
+              - id: fiendishVigor
+                label: "Fiendish Vigor"
+                description: "Cast false life on yourself whenever you like, as a 1st-level spell, without a spell slot or material components."
+              - id: gazeOfTwoMinds
+                label: "Gaze of Two Minds"
+                description: "As an action, touch a willing humanoid and use its senses instead of your own until the end of your next turn; an action each turn keeps it going. Meanwhile you're blind and deaf to your own surroundings, but can still use the creature's senses for spells you cast."
+              - id: lifedrinker
+                label: "Lifedrinker"
+                description: "Hits with your pact weapon deal extra necrotic damage equal to your Charisma modifier (at least 1)."
+                prerequisite: { level: 12, option: blade }
+              - id: maskOfManyFaces
+                label: "Mask of Many Faces"
+                description: "Cast disguise self whenever you like, without a spell slot."
+              - id: masterOfMyriadForms
+                label: "Master of Myriad Forms"
+                description: "Cast alter self whenever you like, without a spell slot."
+                prerequisite: { level: 15 }
+              - id: minionsOfChaos
+                label: "Minions of Chaos"
+                description: "Once per long rest, cast conjure elemental using a warlock spell slot."
+                prerequisite: { level: 9 }
+              - id: mireTheMind
+                label: "Mire the Mind"
+                description: "Once per long rest, cast slow using a warlock spell slot."
+                prerequisite: { level: 5 }
+              - id: mistyVisions
+                label: "Misty Visions"
+                description: "Cast silent image whenever you like, without a spell slot or material components."
+              - id: oneWithShadows
+                label: "One with Shadows"
+                description: "While in dim light or darkness, you can use an action to turn invisible. It ends when you move or take an action or reaction."
+                prerequisite: { level: 5 }
+              - id: otherworldlyLeap
+                label: "Otherworldly Leap"
+                description: "Cast jump on yourself whenever you like, without a spell slot or material components."
+                prerequisite: { level: 9 }
+              - id: repellingBlast
+                label: "Repelling Blast"
+                description: "Needs the eldritch blast cantrip. Each beam that hits a creature can push it up to 10 feet straight away from you."
+              - id: sculptorOfFlesh
+                label: "Sculptor of Flesh"
+                description: "Once per long rest, cast polymorph using a warlock spell slot."
+                prerequisite: { level: 7 }
+              - id: signOfIllOmen
+                label: "Sign of Ill Omen"
+                description: "Once per long rest, cast bestow curse using a warlock spell slot."
+                prerequisite: { level: 5 }
+              - id: thiefOfFiveFates
+                label: "Thief of Five Fates"
+                description: "Once per long rest, cast bane using a warlock spell slot."
+              - id: thirstingBlade
+                label: "Thirsting Blade"
+                description: "When you take the Attack action, you can attack twice with your pact weapon instead of once."
+                prerequisite: { level: 5, option: blade }
+              - id: visionsOfDistantRealms
+                label: "Visions of Distant Realms"
+                description: "Cast arcane eye whenever you like, without a spell slot."
+                prerequisite: { level: 15 }
+              - id: voiceOfTheChainMaster
+                label: "Voice of the Chain Master"
+                description: "On the same plane, at any distance, you can talk telepathically with your familiar, perceive through its senses, and speak in your own voice through it."
+                prerequisite: { option: chain }
+              - id: whispersOfTheGrave
+                label: "Whispers of the Grave"
+                description: "Cast speak with dead whenever you like, without a spell slot."
+                prerequisite: { level: 9 }
+              - id: witchSight
+                label: "Witch Sight"
+                description: "Within 30 feet and in sight, you see the true form of shapechangers and of creatures disguised by illusion or transmutation magic."
+                prerequisite: { level: 15 }
     spellSlots: {1: 2}
   3:
     spellsKnown: 4

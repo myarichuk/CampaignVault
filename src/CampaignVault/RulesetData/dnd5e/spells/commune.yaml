@@ -2,6 +2,7 @@
 name: commune
 system: dnd5e
 level: 5
+school: divination
 classes: [cleric]
 concentration: false
 castingTime: 1 minute

@@ -8,3 +8,5 @@ savingThrows: [Strength, Constitution]
 pools: []
 aliases: [barbarian]
 skillChoices: { count: 2, from: [Animal Handling, Athletics, Intimidation, Nature, Perception, Survival] }
+proficiencies: { armor: [light, medium, shields], weapons: [simple, martial] }
+multiclassProficiencies: { armor: [shields], weapons: [simple, martial] }

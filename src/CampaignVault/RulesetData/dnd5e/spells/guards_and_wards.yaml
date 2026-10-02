@@ -2,6 +2,7 @@
 name: guards_and_wards
 system: dnd5e
 level: 6
+school: abjuration
 classes: [bard, wizard]
 concentration: false
 castingTime: 10 minutes

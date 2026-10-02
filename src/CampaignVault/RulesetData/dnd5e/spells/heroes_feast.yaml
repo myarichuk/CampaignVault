@@ -2,6 +2,7 @@
 name: heroes_feast
 system: dnd5e
 level: 6
+school: conjuration
 classes: [cleric, druid]
 concentration: false
 castingTime: 10 minutes

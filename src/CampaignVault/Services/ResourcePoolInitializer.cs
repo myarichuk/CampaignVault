@@ -1,5 +1,7 @@
 using CampaignVault.Data.Templates;
 using CampaignVault.Models;
+using CampaignVault.Rulesets;
+using CampaignVault.Rulesets.Bootstrap;
 
 namespace CampaignVault.Services;
 
@@ -12,15 +14,18 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
     private readonly ResourcePoolProvider? _provider;
     private readonly ClassDefinitionProvider? _classProvider;
     private readonly FeatDefinitionProvider? _featProvider;
+    private readonly ProgressionDefinitionProvider? _progressionProvider;
 
     public ResourcePoolInitializer(
         ResourcePoolProvider? provider = null,
         ClassDefinitionProvider? classProvider = null,
-        FeatDefinitionProvider? featProvider = null)
+        FeatDefinitionProvider? featProvider = null,
+        ProgressionDefinitionProvider? progressionProvider = null)
     {
         _provider = provider;
         _classProvider = classProvider;
         _featProvider = featProvider;
+        _progressionProvider = progressionProvider;
     }
 
     public void InitializePools(Character? character, string system, CampaignConfig? campaignConfig)
@@ -71,15 +76,17 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
         var classLevels = CharacterClassResolver.ResolveClassLevels(character);
         var characterLevel = DeriveCharacterLevel(character);
         var casterLevel = system == RulesetSystem.Dnd5e
-            ? Dnd5eCasterLevelHelper.ComputeCasterLevel(classLevels, _classProvider)
+            ? Dnd5eCasterLevelHelper.ComputeCasterLevel(classLevels, _classProvider,
+                entry => CharacterClassFeatures.OptionSpellcastingFor(character, system, _progressionProvider, entry)?.CasterType)
             : 0;
 
         foreach (var (poolName, template) in schemas)
         {
-            if (template.FeatGrantedOnly == true)
+            if (template.FeatGrantedOnly == true || template.GrantedOnly == true)
                 continue;
 
             TryAddPool(
+                character,
                 poolName,
                 template,
                 system,
@@ -91,7 +98,7 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
                 desiredPools);
         }
 
-        AddFeatGrantedPools(
+        AddGrantedPools(
             character,
             system,
             schemas,
@@ -114,7 +121,11 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
         return desiredPools;
     }
 
-    private void AddFeatGrantedPools(
+    /// <summary>
+    /// Pools granted by name: a feat's <c>extraPools</c> and the <c>pools</c> of the class features the character has (a
+    /// picked subclass's). They go through the same class and level rules as any other pool.
+    /// </summary>
+    private void AddGrantedPools(
         Character character,
         string system,
         IReadOnlyDictionary<string, ResourcePoolTemplate> schemas,
@@ -124,40 +135,41 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
         Dictionary<string, ResourcePool> existingPools,
         Dictionary<string, ResourcePool> desiredPools)
     {
-        if (_featProvider == null)
-            return;
-
-        foreach (var featName in CollectFeatNames(character.SystemStats, system))
+        var granted = new List<string>();
+        if (_featProvider != null)
         {
-            if (!_featProvider.TryGet(system, featName, out var feat))
-                continue;
-
-            if (feat.ExtraPools.Count == 0)
-                continue;
-
-            foreach (var poolName in feat.ExtraPools)
+            foreach (var featName in CollectFeatNames(character.SystemStats, system))
             {
-                if (desiredPools.ContainsKey(poolName) || !schemas.TryGetValue(poolName, out var template))
-                    continue;
-
-                // Route through the same class/caster-level gating as class-granted pools so a
-                // feat-granted pool restricted to a class, or scaled by caster level, behaves
-                // identically regardless of how it was granted.
-                TryAddPool(
-                    poolName,
-                    template,
-                    system,
-                    classLevels,
-                    characterLevel,
-                    casterLevel,
-                    _classProvider,
-                    existingPools,
-                    desiredPools);
+                if (_featProvider.TryGet(system, featName, out var feat))
+                    granted.AddRange(feat.ExtraPools);
             }
+        }
+
+        granted.AddRange(CharacterClassFeatures.Features(character, system, _progressionProvider).SelectMany(f => f.Feature.Pools));
+
+        foreach (var poolName in granted)
+        {
+            if (desiredPools.ContainsKey(poolName) || !schemas.TryGetValue(poolName, out var template))
+                continue;
+
+            // Route through the same class/caster-level gating as class-granted pools so a granted pool restricted to
+            // a class, or scaled by caster level, behaves identically regardless of how it was granted.
+            TryAddPool(
+                character,
+                poolName,
+                template,
+                system,
+                classLevels,
+                characterLevel,
+                casterLevel,
+                _classProvider,
+                existingPools,
+                desiredPools);
         }
     }
 
     private static bool TryAddPool(
+        Character character,
         string poolName,
         ResourcePoolTemplate template,
         string system,
@@ -175,19 +187,19 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
                 classProvider, out var levelForMax))
             return false;
 
-        var maxValue = DeriveMaxValue(template, levelForMax);
+        var maxValue = DeriveMaxValue(template, levelForMax, character, system, characterLevel);
         var existing = existingPools.GetValueOrDefault(poolName);
         if (template.OwnerManaged == true)
         {
             // The owner sets Max/Current (e.g. a meter derived from other stats); create once, never rebuild.
-            desiredPools[poolName] = existing ?? BuildPool(poolName, template, Math.Max(0, maxValue), null);
+            desiredPools[poolName] = existing ?? BuildPool(poolName, template, Math.Max(0, maxValue), null, levelForMax);
             return true;
         }
 
         if (maxValue <= 0)
             return false;
 
-        desiredPools[poolName] = BuildPool(poolName, template, maxValue, existing);
+        desiredPools[poolName] = BuildPool(poolName, template, maxValue, existing, levelForMax);
         return true;
     }
 
@@ -266,9 +278,12 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
         return true;
     }
 
-    private static ResourcePool BuildPool(string poolName, ResourcePoolTemplate template, int maxValue, ResourcePool? existing)
+    private static ResourcePool BuildPool(string poolName, ResourcePoolTemplate template, int maxValue, ResourcePool? existing, int level)
     {
-        var recovery = template.Recovery ?? RecoveryType.LongRest;
+        var recovery = TryAtLevel(template.RecoveryByLevel, level, out var leveledRecovery)
+            ? leveledRecovery
+            : template.Recovery ?? RecoveryType.LongRest;
+        var die = TryAtLevel(template.DieByLevel, level, out var leveledDie) ? leveledDie : template.Die;
         string? startsAt;
         try
         {
@@ -288,7 +303,8 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
                 Current = startsAt == "zero" ? 0 : maxValue,
                 Max = maxValue,
                 Recovery = recovery,
-                LastRecoveredDay = 0
+                LastRecoveredDay = 0,
+                Die = die,
             };
         }
 
@@ -296,7 +312,8 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
         {
             Max = maxValue,
             Recovery = recovery,
-            Current = Math.Min(existing.Current, maxValue)
+            Current = Math.Min(existing.Current, maxValue),
+            Die = die,
         };
     }
 
@@ -324,8 +341,33 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
         return 1;
     }
 
-    private static int DeriveMaxValue(ResourcePoolTemplate template, int level)
+    /// <summary>The value of the highest level key at or below <paramref name="level"/>; false when none is reached.</summary>
+    private static bool TryAtLevel<T>(Dictionary<string, T>? byLevel, int level, out T value)
     {
+        value = default!;
+        var reached = byLevel?
+            .Where(kv => int.TryParse(kv.Key, out var l) && l <= level)
+            .OrderByDescending(kv => int.Parse(kv.Key))
+            .ToList();
+        if (reached is not { Count: > 0 })
+            return false;
+
+        value = reached[0].Value;
+        return true;
+    }
+
+    private static int DeriveMaxValue(ResourcePoolTemplate template, int level, Character character, string system, int characterLevel)
+    {
+        if (template.MaxFrom is { } formula)
+        {
+            var value = formula.LevelMultiplier * level + formula.Plus;
+            if (!string.IsNullOrWhiteSpace(formula.Ability))
+                value += AbilityModifier(character.SystemStats, formula.Ability);
+            if (formula.ProficiencyBonus && system == RulesetSystem.Dnd5e)
+                value += Dnd5eClassProfileResolver.ProficiencyBonus(Math.Max(1, characterLevel));
+            return Math.Max(formula.Min, value);
+        }
+
         if (template.LevelToMaxMap?.Count > 0)
         {
             var applicableLevels = template.LevelToMaxMap.Keys
@@ -348,4 +390,29 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
 
         return template.DefaultMax ?? 0;
     }
+
+    private static int AbilityModifier(SystemExtension? stats, string ability) => stats switch
+    {
+        Dnd5eExtension dnd => dnd.GetAbilityModifier(ability.ToLowerInvariant() switch
+        {
+            "strength" => dnd.Strength,
+            "dexterity" => dnd.Dexterity,
+            "constitution" => dnd.Constitution,
+            "intelligence" => dnd.Intelligence,
+            "wisdom" => dnd.Wisdom,
+            "charisma" => dnd.Charisma,
+            _ => 10,
+        }),
+        Pf2eExtension pf2 => ability.ToLowerInvariant() switch
+        {
+            "strength" => pf2.StrengthMod,
+            "dexterity" => pf2.DexterityMod,
+            "constitution" => pf2.ConstitutionMod,
+            "intelligence" => pf2.IntelligenceMod,
+            "wisdom" => pf2.WisdomMod,
+            "charisma" => pf2.CharismaMod,
+            _ => 0,
+        },
+        _ => 0,
+    };
 }

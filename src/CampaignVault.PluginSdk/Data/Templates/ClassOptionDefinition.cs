@@ -32,6 +32,12 @@ public record ClassOptionDefinition : RulesetTemplate
     public List<FeatEffect> Effects { get; init; } = [];
     public Dictionary<int, List<FeatureDefinition>> Features { get; init; } = [];
 
+    /// <summary>5e: spellcasting it gives a class without its own (see <see cref="OptionSpellcasting"/>).</summary>
+    public OptionSpellcasting? Spellcasting { get; init; }
+
+    /// <summary>What a character needs before it is offered (see <see cref="OptionPrerequisite"/>).</summary>
+    public OptionPrerequisite? Prerequisite { get; init; }
+
     /// <summary>The option it adds, tagged homebrew when it didn't ship with the host.</summary>
     public ChoiceOption ToOption() => new()
     {
@@ -43,6 +49,8 @@ public record ClassOptionDefinition : RulesetTemplate
         KeyAbility = KeyAbility,
         Effects = Effects,
         Features = Features,
+        Spellcasting = Spellcasting,
+        Prerequisite = Prerequisite,
         Homebrew = Homebrew,
     };
 
@@ -57,5 +65,7 @@ public record ClassOptionDefinition : RulesetTemplate
             KeyAbility = child.KeyAbility ?? parent.KeyAbility,
             Effects = child.Effects.Count > 0 ? child.Effects : parent.Effects,
             Features = child.Features.Count > 0 ? child.Features : parent.Features,
+            Spellcasting = child.Spellcasting ?? parent.Spellcasting,
+            Prerequisite = child.Prerequisite ?? parent.Prerequisite,
         };
 }

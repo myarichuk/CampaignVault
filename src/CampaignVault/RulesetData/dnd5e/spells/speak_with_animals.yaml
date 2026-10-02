@@ -2,6 +2,7 @@
 name: speak_with_animals
 system: dnd5e
 level: 1
+school: divination
 classes: [bard, druid, ranger]
 concentration: false
 castingTime: 1 action

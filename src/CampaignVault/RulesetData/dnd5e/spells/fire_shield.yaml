@@ -2,6 +2,7 @@
 name: fire_shield
 system: dnd5e
 level: 4
+school: evocation
 classes: [wizard]
 concentration: false
 castingTime: 1 action

@@ -2,6 +2,7 @@
 name: shield_of_faith
 system: dnd5e
 level: 1
+school: abjuration
 classes: [cleric, paladin]
 concentration: true
 castingTime: 1 bonus action

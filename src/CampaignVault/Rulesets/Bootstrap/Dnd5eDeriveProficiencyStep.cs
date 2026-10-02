@@ -6,7 +6,10 @@ namespace CampaignVault.Rulesets.Bootstrap;
 
 public sealed class Dnd5eDeriveProficiencyStep(
     ClassDefinitionProvider? classProvider = null,
-    BackgroundDefinitionProvider? backgroundProvider = null) : IBootstrapStep, ILevelGainStep
+    BackgroundDefinitionProvider? backgroundProvider = null,
+    ProgressionDefinitionProvider? progressionProvider = null,
+    FeatDefinitionProvider? featProvider = null,
+    RaceDefinitionProvider? raceProvider = null) : IBootstrapStep, ILevelGainStep
 {
     public string Name => "dnd5e.derive_proficiency";
 
@@ -52,9 +55,10 @@ public sealed class Dnd5eDeriveProficiencyStep(
         var derivedSkills = DeriveBackgroundSkillModifiers(context, stats, prof);
         derivedSkills.AddRange(DeriveChosenSkillModifiers(stats, prof));
         var derivedSaves = DeriveClassSavingThrowModifiers(context, stats, prof);
+        var derivedEquipment = DeriveEquipmentProficiencies(context, stats);
         var hints = isFirstDerivation ? BuildClassSkillChoiceHints(context, stats) : [];
 
-        if (!profChanged && derivedSkills.Count == 0 && derivedSaves.Count == 0 && hints.Count == 0)
+        if (!profChanged && derivedSkills.Count == 0 && derivedSaves.Count == 0 && derivedEquipment.Count == 0 && hints.Count == 0)
         {
             return null;
         }
@@ -71,6 +75,11 @@ public sealed class Dnd5eDeriveProficiencyStep(
         if (derivedSaves.Count > 0)
         {
             messageParts.Add($"savingThrowModifiers[{string.Join(", ", derivedSaves)}]");
+        }
+
+        if (derivedEquipment.Count > 0)
+        {
+            messageParts.Add($"proficiencies[{string.Join(", ", derivedEquipment)}]");
         }
 
         return new BootstrapStepResult
@@ -134,24 +143,21 @@ public sealed class Dnd5eDeriveProficiencyStep(
     public const string SkillsChoiceKey = "skills";
 
     /// <summary>
-    /// Fills SkillModifiers for skills granted by the character's background, using ability mod + proficiency bonus.
-    /// Never overwrites a skill the caller already set (DM override, Expertise, etc.).
+    /// Fills SkillModifiers for skills granted by the character's background and race, using ability mod + proficiency
+    /// bonus. Never overwrites a skill the caller already set (DM override, Expertise, etc.).
     /// Class skill picks are <see cref="DeriveChosenSkillModifiers"/>.
     /// </summary>
     private List<string> DeriveBackgroundSkillModifiers(BootstrapContext context, Dnd5eExtension stats, int prof)
     {
         var applied = new List<string>();
-        if (backgroundProvider is null || string.IsNullOrWhiteSpace(stats.Background))
+        var skills = new List<string>(CharacterRace.Of(context.Character, RulesetSystem.Dnd5e, raceProvider)?.Skills ?? []);
+        if (backgroundProvider is not null && !string.IsNullOrWhiteSpace(stats.Background)
+            && backgroundProvider.TryGet(RulesetSystem.Dnd5e, stats.Background, out var background) && background is not null)
         {
-            return applied;
+            skills.AddRange(background.SkillProficiencies);
         }
 
-        if (!backgroundProvider.TryGet(RulesetSystem.Dnd5e, stats.Background, out var background) || background is null)
-        {
-            return applied;
-        }
-
-        foreach (var skill in background.SkillProficiencies)
+        foreach (var skill in skills)
         {
             if (stats.SkillModifiers.ContainsKey(skill))
             {
@@ -172,12 +178,17 @@ public sealed class Dnd5eDeriveProficiencyStep(
     }
 
     /// <summary>
-    /// Fills SavingThrowModifiers for saves the character's starting class is proficient in, using ability mod + proficiency bonus.
-    /// Never overwrites a save the caller already set.
+    /// Fills SavingThrowModifiers for saves the character's starting class and its feats make it proficient in, using
+    /// ability mod + proficiency bonus. Never overwrites a save the caller already set.
     /// </summary>
     private List<string> DeriveClassSavingThrowModifiers(BootstrapContext context, Dnd5eExtension stats, int prof)
     {
         var applied = new List<string>();
+        foreach (var ability in CharacterFeats.SavingThrows(context.Character, RulesetSystem.Dnd5e, featProvider))
+        {
+            AddSave(stats, ability, prof, applied);
+        }
+
         if (classProvider is null)
         {
             return applied;
@@ -194,18 +205,81 @@ public sealed class Dnd5eDeriveProficiencyStep(
 
             foreach (var ability in classDef.SavingThrows)
             {
-                if (stats.SavingThrowModifiers.ContainsKey(ability))
-                {
-                    continue;
-                }
-
-                var abilityScore = GetAbilityScore(stats, ability);
-                stats.SavingThrowModifiers[ability] = stats.GetAbilityModifier(abilityScore) + prof;
-                applied.Add(ability);
+                AddSave(stats, ability, prof, applied);
             }
         }
 
         return applied;
+    }
+
+    private static void AddSave(Dnd5eExtension stats, string ability, int prof, List<string> applied)
+    {
+        if (stats.SavingThrowModifiers.Keys.Any(k => k.Equals(ability, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        stats.SavingThrowModifiers[ability] = stats.GetAbilityModifier(GetAbilityScore(stats, ability)) + prof;
+        applied.Add(ability);
+    }
+
+    /// <summary>
+    /// Joins the armor, weapon and tool proficiencies the character's sources give to the sheet's lists: the starting
+    /// class's full set, each later class's multiclass set, class features (a domain's heavy armor) and the background's
+    /// tools. Only adds, so an entry the DM wrote stays.
+    /// </summary>
+    private List<string> DeriveEquipmentProficiencies(BootstrapContext context, Dnd5eExtension stats)
+    {
+        var grants = new List<ProficiencyGrants>();
+        if (classProvider is not null)
+        {
+            var classLevels = Dnd5eClassProfileResolver.ParseClassLevels(context.Character.ClassLevel, stats.ClassLevels);
+            for (var i = 0; i < classLevels.Count; i++)
+            {
+                if (classProvider.TryResolveClass(RulesetSystem.Dnd5e, classLevels[i].Class, out var classDef)
+                    && (i == 0 ? classDef?.Proficiencies : classDef?.MulticlassProficiencies) is { } grant)
+                {
+                    grants.Add(grant);
+                }
+            }
+        }
+
+        grants.AddRange(CharacterClassFeatures.Proficiencies(context.Character, RulesetSystem.Dnd5e, progressionProvider));
+        grants.AddRange(CharacterFeats.Proficiencies(context.Character, RulesetSystem.Dnd5e, featProvider));
+        if (CharacterRace.Of(context.Character, RulesetSystem.Dnd5e, raceProvider)?.Proficiencies is { } racial)
+        {
+            grants.Add(racial);
+        }
+
+        if (backgroundProvider is not null && !string.IsNullOrWhiteSpace(stats.Background)
+            && backgroundProvider.TryGet(RulesetSystem.Dnd5e, stats.Background, out var background) && background is not null)
+        {
+            grants.Add(new ProficiencyGrants { Tools = background.ToolProficiencies });
+        }
+
+        var added = new List<string>();
+        foreach (var grant in grants)
+        {
+            Join(stats.ArmorProficiencies, grant.Armor, added);
+            Join(stats.WeaponProficiencies, grant.Weapons, added);
+            Join(stats.ToolProficiencies, grant.Tools, added);
+        }
+
+        return added;
+    }
+
+    private static void Join(List<string> sheet, IEnumerable<string> granted, List<string> added)
+    {
+        foreach (var entry in granted)
+        {
+            if (string.IsNullOrWhiteSpace(entry) || sheet.Contains(entry, StringComparer.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            sheet.Add(entry);
+            added.Add(entry);
+        }
     }
 
     private static int GetAbilityScore(Dnd5eExtension stats, string ability) => ability.ToLowerInvariant() switch

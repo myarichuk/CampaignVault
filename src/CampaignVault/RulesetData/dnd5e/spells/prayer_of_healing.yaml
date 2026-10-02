@@ -2,6 +2,7 @@
 name: prayer_of_healing
 system: dnd5e
 level: 2
+school: evocation
 classes: [cleric]
 concentration: false
 castingTime: 10 minutes

@@ -3,6 +3,7 @@ name: symbol
 system: dnd5e
 tags: [fear, mental]
 level: 7
+school: abjuration
 classes: [bard, cleric, wizard]
 concentration: false
 castingTime: 1 minute

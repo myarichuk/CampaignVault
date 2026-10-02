@@ -1,5 +1,7 @@
 # Necromancer's Grimoire (original homebrew, not an SRD entry).
-# Cold cairn-light: Intelligence save, 8d10 necrotic, half on success.
+# Cold cairn-light: Intelligence save, 6d10 necrotic, half on success.
+# Balance anchor: cone_of_cold (5th, 8d8 area) — trimmed from 8d10 (was the
+# hardest-hitting instantaneous 5th-level single-target line on an Int save).
 name: ng_crypt_flare
 system: dnd5e
 level: 5
@@ -12,10 +14,10 @@ material: false
 materialConsumed: false
 damageType: necrotic
 damageAtSlotLevel:
-  5: 8d10
-  6: 9d10
-  7: 10d10
-  8: 11d10
-  9: 12d10
+  5: 6d10
+  6: 7d10
+  7: 8d10
+  8: 9d10
+  9: 10d10
 saveType: intelligence
 saveSuccess: half

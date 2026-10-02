@@ -2,6 +2,7 @@
 name: false_life
 system: dnd5e
 level: 1
+school: necromancy
 classes: [sorcerer, wizard]
 concentration: false
 castingTime: 1 action

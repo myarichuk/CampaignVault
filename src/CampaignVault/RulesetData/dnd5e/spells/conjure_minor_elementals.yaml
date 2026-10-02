@@ -2,6 +2,7 @@
 name: conjure_minor_elementals
 system: dnd5e
 level: 4
+school: conjuration
 classes: [druid, wizard]
 concentration: true
 castingTime: 1 minute

@@ -2,6 +2,7 @@
 name: animal_shapes
 system: dnd5e
 level: 8
+school: transmutation
 classes: [druid]
 concentration: true
 castingTime: 1 action

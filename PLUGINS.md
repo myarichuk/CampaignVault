@@ -104,7 +104,7 @@ Plugins/
 
 **Adult / optional content:** belongs in separate repos referencing PluginSdk; the main repo ships only neutral samples (e.g. `plugins/CraftingMode`).
 
-**Compatibility:** host engine version is `0.13.0` (`EngineVersion.Current`). Set `minEngineVersion` accordingly.
+**Compatibility:** host engine version is `0.14.0` (`EngineVersion.Current`). Set `minEngineVersion` accordingly.
 
 In-tree reference: `plugins/CraftingMode` (mode id `crafting`, `$type` `crafting_step`).
 
@@ -304,7 +304,7 @@ cd MyRulesetPlugin
 **Step 2:** Reference the PluginSdk package only (never ProjectReference the host):
 
 ```xml
-<PackageReference Include="CampaignVault.PluginSdk" Version="0.12.0" />
+<PackageReference Include="CampaignVault.PluginSdk" Version="0.14.0" />
 ```
 
 `IRulesetModule`, `IActionResolution`, `ICombatRuleset`, and the character-bootstrap
@@ -535,26 +535,50 @@ extraLanguages: [Dwarvish]
 traits:
   - Darkvision
   - Dwarven Resilience
+# 5e mechanics (each optional):
+darkvision: 60                                   # shown with the traits as "Darkvision 60 ft."
+effects:                                         # the effect vocabulary, applied to the character's rolls
+  - { kind: resistance, damageType: poison }
+  - { kind: advantage, on: save, assert: [againstPoison], when: "the saving throw is against poison" }
+proficiencies: { weapons: [battleaxe, warhammer], armor: [], tools: [] }
+skills: [Perception]                             # fixed skill proficiencies
+spells: { 1: [light], 3: [faerie_fire] }         # by character level: cantrips to the cantrips, others to known
+abilityChoice: { count: 2, exclude: [Charisma] } # +1 to that many different abilities of the player's choice
+skillChoices: 2                                  # skills of the player's choice
+bonusFeats: 1                                    # a feat of the player's choice at level 1
 ```
+
+The 5e `pc` recipe asks for a race's choices in steps shown only for a race that has them: `raceAbilities` (an
+`allocate` step from the `raceAbilities` source, each pick +1 to that score), `raceSkills` (a `pickN` with
+`target: skills`, so its picks are skill proficiencies like the class's) and `raceFeat` (a `pickOne` of feats with
+`target: feats`). A subrace is a race with `inherits: [dwarf]` and `effects+:` / `traits+:` for what it adds.
+A feat taken this way doesn't ask its own choices (a half-feat's ability); the DM records those.
 
 ### Class Definition
 
 ```yaml
-name: Fighter
-description: Martial warrior
-hit_die: d10
-proficiencies:
-  armor:
-    - All
-  weapons:
-    - Simple
-    - Martial
-  saves:
-    - Strength
-    - Constitution
+name: fighter
+system: dnd5e
+hitDie: d10
+casterType: None            # None | Full | Half | HalfRoundUp | Third | Warlock
+savingThrows: [Strength, Constitution]
+pools: [action_surge, second_wind]
+aliases: [fighter]
+skillChoices: { count: 2, from: [Acrobatics, Athletics, Perception] }
+proficiencies: { armor: [light, medium, heavy, shields], weapons: [simple, martial] }    # 5e, starting class
+multiclassProficiencies: { armor: [light, medium, shields], weapons: [simple, martial] } # 5e, a later class
 ```
 
-**Note:** Schema is system-agnostic. Define what makes sense for your system. Fields not matching any property are ignored.
+**5e proficiencies.** `proficiencies:` (here, on a class feature, a race or a feat) takes
+`armor` (`light`, `medium`, `heavy`, `shields`), `weapons` (`simple`, `martial`, or item names such as
+`crossbow_hand`) and `tools` (names such as `thieves_tools`). The sheet's `armorProficiencies`,
+`weaponProficiencies` and `toolProficiencies` hold the union of everything the character has: the starting class's
+`proficiencies`, each later class's `multiclassProficiencies`, its class features', race's and feats', and the
+background's `toolProficiencies`. Derivation only adds, so an entry the DM writes stays. Once `weaponProficiencies` is set, an
+attack with a weapon it doesn't cover (by the item's `simple`/`martial` tag or its name) gets no proficiency bonus,
+and the roll note says why. A choice ("three musical instruments") stays in the description.
+
+**Note:** Fields not matching any property are ignored.
 
 ### Inheritance, list edits, patches and `requires:` (every template kind)
 
@@ -664,7 +688,8 @@ steps+:
   object of slot → option id, or a list: `{"2.subclass": "evocation", "2.invocation": ["agonizingBlast",
   "repellingBlast"]}`. A choice's `count:` is how many different options it takes ("choose two invocations"); one
   picked at an earlier level of the same key can't be picked again. A choice with no options of its own (a later
-  invocation) offers that key's options from another level. Choice types:
+  invocation) offers that key's options from another level; inside a subclass ("two more maneuvers" at 7), the
+  subclass's own features are searched first. Choice types:
   - `AsiOrFeat` takes one ability (+2), two (+1 each) or one feat instead (its `prerequisites` checked), and no score
     may pass 20.
   - `SkillIncrease` (PF2e) raises one skill a rank: trained or expert at any level, master from 7, legendary from 15.
@@ -690,6 +715,7 @@ steps+:
           description: Your hit point maximum rises by 1 per sorcerer level. Without armor, your AC is 13 + Dexterity.
           hpPerLevel: 1                                          # added to max HP, per character level
           unarmoredArmorClass: { base: 13, abilities: [Dexterity] }   # the best formula wins when no armor is worn
+          # proficiencies: { armor: [heavy] }                     # joins the sheet's lists from this level
       6:
         - name: Elemental Affinity
           description: ...                                       # text only: the DM applies it
@@ -698,7 +724,7 @@ steps+:
   A feature's `effects:` take the same vocabulary as an option's (fixed values only; a bonus that scales with a
   modifier stays text). Features are never stored on the character: get_entity (`classFeatures`) and the
   builder preview read them from the progression and the recorded picks, so a fix to the data reaches every character.
-  The engine applies `effects`, `hpPerLevel`, `unarmoredArmorClass` and `spells`; everything else is the description,
+  The engine applies `effects`, `hpPerLevel`, `unarmoredArmorClass`, `proficiencies` and `spells`; everything else is the description,
   which the DM reads. The class's own features take the same fields (Unarmored Defense is
   `unarmoredArmorClass: { base: 10, abilities: [Dexterity, Constitution] }`).
 
@@ -706,6 +732,35 @@ steps+:
   sheet's prepared list once the class level is reached (a domain's, an oath's, a circle's) and cost no pick.
   `spellOptions:` adds spells to the class's list *to choose from* instead (a patron's expanded list): the builder's
   spells step offers them beside the class's own, and each costs a pick like any other.
+
+  **A subclass that casts (5e).** An option's `spellcasting:` gives a class with no casting of its own spells from another
+  class's list:
+
+  ```yaml
+  spellcasting:
+    casterType: Third              # counts toward spell slots (multiclass rules included)
+    ability: Intelligence          # spell save DC and attack bonus
+    list: wizard                   # the list it learns from
+    schools: [evocation]           # leveled spells from these schools only...
+    anySchoolAt: [8]               # ...until the first of these class levels (then any school, marked in the options)
+    cantripsKnown: { 3: 2, 10: 3 } # by class level, the highest reached wins
+    spellsKnown: { 3: 3, 4: 4 }
+  ```
+
+  Once it's picked, the builder's spells step appears (its `when: "spellcasting != None"` reads the class's caster type,
+  else the picked subclass's), offers the list's spells up to the slot level, and counts from these tables. Spells carry
+  `school:`.
+
+  **Option prerequisites.** `prerequisite:` on an option keeps it out of a choice until the character reaches a class
+  level and/or has picked another option of the class at any choice (a pact, a path). The builder and level-up offer
+  it only from then on, and a later option-less choice that borrows the list filters it at its own level:
+
+  ```yaml
+  - { id: boundLantern, label: Bound Lantern, prerequisite: { level: 5, option: lanternPact } }
+  ```
+
+  Other prerequisites (a known spell, an ability score) stay description text. (`requires:` is something else: it
+  gates a whole template on a plugin or mode.)
 
   **Effect vocabulary** (`effects:` on a feat, feature or option; fixed values only, the DM supplies facts, never numbers):
 
@@ -716,7 +771,14 @@ steps+:
   | `extraDamage` | `dice: 1d8`, optional `damageType` | rolled on a hit and again on a critical hit (5e attacks) |
   | `critRange` | `value: 19` | a natural d20 at or above it is a critical hit (the lowest wins) |
   | `resistance` | `damageType` | damage of that type to the character is halved (5e attacks) |
+  | `damageReduction` | `value`, optional `damageType` | damage to the character drops by that much, before resistance (5e attacks) |
+  | `initiativeBonus` | `value` | adds to the character's initiative |
+  | `speedBonus` | `value` (feet) | adds to the character's speed |
+  | `passiveBonus` | `value`, optional `subject: Investigation` | adds to passive Perception (or passive Investigation) |
 
+  `damageType` on `resistance` and `damageReduction` may list several, comma-separated. Initiative, speed and passive
+  bonuses have no action to carry a toggle or an assertion, so only unconditional ones count. A conditional `resistance`
+  (`assert: [raging]`, "while raging") is checked against the attack that deals the damage, like an attack bonus.
   Any effect can add `weapon: [ranged, melee, oneHanded, finesse, twoHanded, heavy]` (checked from the weapon's tags),
   `toggle: name` (the player opts in with an action parameter), or `assert: [flag]` with a `when:` sentence (the DM
   claims the condition holds). Anything beyond this stays description text, for the DM.
@@ -735,7 +797,7 @@ steps+:
     3: [{ name: Kindled Blade, description: ..., effects: [{ kind: damageBonus, value: 1, weapon: [melee] }] }]
   ```
 
-  It takes the option fields above (`skills`, `keyAbility`, `effects`, `features`, `inherits:`, `requires:`). A file
+  It takes the option fields above (`skills`, `keyAbility`, `effects`, `features`, `prerequisite`, `inherits:`, `requires:`). A file
   naming a class with no progression is skipped with a warning; it never replaces a shipped option of the same id.
 
   **Switching off shipped content.** In a `patches:` file, `hidden: true` removes any shipped template (a background, a
@@ -825,6 +887,74 @@ and any field's `hint:` is shown in the empty field. Field `type`:
 
 The server checks every value against its field (`statBlock.fields`) and refuses to start on a field that lands
 nowhere, an unknown type, or a `modifiers`/`choice` field whose source has no names in that system.
+
+### Resource Pool Definition
+
+```yaml
+# RulesetData/dnd5e/pools/gambit_dice.yaml
+name: gambit_dice
+applicableSystems: [dnd5e]
+applicableClasses: [duelist]      # its level is this class's level; without it, the character's
+grantedOnly: true                 # only from a feat's extraPools or a feature's pools, never by class
+recovery: ShortRest               # LongRest | ShortRest | PerTurn | EncounterEnd
+recoveryByLevel: { "11": PerTurn } # optional: from that level on
+levelToMaxMap: { "3": 4, "7": 5 } # the highest reached level wins
+# maxFrom: { ability: Charisma, proficiencyBonus: false, levelMultiplier: 0, plus: 0, min: 1 }   # instead of the table
+die: d8                           # shown on the pool; one use rolls it
+dieByLevel: { "10": d10, "18": d12 }
+```
+
+A pool is sized by `levelToMaxMap` (or `defaultMax`) or by `maxFrom`: the ability's modifier + the proficiency bonus
+(when `proficiencyBonus: true`) + `levelMultiplier` × the pool's level + `plus`, at least `min`. A max of 0 means the
+character doesn't have the pool. Something grants a `grantedOnly` pool by name: a feat's `extraPools`, or a class
+feature's `pools: [gambit_dice]` (a subclass's, once picked and reached). `spell_slots_*` pools follow the caster level.
+
+### Background Definition
+
+```yaml
+name: acolyte
+system: dnd5e
+skillProficiencies: [Insight, Religion]
+toolProficiencies: []
+languages: [Two of your choice]
+feature: Shelter of the Faithful
+equipment:                                # what a character built with it starts holding
+  - { item: dagger }                      # an item template: its fields are copied in
+  - { name: Prayer book }                 # a plain item
+  - { name: Stick of incense, quantity: 5 }
+gold: 15                                  # starts the gold pool
+```
+
+The character builder gives a new character its background's equipment on commit (not again when the same draft id is
+committed), and the gold fills its `gold` pool, which otherwise starts empty.
+
+### Feat Definition (5e)
+
+```yaml
+# RulesetData/dnd5e/feats/steadfast_training.yaml
+name: steadfast_training
+system: dnd5e
+prerequisite: Strength 13 or higher          # shown; the checkable part is prerequisites:
+prerequisites: [{ ability: Strength, min: 13 }]
+mechanicalSummary: +1 Strength or Constitution and its saving throw...
+abilityIncrease: { choose: [Strength, Constitution], amount: 1 }   # one entry: fixed; none: any ability
+savingThrowOfIncrease: true                  # proficient in the raised ability's save
+savingThrows: [Wisdom]                       # ...or fixed ones
+proficiencies: { armor: [medium], weapons: [longbow], tools: [smiths_tools] }
+skillChoices: 1                              # skills of the player's choice
+spells: [light]                              # given outright
+spellChoices: [{ level: 0, count: 2, lists: [wizard, sorcerer] }]   # chosen from those lists
+hpPerLevel: 1                                # from the level it's taken at, for every level
+effects: [{ kind: saveBonus, value: 1 }]     # roll effects (see the effect vocabulary)
+extraPools: [lucky_points]                   # grantedOnly pools it gives
+```
+
+A feat taken at an ability score improvement asks its own choices in the same place, as slots after the improvement
+(`4.steadfast_training.ability`, `.skills`, `.spells`): the builder lists them once the feat is picked, and a
+`level_up` / `character_level_up` sends them with the feat's pick (`options` with the picks so far lists them). The
+picks are recorded as `levelUpChoices` (`steadfast_training.ability`, `skills`, `steadfast_training.spells`), and the
+sheet derives the rest: the raised score, the save, the proficiencies, the hit points, and the spells (cantrips to
+the cantrips, others to the known list).
 
 ### Item Definition
 
@@ -1368,5 +1498,5 @@ Deferred capabilities (not yet implemented):
 
 ---
 
-**Last updated:** engine 0.13.0 — character creation contracts (`ICharacterCreation`, `IRecipeValidator`, `CharacterDraft`, `CreationOption.Values`), `FeatEffect`/`RulesetTemplate.Requires`, `SpellRepertoire`, explicit death; engine 0.11.0 — `IRollModifierProvider`/`RollQuery`/`RollModifier` (what buffs, conditions, willpower and plugin rules do to rolls; `IChangeContext.ResolveRollModifiers` for plugin rolls), `SystemExtension.WillpowerDrained` and willpower that matters (charm, fear, compulsion and mental saves; rest restores what was drained), `SpellDefinition.tags`, effective speed (`Speed` modifiers now slow travel and show on cards, plus a context line for chases); engine 0.10.0 — `IWorldTimeObserver`/`TimeAdvance` (plugin time hook), `apply_effect` (clamped, expiring, non-stacking buffs/debuffs; `persistent` for curses and auras), the consequence beat (`consequences`, `consequenceCooldownHours`, `consequenceMaxPerDay` options), `tether` (subject → anchor with break DC), ammunition (`ammoType`, `ammoPerShot`, `fireModes`, `mode`), and weapon bursts that fan out round-robin over targets; engine 0.9.0 — `ActorActionAttribute` and `ActionBlock` (the host refuses a marked verb, and core attack/spell/item-use actions, from an actor who is incapacitated, stunned, paralyzed, petrified, unconscious or carries a `BlocksAllActions` status; whoever applies such a status must give it an exit); engine 0.8.0 — public `EngineOnlyAttribute`, `plugin.json` `systems`, `IModeStateMachine.TryAddParticipant`/`TryRemoveParticipant` and `core.mode_joined.v1`/`core.mode_left.v1` (host handling of `mode_transition` join/leave and `systems` lands after the SDK publish); engine 0.7.0 — `IPluginCampaignOptionsUpgrader`, `IContextTurn.Config`/`Time`/`LoadCharacterAsync`, `playerOnlyModeIds`, owner-managed pools, host-enforced mode action slots
+**Last updated:** engine 0.16.0 — option `prerequisite` (class level, earlier pick); engine 0.15.0 — effect kinds `initiativeBonus`, `speedBonus`, `passiveBonus` and `damageReduction`; engine 0.14.0 — `ProficiencyGrants` (5e armor, weapon and tool proficiencies on classes and features; weapon proficiency gates the attack bonus), pool `maxFrom`, `die`/`dieByLevel`, `recoveryByLevel`, `grantedOnly` and feature-granted `pools`, subclass `spellcasting` and spell `school`; engine 0.13.0 — character creation contracts (`ICharacterCreation`, `IRecipeValidator`, `CharacterDraft`, `CreationOption.Values`), `FeatEffect`/`RulesetTemplate.Requires`, `SpellRepertoire`, explicit death; engine 0.11.0 — `IRollModifierProvider`/`RollQuery`/`RollModifier` (what buffs, conditions, willpower and plugin rules do to rolls; `IChangeContext.ResolveRollModifiers` for plugin rolls), `SystemExtension.WillpowerDrained` and willpower that matters (charm, fear, compulsion and mental saves; rest restores what was drained), `SpellDefinition.tags`, effective speed (`Speed` modifiers now slow travel and show on cards, plus a context line for chases); engine 0.10.0 — `IWorldTimeObserver`/`TimeAdvance` (plugin time hook), `apply_effect` (clamped, expiring, non-stacking buffs/debuffs; `persistent` for curses and auras), the consequence beat (`consequences`, `consequenceCooldownHours`, `consequenceMaxPerDay` options), `tether` (subject → anchor with break DC), ammunition (`ammoType`, `ammoPerShot`, `fireModes`, `mode`), and weapon bursts that fan out round-robin over targets; engine 0.9.0 — `ActorActionAttribute` and `ActionBlock` (the host refuses a marked verb, and core attack/spell/item-use actions, from an actor who is incapacitated, stunned, paralyzed, petrified, unconscious or carries a `BlocksAllActions` status; whoever applies such a status must give it an exit); engine 0.8.0 — public `EngineOnlyAttribute`, `plugin.json` `systems`, `IModeStateMachine.TryAddParticipant`/`TryRemoveParticipant` and `core.mode_joined.v1`/`core.mode_left.v1` (host handling of `mode_transition` join/leave and `systems` lands after the SDK publish); engine 0.7.0 — `IPluginCampaignOptionsUpgrader`, `IContextTurn.Config`/`Time`/`LoadCharacterAsync`, `playerOnlyModeIds`, owner-managed pools, host-enforced mode action slots
 **Plugin API version:** 1.4 (adds the 0.8.0 contracts above; 1.3 added `IPluginCampaignOptionsUpgrader` and the 0.7.0 hooks above; 1.2 added `IPluginTraitsUpgrader`; 1.1 added `IInteractionMode`/`IModeStateMachine`/`IWorldChangeObserver`; `IRulesetModule` surface unchanged from 1.0)

@@ -248,6 +248,7 @@ public class ResourcePoolInitializerTests
 
         Assert.True(character.SystemStats.ResourcePools.ContainsKey("gold"));
         Assert.Equal(1000000, character.SystemStats.ResourcePools["gold"].Max);
+        Assert.Equal(0, character.SystemStats.ResourcePools["gold"].Current);   // the max is a ceiling, not a purse
     }
 
     [Fact]

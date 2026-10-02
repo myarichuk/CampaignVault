@@ -137,7 +137,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         Assert.Equal(16, stats.Constitution); // 14 base + 2 dwarf ability bonus
         Assert.Equal(25f, stats.Movement); // dwarf base speed
         Assert.Contains("Size: Medium", character.DistinctiveFeatures);
-        Assert.Contains("Darkvision", character.DistinctiveFeatures);
+        Assert.Contains("Darkvision 60 ft.", character.DistinctiveFeatures);
         Assert.Contains(report.Steps, s => s.StepName == "dnd5e.derive_race");
     }
 

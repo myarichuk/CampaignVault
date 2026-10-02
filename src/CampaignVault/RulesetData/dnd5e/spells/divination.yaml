@@ -2,6 +2,7 @@
 name: divination
 system: dnd5e
 level: 4
+school: divination
 classes: [druid]
 concentration: false
 castingTime: 1 action

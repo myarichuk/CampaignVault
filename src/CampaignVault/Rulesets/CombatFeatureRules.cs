@@ -41,6 +41,28 @@ internal static class CombatFeatureRules
         : stats.Level is > 0 ? Bootstrap.Dnd5eClassProfileResolver.ProficiencyBonus(stats.Level.Value)
         : 0;
 
+    /// <summary>
+    /// 5e: whether the attack's weapon is one the sheet's <c>weaponProficiencies</c> cover, by category (<c>simple</c>,
+    /// <c>martial</c>, from the item's tags) or by item name. An empty list, or a weapon of unknown category and name,
+    /// counts as proficient: characters from before the list existed keep their bonus.
+    /// </summary>
+    public static bool IsWeaponProficient(Dnd5eExtension stats, RulesetAction action)
+    {
+        if (stats.WeaponProficiencies.Count == 0)
+            return true;
+
+        var tags = action.Parameters.TryGetValue("weaponTags", out var rawTags)
+            ? rawTags.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(Norm).ToHashSet()
+            : [];
+        var category = tags.Contains("martial") ? "martial" : tags.Contains("simple") ? "simple" : null;
+        var name = action.Parameters.TryGetValue("weaponDefinition", out var definition) ? Norm(definition) : null;
+        if (category is null && string.IsNullOrEmpty(name))
+            return true;
+
+        var known = stats.WeaponProficiencies.Select(Norm).ToHashSet();
+        return (category is not null && known.Contains(category)) || (!string.IsNullOrEmpty(name) && known.Contains(name));
+    }
+
     public static int ClassLevel(Character character, string classSlug) =>
         CharacterClassResolver.GetClassLevel(CharacterClassResolver.ResolveClassLevels(character), classSlug);
 

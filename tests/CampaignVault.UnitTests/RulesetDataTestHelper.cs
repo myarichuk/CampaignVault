@@ -25,7 +25,7 @@ internal static class RulesetDataTestHelper
         var classes = new ClassDefinitionProvider(dir, Assembly);
         var conditions = new ConditionDefinitionProvider(dir, Assembly);
         var feats = new FeatDefinitionProvider(dir, Assembly);
-        var initializer = new ResourcePoolInitializer(pools, classes, feats);
+        var initializer = new ResourcePoolInitializer(pools, classes, feats, new ProgressionDefinitionProvider(dir, Assembly));
         return (pools, classes, conditions, feats, initializer);
     }
 

@@ -2,6 +2,7 @@
 name: private_sanctum
 system: dnd5e
 level: 4
+school: abjuration
 classes: [wizard]
 concentration: false
 castingTime: 10 minutes

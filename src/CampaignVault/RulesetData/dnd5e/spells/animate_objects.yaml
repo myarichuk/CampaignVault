@@ -2,6 +2,7 @@
 name: animate_objects
 system: dnd5e
 level: 5
+school: transmutation
 classes: [bard, sorcerer, wizard]
 concentration: true
 castingTime: 1 action

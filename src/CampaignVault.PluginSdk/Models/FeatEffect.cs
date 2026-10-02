@@ -22,11 +22,32 @@ public static class FeatEffectKinds
     /// <summary>The lowest natural d20 that is a critical hit (19 widens the range to 19-20). 5e.</summary>
     public const string CritRange = "critRange";
 
-    /// <summary>Resistance to the damage type (<c>damageType</c>): damage of that type to the character is halved. 5e.</summary>
+    /// <summary>
+    /// Resistance to the damage type (<c>damageType</c>, or several comma-separated): damage of that type to the character is
+    /// halved. 5e.
+    /// </summary>
     public const string Resistance = "resistance";
 
+    /// <summary>Added to the character's initiative rolls.</summary>
+    public const string InitiativeBonus = "initiativeBonus";
+
+    /// <summary>Feet added to the character's speed.</summary>
+    public const string SpeedBonus = "speedBonus";
+
+    /// <summary>Added to a passive score: <c>subject</c> Perception (the default) or Investigation. 5e.</summary>
+    public const string PassiveBonus = "passiveBonus";
+
+    /// <summary>
+    /// Damage to the character is reduced by <c>value</c> (before resistance), only damage of <c>damageType</c> when set (or
+    /// several comma-separated). 5e attacks.
+    /// </summary>
+    public const string DamageReduction = "damageReduction";
+
     public static readonly IReadOnlyList<string> All =
-        [AttackBonus, DamageBonus, SkillBonus, SaveBonus, ArmorClassBonus, Advantage, Disadvantage, ExtraDamage, CritRange, Resistance];
+    [
+        AttackBonus, DamageBonus, SkillBonus, SaveBonus, ArmorClassBonus, Advantage, Disadvantage, ExtraDamage, CritRange, Resistance,
+        InitiativeBonus, SpeedBonus, PassiveBonus, DamageReduction,
+    ];
 
     /// <summary>Kinds that carry no number: their weight is in <c>dice</c>, <c>damageType</c> or nothing at all.</summary>
     public static readonly IReadOnlyList<string> Valueless = [Advantage, Disadvantage, ExtraDamage, Resistance];

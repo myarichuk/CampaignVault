@@ -693,6 +693,135 @@ public class CharacterCreationTests : IDisposable
     }
 
     [Fact]
+    public async Task SubclassThatCasts_GetsASpellsStep_ItsSchoolsSpells_SlotsAndAbility()
+    {
+        WritePluginFile("classOptions", "spellblade.yaml", """
+            name: spellblade
+            class: fighter
+            label: Spellblade
+            spellcasting:
+              casterType: Third
+              ability: Intelligence
+              list: wizard
+              schools: [evocation]
+              anySchoolAt: [8]
+              cantripsKnown: { 3: 2 }
+              spellsKnown: { 3: 3 }
+            """);
+        var service = Service(pluginRoot: Path.Combine(_root, "plugin"));
+        var fighter = Dnd5e("fighter", 3, str: 15, intel: 14);
+        var spellblade = fighter.With("levels", new Dictionary<string, object> { ["3.subclass"] = "spellblade" });
+        var champion = fighter.With("levels", new Dictionary<string, object> { ["3.subclass"] = "champion" });
+
+        Assert.DoesNotContain("spells", Keys(service.Steps(RulesetSystem.Dnd5e, champion)));
+        var spellsStep = service.Steps(RulesetSystem.Dnd5e, spellblade).Single(s => s.Kind == CreationStepKinds.Spells);
+        var offered = service.Options(RulesetSystem.Dnd5e, spellsStep.Key, spellblade).Select(o => o.Id).ToList();
+        Assert.Contains("fire_bolt", offered);       // cantrips: any school of the list
+        Assert.Contains("magic_missile", offered);   // evocation
+        Assert.DoesNotContain("shield", offered);    // abjuration, before any any-school pick
+        Assert.DoesNotContain("fireball", offered);  // 3rd level: beyond a level-3 third caster
+
+        var preview = await service.PreviewAsync(RulesetSystem.Dnd5e, spellblade.With("spells", new SpellChoice
+        {
+            Cantrips = ["fire_bolt", "light"], Known = ["magic_missile", "burning_hands", "thunderwave"],
+        }));
+        var stats = Assert.IsType<Dnd5eExtension>(preview.Character.SystemStats);
+        Assert.DoesNotContain(preview.Errors, i => i.Step == spellsStep.Key);
+        Assert.Equal("Intelligence", stats.SpellcastingAbility);
+
+        // Slots come at commit; a level-3 third caster has two 1st-level slots.
+        var services = RulesetDataTestHelper.CreateServices();
+        new ResourcePoolInitializer(services.Pools, services.Classes, services.Feats,
+                new ProgressionDefinitionProvider(Path.Combine(_root, "host"), Asm, null, [Path.Combine(_root, "plugin")]))
+            .InitializePools(preview.Character, RulesetSystem.Dnd5e, null);
+        Assert.Equal(2, stats.ResourcePools["spell_slots_1"].Max);
+        Assert.False(stats.ResourcePools.ContainsKey("spell_slots_2"));
+    }
+
+    [Fact]
+    public async Task AFeatTakenAtAnImprovement_AsksItsChoices_AndThePreviewAppliesThem()
+    {
+        var feats = Path.Combine(_root, "host", "dnd5e", "feats");
+        Directory.CreateDirectory(feats);
+        File.WriteAllText(Path.Combine(feats, "steadfast_training.yaml"), """
+            name: steadfast_training
+            system: dnd5e
+            abilityIncrease: { choose: [Strength, Constitution] }
+            savingThrowOfIncrease: true
+            skillChoices: 1
+            spellChoices: [{ level: 0, count: 1, lists: [wizard] }]
+            """);
+        var service = Service();
+        var fighter = Dnd5e("fighter", 4, str: 15, con: 13);
+        var picked = fighter.With("levels", new Dictionary<string, object> { ["4.asiOrFeat"] = "steadfast_training" });
+
+        var missing = service.Validate(RulesetSystem.Dnd5e, picked).Where(i => !i.IsWarning).Select(i => i.Message).ToList();
+        Assert.Contains(missing, m => m.Contains("Steadfast Training: ability +1"));
+        Assert.Contains(missing, m => m.Contains("Steadfast Training: cantrips"));
+
+        var preview = await service.PreviewAsync(RulesetSystem.Dnd5e, fighter.With("levels", new Dictionary<string, object>
+        {
+            ["1.fightingStyle"] = "archery", ["3.subclass"] = "champion",
+            ["4.asiOrFeat"] = "steadfast_training", ["4.steadfast_training.ability"] = "Constitution",
+            ["4.steadfast_training.skills"] = "Arcana", ["4.steadfast_training.spells"] = "fire_bolt",
+        }));
+        var stats = Assert.IsType<Dnd5eExtension>(preview.Character.SystemStats);
+        Assert.DoesNotContain(preview.Errors, i => i.Step == "levels");
+        Assert.Equal(15, stats.Constitution);   // 13, +1 human, +1 the feat
+        Assert.True(stats.SavingThrowModifiers.ContainsKey("Constitution"));
+        Assert.True(stats.SkillModifiers.ContainsKey("Arcana"));
+        Assert.Contains("fire_bolt", stats.Spells.Cantrips);
+    }
+
+    [Fact]
+    public async Task ARaceWithChoices_AsksForThem_AndThePreviewAppliesThem()
+    {
+        var service = Service();
+        var human = Dnd5e("wizard", 1, intel: 15, con: 13);
+        var halfElf = human.With("race", "half-elf");
+
+        Assert.DoesNotContain("raceAbilities", Keys(service.Steps(RulesetSystem.Dnd5e, human)));
+        Assert.DoesNotContain("raceSkills", Keys(service.Steps(RulesetSystem.Dnd5e, human)));
+        var steps = service.Steps(RulesetSystem.Dnd5e, halfElf);
+        Assert.Contains("raceAbilities", Keys(steps));
+        Assert.Contains("raceSkills", Keys(steps));
+        Assert.DoesNotContain(service.Options(RulesetSystem.Dnd5e, "raceAbilities", halfElf), o => o.Id == "Charisma");
+        Assert.Contains(service.Validate(RulesetSystem.Dnd5e, halfElf.With("raceAbilities", new[] { "Charisma", "Intelligence" })),
+            i => i.Step == "raceAbilities" && !i.IsWarning);
+
+        var preview = await service.PreviewAsync(RulesetSystem.Dnd5e, halfElf
+            .With("raceAbilities", new[] { "Intelligence", "Constitution" })
+            .With("raceSkills", new[] { "Persuasion", "Stealth" }));
+
+        var stats = Assert.IsType<Dnd5eExtension>(preview.Character.SystemStats);
+        Assert.Equal((16, 14), (stats.Intelligence, stats.Constitution));
+        Assert.True(stats.SkillModifiers.ContainsKey("Persuasion"));
+        Assert.True(stats.SkillModifiers.ContainsKey("Stealth"));
+        Assert.Contains("Darkvision 60 ft.", preview.Character.DistinctiveFeatures);
+    }
+
+    [Fact]
+    public async Task ARacesBonusFeat_IsAStep_AndJoinsTheFeats()
+    {
+        var races = Path.Combine(_root, "host", "dnd5e", "races");
+        Directory.CreateDirectory(races);
+        File.WriteAllText(Path.Combine(races, "versatile_folk.yaml"), """
+            name: versatile_folk
+            system: dnd5e
+            abilityChoice: { count: 2 }
+            bonusFeats: 1
+            skillChoices: 1
+            """);
+        var service = Service();
+        var draft = Dnd5e("fighter", 1, str: 15).With("race", "versatile_folk");
+        Assert.Contains("raceFeat", Keys(service.Steps(RulesetSystem.Dnd5e, draft)));
+
+        var preview = await service.PreviewAsync(RulesetSystem.Dnd5e, draft.With("raceFeat", "grappler"));
+
+        Assert.Contains("grappler", Assert.IsType<Dnd5eExtension>(preview.Character.SystemStats).Feats);
+    }
+
+    [Fact]
     public void Validate_AboveTheRecipesMaxLevel_IsAnError_5eAndPf2eTo20()
     {
         var service = Service();
@@ -1344,7 +1473,8 @@ public class CharacterCreationTests : IDisposable
         }
 
         Assert.Equal(["class", "background"], Reads(RulesetSystem.Dnd5e, "skills"));
-        Assert.Equal(["class"], Reads(RulesetSystem.Dnd5e, "spells"));
+        // A subclass can add spells or cast from another class's list, so the level choices count too.
+        Assert.Equal(["class", "levels"], Reads(RulesetSystem.Dnd5e, "spells"));
         Assert.Empty(Reads(RulesetSystem.Dnd5e, "race"));
         // A god, patron or bloodline narrows the class's choices, so picking one refetches them.
         Assert.Equal(["class", "deity", "patron", "lineage"], Reads(RulesetSystem.Dnd5e, "levels"));
@@ -1375,14 +1505,14 @@ public class CharacterCreationTests : IDisposable
         var roots = pluginRoot is null ? (IReadOnlyList<string>)[] : [pluginRoot];
         var progressions = new ProgressionDefinitionProvider(host, Asm, null, roots);
         var powers = new NamedPowerProvider(host, Asm, null, roots);
+        var feats = new FeatDefinitionProvider(host, Asm);
         var selector = new RulesetModuleSelector(
         [
-            new Dnd5eRulesetResolver(roll, races, classes, backgrounds, spells, creatures, progressionProvider: progressions),
+            new Dnd5eRulesetResolver(roll, races, classes, backgrounds, spells, creatures, progressionProvider: progressions, featProvider: feats),
             new Pf2eRulesetResolver(roll, races, spells, creatures, classProvider: classes, backgroundProvider: backgrounds,
                 progressionProvider: progressions),
             new NarrativeRulesetResolver(roll),
         ]);
-        var feats = new FeatDefinitionProvider(host, Asm);
         var sources = new CreationSources(
             races, classes, backgrounds, feats, spells, creatures, progressions, powers);
         var recipes = new CreationRecipeProvider(host, Asm, null, pluginRoot is null ? [] : [pluginRoot]);

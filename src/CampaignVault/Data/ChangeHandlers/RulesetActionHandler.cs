@@ -9,7 +9,8 @@ public sealed class RulesetActionHandler(
     CampaignDocumentKeys keys,
     SpellDefinitionProvider spellProvider,
     FeatDefinitionProvider featProvider,
-    ProgressionDefinitionProvider? progressionProvider = null)
+    ProgressionDefinitionProvider? progressionProvider = null,
+    RaceDefinitionProvider? raceProvider = null)
     : IWorldChangeHandler
 {
     private readonly IRulesetModuleSelector _selector = selector ?? throw new ArgumentNullException(nameof(selector));
@@ -164,7 +165,7 @@ public sealed class RulesetActionHandler(
             .Where(id => ctx.Characters.ContainsKey(id)).Distinct()
             .Select(id => ctx.Characters[id]);
         action.FeatEffects = await FeatEffectRules.ResolveAsync(
-            ctx.Session, _featProvider, config.ActiveSystem, involved, effectiveCampaign, [.. ctx.ActiveModes.Keys], progressionProvider);
+            ctx.Session, _featProvider, config.ActiveSystem, involved, effectiveCampaign, [.. ctx.ActiveModes.Keys], progressionProvider, raceProvider);
 
         // Merge weapon-derived defaults (including "range") before range validation runs,
         // so weapon-based range enforcement (the documented, primary path) actually has data to check.

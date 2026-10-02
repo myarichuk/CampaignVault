@@ -2,6 +2,7 @@
 name: wall_of_force
 system: dnd5e
 level: 5
+school: evocation
 classes: [wizard]
 concentration: true
 castingTime: 1 action

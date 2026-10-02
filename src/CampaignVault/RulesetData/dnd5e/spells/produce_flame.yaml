@@ -2,6 +2,7 @@
 name: produce_flame
 system: dnd5e
 level: 0
+school: conjuration
 classes: [druid]
 concentration: false
 castingTime: 1 action

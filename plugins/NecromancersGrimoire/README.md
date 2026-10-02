@@ -6,10 +6,14 @@ onyx focus consumable, and one engine-driven summon spell.
 
 ## Contents
 
-- `RulesetData/dnd5e/spells/ng_*.yaml` — 10 damage spells (cantrip through
+- `RulesetData/dnd5e/spells/ng_*.yaml` — 13 damage spells (cantrip through
   6th level, single-target / save / AoE / delayed-tick delivery) plus
   `ng_bind_shade`, a 2nd-level concentration summon with a machine-enforced
-  control cap (`controlCap.maxCreatures: 2`).
+  control cap (`controlCap.maxCreatures: 2`). New: `ng_red_harvest` (3rd,
+  lifesteal), `ng_pallid_chain` (4th, spreading rot), `ng_ebon_tithe` (2nd,
+  temp-HP tithe). Lifesteal/spread/temp-HP riders are prose-arbitrated —
+  the engine resolves the initial damage, the table resolves the rider —
+  and each file names its core balance anchor in a header comment.
 - `RulesetData/dnd5e/creatures/ng_*.yaml` — 7 seeds: skeletal archer, zombie
   brute, ghast hound, umbral stalker (the shade `ng_bind_shade` raises),
   cinder wisp, impish trickster, wight blade.

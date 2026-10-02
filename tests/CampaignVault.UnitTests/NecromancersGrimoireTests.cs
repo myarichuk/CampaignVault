@@ -83,6 +83,18 @@ public class NecromancersGrimoireTests
         Assert.True(spells.TryGetValue("ng_marrow_burst", out var burst));
         Assert.Equal("sphere", burst.AreaOfEffectType);
         Assert.Equal(20, burst.AreaOfEffectSize);
+
+        Assert.True(spells.TryGetValue("ng_red_harvest", out var harvest));
+        Assert.Equal("4d8", harvest.DamageAtSlotLevel![3]);
+        Assert.Equal("constitution", harvest.SaveType);
+
+        Assert.True(spells.TryGetValue("ng_pallid_chain", out var chain));
+        Assert.Equal("4d8", chain.DamageAtSlotLevel![4]);
+        Assert.Equal("wisdom", chain.SaveType);
+
+        Assert.True(spells.TryGetValue("ng_ebon_tithe", out var tithe));
+        Assert.Equal("2d6", tithe.DamageAtSlotLevel![2]);
+        Assert.Equal("constitution", tithe.SaveType);
     }
 
     [Fact]
@@ -94,7 +106,8 @@ public class NecromancersGrimoireTests
         var summon = Assert.IsType<SummonEffect>(bind.Summon);
         Assert.Equal(["Umbral Stalker"], summon.Creatures);
         Assert.Equal(1, summon.CountAtSlotLevel![2]);
-        Assert.Equal(2, summon.CountAtSlotLevel[4]);
+        Assert.Equal(1, summon.CountAtSlotLevel[4]);
+        Assert.Equal(2, summon.CountAtSlotLevel[6]);
         Assert.Equal(2, summon.ControlCap!.MaxCreatures);
         Assert.True(bind.Concentration);
         Assert.True(bind.MaterialConsumed);

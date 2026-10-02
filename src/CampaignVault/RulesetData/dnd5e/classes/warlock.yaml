@@ -9,3 +9,5 @@ savingThrows: [Wisdom, Charisma]
 pools: [pact_magic, warlock_invocations]
 aliases: [warlock]
 skillChoices: { count: 2, from: [Arcana, Deception, History, Intimidation, Investigation, Nature, Religion] }
+proficiencies: { armor: [light], weapons: [simple] }
+multiclassProficiencies: { armor: [light], weapons: [simple] }

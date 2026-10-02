@@ -2,6 +2,7 @@
 name: bestow_curse
 system: dnd5e
 level: 3
+school: necromancy
 classes: [bard, cleric, wizard]
 concentration: true
 castingTime: 1 action

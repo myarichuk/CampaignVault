@@ -2,6 +2,7 @@
 name: word_of_recall
 system: dnd5e
 level: 6
+school: conjuration
 classes: [cleric]
 concentration: false
 castingTime: 1 action

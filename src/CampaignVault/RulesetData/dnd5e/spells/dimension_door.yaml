@@ -2,6 +2,7 @@
 name: dimension_door
 system: dnd5e
 level: 4
+school: conjuration
 classes: [bard, sorcerer, warlock, wizard]
 concentration: false
 castingTime: 1 action

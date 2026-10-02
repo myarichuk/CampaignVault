@@ -2,6 +2,7 @@
 name: water_walk
 system: dnd5e
 level: 3
+school: transmutation
 classes: [cleric, druid, ranger, sorcerer]
 concentration: false
 castingTime: 1 action

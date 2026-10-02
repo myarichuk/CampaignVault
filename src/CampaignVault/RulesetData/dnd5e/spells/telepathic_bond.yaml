@@ -2,6 +2,7 @@
 name: telepathic_bond
 system: dnd5e
 level: 5
+school: divination
 classes: [wizard]
 concentration: false
 castingTime: 1 action

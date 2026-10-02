@@ -3,6 +3,7 @@ name: suggestion
 system: dnd5e
 tags: [charm, compulsion]
 level: 2
+school: enchantment
 classes: [bard, sorcerer, warlock, wizard]
 concentration: true
 castingTime: 1 action

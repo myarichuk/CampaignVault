@@ -2,6 +2,7 @@
 name: sunburst
 system: dnd5e
 level: 8
+school: evocation
 classes: [druid, sorcerer, wizard]
 concentration: false
 castingTime: 1 action

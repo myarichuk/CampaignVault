@@ -2,6 +2,7 @@
 name: nondetection
 system: dnd5e
 level: 3
+school: abjuration
 classes: [bard, ranger, wizard]
 concentration: false
 castingTime: 1 action

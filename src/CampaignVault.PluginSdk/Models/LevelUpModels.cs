@@ -14,6 +14,15 @@ public class LevelUpChoiceRecord
     [System.Text.Json.Serialization.JsonPropertyName("level")]
     public int Level { get; set; }
 
+    /// <summary>
+    /// The class that gave the choice, as its progression names it, when the choice came from a class level-up; then
+    /// <see cref="Level"/> is that class's level. Null on older records and on choices made outside a class (then the
+    /// level is the character's).
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("class")]
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? Class { get; set; }
+
     /// <summary>Choice key from the progression data (e.g. "subclass", "fightingStyle", "asiOrFeat").</summary>
     [System.Text.Json.Serialization.JsonPropertyName("key")]
     public string Key { get; set; } = null!;

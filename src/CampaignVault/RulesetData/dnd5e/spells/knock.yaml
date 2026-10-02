@@ -2,6 +2,7 @@
 name: knock
 system: dnd5e
 level: 2
+school: transmutation
 classes: [bard, sorcerer, wizard]
 concentration: false
 castingTime: 1 action

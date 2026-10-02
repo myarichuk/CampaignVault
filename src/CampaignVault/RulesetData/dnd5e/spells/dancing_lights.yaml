@@ -2,6 +2,7 @@
 name: dancing_lights
 system: dnd5e
 level: 0
+school: evocation
 classes: [bard, sorcerer, wizard]
 concentration: true
 castingTime: 1 action

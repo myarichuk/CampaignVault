@@ -2,6 +2,7 @@
 name: simulacrum
 system: dnd5e
 level: 7
+school: illusion
 classes: [wizard]
 concentration: false
 castingTime: 12 hours

@@ -2,6 +2,7 @@
 name: guidance
 system: dnd5e
 level: 0
+school: divination
 classes: [cleric, druid]
 concentration: true
 castingTime: 1 action

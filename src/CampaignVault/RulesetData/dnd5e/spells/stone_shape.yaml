@@ -2,6 +2,7 @@
 name: stone_shape
 system: dnd5e
 level: 4
+school: transmutation
 classes: [cleric, druid, wizard]
 concentration: false
 castingTime: 1 action

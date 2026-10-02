@@ -2,6 +2,7 @@
 name: maze
 system: dnd5e
 level: 8
+school: conjuration
 classes: [wizard]
 concentration: true
 castingTime: 1 action

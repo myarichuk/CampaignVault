@@ -6,7 +6,7 @@ using CampaignVault.Services;
 namespace CampaignVault.Rulesets.Creation;
 
 /// <summary>The class gaining a level, the level it reaches in it, and the choices that level asks for.</summary>
-public sealed record LevelUpPlan(string ClassName, int ClassLevel, int CharacterLevel, IReadOnlyList<LevelChoiceSlot> Slots);
+public sealed record LevelUpPlan(string ClassName, int ClassLevel, int CharacterLevel, IReadOnlyList<LevelChoiceSlot> Slots, string? ProgressionClass = null);
 
 /// <summary>
 /// A level-up for an existing character, using the slots the builder uses (<see cref="LevelChoiceSlots"/>): which choices
@@ -20,8 +20,11 @@ public sealed class LevelUpPlanner(CreationSources sources, ProgressionDefinitio
 
     private const int PartialBoostFrom = 4;
 
-    /// <summary>The slots of the next level of the class gaining it (<paramref name="classGained"/>, else the first class), or null without a progression.</summary>
-    public LevelUpPlan? Plan(Character character, string system, string? classGained = null)
+    /// <summary>
+    /// The slots of the next level of the class gaining it (<paramref name="classGained"/>, else the first class), or null
+    /// without a progression. <paramref name="picks"/> (by slot id) add the slots a pick asks for: a feat's own choices.
+    /// </summary>
+    public LevelUpPlan? Plan(Character character, string system, string? classGained = null, IReadOnlyDictionary<string, List<string>>? picks = null)
     {
         var entries = CharacterClassResolver.ResolveClassLevels(character);
         if (entries.Count == 0)
@@ -36,13 +39,28 @@ public sealed class LevelUpPlanner(CreationSources sources, ProgressionDefinitio
 
         var classLevel = entry.Level + 1;
         var level = XpThresholdCalculator.GetCurrentLevel(character) + 1;
+        var recorded = CharacterClassFeatures.Picked(character.SystemStats, entries.Count > 1, progression.ClassName);
+        IEnumerable<string> Picked(int at, string key) =>
+            at == classLevel && picks?.GetValueOrDefault($"{at}.{key}") is { } now ? now : recorded(at, key);
         var slots = LevelChoiceSlots.For(
                 progression, classLevel, sources.AsiFeats(system), "levelUp", null, CreationSources.SkillNames(system),
-                CharacterClassFeatures.Picked(character.SystemStats, entries.Count > 1))
+                Picked, sources.FeatChoices(system))
             .Where(s => s.Level == classLevel)
+            .Select(slot => PowersOf(character, system).Aggregate(slot, RecipeCharacterCreation.NarrowedBy))
             .ToList();
-        return new LevelUpPlan(entry.Class, classLevel, level, slots);
+        return new LevelUpPlan(entry.Class, classLevel, level, slots, progression.ClassName);
     }
+
+    /// <summary>
+    /// The named powers (god, patron, bloodline) the character picked at creation, which the builder recorded as level 1
+    /// choices under their step's key. They narrow a later class choice the way they narrowed it in the builder.
+    /// </summary>
+    private List<NamedPowerDefinition> PowersOf(Character character, string system) =>
+    [
+        .. (character.SystemStats?.LevelUpChoices ?? [])
+            .Select(r => CreationSources.PowerSource(r.Key) is { } source ? sources.Power(system, source, r.Value) : null)
+            .OfType<NamedPowerDefinition>(),
+    ];
 
     /// <summary>A slot in the wire shape menus and models read.</summary>
     public static PendingLevelUpSlot Describe(LevelChoiceSlot slot) => new()
@@ -103,6 +121,12 @@ public sealed class LevelUpPlanner(CreationSources sources, ProgressionDefinitio
 
             if (chosen.Distinct(StringComparer.OrdinalIgnoreCase).Count() != chosen.Count)
                 problems.Add($"{slot.Title}: pick each option once.");
+            if (slot.IncreaseAmount > 0 && character.SystemStats is Dnd5eExtension scores)
+            {
+                foreach (var (ability, amount) in slot.Increases(chosen).Where(i => Score(scores, i.Ability) + i.Amount > 20))
+                    problems.Add($"{slot.Title}: {ability} would be {Score(scores, ability) + amount}; ability scores stop at 20.");
+            }
+
             if (chosen.Count > slot.Picks || (slot.Required && chosen.Count < slot.Picks))
                 problems.Add($"{slot.Title}: choose {Count(slot.Picks)} (you picked {chosen.Count}).");
             if (slot.Unique)
@@ -144,7 +168,10 @@ public sealed class LevelUpPlanner(CreationSources sources, ProgressionDefinitio
             && FeatPrerequisiteCheck.Message(feat, SheetOf(stats), RulesetSystem.Dnd5e) is { } why)
             yield return $"{slot.Title}: {why}";
 
-        foreach (var (ability, amount) in slot.Increases(chosen))
+        var fixedIncrease = abilities == 0 && sources.FeatProvider.TryGet(RulesetSystem.Dnd5e, chosen[0], out var halfFeat)
+            ? CharacterFeats.FixedIncrease(halfFeat)
+            : [];
+        foreach (var (ability, amount) in slot.Increases(chosen).Concat(fixedIncrease))
         {
             var score = Score(stats, ability);
             if (score + amount > 20)
@@ -172,13 +199,26 @@ public sealed class LevelUpPlanner(CreationSources sources, ProgressionDefinitio
                 continue;
 
             canonical[slot.Id] = [.. chosen.Select(c => slot.Options.First(o => o.Id.Equals(c, StringComparison.OrdinalIgnoreCase)).Id)];
-            if (slot.IsAsi)
+            if (slot.IncreaseAmount > 0)
             {
                 var gained = slot.Increases(canonical[slot.Id]);
                 increases.AddRange(gained);
-                messages.Add(gained.Count > 0
-                    ? $"{string.Join(", ", gained.Select(i => $"{i.Ability} +{i.Amount}"))}"
-                    : $"feat {canonical[slot.Id][0]}");
+                messages.Add(string.Join(", ", gained.Select(i => $"{i.Ability} +{i.Amount}")));
+            }
+            else if (slot.IsAsi)
+            {
+                var gained = slot.Increases(canonical[slot.Id]);
+                increases.AddRange(gained);
+                if (gained.Count > 0)
+                {
+                    messages.Add(string.Join(", ", gained.Select(i => $"{i.Ability} +{i.Amount}")));
+                }
+                else
+                {
+                    var half = sources.FeatProvider.TryGet(RulesetSystem.Dnd5e, canonical[slot.Id][0], out var feat) ? CharacterFeats.FixedIncrease(feat) : [];
+                    increases.AddRange(half);
+                    messages.Add($"feat {canonical[slot.Id][0]}" + string.Concat(half.Select(i => $" ({i.Ability} +{i.Amount})")));
+                }
             }
             else if (slot.IsBoosts)
             {
@@ -191,7 +231,7 @@ public sealed class LevelUpPlanner(CreationSources sources, ProgressionDefinitio
             }
         }
 
-        DraftCharacterMapper.ApplyLevelChoices(stats, new LevelChoicesApplied(plan.Slots, canonical, increases));
+        DraftCharacterMapper.ApplyLevelChoices(stats, new LevelChoicesApplied(plan.Slots, canonical, increases, plan.ProgressionClass));
         foreach (var slot in plan.Slots.Where(s => canonical.ContainsKey(s.Id)))
         {
             var pick = canonical[slot.Id][0];

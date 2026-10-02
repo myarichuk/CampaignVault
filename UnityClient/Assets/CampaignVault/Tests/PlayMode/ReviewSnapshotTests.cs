@@ -144,5 +144,24 @@ namespace CampaignVault.UnityClient.PlayTests
             while (ui.Overlays.CloseTop()) { }
             yield return c.DeleteCampaign(pf);
         }
+
+        [UnityTest]
+        [Timeout(600000)]
+        public IEnumerator TheSheetsClassFeatures_ReadAsParagraphs_OnAScratchCharacter()
+        {
+            _h = new TableHarness();
+            yield return _h.Start();
+            yield return TableHarness.WaitFor(delegate { return _h.Ui.Overlays.AnyOpen && _h.State.CampaignsLoaded; }, 10f);
+            while (_h.Ui.Overlays.CloseTop()) { }
+            string slug = "review-sheet";
+            yield return Table(slug, "Dnd5e", "levelup-dnd5e.json");
+            yield return _h.Controller.StartSession("The first night");
+            _h.Ui.OpenSheet("chars/aric");
+            yield return TableHarness.WaitFor(delegate { return _h.Ui.Root.Q<VaultButton>("sheet-level-up") != null; }, 10f);
+            yield return TableHarness.Frames(10);
+            yield return _h.Snap("review-sheet-class-features");
+            while (_h.Ui.Overlays.CloseTop()) { }
+            yield return _h.Controller.DeleteCampaign(slug);
+        }
     }
 }

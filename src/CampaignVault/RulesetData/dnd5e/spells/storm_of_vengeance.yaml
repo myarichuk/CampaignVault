@@ -2,6 +2,7 @@
 name: storm_of_vengeance
 system: dnd5e
 level: 9
+school: conjuration
 classes: [druid]
 concentration: true
 castingTime: 1 action

@@ -2,6 +2,7 @@
 name: call_lightning
 system: dnd5e
 level: 3
+school: conjuration
 classes: [druid]
 concentration: true
 castingTime: 1 action

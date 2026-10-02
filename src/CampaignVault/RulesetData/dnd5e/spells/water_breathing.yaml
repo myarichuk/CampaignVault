@@ -2,6 +2,7 @@
 name: water_breathing
 system: dnd5e
 level: 3
+school: transmutation
 classes: [druid, ranger, sorcerer, wizard]
 concentration: false
 castingTime: 1 action

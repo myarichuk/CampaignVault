@@ -485,6 +485,32 @@ public record ResourcePoolTemplate : RulesetTemplate
     public bool? FeatGrantedOnly { get; set; }
 
     /// <summary>
+    /// When true, the pool only comes from something that grants it by name (a feat's <c>extraPools</c>, a class feature's
+    /// <c>pools</c>: a subclass's superiority dice), never from class or caster rules. Generalises <see cref="FeatGrantedOnly"/>.
+    /// </summary>
+    [JsonPropertyName("grantedOnly")]
+    public bool? GrantedOnly { get; set; }
+
+    /// <summary>
+    /// The maximum computed from the character instead of <see cref="LevelToMaxMap"/>: an ability modifier, the proficiency
+    /// bonus, a multiple of the level, a flat part, at least a minimum (Bardic Inspiration: Charisma modifier, at least 1).
+    /// </summary>
+    [JsonPropertyName("maxFrom")]
+    public PoolMaxFormula? MaxFrom { get; set; }
+
+    /// <summary>The die the pool's uses roll (<c>d8</c>), shown on the pool.</summary>
+    [JsonPropertyName("die")]
+    public string? Die { get; set; }
+
+    /// <summary>A bigger die from a level on: <c>{"10": "d10", "18": "d12"}</c> (the highest reached level wins).</summary>
+    [JsonPropertyName("dieByLevel")]
+    public Dictionary<string, string>? DieByLevel { get; set; }
+
+    /// <summary>A different recovery from a level on: <c>{"5": "ShortRest"}</c> (Font of Inspiration).</summary>
+    [JsonPropertyName("recoveryByLevel")]
+    public Dictionary<string, RecoveryType>? RecoveryByLevel { get; set; }
+
+    /// <summary>
     /// When true, the pool's owner (usually a plugin) manages Max and Current: the initializer creates the pool once if
     /// it is missing (even at a max of 0) and afterwards leaves it exactly as it is on character updates and level-ups.
     /// </summary>
@@ -533,6 +559,11 @@ public record ResourcePoolTemplate : RulesetTemplate
                 ? child.ApplicableClasses
                 : parent.ApplicableClasses,
             FeatGrantedOnly = child.FeatGrantedOnly ?? parent.FeatGrantedOnly,
+            GrantedOnly = child.GrantedOnly ?? parent.GrantedOnly,
+            MaxFrom = child.MaxFrom ?? parent.MaxFrom,
+            Die = child.Die ?? parent.Die,
+            DieByLevel = child.DieByLevel ?? parent.DieByLevel,
+            RecoveryByLevel = child.RecoveryByLevel ?? parent.RecoveryByLevel,
             OwnerManaged = child.OwnerManaged ?? parent.OwnerManaged,
             StartsAt = NormalizeStartsAt(child.StartsAt ?? parent.StartsAt),
         };
@@ -549,4 +580,32 @@ public record ResourcePoolTemplate : RulesetTemplate
 
         return merged;
     }
+}
+
+/// <summary>
+/// A pool maximum from the character: <see cref="Ability"/>'s modifier + the proficiency bonus (when
+/// <see cref="ProficiencyBonus"/>) + <see cref="LevelMultiplier"/> × the pool's level + <see cref="Plus"/>, and at least
+/// <see cref="Min"/>. The pool's level is the matching class's level (<c>applicableClasses</c>), else the character's.
+/// <code>
+/// maxFrom: { ability: Charisma, min: 1 }                      # once per Charisma modifier, at least once
+/// maxFrom: { proficiencyBonus: true }                          # proficiency bonus times
+/// maxFrom: { levelMultiplier: 2, ability: Intelligence }       # twice the level + Intelligence modifier
+/// </code>
+/// </summary>
+public record PoolMaxFormula
+{
+    [JsonPropertyName("ability")]
+    public string? Ability { get; set; }
+
+    [JsonPropertyName("proficiencyBonus")]
+    public bool ProficiencyBonus { get; set; }
+
+    [JsonPropertyName("levelMultiplier")]
+    public int LevelMultiplier { get; set; }
+
+    [JsonPropertyName("plus")]
+    public int Plus { get; set; }
+
+    [JsonPropertyName("min")]
+    public int Min { get; set; }
 }

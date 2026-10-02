@@ -3,6 +3,7 @@ name: sleep
 system: dnd5e
 tags: [mental]
 level: 1
+school: enchantment
 classes: [bard, sorcerer, wizard]
 concentration: false
 castingTime: 1 action

@@ -12,16 +12,17 @@ namespace CampaignVault.Rulesets.Creation;
 /// <list type="bullet">
 /// <item>the class pick (source <c>classes</c>) sets the class/level text, <c>classLevels</c>, <c>level</c> and <c>hitDie</c>;</item>
 /// <item>ability scores go to the stats fields named after each ability (<c>strength</c>, ...), without racial bonuses;</item>
-/// <item>each boost (allocate) pick adds 1 to the ability's modifier field (<c>strengthMod</c>, ...);</item>
+/// <item>each boost (allocate) pick adds 1 to the ability's modifier field (PF2e <c>strengthMod</c>, ...), or else to its
+/// score (5e <c>strength</c>: a race's abilities of choice);</item>
 /// <item>spells go to <c>spells</c>; any other step goes to the stats field named by its <c>target:</c> or key
-/// (<c>race</c>, <c>background</c>, <c>feats</c>);</item>
+/// (<c>race</c>, <c>background</c>), a pick joining a list field (<c>feats</c>);</item>
 /// <item>level choices (<see cref="LevelChoiceSlot"/>) are recorded per slot at its level, as level_up records them; an
 /// ability score improvement also raises the scores (after the ability step, whatever the order), and a feat taken
 /// instead joins the stats' <c>feats</c>;</item>
 /// <item>identity fields named in <see cref="PsychologyFields"/> (descriptors, drives, fears) go to the character's
 /// psychology (traits, wants, fears), not its stats;</item>
-/// <item>a step with no such field is recorded as a level-1 choice (<c>levelUpChoices</c>, one record per value),
-/// which the bootstrap steps read (5e class skills).</item>
+/// <item>a step with no such field is recorded as a level-1 choice (<c>levelUpChoices</c>, one record per value) under its
+/// <c>target:</c> or key, which the bootstrap steps read (5e skills: key or target <c>skills</c>).</item>
 /// </list>
 /// </summary>
 internal static class DraftCharacterMapper
@@ -108,14 +109,18 @@ internal static class DraftCharacterMapper
 
                     break;
                 default:
-                    if (!TrySet(stats, step.Target ?? step.Key, value))
-                        Record(stats, step.Key, draft.GetList(step.Key), 1);
+                    if (!TrySet(stats, step.Target ?? step.Key, value) && !Join(stats, step.Target ?? step.Key, draft.GetList(step.Key)))
+                        Record(stats, step.Target ?? step.Key, draft.GetList(step.Key), 1);
                     break;
             }
         }
 
         if (levels is { Slots.Count: > 0 })
             ApplyLevelChoices(stats, levels);
+
+        // The background's gold starts the purse (the gold pool keeps a current value it already has).
+        if (Background(draft, system, steps, sources) is { Gold: > 0 } background)
+            stats.ResourcePools["gold"] = new ResourcePool { Current = background.Gold, Max = background.Gold, Recovery = RecoveryType.Never };
 
         // A companion has no class, so its level is the draft's.
         if (character.IsPartyCompanion)
@@ -213,10 +218,31 @@ internal static class DraftCharacterMapper
             TrySet(stats, "hitDie", JsonSerializer.SerializeToElement(hitDie, Json));
     }
 
-    /// <summary>+1 to the stats field <c>&lt;ability&gt;Mod</c>; false when there is no such whole-number field.</summary>
+    /// <summary>The background template the draft picked (a pickOne step from <c>backgrounds</c>), or null.</summary>
+    internal static BackgroundDefinition? Background(CharacterDraft draft, string system, IReadOnlyList<CreationStep> steps, CreationSources sources) =>
+        steps.Where(s => s.Kind == CreationStepKinds.PickOne && string.Equals(s.Source, CreationSources.Backgrounds, StringComparison.OrdinalIgnoreCase))
+            .Select(s => draft.GetString(s.Key) is { } id ? sources.Template(system, s.Source, id) as BackgroundDefinition : null)
+            .FirstOrDefault(b => b is not null);
+
+    /// <summary>Adds the picks to the stats' list field of that name (<c>feats</c>); false when there is no such list.</summary>
+    private static bool Join(SystemExtension stats, string name, IReadOnlyList<string> picks)
+    {
+        if (FindProperty(stats, name)?.GetValue(stats) is not List<string> list)
+            return false;
+
+        list.AddRange(picks.Where(p => !list.Contains(p, StringComparer.OrdinalIgnoreCase)));
+        return true;
+    }
+
+    /// <summary>
+    /// +1 to the stats field <c>&lt;ability&gt;Mod</c> (PF2e), else to the score <c>&lt;ability&gt;</c> (5e); false when
+    /// there is no such whole-number field.
+    /// </summary>
     private static bool Boost(SystemExtension stats, string ability)
     {
-        var prop = FindProperty(stats, ability.Trim() + "Mod");
+        var prop = FindProperty(stats, ability.Trim() + "Mod") is { PropertyType: var t } mod && t == typeof(int)
+            ? mod
+            : FindProperty(stats, ability.Trim());
         if (prop?.PropertyType != typeof(int))
             return false;
 
@@ -243,24 +269,24 @@ internal static class DraftCharacterMapper
             if (!levels.Picks.TryGetValue(slot.Id, out var chosen))
                 continue;
 
-            var increases = slot.Increases(chosen);
+            var increases = slot.IsAsi ? slot.Increases(chosen) : [];
             if (increases.Count > 0)
             {
-                Record(stats, slot.Key, [string.Join(", ", increases.Select(i => $"{i.Ability} +{i.Amount}"))], slot.Level);
+                Record(stats, slot.Key, [string.Join(", ", increases.Select(i => $"{i.Ability} +{i.Amount}"))], slot.Level, levels.Class);
                 continue;
             }
 
             var ids = chosen.Select(p => slot.Options.FirstOrDefault(o => o.Id.Equals(p, StringComparison.OrdinalIgnoreCase))?.Id ?? p).ToList();
-            Record(stats, slot.Key, ids, slot.Level);
+            Record(stats, slot.Key, ids, slot.Level, levels.Class);
             if (slot.IsAsi && FindProperty(stats, "feats")?.GetValue(stats) is List<string> feats)
                 feats.AddRange(ids.Where(id => !feats.Contains(id, StringComparer.OrdinalIgnoreCase)));
         }
     }
 
-    private static void Record(SystemExtension stats, string key, IReadOnlyList<string> values, int level)
+    private static void Record(SystemExtension stats, string key, IReadOnlyList<string> values, int level, string? className = null)
     {
         foreach (var value in values)
-            stats.LevelUpChoices.Add(new LevelUpChoiceRecord { Level = level, Key = key, Value = value });
+            stats.LevelUpChoices.Add(new LevelUpChoiceRecord { Level = level, Class = className, Key = key, Value = value });
     }
 
     /// <summary>Writes a JSON value to the stats field with that JSON name (or property name); false when there is none or it doesn't fit.</summary>
@@ -286,4 +312,5 @@ internal static class DraftCharacterMapper
 internal sealed record LevelChoicesApplied(
     IReadOnlyList<LevelChoiceSlot> Slots,
     IReadOnlyDictionary<string, IReadOnlyList<string>> Picks,
-    IReadOnlyList<(string Ability, int Amount)> Increases);
+    IReadOnlyList<(string Ability, int Amount)> Increases,
+    string? Class = null);

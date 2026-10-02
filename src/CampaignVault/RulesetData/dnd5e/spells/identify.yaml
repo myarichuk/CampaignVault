@@ -2,6 +2,7 @@
 name: identify
 system: dnd5e
 level: 1
+school: divination
 classes: [bard, wizard]
 concentration: false
 castingTime: 1 minute

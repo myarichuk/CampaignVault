@@ -2,6 +2,7 @@
 name: fabricate
 system: dnd5e
 level: 4
+school: transmutation
 classes: [wizard]
 concentration: false
 castingTime: 10 minutes

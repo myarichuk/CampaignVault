@@ -7,3 +7,8 @@ abilityBonuses:
   Constitution: 2
 size: Medium
 baseSpeed: 25
+darkvision: 60
+proficiencies: { weapons: [battleaxe, handaxe, light_hammer, warhammer] }
+effects:
+  - { kind: resistance, damageType: poison }
+  - { kind: advantage, on: save, assert: [againstPoison], when: "the saving throw is against poison" }

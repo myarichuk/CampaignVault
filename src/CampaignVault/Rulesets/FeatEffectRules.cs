@@ -58,8 +58,10 @@ internal static class FeatEffectRules
                 errors.Add($"{at}: assert flags must be non-empty names.");
             if (e.NeedsAssertion && string.IsNullOrWhiteSpace(e.When))
                 errors.Add($"{at}: an effect with assert flags needs a 'when' sentence so the DM knows what to judge.");
-            if (e.Subject is not null && kind is not ("skillbonus" or "savebonus" or "advantage" or "disadvantage"))
-                errors.Add($"{at}: subject only applies to skillBonus, saveBonus, advantage and disadvantage.");
+            if (e.Subject is not null && kind is not ("skillbonus" or "savebonus" or "advantage" or "disadvantage" or "passivebonus"))
+                errors.Add($"{at}: subject only applies to skillBonus, saveBonus, advantage, disadvantage and passiveBonus.");
+            if (kind == "passivebonus" && e.Subject is not null && StatusEffectModifierProvider.Normalize(e.Subject) is not ("perception" or "investigation"))
+                errors.Add($"{at}: passiveBonus subject is Perception or Investigation.");
         }
 
         return errors;
@@ -102,7 +104,8 @@ internal static class FeatEffectRules
 
     /// <summary>
     /// The effects live for each character now: SRD/YAML feats overlaid by homebrew CustomFeat of the same name, then the
-    /// class features and picked options of its progression (<paramref name="progressions"/>), filtered by plugin/mode.
+    /// class features and picked options of its progression (<paramref name="progressions"/>) and its 5e race's
+    /// (<paramref name="races"/>), filtered by plugin/mode.
     /// Homebrew is read straight from the index (like the casting gate) to avoid a repository dependency cycle.
     /// </summary>
     public static async Task<Dictionary<string, List<ActiveFeatEffect>>> ResolveAsync(
@@ -112,10 +115,11 @@ internal static class FeatEffectRules
         IEnumerable<Character> characters,
         string? campaignName,
         IReadOnlyCollection<string> activeModeIds,
-        ProgressionDefinitionProvider? progressions = null)
+        ProgressionDefinitionProvider? progressions = null,
+        RaceDefinitionProvider? races = null)
     {
         var result = new Dictionary<string, List<ActiveFeatEffect>>(StringComparer.OrdinalIgnoreCase);
-        var involved = characters.Where(c => KnownFeatNames(c.SystemStats).Count > 0 || progressions is not null).ToList();
+        var involved = characters.Where(c => KnownFeatNames(c.SystemStats).Count > 0 || progressions is not null || races is not null).ToList();
         if (involved.Count == 0)
             return result;
 
@@ -123,6 +127,7 @@ internal static class FeatEffectRules
         foreach (var character in involved)
         {
             var live = CharacterClassFeatures.Effects(character, system, progressions)
+                .Concat(CharacterRace.Effects(character, system, races))
                 .Where(a => IsAvailable(a.Effect.Requires, activeModeIds))
                 .ToList();
             foreach (var name in KnownFeatNames(character.SystemStats).Select(CombatFeatureRules.Norm).Distinct())
@@ -151,7 +156,7 @@ internal static class FeatEffectRules
         foreach (var (key, def) in featProvider.GetFeatsForSystem(system))
         {
             var entry = new CatalogFeat(def.Name ?? key, def.Effects, def.Requires, def.Adjudicated,
-                def.CastingWaivers.Count > 0 || def.ExtraPools.Count > 0, Homebrew: false);
+                def.CastingWaivers.Count > 0 || def.ExtraPools.Count > 0 || def.HasGrants, Homebrew: false);
             catalog[CombatFeatureRules.Norm(key)] = entry;
             if (!string.IsNullOrWhiteSpace(def.Name))
                 catalog[CombatFeatureRules.Norm(def.Name)] = entry;
@@ -337,10 +342,82 @@ internal static class FeatEffectRules
     }
 
     /// <summary>Whether the target's effects give resistance to the damage type (halves it).</summary>
-    public static bool ResistsDamage(IReadOnlyList<ActiveFeatEffect> targetEffects, string? damageType) =>
+    /// <remarks>
+    /// A conditional resistance (a toggle, an assertion or a weapon condition: "while raging", "from nonmagical weapons") holds
+    /// only when <paramref name="action"/>, the attack, meets it; without an action only unconditional ones count.
+    /// </remarks>
+    public static bool ResistsDamage(
+        IReadOnlyList<ActiveFeatEffect> targetEffects, string? damageType, RulesetAction? action = null, List<string>? notes = null)
+    {
+        if (string.IsNullOrWhiteSpace(damageType))
+            return false;
+
+        var weapon = action is null ? default : WeaponProfile.Read(action);
+        var asserted = action is null ? new HashSet<string>() : Asserted(action);
+        return OfKind(targetEffects, FeatEffectKinds.Resistance).Any(a =>
+            NamesType(a.Effect, damageType)
+            && (!IsConditional(a.Effect) || action is not null && Applies(a, action, weapon, asserted, notes ?? [])));
+    }
+
+    private static bool IsConditional(FeatEffect e) => e.Assert.Count > 0 || e.Toggle is not null || e.Weapon.Count > 0;
+
+    /// <summary>
+    /// How much the target's effects take off this damage before resistance: each <c>damageReduction</c> whose type fits
+    /// (any, when it names none) and whose conditions hold for the attack (the attacker's weapon, the DM's assertions).
+    /// </summary>
+    public static int DamageReduction(IReadOnlyList<ActiveFeatEffect> targetEffects, string? damageType, RulesetAction action, List<string> notes)
+    {
+        var weapon = WeaponProfile.Read(action);
+        var asserted = Asserted(action);
+        var total = 0;
+        foreach (var live in OfKind(targetEffects, FeatEffectKinds.DamageReduction))
+        {
+            if ((string.IsNullOrWhiteSpace(live.Effect.DamageType) || NamesType(live.Effect, damageType))
+                && Applies(live, action, weapon, asserted, notes))
+            {
+                total += live.Effect.Value;
+                notes.Add($"{live.FeatName} -{live.Effect.Value} damage");
+            }
+        }
+
+        return total;
+    }
+
+    /// <summary>Whether the effect's damage type (one, or several comma-separated) includes this one.</summary>
+    private static bool NamesType(FeatEffect e, string? damageType) =>
         !string.IsNullOrWhiteSpace(damageType)
-        && OfKind(targetEffects, FeatEffectKinds.Resistance)
-            .Any(a => string.Equals(a.Effect.DamageType, damageType, StringComparison.OrdinalIgnoreCase));
+        && (e.DamageType ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Contains(damageType, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The effects a character has from its data alone, without a session: its class features and picked options, its race,
+    /// and its feats' YAML (not campaign homebrew feats), those whose plugin is loaded. What a synchronous rule reads (a
+    /// roll modifier provider, a bootstrap step).
+    /// </summary>
+    public static IReadOnlyList<ActiveFeatEffect> DataEffects(
+        Character character, string system, FeatDefinitionProvider? feats, ProgressionDefinitionProvider? progressions, RaceDefinitionProvider? races)
+    {
+        var effects = CharacterClassFeatures.Effects(character, system, progressions).Concat(CharacterRace.Effects(character, system, races)).ToList();
+        foreach (var name in feats is null ? [] : KnownFeatNames(character.SystemStats))
+        {
+            if (feats!.TryGet(system, name, out var feat) && PluginAvailable(feat.Requires))
+                effects.AddRange(feat.Effects.Select(e => new ActiveFeatEffect(feat.Name, e)));
+        }
+
+        return [.. effects.Where(a => PluginAvailable(a.Effect.Requires))];
+    }
+
+    /// <summary>The sum of the effects of one kind (an initiative or speed bonus), with a reason per source.</summary>
+    public static (int Total, IReadOnlyList<string> Reasons) Sum(IEnumerable<ActiveFeatEffect> effects, string kind, string? subject = null)
+    {
+        var matching = OfKind(effects, kind)
+            .Where(a => !a.Effect.NeedsAssertion && a.Effect.Toggle is null)
+            .Where(a => subject is null
+                ? a.Effect.Subject is null
+                : StatusEffectModifierProvider.Normalize(a.Effect.Subject ?? "perception") == StatusEffectModifierProvider.Normalize(subject))
+            .ToList();
+        return (matching.Sum(a => a.Effect.Value), [.. matching.Select(a => $"{a.FeatName} {Signed(a.Effect.Value)}")]);
+    }
 
     // ---- surfacing ------------------------------------------------------------------------------------------------
 

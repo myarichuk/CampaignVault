@@ -20,6 +20,30 @@ CampaignVault install, and restart the host.
 See [PLUGINS.md](https://github.com/myarichuk/CampaignVault/blob/master/PLUGINS.md) in
 the main repository for the full plugin architecture, trust model, and quick-start guide.
 
+## 0.16.0
+
+- **Option prerequisites** (`ChoiceOption.Prerequisite`, `ClassOptionDefinition.Prerequisite`, `OptionPrerequisite`): a
+  class level and/or an option picked earlier in the class before an option is offered.
+  `OptionsFor(GainedChoice, picked)` returns only the options the character qualifies for at the choice's level.
+
+## 0.15.0
+
+- **Effect kinds** (`FeatEffectKinds`): `initiativeBonus`, `speedBonus` (feet), `passiveBonus` (`subject` Perception or
+  Investigation) and `damageReduction` (flat, before resistance, optionally for some damage types). `resistance` and
+  `damageReduction` take several comma-separated damage types.
+
+## 0.14.0
+
+- **Proficiencies** (`ProficiencyGrants`: `armor`, `weapons`, `tools`): what a class, class feature, race, background or
+  feat gives. `FeatureDefinition.Proficiencies` joins a feature's to the sheet; `Dnd5eExtension` gains
+  `armorProficiencies`, `weaponProficiencies` and `toolProficiencies`.
+- **Pools** (`ResourcePoolTemplate`): `grantedOnly`, `maxFrom` (`PoolMaxFormula`: ability modifier, proficiency
+  bonus, level multiple, flat part, minimum), `die`/`dieByLevel` and `recoveryByLevel`; `ResourcePool.Die`.
+  `FeatureDefinition.Pools` grants pools by name from a class feature (a subclass's).
+- **A subclass that casts** (`ChoiceOption.Spellcasting`, `ClassOptionDefinition.Spellcasting`, `OptionSpellcasting`):
+  caster type, ability, the class list it learns from, school limits and known counts by level.
+- `OptionsFor(choice, from)`: a later option-less choice inside a subclass borrows that subclass's options.
+
 ## 0.13.0
 
 - **Character creation** (`CampaignVault.Rulesets.Creation`): the contracts behind the recipe-driven character builder.

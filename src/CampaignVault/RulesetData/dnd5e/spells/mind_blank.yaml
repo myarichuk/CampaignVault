@@ -2,6 +2,7 @@
 name: mind_blank
 system: dnd5e
 level: 8
+school: abjuration
 classes: [bard, wizard]
 concentration: false
 castingTime: 1 action

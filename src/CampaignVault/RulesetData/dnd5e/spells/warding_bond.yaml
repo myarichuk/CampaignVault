@@ -2,6 +2,7 @@
 name: warding_bond
 system: dnd5e
 level: 2
+school: abjuration
 classes: [cleric]
 concentration: false
 castingTime: 1 action

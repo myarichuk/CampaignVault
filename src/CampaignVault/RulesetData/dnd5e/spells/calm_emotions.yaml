@@ -3,6 +3,7 @@ name: calm_emotions
 system: dnd5e
 tags: [charm]
 level: 2
+school: enchantment
 classes: [bard, cleric]
 concentration: true
 castingTime: 1 action

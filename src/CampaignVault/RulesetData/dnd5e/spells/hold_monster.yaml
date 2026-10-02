@@ -3,6 +3,7 @@ name: hold_monster
 system: dnd5e
 tags: [mental]
 level: 5
+school: enchantment
 classes: [bard, sorcerer, warlock, wizard]
 concentration: true
 castingTime: 1 action

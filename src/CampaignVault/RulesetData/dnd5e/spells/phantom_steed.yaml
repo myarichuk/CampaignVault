@@ -2,6 +2,7 @@
 name: phantom_steed
 system: dnd5e
 level: 3
+school: illusion
 classes: [wizard]
 concentration: false
 castingTime: 1 minute

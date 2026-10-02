@@ -2,6 +2,7 @@
 name: shatter
 system: dnd5e
 level: 2
+school: evocation
 classes: [bard, sorcerer, warlock, wizard]
 concentration: false
 castingTime: 1 action

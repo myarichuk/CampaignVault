@@ -20,14 +20,18 @@ steps:
       standardArray: [15, 14, 13, 12, 10, 8]
       pointBuy: { budget: 27, min: 8, max: 15, cost: { 8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9 } }
       roll: 4d6dropLowest
+  # What some races add: abilities of the player's choice (+1 each), skills, a feat. Shown only for a race that has them.
+  - { key: raceAbilities, kind: allocate, source: raceAbilities, countFrom: race.abilityChoice.count, when: race.abilityChoice.count, prompt: Racial ability increases }
   - key: skills
     kind: pickN
     prompt: Skills
     source: classSkills
     countFrom: class.skillChoices.count
     exclude: background.skillProficiencies
+  - { key: raceSkills, kind: pickN, source: skills, countFrom: race.skillChoices, when: race.skillChoices, target: skills, prompt: Racial skills }
+  - { key: raceFeat, kind: pickOne, source: feats, when: race.bonusFeats, target: feats, prompt: Feat }
   # Subclass, fighting style, ability score improvements...: shown when the class has a choice at or below the level.
   # Before spells, so an improvement to the casting ability is in the prepared count.
   - { key: levels, kind: levelChoices, prompt: Level choices }
-  - { key: spells, kind: spells, source: spells, when: "class.casterType != None", prompt: Spells }
+  - { key: spells, kind: spells, source: spells, when: "spellcasting != None", prompt: Spells }
   - { key: identity, kind: identity, prompt: Who they are }

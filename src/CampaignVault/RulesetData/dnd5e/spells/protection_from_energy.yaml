@@ -2,6 +2,7 @@
 name: protection_from_energy
 system: dnd5e
 level: 3
+school: abjuration
 classes: [cleric, druid, ranger, sorcerer, wizard]
 concentration: true
 castingTime: 1 action

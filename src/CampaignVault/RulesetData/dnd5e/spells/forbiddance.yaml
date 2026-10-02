@@ -2,6 +2,7 @@
 name: forbiddance
 system: dnd5e
 level: 6
+school: abjuration
 classes: [cleric]
 concentration: false
 castingTime: 10 minutes

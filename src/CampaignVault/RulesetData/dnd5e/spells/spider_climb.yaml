@@ -2,6 +2,7 @@
 name: spider_climb
 system: dnd5e
 level: 2
+school: transmutation
 classes: [sorcerer, warlock, wizard]
 concentration: true
 castingTime: 1 action

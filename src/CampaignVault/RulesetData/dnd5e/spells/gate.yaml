@@ -2,6 +2,7 @@
 name: gate
 system: dnd5e
 level: 9
+school: conjuration
 classes: [cleric, sorcerer, wizard]
 concentration: true
 castingTime: 1 action

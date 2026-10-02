@@ -1,8 +1,10 @@
 using CampaignVault.Models;
+using CampaignVault.Services;
 
 namespace CampaignVault.Rulesets.Bootstrap;
 
-public sealed class Dnd5eDeriveSpellcastingStep : IBootstrapStep, ILevelGainStep
+/// <param name="progressions">For a subclass that casts (its picked option's spellcasting ability), when the class has none.</param>
+public sealed class Dnd5eDeriveSpellcastingStep(ProgressionDefinitionProvider? progressions = null) : IBootstrapStep, ILevelGainStep
 {
     public string Name => "dnd5e.derive_spellcasting";
 
@@ -15,7 +17,7 @@ public sealed class Dnd5eDeriveSpellcastingStep : IBootstrapStep, ILevelGainStep
     public Task<BootstrapStepResult?> ApplyLevelGainAsync(BootstrapContext context, CancellationToken ct = default) =>
         Task.FromResult(ApplySpellcasting(context));
 
-    private static BootstrapStepResult? ApplySpellcasting(BootstrapContext context)
+    private BootstrapStepResult? ApplySpellcasting(BootstrapContext context)
     {
         var stats = (Dnd5eExtension)context.Character.SystemStats;
         var classLevels = Dnd5eClassProfileResolver.ParseClassLevels(
@@ -40,7 +42,10 @@ public sealed class Dnd5eDeriveSpellcastingStep : IBootstrapStep, ILevelGainStep
 
         var ability = stats.SpellcastingAbility
             ?? Dnd5eSpellcastingHelper.InferSpellcastingAbility(classLevels.Count > 0 ? classLevels : stats.ClassLevels)
-            ?? Dnd5eSpellcastingHelper.InferSpellcastingAbility(context.Character.ClassLevel);
+            ?? Dnd5eSpellcastingHelper.InferSpellcastingAbility(context.Character.ClassLevel)
+            ?? classLevels
+                .Select(e => CharacterClassFeatures.OptionSpellcastingFor(context.Character, RulesetSystem.Dnd5e, progressions, e)?.Ability)
+                .FirstOrDefault(a => !string.IsNullOrWhiteSpace(a));
 
         if (string.IsNullOrWhiteSpace(ability))
         {

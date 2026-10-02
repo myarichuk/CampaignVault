@@ -2,6 +2,7 @@
 name: stoneskin
 system: dnd5e
 level: 4
+school: abjuration
 classes: [druid, ranger, sorcerer, wizard]
 concentration: true
 castingTime: 1 action

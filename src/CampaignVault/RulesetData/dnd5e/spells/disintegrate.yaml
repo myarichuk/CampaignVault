@@ -2,6 +2,7 @@
 name: disintegrate
 system: dnd5e
 level: 6
+school: transmutation
 classes: [sorcerer, wizard]
 concentration: false
 castingTime: 1 action

@@ -2,6 +2,7 @@
 name: daylight
 system: dnd5e
 level: 3
+school: evocation
 classes: [cleric, druid, paladin, ranger, sorcerer]
 concentration: false
 castingTime: 1 action

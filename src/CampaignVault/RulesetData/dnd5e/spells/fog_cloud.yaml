@@ -2,6 +2,7 @@
 name: fog_cloud
 system: dnd5e
 level: 1
+school: conjuration
 classes: [druid, ranger, sorcerer, wizard]
 concentration: true
 castingTime: 1 action

@@ -2,6 +2,7 @@
 name: contingency
 system: dnd5e
 level: 6
+school: evocation
 classes: [wizard]
 concentration: false
 castingTime: 10 minutes

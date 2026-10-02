@@ -2,6 +2,7 @@
 name: arcanists_magic_aura
 system: dnd5e
 level: 2
+school: illusion
 classes: [wizard]
 concentration: false
 castingTime: 1 action

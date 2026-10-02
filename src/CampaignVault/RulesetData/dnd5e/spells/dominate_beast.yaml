@@ -3,6 +3,7 @@ name: dominate_beast
 system: dnd5e
 tags: [charm, compulsion]
 level: 4
+school: enchantment
 classes: [druid, sorcerer]
 concentration: true
 castingTime: 1 action

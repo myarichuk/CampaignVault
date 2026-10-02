@@ -1,0 +1,28 @@
+# Necromancer's Grimoire (original homebrew, not an SRD entry).
+# Seed a creeping rot: Wisdom save, 4d8 necrotic, half on success.
+# Balance anchor: ng_exsanguinate (4th, 6d8, no rider) — two dice smaller
+# in exchange for the spread rider; cf. blight (4th, 8d8). Spread is
+# prose-arbitrated (the engine resolves the initial hit only): if the
+# target takes damage from any source before the end of your next turn,
+# the rot leaps to one creature within 10 feet of it (Wisdom save, 2d8
+# necrotic, half on success; dice scale with the slot used).
+name: ng_pallid_chain
+system: dnd5e
+level: 4
+classes: [wizard, warlock]
+concentration: false
+castingTime: 1 action
+verbal: true
+somatic: true
+material: false
+materialConsumed: false
+damageType: necrotic
+damageAtSlotLevel:
+  4: 4d8
+  5: 5d8
+  6: 6d8
+  7: 7d8
+  8: 8d8
+  9: 9d8
+saveType: wisdom
+saveSuccess: half

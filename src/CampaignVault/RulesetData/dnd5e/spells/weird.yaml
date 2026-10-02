@@ -2,6 +2,7 @@
 name: weird
 system: dnd5e
 level: 9
+school: illusion
 classes: [wizard]
 concentration: true
 castingTime: 1 action

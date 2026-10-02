@@ -71,6 +71,8 @@ def write_spell(path: Path, header: str, body: dict) -> None:
     lines.append(f"name: {body['name']}")
     lines.append(f"system: {body['system']}")
     lines.append(f"level: {body['level']}")
+    if body.get("school"):
+        lines.append(f"school: {body['school']}")
     if body.get("classes"):
         classes = ", ".join(body["classes"])
         lines.append(f"classes: [{classes}]")
@@ -656,6 +658,7 @@ def generate_dnd5e() -> int:
             "name": slug,
             "system": "dnd5e",
             "level": detail["level"],
+            "school": (detail.get("school") or {}).get("index"),
             "classes": classes,
             "concentration": bool(detail.get("concentration")),
             "castingTime": detail.get("casting_time") or "1 action",

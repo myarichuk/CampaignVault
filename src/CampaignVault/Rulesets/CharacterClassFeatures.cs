@@ -34,30 +34,33 @@ public static class CharacterClassFeatures
     }
 
     /// <summary>
-    /// The picks the character recorded, as a progression walk wants them. A single class matches a pick by level and key;
-    /// with several classes the recorded level is the character's, not the class's, so the key alone matches.
+    /// The picks the character recorded for <paramref name="className"/>, as a progression walk wants them. A pick that
+    /// names its class matches that class's level and key. An older pick names no class: a single class matches it by
+    /// level and key, but with several classes its level may be the character's, so the key alone matches.
     /// </summary>
-    public static Func<int, string, IEnumerable<string>> Picked(SystemExtension? stats, bool multiclass)
+    public static Func<int, string, IEnumerable<string>> Picked(SystemExtension? stats, bool multiclass, string? className = null)
     {
         var records = stats?.LevelUpChoices ?? [];
         return (level, key) => records
-            .Where(r => r.Key.Equals(key, StringComparison.OrdinalIgnoreCase) && (multiclass || r.Level == level))
+            .Where(r => r.Key.Equals(key, StringComparison.OrdinalIgnoreCase)
+                        && (r.Class is null ? multiclass || r.Level == level : r.Level == level && (className is null || r.Class.Equals(className, StringComparison.OrdinalIgnoreCase))))
             .Select(r => r.Value);
     }
+
+    private static Func<int, string, IEnumerable<string>> PickedFor(Character character, ProgressionDefinition progression, int classCount) =>
+        Picked(character.SystemStats, classCount > 1, progression.ClassName);
 
     public static IReadOnlyList<GainedFeature> Features(Character character, string system, ProgressionDefinitionProvider? progressions)
     {
         var classes = Classes(character, system, progressions);
-        var picked = Picked(character.SystemStats, classes.Count > 1);
-        return [.. classes.SelectMany(c => c.Progression.FeaturesUpTo(c.Level, picked))];
+        return [.. classes.SelectMany(c => c.Progression.FeaturesUpTo(c.Level, PickedFor(character, c.Progression, classes.Count)))];
     }
 
     /// <summary>The features for display, in level order.</summary>
     public static IReadOnlyList<ClassFeatureView> Views(Character character, string system, ProgressionDefinitionProvider? progressions)
     {
         var classes = Classes(character, system, progressions);
-        var picked = Picked(character.SystemStats, classes.Count > 1);
-        return [.. classes.SelectMany(c => c.Progression.FeaturesUpTo(c.Level, picked).Select(f => View(f, c.Level))).OrderBy(v => v.Level)];
+        return [.. classes.SelectMany(c => c.Progression.FeaturesUpTo(c.Level, PickedFor(character, c.Progression, classes.Count)).Select(f => View(f, c.Level))).OrderBy(v => v.Level)];
     }
 
     /// <summary>One feature for display; <paramref name="classLevel"/> limits the spells to those gained so far.</summary>
@@ -70,11 +73,10 @@ public static class CharacterClassFeatures
     public static IReadOnlyList<string> GrantedSpells(Character character, string system, ProgressionDefinitionProvider? progressions)
     {
         var classes = Classes(character, system, progressions);
-        var picked = Picked(character.SystemStats, classes.Count > 1);
         return
         [
             .. classes
-                .SelectMany(c => c.Progression.FeaturesUpTo(c.Level, picked)
+                .SelectMany(c => c.Progression.FeaturesUpTo(c.Level, PickedFor(character, c.Progression, classes.Count))
                     .SelectMany(f => f.Feature.Spells.Where(kv => kv.Key <= c.Level).SelectMany(kv => kv.Value)))
                 .Distinct(StringComparer.OrdinalIgnoreCase),
         ];
@@ -96,10 +98,10 @@ public static class CharacterClassFeatures
     public static IReadOnlyList<ActiveFeatEffect> Effects(Character character, string system, ProgressionDefinitionProvider? progressions)
     {
         var classes = Classes(character, system, progressions);
-        var picked = Picked(character.SystemStats, classes.Count > 1);
         var effects = new List<ActiveFeatEffect>();
         foreach (var (progression, level) in classes)
         {
+            var picked = PickedFor(character, progression, classes.Count);
             effects.AddRange(progression.FeaturesUpTo(level, picked)
                 .SelectMany(f => f.Feature.Effects.Select(e => new ActiveFeatEffect(f.Feature.Name, e))));
             effects.AddRange(progression.PickedOptions(level, picked)
@@ -120,4 +122,24 @@ public static class CharacterClassFeatures
         var formulas = Features(character, system, progressions).Select(f => f.Feature.UnarmoredArmorClass).OfType<UnarmoredArmorClass>().ToList();
         return formulas.Count == 0 ? null : formulas.Max(f => f.Base + f.Abilities.Sum(abilityModifier));
     }
+
+    /// <summary>
+    /// 5e: the spellcasting a picked option (a subclass) gives the class of <paramref name="entry"/>, or null when none does.
+    /// </summary>
+    public static OptionSpellcasting? OptionSpellcastingFor(
+        Character character, string system, ProgressionDefinitionProvider? progressions, ClassLevelEntry entry)
+    {
+        if (progressions is null || !progressions.TryGetProgression(system, entry.Class, out var progression))
+            return null;
+
+        var multiclass = CharacterClassResolver.ResolveClassLevels(character).Count > 1;
+        return progression.PickedOptions(entry.Level, Picked(character.SystemStats, multiclass, progression.ClassName))
+            .Select(o => o.Spellcasting)
+            .OfType<OptionSpellcasting>()
+            .FirstOrDefault();
+    }
+
+    /// <summary>The armor, weapon and tool proficiencies the character's class features and picked options' features give.</summary>
+    public static IReadOnlyList<ProficiencyGrants> Proficiencies(Character character, string system, ProgressionDefinitionProvider? progressions) =>
+        [.. Features(character, system, progressions).Select(f => f.Feature.Proficiencies).OfType<ProficiencyGrants>()];
 }

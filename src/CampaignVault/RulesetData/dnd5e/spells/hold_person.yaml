@@ -3,6 +3,7 @@ name: hold_person
 system: dnd5e
 tags: [mental]
 level: 2
+school: enchantment
 classes: [bard, cleric, druid, sorcerer, warlock, wizard]
 concentration: true
 castingTime: 1 action

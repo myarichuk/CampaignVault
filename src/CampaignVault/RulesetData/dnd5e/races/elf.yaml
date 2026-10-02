@@ -7,3 +7,7 @@ abilityBonuses:
   Dexterity: 2
 size: Medium
 baseSpeed: 30
+darkvision: 60
+skills: [Perception]
+effects:
+  - { kind: advantage, on: save, assert: [againstCharm], when: "the saving throw is against being charmed" }

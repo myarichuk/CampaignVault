@@ -2,6 +2,7 @@
 name: modify_memory
 system: dnd5e
 level: 5
+school: enchantment
 classes: [bard, wizard]
 concentration: true
 castingTime: 1 action

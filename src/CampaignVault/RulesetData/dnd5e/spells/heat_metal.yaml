@@ -2,6 +2,7 @@
 name: heat_metal
 system: dnd5e
 level: 2
+school: transmutation
 classes: [bard, druid]
 concentration: true
 castingTime: 1 action

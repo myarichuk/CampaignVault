@@ -8,3 +8,7 @@ abilityBonuses:
   Charisma: 2
 size: Medium
 baseSpeed: 30
+darkvision: 60
+spells: { 1: [thaumaturgy], 3: [hellish_rebuke], 5: [darkness] }
+effects:
+  - { kind: resistance, damageType: fire }

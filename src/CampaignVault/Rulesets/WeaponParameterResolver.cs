@@ -103,6 +103,12 @@ internal static class WeaponParameterResolver
             action.Parameters["weaponItemId"] = weapon.Id;
         }
 
+        // The item template ("longsword"), for weapon proficiency by name.
+        if (!string.IsNullOrWhiteSpace(weapon.DefinitionName) && !action.Parameters.ContainsKey("weaponDefinition"))
+        {
+            action.Parameters["weaponDefinition"] = weapon.DefinitionName;
+        }
+
         foreach (var (rawKey, rawValue) in weapon.Properties)
         {
             var value = rawValue?.ToString();

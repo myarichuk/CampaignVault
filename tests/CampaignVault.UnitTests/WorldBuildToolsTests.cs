@@ -395,8 +395,8 @@ public class WorldBuildToolsTests : IClassFixture<RavenDBFixture>
         var stats = (Dnd5eExtension)stored.SystemStats;
         Assert.Equal(16, stats.Constitution);
         Assert.Equal(25, stats.Movement);
-        Assert.Contains("Darkvision", stored.DistinctiveFeatures);
-        Assert.Single(stored.DistinctiveFeatures, f => f == "Darkvision");
+        Assert.Contains("Darkvision 60 ft.", stored.DistinctiveFeatures);
+        Assert.Single(stored.DistinctiveFeatures, f => f.StartsWith("Darkvision"));
     }
 
     [Fact]

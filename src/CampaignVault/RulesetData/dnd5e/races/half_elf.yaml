@@ -7,3 +7,8 @@ abilityBonuses:
   Charisma: 2
 size: Medium
 baseSpeed: 30
+darkvision: 60
+abilityChoice: { count: 2, exclude: [Charisma] }
+skillChoices: 2
+effects:
+  - { kind: advantage, on: save, assert: [againstCharm], when: "the saving throw is against being charmed" }
