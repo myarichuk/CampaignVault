@@ -5,3 +5,4 @@ description: Gold pieces (party currency, never recovers)
 applicableSystems: [pf2e]
 recovery: Never
 defaultMax: 1000000
+startsAt: zero      # a purse starts empty; the max is only a ceiling
