@@ -303,6 +303,8 @@
 .cv-modal__dock { flex-shrink: 0; }
 .cv-modal__foot { flex-direction: row; justify-content: flex-end; margin-top: var(--sp-4); flex-shrink: 0; }
 .cv-modal__foot > .cv-btn { margin-left: var(--sp-2); }
+/* A wrapping action row needs a definite width, or it wraps at its content size and the last line spills out of the card. */
+.cv-modal__foot > .cv-actions { flex-grow: 1; flex-shrink: 1; }
 
 /* ------------------------------------------------------------------ toasts */
 

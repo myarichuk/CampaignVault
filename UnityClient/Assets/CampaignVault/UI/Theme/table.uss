@@ -172,6 +172,8 @@
 .cv-thinking--on { opacity: 1; }
 .cv-thinking .cv-icon { width: 16px; height: 16px; margin-right: 10px; -unity-background-image-tint-color: var(--gold-dim); }
 .cv-thinking__text { font-size: var(--fs-sm); -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); color: var(--text-3); }
+/* Fixed width so the dots counting up don't jiggle the row. */
+.cv-thinking__dots { width: 18px; margin-left: 0; padding-left: 0; -unity-text-align: middle-left; }
 
 .cv-jump { position: absolute; right: 16px; bottom: 12px; }
 

@@ -141,7 +141,8 @@ namespace CampaignVault.UnityClient.UI.Table
             Spinning = working && _s.FxEnabled;
             if (!working) { return; }
             string status = DriverBusy ? _s.Driver.Status : "the table is being set: opening the session…";
-            ThinkingText = DisplayText.Plain(string.IsNullOrEmpty(status) ? "the DM is thinking…" : status);
+            // The animated dots after the label stand in for the status's own trailing ellipsis.
+            ThinkingText = DisplayText.Plain((string.IsNullOrEmpty(status) ? "the DM is thinking" : status).TrimEnd('…', '.'));
         }
 
         private bool DriverBusy { get { return _s.Driver != null && _s.Driver.IsBusy; } }

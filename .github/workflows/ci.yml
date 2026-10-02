@@ -38,7 +38,7 @@ jobs:
 
       # xunit v3 executables directly (dotnet test exits 5 with this runner setup).
       - name: Unit tests
-        run: tests/CampaignVault.UnitTests/bin/Debug/net10.0/CampaignVault.UnitTests -parallel none
+        run: tests/CampaignVault.UnitTests/bin/Debug/net10.0/CampaignVault.UnitTests -parallelMode none
 
   integration:
     runs-on: ubuntu-latest
@@ -60,4 +60,4 @@ jobs:
       - run: docker build -t campaignvault:latest -f Dockerfile .
       - run: dotnet build tests/CampaignVault.IntegrationTests -c Debug
       - name: Integration tests
-        run: tests/CampaignVault.IntegrationTests/bin/Debug/net10.0/CampaignVault.IntegrationTests -parallel none
+        run: tests/CampaignVault.IntegrationTests/bin/Debug/net10.0/CampaignVault.IntegrationTests -parallelMode none

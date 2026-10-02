@@ -14,6 +14,11 @@
                 <ui:DataBinding property="text" data-source-path="ThinkingText" binding-mode="ToTarget" />
             </Bindings>
         </ui:Label>
+        <cv:VaultDots class="cv-thinking__text cv-thinking__dots">
+            <Bindings>
+                <ui:DataBinding property="active" data-source-path="Working" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultDots>
     </ui:VisualElement>
     <ui:VisualElement class="cv-command cv-frame">
         <!-- Without a working provider nothing here can do anything: say why and where to fix it. -->

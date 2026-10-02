@@ -105,6 +105,51 @@ namespace CampaignVault.UnityClient.UI.Controls
         }
     }
 
+    /// <summary>Trailing dots that count up while <see cref="active"/> ("the DM is thinking" + "···"); the timer runs only while active.</summary>
+    [UxmlElement]
+    public partial class VaultDots : Label
+    {
+        private IVisualElementScheduledItem _tick;
+        private bool _active;
+        private int _step;
+
+        public VaultDots()
+        {
+            pickingMode = PickingMode.Ignore;
+            RegisterCallback<DetachFromPanelEvent>(delegate { Stop(); });
+            RegisterCallback<AttachToPanelEvent>(delegate { if (_active) { Start(); } });
+        }
+
+        [UxmlAttribute, CreateProperty]
+        public bool active
+        {
+            get { return _active; }
+            set
+            {
+                if (_active == value) { return; }
+                _active = value;
+                if (value) { Start(); } else { Stop(); text = string.Empty; }
+            }
+        }
+
+        private void Start()
+        {
+            if (_tick != null || panel == null) { return; }
+            _tick = schedule.Execute(() =>
+            {
+                _step = (_step + 1) % 4;
+                text = new string('.', _step);
+            }).Every(350);
+        }
+
+        private void Stop()
+        {
+            if (_tick == null) { return; }
+            _tick.Pause();
+            _tick = null;
+        }
+    }
+
     /// <summary>
     /// Sets one class from a bound value: <c>class-prefix</c> + value ("cv-chip--" + "gold", "cv-check--rank" + 3),
     /// replacing whichever class with that prefix was there. An empty value leaves none. For a variant the data
