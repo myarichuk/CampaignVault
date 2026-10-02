@@ -400,7 +400,7 @@ public class LevelUpChangeHandler : IWorldChangeHandler
 
         // The picks go in before the level's hit points are derived, so a Constitution improvement counts for them.
         var pickMessages = new List<string>();
-        var plan = _planner?.Plan(character, activeSystem, levelUp.ClassGained);
+        var plan = _planner?.Plan(character, activeSystem, levelUp.ClassGained, levelUp.Picks);
         if (levelUp.Picks is { Count: > 0 } picks)
         {
             if (levelUp.LevelsGained != 1)

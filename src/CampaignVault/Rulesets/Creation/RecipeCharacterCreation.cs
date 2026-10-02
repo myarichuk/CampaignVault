@@ -288,9 +288,10 @@ public sealed class RecipeCharacterCreation(
             .ToDictionary(g => g.Key, g => g.First().Value, StringComparer.OrdinalIgnoreCase);
         IEnumerable<string> Picked(int level, string key) => all.GetValueOrDefault($"{level}.{key}") ?? [];
         var powers = ChosenPowers(steps, draft);
+        var featChoices = sources.FeatChoices(system);
         return
         [
-            .. levelSteps.SelectMany(step => LevelChoiceSlots.For(progression, Math.Max(1, draft.Level), feats, step.Key, step.ChoiceTypes, skills, Picked))
+            .. levelSteps.SelectMany(step => LevelChoiceSlots.For(progression, Math.Max(1, draft.Level), feats, step.Key, step.ChoiceTypes, skills, Picked, featChoices))
                 .Select(slot => powers.Aggregate(slot, NarrowedBy)),
         ];
     }
@@ -369,9 +370,11 @@ public sealed class RecipeCharacterCreation(
             if (!picks.TryGetValue(slot.Id, out var chosen))
                 continue;
 
-            if (slot.IsAsi)
+            if (slot.GivesIncrease)
             {
                 result.AddRange(slot.Increases(chosen));
+                if (slot.IsAsi && chosen.Count == 1 && sources.FeatProvider.TryGet(system, chosen[0], out var feat))
+                    result.AddRange(CharacterFeats.FixedIncrease(feat));
                 continue;
             }
 
@@ -496,7 +499,7 @@ public sealed class RecipeCharacterCreation(
         }
 
         // The improvements together can't push a score past 20 (the draft's scores include the race's bonus).
-        foreach (var ability in slots.Any(s => s.IsAsi) ? CreationSources.AbilityNames : [])
+        foreach (var ability in slots.Any(s => s.GivesIncrease) ? CreationSources.AbilityNames : [])
         {
             if (Increases(ctx.Kind, draft).Any(i => i.Ability == ability) && AbilityScore(ctx.Kind, draft, ability) is > 20 and var score)
                 yield return CreationIssue.Error(step.Key, $"{ability} would be {score}; ability score improvements stop at 20.");

@@ -58,6 +58,33 @@ public record FeatDefinition : RulesetTemplate
     /// </summary>
     public bool Adjudicated { get; init; }
 
+    /// <summary>5e half-feat: one ability it raises, of the player's choice when it names several (see <see cref="FeatAbilityIncrease"/>).</summary>
+    public FeatAbilityIncrease? AbilityIncrease { get; init; }
+
+    /// <summary>5e: armor, weapon and tool proficiencies it gives, joined to the sheet's.</summary>
+    public ProficiencyGrants? Proficiencies { get; init; }
+
+    /// <summary>5e: saving throws it makes the character proficient in.</summary>
+    public List<string> SavingThrows { get; init; } = [];
+
+    /// <summary>5e: proficiency in the saving throw of the ability <see cref="AbilityIncrease"/> raised.</summary>
+    public bool SavingThrowOfIncrease { get; init; }
+
+    /// <summary>5e: how many skills of the player's choice it makes the character proficient in.</summary>
+    public int SkillChoices { get; init; }
+
+    /// <summary>5e: extra hit points per character level, from the level it is taken at on.</summary>
+    public int HpPerLevel { get; init; }
+
+    /// <summary>5e: spells it gives outright (spell ids), added to the character's cantrips or known spells.</summary>
+    public List<string> Spells { get; init; } = [];
+
+    /// <summary>5e: spells it lets the player choose (see <see cref="FeatSpellChoice"/>), added like <see cref="Spells"/>.</summary>
+    public List<FeatSpellChoice> SpellChoices { get; init; } = [];
+
+    /// <summary>Whether taking it asks the player anything beyond the feat itself.</summary>
+    public bool HasChoices => AbilityIncrease is { Choose.Count: not 1 } || SkillChoices > 0 || SpellChoices.Count > 0;
+
     public static FeatDefinition Merge(FeatDefinition child, FeatDefinition parent) =>
         child with
         {
@@ -76,7 +103,36 @@ public record FeatDefinition : RulesetTemplate
             Level = child.Level ?? parent.Level,
             Effects = child.Effects.Count > 0 ? child.Effects : parent.Effects,
             Adjudicated = child.Adjudicated || parent.Adjudicated,
+            AbilityIncrease = child.AbilityIncrease ?? parent.AbilityIncrease,
+            Proficiencies = child.Proficiencies ?? parent.Proficiencies,
+            SavingThrows = child.SavingThrows.Count > 0 ? child.SavingThrows : parent.SavingThrows,
+            SavingThrowOfIncrease = child.SavingThrowOfIncrease || parent.SavingThrowOfIncrease,
+            SkillChoices = child.SkillChoices > 0 ? child.SkillChoices : parent.SkillChoices,
+            HpPerLevel = child.HpPerLevel != 0 ? child.HpPerLevel : parent.HpPerLevel,
+            Spells = child.Spells.Count > 0 ? child.Spells : parent.Spells,
+            SpellChoices = child.SpellChoices.Count > 0 ? child.SpellChoices : parent.SpellChoices,
         };
+}
+
+/// <summary>
+/// The ability a 5e half-feat raises: <c>{ choose: [Strength, Dexterity], amount: 1 }</c>. One entry is fixed; several (or
+/// none, meaning any of the six) are the player's pick when the feat is taken.
+/// </summary>
+public sealed record FeatAbilityIncrease
+{
+    public List<string> Choose { get; init; } = [];
+    public int Amount { get; init; } = 1;
+}
+
+/// <summary>
+/// Spells a 5e feat lets the player choose: <c>{ level: 0, count: 2, lists: [bard, cleric, wizard] }</c> is two cantrips from
+/// any of those classes' lists.
+/// </summary>
+public sealed record FeatSpellChoice
+{
+    public int Level { get; init; }
+    public int Count { get; init; } = 1;
+    public List<string> Lists { get; init; } = [];
 }
 
 /// <summary>

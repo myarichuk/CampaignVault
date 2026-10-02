@@ -243,7 +243,7 @@ internal static class DraftCharacterMapper
             if (!levels.Picks.TryGetValue(slot.Id, out var chosen))
                 continue;
 
-            var increases = slot.Increases(chosen);
+            var increases = slot.IsAsi ? slot.Increases(chosen) : [];
             if (increases.Count > 0)
             {
                 Record(stats, slot.Key, [string.Join(", ", increases.Select(i => $"{i.Ability} +{i.Amount}"))], slot.Level);

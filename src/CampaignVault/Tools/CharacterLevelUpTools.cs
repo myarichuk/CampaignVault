@@ -55,7 +55,7 @@ public sealed class CharacterLevelUpTools(
         [Description("options | apply")] string action,
         [Description("Character id, e.g. 'chars/hero-123'.")] string characterId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
-        [Description("apply only: slot id → the option ids picked, as options listed them.")] Dictionary<string, List<string>>? picks = null,
+        [Description("apply: slot id → the option ids picked, as options listed them. options: the picks so far, to list the choices they add (a feat's own).")] Dictionary<string, List<string>>? picks = null,
         [Description("apply only (5e): average or rolled hit points for the level.")] string? hpMode = null)
     {
         var apply = string.Equals(action?.Trim(), "apply", StringComparison.OrdinalIgnoreCase);
@@ -83,7 +83,7 @@ public sealed class CharacterLevelUpTools(
                     Summary: $"{character.Name} can't gain a level: only player characters and companions with a class below level {LevelUpStatusReader.MaxLevel} can.");
             }
 
-            var plan = planner.Plan(character, config.ActiveSystem);
+            var plan = planner.Plan(character, config.ActiveSystem, picks: picks);
             var name = character.Name;
             if (!apply)
             {

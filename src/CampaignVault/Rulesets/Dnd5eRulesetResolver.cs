@@ -24,18 +24,19 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         SpellDefinitionProvider? spellDefinitionProvider = null,
         CreatureDefinitionProvider? creatureDefinitionProvider = null,
         RollModifierPipeline? rollModifiers = null,
-        ProgressionDefinitionProvider? progressionProvider = null)
+        ProgressionDefinitionProvider? progressionProvider = null,
+        FeatDefinitionProvider? featProvider = null)
     {
         if (rollModifiers is not null)
             Pipeline = rollModifiers;
         _rollService = rollService ?? throw new ArgumentNullException(nameof(rollService));
         _spellDefinitionProvider = spellDefinitionProvider;
         _creatureDefinitionProvider = creatureDefinitionProvider;
-        var hpStep = new Dnd5eDeriveHitPointsStep(_rollService, progressionProvider);
-        var profStep = new Dnd5eDeriveProficiencyStep(classProvider, backgroundProvider, progressionProvider);
+        var hpStep = new Dnd5eDeriveHitPointsStep(_rollService, progressionProvider, featProvider);
+        var profStep = new Dnd5eDeriveProficiencyStep(classProvider, backgroundProvider, progressionProvider, featProvider);
         var passiveStep = new Dnd5eDerivePassivePerceptionStep();
         var spellStep = new Dnd5eDeriveSpellcastingStep(progressionProvider);
-        var grantStep = new Dnd5eGrantClassSpellsStep(progressionProvider);
+        var grantStep = new Dnd5eGrantClassSpellsStep(progressionProvider, featProvider, spellDefinitionProvider);
         List<IBootstrapStep> steps = raceProvider != null ? [new Dnd5eDeriveRaceStep(raceProvider)] : [];
         steps.AddRange([hpStep, new Dnd5eDeriveDefenseStep(progressionProvider), profStep, passiveStep, spellStep, grantStep]);
         _bootstrap = new CharacterBootstrapPipeline(

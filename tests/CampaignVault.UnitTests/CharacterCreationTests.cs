@@ -739,6 +739,41 @@ public class CharacterCreationTests : IDisposable
     }
 
     [Fact]
+    public async Task AFeatTakenAtAnImprovement_AsksItsChoices_AndThePreviewAppliesThem()
+    {
+        var feats = Path.Combine(_root, "host", "dnd5e", "feats");
+        Directory.CreateDirectory(feats);
+        File.WriteAllText(Path.Combine(feats, "steadfast_training.yaml"), """
+            name: steadfast_training
+            system: dnd5e
+            abilityIncrease: { choose: [Strength, Constitution] }
+            savingThrowOfIncrease: true
+            skillChoices: 1
+            spellChoices: [{ level: 0, count: 1, lists: [wizard] }]
+            """);
+        var service = Service();
+        var fighter = Dnd5e("fighter", 4, str: 15, con: 13);
+        var picked = fighter.With("levels", new Dictionary<string, object> { ["4.asiOrFeat"] = "steadfast_training" });
+
+        var missing = service.Validate(RulesetSystem.Dnd5e, picked).Where(i => !i.IsWarning).Select(i => i.Message).ToList();
+        Assert.Contains(missing, m => m.Contains("Steadfast Training: ability +1"));
+        Assert.Contains(missing, m => m.Contains("Steadfast Training: cantrips"));
+
+        var preview = await service.PreviewAsync(RulesetSystem.Dnd5e, fighter.With("levels", new Dictionary<string, object>
+        {
+            ["1.fightingStyle"] = "archery", ["3.subclass"] = "champion",
+            ["4.asiOrFeat"] = "steadfast_training", ["4.steadfast_training.ability"] = "Constitution",
+            ["4.steadfast_training.skills"] = "Arcana", ["4.steadfast_training.spells"] = "fire_bolt",
+        }));
+        var stats = Assert.IsType<Dnd5eExtension>(preview.Character.SystemStats);
+        Assert.DoesNotContain(preview.Errors, i => i.Step == "levels");
+        Assert.Equal(15, stats.Constitution);   // 13, +1 human, +1 the feat
+        Assert.True(stats.SavingThrowModifiers.ContainsKey("Constitution"));
+        Assert.True(stats.SkillModifiers.ContainsKey("Arcana"));
+        Assert.Contains("fire_bolt", stats.Spells.Cantrips);
+    }
+
+    [Fact]
     public void Validate_AboveTheRecipesMaxLevel_IsAnError_5eAndPf2eTo20()
     {
         var service = Service();
@@ -1422,14 +1457,14 @@ public class CharacterCreationTests : IDisposable
         var roots = pluginRoot is null ? (IReadOnlyList<string>)[] : [pluginRoot];
         var progressions = new ProgressionDefinitionProvider(host, Asm, null, roots);
         var powers = new NamedPowerProvider(host, Asm, null, roots);
+        var feats = new FeatDefinitionProvider(host, Asm);
         var selector = new RulesetModuleSelector(
         [
-            new Dnd5eRulesetResolver(roll, races, classes, backgrounds, spells, creatures, progressionProvider: progressions),
+            new Dnd5eRulesetResolver(roll, races, classes, backgrounds, spells, creatures, progressionProvider: progressions, featProvider: feats),
             new Pf2eRulesetResolver(roll, races, spells, creatures, classProvider: classes, backgroundProvider: backgrounds,
                 progressionProvider: progressions),
             new NarrativeRulesetResolver(roll),
         ]);
-        var feats = new FeatDefinitionProvider(host, Asm);
         var sources = new CreationSources(
             races, classes, backgrounds, feats, spells, creatures, progressions, powers);
         var recipes = new CreationRecipeProvider(host, Asm, null, pluginRoot is null ? [] : [pluginRoot]);

@@ -289,6 +289,18 @@ public sealed class CreationSources(
             .Select(FeatOption),
     ];
 
+    /// <summary>What the slots of a feat taken at an improvement offer: the feat, and spells of some lists at a level.</summary>
+    public FeatChoiceSource FeatChoices(string system) => new(
+        id => feats.TryGet(system, id, out var feat) ? feat : null,
+        (lists, level) =>
+        [
+            .. lists.SelectMany(list => spells.QuerySpells(system, list, classProvider: classes))
+                .Where(s => (s.Level ?? 0) == level && FeatEffectRules.PluginAvailable(s.Requires))
+                .DistinctBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(s => new CreationOption(s.Name, Label(s.Name), s.Description) { Homebrew = s.Homebrew }),
+        ]);
+
     /// <summary>A feat as an option: its summary, and the prerequisite text (its checkable part is feat.prerequisites's).</summary>
     private static CreationOption FeatOption(FeatDefinition feat)
     {

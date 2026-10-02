@@ -874,6 +874,34 @@ A pool is sized by `levelToMaxMap` (or `defaultMax`) or by `maxFrom`: the abilit
 character doesn't have the pool. Something grants a `grantedOnly` pool by name: a feat's `extraPools`, or a class
 feature's `pools: [gambit_dice]` (a subclass's, once picked and reached). `spell_slots_*` pools follow the caster level.
 
+### Feat Definition (5e)
+
+```yaml
+# RulesetData/dnd5e/feats/steadfast_training.yaml
+name: steadfast_training
+system: dnd5e
+prerequisite: Strength 13 or higher          # shown; the checkable part is prerequisites:
+prerequisites: [{ ability: Strength, min: 13 }]
+mechanicalSummary: +1 Strength or Constitution and its saving throw...
+abilityIncrease: { choose: [Strength, Constitution], amount: 1 }   # one entry: fixed; none: any ability
+savingThrowOfIncrease: true                  # proficient in the raised ability's save
+savingThrows: [Wisdom]                       # ...or fixed ones
+proficiencies: { armor: [medium], weapons: [longbow], tools: [smiths_tools] }
+skillChoices: 1                              # skills of the player's choice
+spells: [light]                              # given outright
+spellChoices: [{ level: 0, count: 2, lists: [wizard, sorcerer] }]   # chosen from those lists
+hpPerLevel: 1                                # from the level it's taken at, for every level
+effects: [{ kind: saveBonus, value: 1 }]     # roll effects (see the effect vocabulary)
+extraPools: [lucky_points]                   # grantedOnly pools it gives
+```
+
+A feat taken at an ability score improvement asks its own choices in the same place, as slots after the improvement
+(`4.steadfast_training.ability`, `.skills`, `.spells`): the builder lists them once the feat is picked, and a
+`level_up` / `character_level_up` sends them with the feat's pick (`options` with the picks so far lists them). The
+picks are recorded as `levelUpChoices` (`steadfast_training.ability`, `skills`, `steadfast_training.spells`), and the
+sheet derives the rest: the raised score, the save, the proficiencies, the hit points, and the spells (cantrips to
+the cantrips, others to the known list).
+
 ### Item Definition
 
 Not restricted to weapons/armor — `category` plus the open `properties` bag cover outfits, tools,

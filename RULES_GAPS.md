@@ -90,7 +90,8 @@ Rules content and features left out on purpose, or deferred. Each entry says why
 - **5e Expertise** (bard 3 and 10, rogue 1 and 6), ranger favored enemy and natural explorer.
 - **PF2e** Perception ranks, Lore skills, prerequisites written only as prose, and class proficiency increases by
   level.
-- **Level-up details.** A 5e feat taken instead of an improvement has its prerequisites checked (PF2e level-ups don't pick
-  feats in the menu yet); a multiclass
+- **Level-up details.** A 5e feat taken instead of an improvement has its prerequisites checked, and its own choices
+  (a half-feat's ability, skills, spells) are slots once it is picked (PF2e level-ups don't pick feats in the menu yet).
+  A feat taken at creation outside an improvement (a race's bonus feat) doesn't ask its choices; a multiclass
   character's level-up records picks at the class's level; deities' narrowing of a cleric's domains isn't applied to a
   level-up (the original choice is kept).

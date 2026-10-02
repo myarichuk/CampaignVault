@@ -6,9 +6,11 @@ namespace CampaignVault.Rulesets.Bootstrap;
 
 /// <summary>
 /// Max hit points from the hit dice and Constitution, plus what class features give per level (Draconic Resilience, from
-/// the progression data when <paramref name="progressions"/> is given).
+/// the progression data when <paramref name="progressions"/> is given) and feats give per level from the level they were
+/// taken at (when <paramref name="feats"/> is given).
 /// </summary>
-public sealed class Dnd5eDeriveHitPointsStep(IRollService rollService, ProgressionDefinitionProvider? progressions = null) : IBootstrapStep, ILevelGainStep
+public sealed class Dnd5eDeriveHitPointsStep(
+    IRollService rollService, ProgressionDefinitionProvider? progressions = null, FeatDefinitionProvider? feats = null) : IBootstrapStep, ILevelGainStep
 {
     public string Name => "dnd5e.derive_hit_points";
 
@@ -32,6 +34,13 @@ public sealed class Dnd5eDeriveHitPointsStep(IRollService rollService, Progressi
         {
             maxHp += featureHp;
             detail = $"{detail} Class features +{featureHp}.";
+        }
+
+        var featHp = CharacterFeats.HpBonus(context.Character, RulesetSystem.Dnd5e, feats, level);
+        if (featHp > 0)
+        {
+            maxHp += featHp;
+            detail = $"{detail} Feats +{featHp}.";
         }
 
         context.Character.MaxHp = maxHp;
@@ -81,7 +90,9 @@ public sealed class Dnd5eDeriveHitPointsStep(IRollService rollService, Progressi
 
         var gain = await ComputeLevelGainAsync(dieSides, conMod, mode, ct)
             + CharacterClassFeatures.HpBonus(context.Character, RulesetSystem.Dnd5e, progressions, level + context.LevelsGained)
-            - CharacterClassFeatures.HpBonus(context.Character, RulesetSystem.Dnd5e, progressions, level);
+            - CharacterClassFeatures.HpBonus(context.Character, RulesetSystem.Dnd5e, progressions, level)
+            + CharacterFeats.HpBonus(context.Character, RulesetSystem.Dnd5e, feats, level + context.LevelsGained)
+            - CharacterFeats.HpBonus(context.Character, RulesetSystem.Dnd5e, feats, level);
         var previousMax = context.Character.MaxHp;
         context.Character.MaxHp = Math.Max(0, previousMax) + gain;
         stats.Level = level + context.LevelsGained;

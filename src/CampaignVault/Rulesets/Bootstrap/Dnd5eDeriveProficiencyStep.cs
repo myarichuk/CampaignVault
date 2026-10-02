@@ -7,7 +7,8 @@ namespace CampaignVault.Rulesets.Bootstrap;
 public sealed class Dnd5eDeriveProficiencyStep(
     ClassDefinitionProvider? classProvider = null,
     BackgroundDefinitionProvider? backgroundProvider = null,
-    ProgressionDefinitionProvider? progressionProvider = null) : IBootstrapStep, ILevelGainStep
+    ProgressionDefinitionProvider? progressionProvider = null,
+    FeatDefinitionProvider? featProvider = null) : IBootstrapStep, ILevelGainStep
 {
     public string Name => "dnd5e.derive_proficiency";
 
@@ -179,12 +180,17 @@ public sealed class Dnd5eDeriveProficiencyStep(
     }
 
     /// <summary>
-    /// Fills SavingThrowModifiers for saves the character's starting class is proficient in, using ability mod + proficiency bonus.
-    /// Never overwrites a save the caller already set.
+    /// Fills SavingThrowModifiers for saves the character's starting class and its feats make it proficient in, using
+    /// ability mod + proficiency bonus. Never overwrites a save the caller already set.
     /// </summary>
     private List<string> DeriveClassSavingThrowModifiers(BootstrapContext context, Dnd5eExtension stats, int prof)
     {
         var applied = new List<string>();
+        foreach (var ability in CharacterFeats.SavingThrows(context.Character, RulesetSystem.Dnd5e, featProvider))
+        {
+            AddSave(stats, ability, prof, applied);
+        }
+
         if (classProvider is null)
         {
             return applied;
@@ -201,18 +207,22 @@ public sealed class Dnd5eDeriveProficiencyStep(
 
             foreach (var ability in classDef.SavingThrows)
             {
-                if (stats.SavingThrowModifiers.ContainsKey(ability))
-                {
-                    continue;
-                }
-
-                var abilityScore = GetAbilityScore(stats, ability);
-                stats.SavingThrowModifiers[ability] = stats.GetAbilityModifier(abilityScore) + prof;
-                applied.Add(ability);
+                AddSave(stats, ability, prof, applied);
             }
         }
 
         return applied;
+    }
+
+    private static void AddSave(Dnd5eExtension stats, string ability, int prof, List<string> applied)
+    {
+        if (stats.SavingThrowModifiers.Keys.Any(k => k.Equals(ability, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        stats.SavingThrowModifiers[ability] = stats.GetAbilityModifier(GetAbilityScore(stats, ability)) + prof;
+        applied.Add(ability);
     }
 
     /// <summary>
@@ -237,6 +247,7 @@ public sealed class Dnd5eDeriveProficiencyStep(
         }
 
         grants.AddRange(CharacterClassFeatures.Proficiencies(context.Character, RulesetSystem.Dnd5e, progressionProvider));
+        grants.AddRange(CharacterFeats.Proficiencies(context.Character, RulesetSystem.Dnd5e, featProvider));
 
         if (backgroundProvider is not null && !string.IsNullOrWhiteSpace(stats.Background)
             && backgroundProvider.TryGet(RulesetSystem.Dnd5e, stats.Background, out var background) && background is not null)
