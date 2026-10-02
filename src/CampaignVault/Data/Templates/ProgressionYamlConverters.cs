@@ -83,6 +83,7 @@ internal sealed class ChoiceOptionYamlConverter : IYamlTypeConverter
             Effects = raw?.Effects ?? [],
             Features = raw?.Features ?? [],
             Spellcasting = raw?.Spellcasting,
+            Prerequisite = raw?.Prerequisite,
         };
     }
 
@@ -100,5 +101,6 @@ internal sealed class ChoiceOptionYamlConverter : IYamlTypeConverter
         public List<FeatEffect> Effects { get; set; } = [];
         public Dictionary<int, List<FeatureDefinition>> Features { get; set; } = [];
         public OptionSpellcasting? Spellcasting { get; set; }
+        public OptionPrerequisite? Prerequisite { get; set; }
     }
 }

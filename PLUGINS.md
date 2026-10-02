@@ -751,6 +751,17 @@ steps+:
   else the picked subclass's), offers the list's spells up to the slot level, and counts from these tables. Spells carry
   `school:`.
 
+  **Option prerequisites.** `prerequisite:` on an option keeps it out of a choice until the character reaches a class
+  level and/or has picked another option of the class at any choice (a pact, a path). The builder and level-up offer
+  it only from then on, and a later option-less choice that borrows the list filters it at its own level:
+
+  ```yaml
+  - { id: boundLantern, label: Bound Lantern, prerequisite: { level: 5, option: lanternPact } }
+  ```
+
+  Other prerequisites (a known spell, an ability score) stay description text. (`requires:` is something else: it
+  gates a whole template on a plugin or mode.)
+
   **Effect vocabulary** (`effects:` on a feat, feature or option; fixed values only, the DM supplies facts, never numbers):
 
   | kind | needs | does |
@@ -786,7 +797,7 @@ steps+:
     3: [{ name: Kindled Blade, description: ..., effects: [{ kind: damageBonus, value: 1, weapon: [melee] }] }]
   ```
 
-  It takes the option fields above (`skills`, `keyAbility`, `effects`, `features`, `inherits:`, `requires:`). A file
+  It takes the option fields above (`skills`, `keyAbility`, `effects`, `features`, `prerequisite`, `inherits:`, `requires:`). A file
   naming a class with no progression is skipped with a warning; it never replaces a shipped option of the same id.
 
   **Switching off shipped content.** In a `patches:` file, `hidden: true` removes any shipped template (a background, a
@@ -1487,5 +1498,5 @@ Deferred capabilities (not yet implemented):
 
 ---
 
-**Last updated:** engine 0.15.0 — effect kinds `initiativeBonus`, `speedBonus`, `passiveBonus` and `damageReduction`; engine 0.14.0 — `ProficiencyGrants` (5e armor, weapon and tool proficiencies on classes and features; weapon proficiency gates the attack bonus), pool `maxFrom`, `die`/`dieByLevel`, `recoveryByLevel`, `grantedOnly` and feature-granted `pools`, subclass `spellcasting` and spell `school`; engine 0.13.0 — character creation contracts (`ICharacterCreation`, `IRecipeValidator`, `CharacterDraft`, `CreationOption.Values`), `FeatEffect`/`RulesetTemplate.Requires`, `SpellRepertoire`, explicit death; engine 0.11.0 — `IRollModifierProvider`/`RollQuery`/`RollModifier` (what buffs, conditions, willpower and plugin rules do to rolls; `IChangeContext.ResolveRollModifiers` for plugin rolls), `SystemExtension.WillpowerDrained` and willpower that matters (charm, fear, compulsion and mental saves; rest restores what was drained), `SpellDefinition.tags`, effective speed (`Speed` modifiers now slow travel and show on cards, plus a context line for chases); engine 0.10.0 — `IWorldTimeObserver`/`TimeAdvance` (plugin time hook), `apply_effect` (clamped, expiring, non-stacking buffs/debuffs; `persistent` for curses and auras), the consequence beat (`consequences`, `consequenceCooldownHours`, `consequenceMaxPerDay` options), `tether` (subject → anchor with break DC), ammunition (`ammoType`, `ammoPerShot`, `fireModes`, `mode`), and weapon bursts that fan out round-robin over targets; engine 0.9.0 — `ActorActionAttribute` and `ActionBlock` (the host refuses a marked verb, and core attack/spell/item-use actions, from an actor who is incapacitated, stunned, paralyzed, petrified, unconscious or carries a `BlocksAllActions` status; whoever applies such a status must give it an exit); engine 0.8.0 — public `EngineOnlyAttribute`, `plugin.json` `systems`, `IModeStateMachine.TryAddParticipant`/`TryRemoveParticipant` and `core.mode_joined.v1`/`core.mode_left.v1` (host handling of `mode_transition` join/leave and `systems` lands after the SDK publish); engine 0.7.0 — `IPluginCampaignOptionsUpgrader`, `IContextTurn.Config`/`Time`/`LoadCharacterAsync`, `playerOnlyModeIds`, owner-managed pools, host-enforced mode action slots
+**Last updated:** engine 0.16.0 — option `prerequisite` (class level, earlier pick); engine 0.15.0 — effect kinds `initiativeBonus`, `speedBonus`, `passiveBonus` and `damageReduction`; engine 0.14.0 — `ProficiencyGrants` (5e armor, weapon and tool proficiencies on classes and features; weapon proficiency gates the attack bonus), pool `maxFrom`, `die`/`dieByLevel`, `recoveryByLevel`, `grantedOnly` and feature-granted `pools`, subclass `spellcasting` and spell `school`; engine 0.13.0 — character creation contracts (`ICharacterCreation`, `IRecipeValidator`, `CharacterDraft`, `CreationOption.Values`), `FeatEffect`/`RulesetTemplate.Requires`, `SpellRepertoire`, explicit death; engine 0.11.0 — `IRollModifierProvider`/`RollQuery`/`RollModifier` (what buffs, conditions, willpower and plugin rules do to rolls; `IChangeContext.ResolveRollModifiers` for plugin rolls), `SystemExtension.WillpowerDrained` and willpower that matters (charm, fear, compulsion and mental saves; rest restores what was drained), `SpellDefinition.tags`, effective speed (`Speed` modifiers now slow travel and show on cards, plus a context line for chases); engine 0.10.0 — `IWorldTimeObserver`/`TimeAdvance` (plugin time hook), `apply_effect` (clamped, expiring, non-stacking buffs/debuffs; `persistent` for curses and auras), the consequence beat (`consequences`, `consequenceCooldownHours`, `consequenceMaxPerDay` options), `tether` (subject → anchor with break DC), ammunition (`ammoType`, `ammoPerShot`, `fireModes`, `mode`), and weapon bursts that fan out round-robin over targets; engine 0.9.0 — `ActorActionAttribute` and `ActionBlock` (the host refuses a marked verb, and core attack/spell/item-use actions, from an actor who is incapacitated, stunned, paralyzed, petrified, unconscious or carries a `BlocksAllActions` status; whoever applies such a status must give it an exit); engine 0.8.0 — public `EngineOnlyAttribute`, `plugin.json` `systems`, `IModeStateMachine.TryAddParticipant`/`TryRemoveParticipant` and `core.mode_joined.v1`/`core.mode_left.v1` (host handling of `mode_transition` join/leave and `systems` lands after the SDK publish); engine 0.7.0 — `IPluginCampaignOptionsUpgrader`, `IContextTurn.Config`/`Time`/`LoadCharacterAsync`, `playerOnlyModeIds`, owner-managed pools, host-enforced mode action slots
 **Plugin API version:** 1.4 (adds the 0.8.0 contracts above; 1.3 added `IPluginCampaignOptionsUpgrader` and the 0.7.0 hooks above; 1.2 added `IPluginTraitsUpgrader`; 1.1 added `IInteractionMode`/`IModeStateMachine`/`IWorldChangeObserver`; `IRulesetModule` surface unchanged from 1.0)

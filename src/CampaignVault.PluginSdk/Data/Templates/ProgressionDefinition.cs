@@ -76,8 +76,31 @@ public record ChoiceOption
     /// </summary>
     public OptionSpellcasting? Spellcasting { get; init; }
 
+    /// <summary>What a character needs before the option is offered (a class level, an option picked earlier). Null: nothing.</summary>
+    public OptionPrerequisite? Prerequisite { get; init; }
+
     /// <summary>Set for options that came from a plugin or the campaign (a <see cref="ClassOptionDefinition"/>), not the shipped rules.</summary>
     public bool Homebrew { get; init; }
+}
+
+/// <summary>
+/// What a character needs before an option is offered: a class level, and an option it picked earlier in the class (a
+/// pact, a path). The builder and level-up leave it out of a choice until both are met:
+/// <code>
+/// prerequisite: { level: 5, option: emberPact }   # class level 5 or higher, and emberPact picked at some choice
+/// </code>
+/// </summary>
+public record OptionPrerequisite
+{
+    /// <summary>The lowest class level the option is offered at; 0 for any.</summary>
+    public int Level { get; init; }
+
+    /// <summary>The id of an option the character must have picked in the class (any choice), or null.</summary>
+    public string? Option { get; init; }
+
+    /// <summary>Whether a character at class level <paramref name="level"/> with the options <paramref name="picked"/> qualifies.</summary>
+    public bool MetBy(int level, IEnumerable<string> picked) =>
+        level >= Level && (string.IsNullOrEmpty(Option) || picked.Contains(Option, StringComparer.OrdinalIgnoreCase));
 }
 
 /// <summary>
@@ -249,6 +272,21 @@ public record ProgressionDefinition : RulesetTemplate
             return HideOptions.Count == 0 ? own : [.. own.Where(o => !IsHidden(o))];
 
         return [.. own.Concat(extra.Where(e => !own.Any(o => o.Id.Equals(e.Id, StringComparison.OrdinalIgnoreCase)))).Where(o => !IsHidden(o))];
+    }
+
+    /// <summary>
+    /// The options of a choice gained at a class level that the character qualifies for: <see cref="OptionsFor(LevelUpChoiceDefinition, ChoiceOption?)"/>
+    /// less those whose <see cref="ChoiceOption.Prerequisite"/> it doesn't meet at that level with the options
+    /// <paramref name="picked"/> names up to it.
+    /// </summary>
+    public List<ChoiceOption> OptionsFor(GainedChoice gained, Func<int, string, IEnumerable<string>> picked)
+    {
+        var options = OptionsFor(gained.Choice, gained.From);
+        if (!options.Any(o => o.Prerequisite is not null))
+            return options;
+
+        var have = PickedOptions(gained.Level, picked).Select(o => o.Id).ToList();
+        return [.. options.Where(o => o.Prerequisite?.MetBy(gained.Level, have) ?? true)];
     }
 
     /// <summary>The choices the features of <paramref name="option"/> ask, keyed like a level's.</summary>

@@ -20,6 +20,12 @@ CampaignVault install, and restart the host.
 See [PLUGINS.md](https://github.com/myarichuk/CampaignVault/blob/master/PLUGINS.md) in
 the main repository for the full plugin architecture, trust model, and quick-start guide.
 
+## 0.16.0
+
+- **Option prerequisites** (`ChoiceOption.Prerequisite`, `ClassOptionDefinition.Prerequisite`, `OptionPrerequisite`): a
+  class level and/or an option picked earlier in the class before an option is offered.
+  `OptionsFor(GainedChoice, picked)` returns only the options the character qualifies for at the choice's level.
+
 ## 0.15.0
 
 - **Effect kinds** (`FeatEffectKinds`): `initiativeBonus`, `speedBonus` (feet), `passiveBonus` (`subject` Perception or

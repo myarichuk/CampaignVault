@@ -117,7 +117,7 @@ public static class LevelChoiceSlots
     /// Every choice of the class's progression at levels 1 to <paramref name="level"/> of the given types (all when empty),
     /// in level order, for the levelChoices step <paramref name="step"/>. Spell picks are the spells step's, so
     /// SpellSelection choices are left out. A choice with no options of its own (a later invocation) offers the options of
-    /// the same key at another level; a skill increase or proficiency offers the system's skills, attribute boosts the
+    /// the same key at another level, less those whose prerequisites the character doesn't meet at the slot's level; a skill increase or proficiency offers the system's skills, attribute boosts the
     /// abilities. A picked option's features add their choices (a hunter's prey once the hunter is picked):
     /// <paramref name="picked"/> gives the picks by level and choice key. A feat picked at an improvement adds its own
     /// choices after it (<see cref="FeatSlots"/>) when <paramref name="featChoices"/> is given.
@@ -134,8 +134,9 @@ public static class LevelChoiceSlots
     {
         picked ??= (_, _) => [];
         var slots = new List<LevelChoiceSlot>();
-        foreach (var (at, choice, from) in progression.ChoicesUpTo(level, picked).Select(g => (g.Level, g.Choice, g.From)))
+        foreach (var gained in progression.ChoicesUpTo(level, picked))
         {
+            var (at, choice) = (gained.Level, gained.Choice);
             if (choice.Type == ChoiceType.SpellSelection)
                 continue;
 
@@ -187,7 +188,7 @@ public static class LevelChoiceSlots
                     slots.Add(slot with { Options = [.. (skills ?? []).Select(k => new CreationOption(k, k, null, id))] });
                     break;
                 default:
-                    var options = progression.OptionsFor(choice, from);
+                    var options = progression.OptionsFor(gained, picked);
                     slots.Add(slot with
                     {
                         Options = [.. options.Select(o => new CreationOption(o.Id, o.Label == o.Id ? Humanize(o.Id) : o.Label, o.Description, id) { Homebrew = o.Homebrew })],

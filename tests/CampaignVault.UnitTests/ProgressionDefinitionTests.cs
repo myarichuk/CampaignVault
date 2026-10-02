@@ -84,7 +84,7 @@ public class ProgressionDefinitionTests
     }
 
     [Fact]
-    public void Dnd5eWarlock_Level2_InvocationChoiceParsesScalarOptionsAsIdAndLabel()
+    public void Dnd5eWarlock_Level2_InvocationChoiceHasLabelledOptions()
     {
         var provider = CreateProvider();
         var level2 = provider.GetLevelDefinition(RulesetSystem.Dnd5e, "warlock", 2);
@@ -94,8 +94,8 @@ public class ProgressionDefinitionTests
         Assert.Equal("invocation", invocation.Key);
         Assert.Equal(ChoiceType.FeatSelection, invocation.Type);
         Assert.True(invocation.Options.Count > 5);
-        Assert.All(invocation.Options, o => Assert.Equal(o.Id, o.Label));
-        Assert.Contains(invocation.Options, o => o.Id == "agonizingBlast");
+        Assert.All(invocation.Options, o => Assert.False(string.IsNullOrWhiteSpace(o.Description)));
+        Assert.Contains(invocation.Options, o => o is { Id: "agonizingBlast", Label: "Agonizing Blast" });
     }
 
     [Fact]
