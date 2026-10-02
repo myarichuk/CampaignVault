@@ -671,7 +671,8 @@ steps+:
   object of slot → option id, or a list: `{"2.subclass": "evocation", "2.invocation": ["agonizingBlast",
   "repellingBlast"]}`. A choice's `count:` is how many different options it takes ("choose two invocations"); one
   picked at an earlier level of the same key can't be picked again. A choice with no options of its own (a later
-  invocation) offers that key's options from another level. Choice types:
+  invocation) offers that key's options from another level; inside a subclass ("two more maneuvers" at 7), the
+  subclass's own features are searched first. Choice types:
   - `AsiOrFeat` takes one ability (+2), two (+1 each) or one feat instead (its `prerequisites` checked), and no score
     may pass 20.
   - `SkillIncrease` (PF2e) raises one skill a rank: trained or expert at any level, master from 7, legendary from 15.

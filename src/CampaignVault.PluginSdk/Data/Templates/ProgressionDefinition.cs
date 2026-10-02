@@ -199,20 +199,30 @@ public record ProgressionDefinition : RulesetTemplate
             .FirstOrDefault();
 
     /// <summary>
-    /// A choice's options: its own, or when it has none (a later "learn one more invocation"), those of the same key at
-    /// another level.
+    /// A choice's options: its own, or when it has none (a later "learn one more invocation", "two more maneuvers"), those
+    /// of the same key elsewhere: in the features of the option it came from (<paramref name="from"/>, a subclass), then
+    /// at another level of the class.
     /// </summary>
-    public List<ChoiceOption> OptionsFor(LevelUpChoiceDefinition choice)
+    public List<ChoiceOption> OptionsFor(LevelUpChoiceDefinition choice, ChoiceOption? from = null)
     {
         var own = choice.Options.Count > 0
             ? choice.Options
-            : Levels.Values.SelectMany(l => l.Choices).FirstOrDefault(c => c.Key == choice.Key && c.Options.Count > 0)?.Options ?? [];
+            : NestedChoices(from).FirstOrDefault(c => c.Key == choice.Key && c.Options.Count > 0)?.Options
+                ?? Levels.Values.SelectMany(l => l.Choices).FirstOrDefault(c => c.Key == choice.Key && c.Options.Count > 0)?.Options
+                ?? [];
         // Plugin options join only a choice that already offers some, so "asiOrFeat" and the like stay untouched.
         if (own.Count == 0 || !ExtraOptions.TryGetValue(choice.Key, out var extra))
             return HideOptions.Count == 0 ? own : [.. own.Where(o => !IsHidden(o))];
 
         return [.. own.Concat(extra.Where(e => !own.Any(o => o.Id.Equals(e.Id, StringComparison.OrdinalIgnoreCase)))).Where(o => !IsHidden(o))];
     }
+
+    /// <summary>The choices the features of <paramref name="option"/> ask, keyed like a level's.</summary>
+    private static IEnumerable<LevelUpChoiceDefinition> NestedChoices(ChoiceOption? option) =>
+        option is null
+            ? []
+            : option.Features.Values.SelectMany(list => list)
+                .SelectMany(f => f.Choices.Select(kv => kv.Value with { Key = kv.Key }));
 
     private bool IsHidden(ChoiceOption option) => HideOptions.Contains(option.Id, StringComparer.OrdinalIgnoreCase);
 
@@ -248,7 +258,7 @@ public record ProgressionDefinition : RulesetTemplate
             {
                 var choice = def with { Key = key, Prompt = def.Prompt ?? gained.Feature.Name };
                 choices.Add(new GainedChoice(gained.Level, choice, gained.From));
-                var available = OptionsFor(choice);
+                var available = OptionsFor(choice, gained.From);
                 foreach (var id in picked(gained.Level, key))
                 {
                     var option = available.FirstOrDefault(o => o.Id.Equals(id, StringComparison.OrdinalIgnoreCase));

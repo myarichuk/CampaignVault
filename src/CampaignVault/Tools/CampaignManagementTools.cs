@@ -492,8 +492,8 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
                 ? [.. progression!.FeaturesUpTo(targetLevel, picked).Where(f => f.Level == targetLevel).Select(f => f.Feature)]
                 : levelDef.Features;
             var choices = found
-                ? [.. progression!.ChoicesUpTo(targetLevel, picked).Where(c => c.Level == targetLevel).Select(c => c.Choice)]
-                : levelDef.Choices;
+                ? [.. progression!.ChoicesUpTo(targetLevel, picked).Where(c => c.Level == targetLevel)]
+                : levelDef.Choices.Select(c => new GainedChoice(targetLevel, c, null)).ToList();
             response.Features =
             [
                 .. features.Select(f =>
@@ -502,15 +502,15 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
 
             response.Choices =
             [
-                .. choices.Select(c => new PendingLevelUpChoice
+                .. choices.Select(g => new PendingLevelUpChoice
                 {
-                    Key = c.Key,
-                    Prompt = c.Prompt,
-                    Type = c.Type,
-                    Required = c.Required,
-                    Options = found ? progression!.OptionsFor(c) : c.Options,
-                    AbilityOptions = c.AbilityOptions,
-                    Count = c.Count,
+                    Key = g.Choice.Key,
+                    Prompt = g.Choice.Prompt,
+                    Type = g.Choice.Type,
+                    Required = g.Choice.Required,
+                    Options = found ? progression!.OptionsFor(g.Choice, g.From) : g.Choice.Options,
+                    AbilityOptions = g.Choice.AbilityOptions,
+                    Count = g.Choice.Count,
                 })
             ];
 

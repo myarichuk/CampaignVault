@@ -101,7 +101,7 @@ public static class LevelChoiceSlots
         Func<int, string, IEnumerable<string>>? picked = null)
     {
         var slots = new List<LevelChoiceSlot>();
-        foreach (var (at, choice) in progression.ChoicesUpTo(level, picked ?? ((_, _) => [])).Select(g => (g.Level, g.Choice)))
+        foreach (var (at, choice, from) in progression.ChoicesUpTo(level, picked ?? ((_, _) => [])).Select(g => (g.Level, g.Choice, g.From)))
         {
             if (choice.Type == ChoiceType.SpellSelection)
                 continue;
@@ -148,7 +148,7 @@ public static class LevelChoiceSlots
                     slots.Add(slot with { Options = [.. (skills ?? []).Select(k => new CreationOption(k, k, null, id))] });
                     break;
                 default:
-                    var options = progression.OptionsFor(choice);
+                    var options = progression.OptionsFor(choice, from);
                     slots.Add(slot with
                     {
                         Options = [.. options.Select(o => new CreationOption(o.Id, o.Label == o.Id ? Humanize(o.Id) : o.Label, o.Description, id) { Homebrew = o.Homebrew })],
