@@ -50,6 +50,23 @@ public class PoolFormulaTests : IDisposable
         Assert.Equal((1, "d8", RecoveryType.ShortRest), (pool.Max, pool.Die, pool.Recovery));
     }
 
+    [Theory]
+    [InlineData(1, 0)]
+    [InlineData(2, 2)]
+    [InlineData(3, 3)]
+    public void KiPoints_StartAtSecondLevel_EqualToMonkLevel(int level, int expected)
+    {
+        var monk = new Character
+        {
+            Id = "chars/monk", Name = "Monk", ClassLevel = $"Monk {level}",
+            SystemStats = new Dnd5eExtension { Level = level },
+        };
+
+        RulesetDataTestHelper.CreateServices().Initializer.InitializePools(monk, RulesetSystem.Dnd5e, null);
+
+        Assert.Equal(expected, monk.SystemStats!.ResourcePools.TryGetValue("ki_points", out var ki) ? ki.Max : 0);
+    }
+
     [Fact]
     public void MaxFrom_LevelMultiplierAndProficiency_AddUp()
     {
