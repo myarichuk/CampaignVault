@@ -55,4 +55,34 @@ public class Dnd5eCasterLevelHelperTests
 
         Assert.Equal(0, Dnd5eCasterLevelHelper.ComputeCasterLevel(classes));
     }
+
+    [Theory]
+    [InlineData(1, 0)]
+    [InlineData(2, 1)]
+    [InlineData(3, 2)]
+    [InlineData(5, 3)]  // 4 first-level and 2 second-level slots, not the multiclass table's 3/0
+    [InlineData(9, 5)]
+    [InlineData(20, 10)]
+    public void ComputeCasterLevel_SingleClassHalfCaster_RoundsUp(int level, int expected)
+    {
+        var classes = new List<ClassLevelEntry> { new() { Class = "Paladin", Level = level } };
+
+        Assert.Equal(expected, Dnd5eCasterLevelHelper.ComputeCasterLevel(classes));
+    }
+
+    [Fact]
+    public void ComputeCasterLevel_HalfCasterWithNonCasterOrWarlock_StillUsesItsOwnTable()
+    {
+        // Only one class has the Spellcasting feature, so the multiclass table doesn't apply.
+        Assert.Equal(3, Dnd5eCasterLevelHelper.ComputeCasterLevel(new List<ClassLevelEntry>
+        {
+            new() { Class = "Ranger", Level = 5 },
+            new() { Class = "Fighter", Level = 3 }
+        }));
+        Assert.Equal(3, Dnd5eCasterLevelHelper.ComputeCasterLevel(new List<ClassLevelEntry>
+        {
+            new() { Class = "Paladin", Level = 5 },
+            new() { Class = "Warlock", Level = 2 }
+        }));
+    }
 }
