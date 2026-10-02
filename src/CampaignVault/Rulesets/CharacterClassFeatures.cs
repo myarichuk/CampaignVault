@@ -120,4 +120,8 @@ public static class CharacterClassFeatures
         var formulas = Features(character, system, progressions).Select(f => f.Feature.UnarmoredArmorClass).OfType<UnarmoredArmorClass>().ToList();
         return formulas.Count == 0 ? null : formulas.Max(f => f.Base + f.Abilities.Sum(abilityModifier));
     }
+
+    /// <summary>The armor, weapon and tool proficiencies the character's class features and picked options' features give.</summary>
+    public static IReadOnlyList<ProficiencyGrants> Proficiencies(Character character, string system, ProgressionDefinitionProvider? progressions) =>
+        [.. Features(character, system, progressions).Select(f => f.Feature.Proficiencies).OfType<ProficiencyGrants>()];
 }

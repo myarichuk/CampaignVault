@@ -15,9 +15,17 @@ public record ClassDefinition : RulesetTemplate
     /// <summary>The level-1 "choose N skills from this list" pick (the character builder's skills step). <c>from: [any]</c> means every skill.</summary>
     public SkillChoiceDefinition? SkillChoices { get; init; }
 
+    /// <summary>5e: the armor, weapons and tools a character starting in this class is proficient with.</summary>
+    public ProficiencyGrants? Proficiencies { get; init; }
+
+    /// <summary>5e: the smaller set a character gets when it multiclasses into this class (not its starting class).</summary>
+    public ProficiencyGrants? MulticlassProficiencies { get; init; }
+
     public static ClassDefinition Merge(ClassDefinition child, ClassDefinition parent) =>
         child with
         {
+            Proficiencies = child.Proficiencies ?? parent.Proficiencies,
+            MulticlassProficiencies = child.MulticlassProficiencies ?? parent.MulticlassProficiencies,
             System = !string.IsNullOrEmpty(child.System) ? child.System : parent.System,
             HitDie = child.HitDie ?? parent.HitDie,
             CasterType = child.CasterType ?? parent.CasterType,

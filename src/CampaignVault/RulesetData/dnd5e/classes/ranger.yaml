@@ -8,3 +8,5 @@ savingThrows: [Strength, Dexterity]
 pools: [spell_slots_1, spell_slots_2, spell_slots_3, spell_slots_4, spell_slots_5]
 aliases: [ranger]
 skillChoices: { count: 3, from: [Animal Handling, Athletics, Insight, Investigation, Nature, Perception, Stealth, Survival] }
+proficiencies: { armor: [light, medium, shields], weapons: [simple, martial] }
+multiclassProficiencies: { armor: [light, medium, shields], weapons: [simple, martial] }

@@ -6,7 +6,8 @@ namespace CampaignVault.Rulesets.Bootstrap;
 
 public sealed class Dnd5eDeriveProficiencyStep(
     ClassDefinitionProvider? classProvider = null,
-    BackgroundDefinitionProvider? backgroundProvider = null) : IBootstrapStep, ILevelGainStep
+    BackgroundDefinitionProvider? backgroundProvider = null,
+    ProgressionDefinitionProvider? progressionProvider = null) : IBootstrapStep, ILevelGainStep
 {
     public string Name => "dnd5e.derive_proficiency";
 
@@ -52,9 +53,10 @@ public sealed class Dnd5eDeriveProficiencyStep(
         var derivedSkills = DeriveBackgroundSkillModifiers(context, stats, prof);
         derivedSkills.AddRange(DeriveChosenSkillModifiers(stats, prof));
         var derivedSaves = DeriveClassSavingThrowModifiers(context, stats, prof);
+        var derivedEquipment = DeriveEquipmentProficiencies(context, stats);
         var hints = isFirstDerivation ? BuildClassSkillChoiceHints(context, stats) : [];
 
-        if (!profChanged && derivedSkills.Count == 0 && derivedSaves.Count == 0 && hints.Count == 0)
+        if (!profChanged && derivedSkills.Count == 0 && derivedSaves.Count == 0 && derivedEquipment.Count == 0 && hints.Count == 0)
         {
             return null;
         }
@@ -71,6 +73,11 @@ public sealed class Dnd5eDeriveProficiencyStep(
         if (derivedSaves.Count > 0)
         {
             messageParts.Add($"savingThrowModifiers[{string.Join(", ", derivedSaves)}]");
+        }
+
+        if (derivedEquipment.Count > 0)
+        {
+            messageParts.Add($"proficiencies[{string.Join(", ", derivedEquipment)}]");
         }
 
         return new BootstrapStepResult
@@ -206,6 +213,60 @@ public sealed class Dnd5eDeriveProficiencyStep(
         }
 
         return applied;
+    }
+
+    /// <summary>
+    /// Joins the armor, weapon and tool proficiencies the character's sources give to the sheet's lists: the starting
+    /// class's full set, each later class's multiclass set, class features (a domain's heavy armor) and the background's
+    /// tools. Only adds, so an entry the DM wrote stays.
+    /// </summary>
+    private List<string> DeriveEquipmentProficiencies(BootstrapContext context, Dnd5eExtension stats)
+    {
+        var grants = new List<ProficiencyGrants>();
+        if (classProvider is not null)
+        {
+            var classLevels = Dnd5eClassProfileResolver.ParseClassLevels(context.Character.ClassLevel, stats.ClassLevels);
+            for (var i = 0; i < classLevels.Count; i++)
+            {
+                if (classProvider.TryResolveClass(RulesetSystem.Dnd5e, classLevels[i].Class, out var classDef)
+                    && (i == 0 ? classDef?.Proficiencies : classDef?.MulticlassProficiencies) is { } grant)
+                {
+                    grants.Add(grant);
+                }
+            }
+        }
+
+        grants.AddRange(CharacterClassFeatures.Proficiencies(context.Character, RulesetSystem.Dnd5e, progressionProvider));
+
+        if (backgroundProvider is not null && !string.IsNullOrWhiteSpace(stats.Background)
+            && backgroundProvider.TryGet(RulesetSystem.Dnd5e, stats.Background, out var background) && background is not null)
+        {
+            grants.Add(new ProficiencyGrants { Tools = background.ToolProficiencies });
+        }
+
+        var added = new List<string>();
+        foreach (var grant in grants)
+        {
+            Join(stats.ArmorProficiencies, grant.Armor, added);
+            Join(stats.WeaponProficiencies, grant.Weapons, added);
+            Join(stats.ToolProficiencies, grant.Tools, added);
+        }
+
+        return added;
+    }
+
+    private static void Join(List<string> sheet, IEnumerable<string> granted, List<string> added)
+    {
+        foreach (var entry in granted)
+        {
+            if (string.IsNullOrWhiteSpace(entry) || sheet.Contains(entry, StringComparer.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            sheet.Add(entry);
+            added.Add(entry);
+        }
     }
 
     private static int GetAbilityScore(Dnd5eExtension stats, string ability) => ability.ToLowerInvariant() switch

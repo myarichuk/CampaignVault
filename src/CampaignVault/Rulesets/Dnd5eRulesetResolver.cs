@@ -32,7 +32,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         _spellDefinitionProvider = spellDefinitionProvider;
         _creatureDefinitionProvider = creatureDefinitionProvider;
         var hpStep = new Dnd5eDeriveHitPointsStep(_rollService, progressionProvider);
-        var profStep = new Dnd5eDeriveProficiencyStep(classProvider, backgroundProvider);
+        var profStep = new Dnd5eDeriveProficiencyStep(classProvider, backgroundProvider, progressionProvider);
         var passiveStep = new Dnd5eDerivePassivePerceptionStep();
         var spellStep = new Dnd5eDeriveSpellcastingStep();
         var grantStep = new Dnd5eGrantClassSpellsStep(progressionProvider);

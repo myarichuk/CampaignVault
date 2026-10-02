@@ -8,3 +8,5 @@ savingThrows: [Dexterity, Intelligence]
 pools: []
 aliases: [rogue]
 skillChoices: { count: 4, from: [Acrobatics, Athletics, Deception, Insight, Intimidation, Investigation, Perception, Performance, Persuasion, Sleight of Hand, Stealth] }
+proficiencies: { armor: [light], weapons: [simple, crossbow_hand, longsword, rapier, shortsword], tools: [thieves_tools] }
+multiclassProficiencies: { armor: [light], tools: [thieves_tools] }

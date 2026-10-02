@@ -8,3 +8,4 @@ savingThrows: [Constitution, Charisma]
 pools: [spell_slots_1, spell_slots_2, spell_slots_3, spell_slots_4, spell_slots_5, spell_slots_6, spell_slots_7, spell_slots_8, spell_slots_9, font_of_magic]
 aliases: [sorcerer]
 skillChoices: { count: 2, from: [Arcana, Deception, Insight, Intimidation, Persuasion, Religion] }
+proficiencies: { weapons: [dagger, dart, sling, quarterstaff, crossbow_light] }

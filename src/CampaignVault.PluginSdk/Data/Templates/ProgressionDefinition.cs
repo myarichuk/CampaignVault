@@ -92,6 +92,9 @@ public record FeatureDefinition
     /// <summary>Armor class without armor (Unarmored Defense: 10 + Dexterity + Constitution). The best one the character has wins.</summary>
     public UnarmoredArmorClass? UnarmoredArmorClass { get; init; }
 
+    /// <summary>Armor, weapon and tool proficiencies it gives (a domain's heavy armor), joined to the sheet's from its level.</summary>
+    public ProficiencyGrants? Proficiencies { get; init; }
+
     /// <summary>
     /// Spells it gives by class level, always prepared and not counted against the day's picks (a domain's, an oath's, a
     /// circle's): spell ids. They join the character's prepared list when the class level is reached.

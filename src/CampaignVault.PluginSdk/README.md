@@ -20,6 +20,12 @@ CampaignVault install, and restart the host.
 See [PLUGINS.md](https://github.com/myarichuk/CampaignVault/blob/master/PLUGINS.md) in
 the main repository for the full plugin architecture, trust model, and quick-start guide.
 
+## 0.14.0
+
+- **Proficiencies** (`ProficiencyGrants`: `armor`, `weapons`, `tools`): what a class, class feature, race, background or
+  feat gives. `FeatureDefinition.Proficiencies` joins a feature's to the sheet; `Dnd5eExtension` gains
+  `armorProficiencies`, `weaponProficiencies` and `toolProficiencies`.
+
 ## 0.13.0
 
 - **Character creation** (`CampaignVault.Rulesets.Creation`): the contracts behind the recipe-driven character builder.

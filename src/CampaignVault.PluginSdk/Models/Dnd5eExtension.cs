@@ -82,6 +82,18 @@ public class Dnd5eExtension : SystemExtension
     [JsonPropertyName("feats")]
     public List<string> Feats { get; set; } = [];
 
+    [Description("Armor proficiencies: light, medium, heavy, shields. Derived from class, class features and background; add to it, the engine never removes entries.")]
+    [JsonPropertyName("armorProficiencies")]
+    public List<string> ArmorProficiencies { get; set; } = [];
+
+    [Description("Weapon proficiencies: simple, martial, or item names (longsword, crossbow_hand). Once set, a weapon attack without proficiency gets no proficiency bonus.")]
+    [JsonPropertyName("weaponProficiencies")]
+    public List<string> WeaponProficiencies { get; set; } = [];
+
+    [Description("Tool proficiencies by name (thieves_tools, herbalism_kit). Derived like armor and weapons.")]
+    [JsonPropertyName("toolProficiencies")]
+    public List<string> ToolProficiencies { get; set; } = [];
+
     [Description("Cantrips, spells known or spellbook, and prepared spells (template names). Set by the character builder; slots are resource pools.")]
     [JsonPropertyName("spells")]
     public SpellRepertoire Spells { get; set; } = new();

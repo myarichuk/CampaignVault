@@ -30,6 +30,7 @@ internal sealed class FeatureDefinitionYamlConverter : IYamlTypeConverter
             Effects = raw?.Effects ?? [],
             HpPerLevel = raw?.HpPerLevel ?? 0,
             UnarmoredArmorClass = raw?.UnarmoredArmorClass,
+            Proficiencies = raw?.Proficiencies,
             Spells = raw?.Spells ?? [],
             SpellOptions = raw?.SpellOptions ?? [],
         };
@@ -46,6 +47,7 @@ internal sealed class FeatureDefinitionYamlConverter : IYamlTypeConverter
         public List<FeatEffect> Effects { get; set; } = [];
         public int HpPerLevel { get; set; }
         public UnarmoredArmorClass? UnarmoredArmorClass { get; set; }
+        public ProficiencyGrants? Proficiencies { get; set; }
         public Dictionary<int, List<string>> Spells { get; set; } = [];
         public Dictionary<int, List<string>> SpellOptions { get; set; } = [];
     }
