@@ -166,7 +166,7 @@ public sealed class CreationSources(
             case "abilities":
                 return [.. AbilityNames.Select(a => new CreationOption(a, a))];
             case "spells":
-                return classTemplate is null ? [] : SpellOptions(system, classTemplate, picks.MaxSpellLevel, CharacterClassFeatures.ExpandedSpells(picks.Granted, picks.Level));
+                return classTemplate is null ? [] : SpellOptions(system, classTemplate, picks, CharacterClassFeatures.ExpandedSpells(picks.Granted, picks.Level));
             case "heritages":
                 return [.. (picks.Race?.Heritages ?? []).Select(h => new CreationOption(h.Name, h.Label ?? Label(h.Name), h.Description))];
             case "backgroundskills":
@@ -306,9 +306,15 @@ public sealed class CreationSources(
         return [.. from.Select(s => new CreationOption(s, s))];
     }
 
-    private IReadOnlyList<CreationOption> SpellOptions(string system, ClassDefinition classTemplate, int maxSpellLevel, IReadOnlyList<string> expanded)
+    private IReadOnlyList<CreationOption> SpellOptions(string system, ClassDefinition classTemplate, CreationPicks picks, IReadOnlyList<string> expanded)
     {
-        var options = spells.QuerySpells(system, classTemplate.Name, classProvider: classes)
+        var maxSpellLevel = picks.MaxSpellLevel;
+        // A subclass that casts learns from another class's list, its leveled spells limited to its schools until it
+        // has an any-school pick.
+        var casting = picks.OptionCasting;
+        var listClass = casting?.List ?? classTemplate.Name;
+        var anySchool = casting is null || casting.Schools.Count == 0 || casting.AnySchoolAt.Any(l => l <= picks.Level);
+        var options = spells.QuerySpells(system, listClass, classProvider: classes)
             .Where(s => (s.Level ?? 0) <= maxSpellLevel)
             .ToList();
         // The campaign's own spells for this class (HomebrewScope) join the shipped ones, tagged homebrew.
@@ -329,13 +335,20 @@ public sealed class CreationSources(
 
         return
         [
-            .. options.Select(s => new CreationOption(
-                s.Name,
-                Label(s.Name),
-                s.Description,
-                (s.Level ?? 0) == 0 ? SpellGroups.Cantrips : SpellGroups.Known) { Homebrew = s.Homebrew }),
+            .. options
+                .Where(s => anySchool || (s.Level ?? 0) == 0 || InSchools(s, casting!))
+                .Select(s => new CreationOption(
+                    s.Name,
+                    Label(s.Name),
+                    casting is { Schools.Count: > 0 } && (s.Level ?? 0) > 0 && !InSchools(s, casting)
+                        ? $"{s.Description} (outside {string.Join("/", casting.Schools)}: one of the any-school picks)".Trim()
+                        : s.Description,
+                    (s.Level ?? 0) == 0 ? SpellGroups.Cantrips : SpellGroups.Known) { Homebrew = s.Homebrew }),
         ];
     }
+
+    private static bool InSchools(SpellDefinition spell, OptionSpellcasting casting) =>
+        spell.School is { } school && casting.Schools.Contains(school, StringComparer.OrdinalIgnoreCase);
 
     private static IReadOnlyList<CreationOption> Templates<T>(IEnumerable<T> templates) where T : RulesetTemplate =>
     [
@@ -373,4 +386,13 @@ public sealed record CreationPicks(
 {
     /// <summary>The class feature options picked so far that give something (a racket's skills and key attribute).</summary>
     public IReadOnlyList<ChoiceOption> Granted { get; init; } = [];
+
+    /// <summary>
+    /// 5e: the spellcasting a picked option gives a class without its own (a subclass that casts), or null. Only used when
+    /// the class itself casts nothing.
+    /// </summary>
+    public OptionSpellcasting? OptionCasting =>
+        Class?.CasterType is null or CasterType.None
+            ? Granted.Select(o => o.Spellcasting).OfType<OptionSpellcasting>().FirstOrDefault()
+            : null;
 }

@@ -34,7 +34,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var hpStep = new Dnd5eDeriveHitPointsStep(_rollService, progressionProvider);
         var profStep = new Dnd5eDeriveProficiencyStep(classProvider, backgroundProvider, progressionProvider);
         var passiveStep = new Dnd5eDerivePassivePerceptionStep();
-        var spellStep = new Dnd5eDeriveSpellcastingStep();
+        var spellStep = new Dnd5eDeriveSpellcastingStep(progressionProvider);
         var grantStep = new Dnd5eGrantClassSpellsStep(progressionProvider);
         List<IBootstrapStep> steps = raceProvider != null ? [new Dnd5eDeriveRaceStep(raceProvider)] : [];
         steps.AddRange([hpStep, new Dnd5eDeriveDefenseStep(progressionProvider), profStep, passiveStep, spellStep, grantStep]);

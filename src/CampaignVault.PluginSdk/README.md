@@ -28,6 +28,9 @@ the main repository for the full plugin architecture, trust model, and quick-sta
 - **Pools** (`ResourcePoolTemplate`): `grantedOnly`, `maxFrom` (`PoolMaxFormula`: ability modifier, proficiency
   bonus, level multiple, flat part, minimum), `die`/`dieByLevel` and `recoveryByLevel`; `ResourcePool.Die`.
   `FeatureDefinition.Pools` grants pools by name from a class feature (a subclass's).
+- **A subclass that casts** (`ChoiceOption.Spellcasting`, `ClassOptionDefinition.Spellcasting`, `OptionSpellcasting`):
+  caster type, ability, the class list it learns from, school limits and known counts by level.
+- `OptionsFor(choice, from)`: a later option-less choice inside a subclass borrows that subclass's options.
 
 ## 0.13.0
 

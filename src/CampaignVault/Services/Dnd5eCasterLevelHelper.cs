@@ -9,13 +9,19 @@ namespace CampaignVault.Services;
 /// </summary>
 public static class Dnd5eCasterLevelHelper
 {
+    /// <param name="optionCasterType">
+    /// The caster type a picked option gives a class with none of its own (a subclass that casts), or null.
+    /// </param>
     public static int ComputeCasterLevel(
         IReadOnlyList<ClassLevelEntry> classLevels,
-        ClassDefinitionProvider? provider = null)
+        ClassDefinitionProvider? provider = null,
+        Func<ClassLevelEntry, CasterType?>? optionCasterType = null)
     {
         var classDefs = (provider ?? ClassAliasMatcher.DefaultProvider).GetClassesForSystem(RulesetSystem.Dnd5e);
         var casters = classLevels
-            .Select(entry => (entry.Level, Type: ClassAliasMatcher.ResolveCasterType(entry.Class, classDefs)))
+            .Select(entry => (entry.Level, Type: ClassAliasMatcher.ResolveCasterType(entry.Class, classDefs) is var own and not CasterType.None
+                ? own
+                : optionCasterType?.Invoke(entry) ?? CasterType.None))
             .Where(c => c.Type is not (CasterType.None or CasterType.Warlock)) // Pact Magic does not contribute to standard slots
             .ToList();
 

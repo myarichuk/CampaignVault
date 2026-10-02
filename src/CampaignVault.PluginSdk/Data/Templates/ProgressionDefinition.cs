@@ -70,8 +70,42 @@ public record ChoiceOption
     /// </summary>
     public Dictionary<int, List<FeatureDefinition>> Features { get; init; } = [];
 
+    /// <summary>
+    /// 5e: spellcasting the option gives a class that has none of its own (a subclass that casts from another class's
+    /// list). Its caster type counts toward spell slots, its ability sets the save DC, and the builder offers its spells.
+    /// </summary>
+    public OptionSpellcasting? Spellcasting { get; init; }
+
     /// <summary>Set for options that came from a plugin or the campaign (a <see cref="ClassOptionDefinition"/>), not the shipped rules.</summary>
     public bool Homebrew { get; init; }
+}
+
+/// <summary>
+/// Spellcasting an option (a subclass) gives a class without its own:
+/// <code>
+/// spellcasting:
+///   casterType: Third                     # counts toward spell slots like any caster of the type
+///   ability: Intelligence
+///   list: wizard                          # the class whose spell list it learns from
+///   schools: [abjuration, evocation]      # leveled spells limited to these schools...
+///   anySchoolAt: [3, 8]                   # ...except one more pick from any school at each of these class levels
+///   cantripsKnown: { 3: 2, 10: 3 }        # by class level, the highest reached wins
+///   spellsKnown: { 3: 3, 4: 4, 7: 5 }
+/// </code>
+/// </summary>
+public record OptionSpellcasting
+{
+    public CasterType CasterType { get; init; } = CasterType.Third;
+    public string? Ability { get; init; }
+    public string? List { get; init; }
+    public List<string> Schools { get; init; } = [];
+    public List<int> AnySchoolAt { get; init; } = [];
+    public Dictionary<int, int> CantripsKnown { get; init; } = [];
+    public Dictionary<int, int> SpellsKnown { get; init; } = [];
+
+    /// <summary>The count at <paramref name="level"/> from a by-level table: the highest reached level's, else 0.</summary>
+    public static int AtLevel(Dictionary<int, int> table, int level) =>
+        table.Where(kv => kv.Key <= level).OrderByDescending(kv => kv.Key).Select(kv => kv.Value).FirstOrDefault();
 }
 
 /// <summary>

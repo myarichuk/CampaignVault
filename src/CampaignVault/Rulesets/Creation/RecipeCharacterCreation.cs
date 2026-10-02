@@ -139,6 +139,12 @@ public sealed class RecipeCharacterCreation(
                 foreach (var s in steps.Where(s => s.Kind is CreationStepKinds.Allocate or CreationStepKinds.AbilityScores))
                     Add(s.Key);
             }
+            else if (string.Equals(head, "spellcasting", StringComparison.OrdinalIgnoreCase))
+            {
+                Add(BySource(CreationSources.Classes));
+                foreach (var level in steps.Where(s => s.Kind == CreationStepKinds.LevelChoices))
+                    Add(level.Key);
+            }
             else if (!string.Equals(head, "draft", StringComparison.OrdinalIgnoreCase))
             {
                 Add(steps.FirstOrDefault(s => s.Key.Equals(head ?? "", StringComparison.OrdinalIgnoreCase))?.Key);
@@ -178,8 +184,9 @@ public sealed class RecipeCharacterCreation(
                 break;
         }
 
-        // A class feature picked before (a racket) trains skills and can change the key attribute.
-        if (source is "untrainedskills" or "keyabilities")
+        // A class feature picked before (a racket) trains skills and can change the key attribute; a subclass adds spells
+        // or casts from another list.
+        if (source is "untrainedskills" or "keyabilities" or "spells")
         {
             foreach (var level in steps.TakeWhile(s => s != step).Where(s => s.Kind == CreationStepKinds.LevelChoices))
                 Add(level.Key);
@@ -628,16 +635,18 @@ public sealed class RecipeCharacterCreation(
         var background = ChosenTemplate(steps, draft, CreationSources.Backgrounds) as BackgroundDefinition;
         var skillStep = steps.FirstOrDefault(s => s.Kind == CreationStepKinds.PickOne
             && string.Equals(s.Source, CreationSources.BackgroundSkills, StringComparison.OrdinalIgnoreCase));
-        return new CreationPicks(
+        var granted = Granted(steps, draft, null).Options;
+        var picks = new CreationPicks(
             cls,
             ChosenTemplate(steps, draft, CreationSources.Races) as RaceDefinition,
             background,
             skillStep is null ? null : CreationSources.BackgroundSkill(background, draft.GetString(skillStep.Key)),
             level,
-            MaxSpellLevel(cls, level))
+            0)
         {
-            Granted = Granted(steps, draft, null).Options,
+            Granted = granted,
         };
+        return picks with { MaxSpellLevel = MaxSpellLevel(cls, level, picks.OptionCasting) };
     }
 
     private int? CountFor(IReadOnlyList<CreationStep> steps, CreationStep step, string? group, CharacterDraft draft, CreationContext ctx)
@@ -720,6 +729,17 @@ public sealed class RecipeCharacterCreation(
             || !sources.ProgressionProvider.TryGetProgression(system, cls.Name, out var progression))
             return null;
 
+        // A subclass that casts counts from its own tables.
+        if (Picks(steps, draft, ctx.Level).OptionCasting is { } casting)
+        {
+            return group switch
+            {
+                SpellGroups.Cantrips => OptionSpellcasting.AtLevel(casting.CantripsKnown, ctx.Level),
+                SpellGroups.Known => OptionSpellcasting.AtLevel(casting.SpellsKnown, ctx.Level),
+                _ => 0,
+            };
+        }
+
         return group switch
         {
             SpellGroups.Cantrips => progression.CountAtLevel(ctx.Level, l => l.CantripsKnown),
@@ -732,8 +752,12 @@ public sealed class RecipeCharacterCreation(
 
     private static int Modifier(int score) => (int)Math.Floor((score - 10) / 2.0);
 
-    /// <summary>The highest spell level a class can cast at a character level, by caster type (SRD slot tables).</summary>
-    internal static int MaxSpellLevel(ClassDefinition? cls, int level) => cls?.CasterType switch
+    /// <summary>
+    /// The highest spell level a class can cast at a character level, by caster type (SRD slot tables); a class that casts
+    /// nothing itself uses its subclass's (<paramref name="optionCasting"/>).
+    /// </summary>
+    internal static int MaxSpellLevel(ClassDefinition? cls, int level, OptionSpellcasting? optionCasting = null) =>
+        (cls?.CasterType is null or CasterType.None ? optionCasting?.CasterType : cls.CasterType) switch
     {
         CasterType.Full => Math.Min(9, (level + 1) / 2),
         CasterType.Warlock => Math.Min(5, (level + 1) / 2),
@@ -795,6 +819,17 @@ public sealed class RecipeCharacterCreation(
         if (segments[0].Equals("modifier", StringComparison.OrdinalIgnoreCase))
         {
             return segments.Length == 2 ? AbilityModifier(kind, draft, segments[1]) : null;
+        }
+
+        // The caster type the draft casts as: its class's, or a picked subclass's when the class casts nothing.
+        if (segments[0].Equals("spellcasting", StringComparison.OrdinalIgnoreCase))
+        {
+            if (ChosenTemplate(steps, draft, CreationSources.Classes) is not ClassDefinition cls)
+                return null;
+
+            return cls.CasterType is { } own and not CasterType.None
+                ? own
+                : Picks(steps, draft, draft.Level).OptionCasting?.CasterType ?? CasterType.None;
         }
 
         if (segments[0].Equals("draft", StringComparison.OrdinalIgnoreCase))

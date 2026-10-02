@@ -121,6 +121,22 @@ public static class CharacterClassFeatures
         return formulas.Count == 0 ? null : formulas.Max(f => f.Base + f.Abilities.Sum(abilityModifier));
     }
 
+    /// <summary>
+    /// 5e: the spellcasting a picked option (a subclass) gives the class of <paramref name="entry"/>, or null when none does.
+    /// </summary>
+    public static OptionSpellcasting? OptionSpellcastingFor(
+        Character character, string system, ProgressionDefinitionProvider? progressions, ClassLevelEntry entry)
+    {
+        if (progressions is null || !progressions.TryGetProgression(system, entry.Class, out var progression))
+            return null;
+
+        var multiclass = CharacterClassResolver.ResolveClassLevels(character).Count > 1;
+        return progression.PickedOptions(entry.Level, Picked(character.SystemStats, multiclass))
+            .Select(o => o.Spellcasting)
+            .OfType<OptionSpellcasting>()
+            .FirstOrDefault();
+    }
+
     /// <summary>The armor, weapon and tool proficiencies the character's class features and picked options' features give.</summary>
     public static IReadOnlyList<ProficiencyGrants> Proficiencies(Character character, string system, ProgressionDefinitionProvider? progressions) =>
         [.. Features(character, system, progressions).Select(f => f.Feature.Proficiencies).OfType<ProficiencyGrants>()];

@@ -29,5 +29,5 @@ steps:
   # Subclass, fighting style, ability score improvements...: shown when the class has a choice at or below the level.
   # Before spells, so an improvement to the casting ability is in the prepared count.
   - { key: levels, kind: levelChoices, prompt: Level choices }
-  - { key: spells, kind: spells, source: spells, when: "class.casterType != None", prompt: Spells }
+  - { key: spells, kind: spells, source: spells, when: "spellcasting != None", prompt: Spells }
   - { key: identity, kind: identity, prompt: Who they are }

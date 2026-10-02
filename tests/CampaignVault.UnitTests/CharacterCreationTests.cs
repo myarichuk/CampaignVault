@@ -693,6 +693,52 @@ public class CharacterCreationTests : IDisposable
     }
 
     [Fact]
+    public async Task SubclassThatCasts_GetsASpellsStep_ItsSchoolsSpells_SlotsAndAbility()
+    {
+        WritePluginFile("classOptions", "spellblade.yaml", """
+            name: spellblade
+            class: fighter
+            label: Spellblade
+            spellcasting:
+              casterType: Third
+              ability: Intelligence
+              list: wizard
+              schools: [evocation]
+              anySchoolAt: [8]
+              cantripsKnown: { 3: 2 }
+              spellsKnown: { 3: 3 }
+            """);
+        var service = Service(pluginRoot: Path.Combine(_root, "plugin"));
+        var fighter = Dnd5e("fighter", 3, str: 15, intel: 14);
+        var spellblade = fighter.With("levels", new Dictionary<string, object> { ["3.subclass"] = "spellblade" });
+        var champion = fighter.With("levels", new Dictionary<string, object> { ["3.subclass"] = "champion" });
+
+        Assert.DoesNotContain("spells", Keys(service.Steps(RulesetSystem.Dnd5e, champion)));
+        var spellsStep = service.Steps(RulesetSystem.Dnd5e, spellblade).Single(s => s.Kind == CreationStepKinds.Spells);
+        var offered = service.Options(RulesetSystem.Dnd5e, spellsStep.Key, spellblade).Select(o => o.Id).ToList();
+        Assert.Contains("fire_bolt", offered);       // cantrips: any school of the list
+        Assert.Contains("magic_missile", offered);   // evocation
+        Assert.DoesNotContain("shield", offered);    // abjuration, before any any-school pick
+        Assert.DoesNotContain("fireball", offered);  // 3rd level: beyond a level-3 third caster
+
+        var preview = await service.PreviewAsync(RulesetSystem.Dnd5e, spellblade.With("spells", new SpellChoice
+        {
+            Cantrips = ["fire_bolt", "light"], Known = ["magic_missile", "burning_hands", "thunderwave"],
+        }));
+        var stats = Assert.IsType<Dnd5eExtension>(preview.Character.SystemStats);
+        Assert.DoesNotContain(preview.Errors, i => i.Step == spellsStep.Key);
+        Assert.Equal("Intelligence", stats.SpellcastingAbility);
+
+        // Slots come at commit; a level-3 third caster has two 1st-level slots.
+        var services = RulesetDataTestHelper.CreateServices();
+        new ResourcePoolInitializer(services.Pools, services.Classes, services.Feats,
+                new ProgressionDefinitionProvider(Path.Combine(_root, "host"), Asm, null, [Path.Combine(_root, "plugin")]))
+            .InitializePools(preview.Character, RulesetSystem.Dnd5e, null);
+        Assert.Equal(2, stats.ResourcePools["spell_slots_1"].Max);
+        Assert.False(stats.ResourcePools.ContainsKey("spell_slots_2"));
+    }
+
+    [Fact]
     public void Validate_AboveTheRecipesMaxLevel_IsAnError_5eAndPf2eTo20()
     {
         var service = Service();
@@ -1344,7 +1390,8 @@ public class CharacterCreationTests : IDisposable
         }
 
         Assert.Equal(["class", "background"], Reads(RulesetSystem.Dnd5e, "skills"));
-        Assert.Equal(["class"], Reads(RulesetSystem.Dnd5e, "spells"));
+        // A subclass can add spells or cast from another class's list, so the level choices count too.
+        Assert.Equal(["class", "levels"], Reads(RulesetSystem.Dnd5e, "spells"));
         Assert.Empty(Reads(RulesetSystem.Dnd5e, "race"));
         // A god, patron or bloodline narrows the class's choices, so picking one refetches them.
         Assert.Equal(["class", "deity", "patron", "lineage"], Reads(RulesetSystem.Dnd5e, "levels"));

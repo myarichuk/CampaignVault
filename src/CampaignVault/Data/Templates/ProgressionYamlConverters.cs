@@ -82,6 +82,7 @@ internal sealed class ChoiceOptionYamlConverter : IYamlTypeConverter
             KeyAbility = raw?.KeyAbility,
             Effects = raw?.Effects ?? [],
             Features = raw?.Features ?? [],
+            Spellcasting = raw?.Spellcasting,
         };
     }
 
@@ -98,5 +99,6 @@ internal sealed class ChoiceOptionYamlConverter : IYamlTypeConverter
         public string? KeyAbility { get; set; }
         public List<FeatEffect> Effects { get; set; } = [];
         public Dictionary<int, List<FeatureDefinition>> Features { get; set; } = [];
+        public OptionSpellcasting? Spellcasting { get; set; }
     }
 }

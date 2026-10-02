@@ -716,6 +716,24 @@ steps+:
   `spellOptions:` adds spells to the class's list *to choose from* instead (a patron's expanded list): the builder's
   spells step offers them beside the class's own, and each costs a pick like any other.
 
+  **A subclass that casts (5e).** An option's `spellcasting:` gives a class with no casting of its own spells from another
+  class's list:
+
+  ```yaml
+  spellcasting:
+    casterType: Third              # counts toward spell slots (multiclass rules included)
+    ability: Intelligence          # spell save DC and attack bonus
+    list: wizard                   # the list it learns from
+    schools: [evocation]           # leveled spells from these schools only...
+    anySchoolAt: [8]               # ...until the first of these class levels (then any school, marked in the options)
+    cantripsKnown: { 3: 2, 10: 3 } # by class level, the highest reached wins
+    spellsKnown: { 3: 3, 4: 4 }
+  ```
+
+  Once it's picked, the builder's spells step appears (its `when: "spellcasting != None"` reads the class's caster type,
+  else the picked subclass's), offers the list's spells up to the slot level, and counts from these tables. Spells carry
+  `school:`.
+
   **Effect vocabulary** (`effects:` on a feat, feature or option; fixed values only, the DM supplies facts, never numbers):
 
   | kind | needs | does |
@@ -1398,5 +1416,5 @@ Deferred capabilities (not yet implemented):
 
 ---
 
-**Last updated:** engine 0.14.0 — `ProficiencyGrants` (5e armor, weapon and tool proficiencies on classes and features; weapon proficiency gates the attack bonus), pool `maxFrom`, `die`/`dieByLevel`, `recoveryByLevel`, `grantedOnly` and feature-granted `pools`; engine 0.13.0 — character creation contracts (`ICharacterCreation`, `IRecipeValidator`, `CharacterDraft`, `CreationOption.Values`), `FeatEffect`/`RulesetTemplate.Requires`, `SpellRepertoire`, explicit death; engine 0.11.0 — `IRollModifierProvider`/`RollQuery`/`RollModifier` (what buffs, conditions, willpower and plugin rules do to rolls; `IChangeContext.ResolveRollModifiers` for plugin rolls), `SystemExtension.WillpowerDrained` and willpower that matters (charm, fear, compulsion and mental saves; rest restores what was drained), `SpellDefinition.tags`, effective speed (`Speed` modifiers now slow travel and show on cards, plus a context line for chases); engine 0.10.0 — `IWorldTimeObserver`/`TimeAdvance` (plugin time hook), `apply_effect` (clamped, expiring, non-stacking buffs/debuffs; `persistent` for curses and auras), the consequence beat (`consequences`, `consequenceCooldownHours`, `consequenceMaxPerDay` options), `tether` (subject → anchor with break DC), ammunition (`ammoType`, `ammoPerShot`, `fireModes`, `mode`), and weapon bursts that fan out round-robin over targets; engine 0.9.0 — `ActorActionAttribute` and `ActionBlock` (the host refuses a marked verb, and core attack/spell/item-use actions, from an actor who is incapacitated, stunned, paralyzed, petrified, unconscious or carries a `BlocksAllActions` status; whoever applies such a status must give it an exit); engine 0.8.0 — public `EngineOnlyAttribute`, `plugin.json` `systems`, `IModeStateMachine.TryAddParticipant`/`TryRemoveParticipant` and `core.mode_joined.v1`/`core.mode_left.v1` (host handling of `mode_transition` join/leave and `systems` lands after the SDK publish); engine 0.7.0 — `IPluginCampaignOptionsUpgrader`, `IContextTurn.Config`/`Time`/`LoadCharacterAsync`, `playerOnlyModeIds`, owner-managed pools, host-enforced mode action slots
+**Last updated:** engine 0.14.0 — `ProficiencyGrants` (5e armor, weapon and tool proficiencies on classes and features; weapon proficiency gates the attack bonus), pool `maxFrom`, `die`/`dieByLevel`, `recoveryByLevel`, `grantedOnly` and feature-granted `pools`, subclass `spellcasting` and spell `school`; engine 0.13.0 — character creation contracts (`ICharacterCreation`, `IRecipeValidator`, `CharacterDraft`, `CreationOption.Values`), `FeatEffect`/`RulesetTemplate.Requires`, `SpellRepertoire`, explicit death; engine 0.11.0 — `IRollModifierProvider`/`RollQuery`/`RollModifier` (what buffs, conditions, willpower and plugin rules do to rolls; `IChangeContext.ResolveRollModifiers` for plugin rolls), `SystemExtension.WillpowerDrained` and willpower that matters (charm, fear, compulsion and mental saves; rest restores what was drained), `SpellDefinition.tags`, effective speed (`Speed` modifiers now slow travel and show on cards, plus a context line for chases); engine 0.10.0 — `IWorldTimeObserver`/`TimeAdvance` (plugin time hook), `apply_effect` (clamped, expiring, non-stacking buffs/debuffs; `persistent` for curses and auras), the consequence beat (`consequences`, `consequenceCooldownHours`, `consequenceMaxPerDay` options), `tether` (subject → anchor with break DC), ammunition (`ammoType`, `ammoPerShot`, `fireModes`, `mode`), and weapon bursts that fan out round-robin over targets; engine 0.9.0 — `ActorActionAttribute` and `ActionBlock` (the host refuses a marked verb, and core attack/spell/item-use actions, from an actor who is incapacitated, stunned, paralyzed, petrified, unconscious or carries a `BlocksAllActions` status; whoever applies such a status must give it an exit); engine 0.8.0 — public `EngineOnlyAttribute`, `plugin.json` `systems`, `IModeStateMachine.TryAddParticipant`/`TryRemoveParticipant` and `core.mode_joined.v1`/`core.mode_left.v1` (host handling of `mode_transition` join/leave and `systems` lands after the SDK publish); engine 0.7.0 — `IPluginCampaignOptionsUpgrader`, `IContextTurn.Config`/`Time`/`LoadCharacterAsync`, `playerOnlyModeIds`, owner-managed pools, host-enforced mode action slots
 **Plugin API version:** 1.4 (adds the 0.8.0 contracts above; 1.3 added `IPluginCampaignOptionsUpgrader` and the 0.7.0 hooks above; 1.2 added `IPluginTraitsUpgrader`; 1.1 added `IInteractionMode`/`IModeStateMachine`/`IWorldChangeObserver`; `IRulesetModule` surface unchanged from 1.0)

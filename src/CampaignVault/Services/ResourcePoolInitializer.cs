@@ -76,7 +76,8 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
         var classLevels = CharacterClassResolver.ResolveClassLevels(character);
         var characterLevel = DeriveCharacterLevel(character);
         var casterLevel = system == RulesetSystem.Dnd5e
-            ? Dnd5eCasterLevelHelper.ComputeCasterLevel(classLevels, _classProvider)
+            ? Dnd5eCasterLevelHelper.ComputeCasterLevel(classLevels, _classProvider,
+                entry => CharacterClassFeatures.OptionSpellcastingFor(character, system, _progressionProvider, entry)?.CasterType)
             : 0;
 
         foreach (var (poolName, template) in schemas)
