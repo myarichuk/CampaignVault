@@ -337,7 +337,8 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             if (isCrit)
                 rolled += (await _rollService.RollAsync(new RollRequest { Tag = "extraDamageCrit", Expression = extra.Dice, Mechanic = DiceMechanic.Standard }, ct)).Result;
             var type = extra.DamageType ?? action.DamageType;
-            var dealt = ApplyFeatResistance(ApplyTargetDamageReduction(rolled, targetStats, type), type, targetEffects);
+            var dealt = ApplyTargetDamageReduction(rolled, targetStats, type);
+            dealt = FeatEffectRules.ResistsDamage(targetEffects, type, action) ? dealt / 2 : dealt;
             finalDamage += dealt;
             extraMsg += $" {extra.Source} +{dealt}{(string.IsNullOrWhiteSpace(extra.DamageType) ? "" : " " + extra.DamageType)}.";
         }
@@ -706,7 +707,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     {
         if (action is not null)
             damage = Math.Max(0, damage - FeatEffectRules.DamageReduction(targetEffects, damageType, action, notes ?? []));
-        return FeatEffectRules.ResistsDamage(targetEffects, damageType) ? damage / 2 : damage;
+        return FeatEffectRules.ResistsDamage(targetEffects, damageType, action, notes) ? damage / 2 : damage;
     }
 
     private static int ApplyTargetDamageReduction(int damage, Dnd5eExtension targetStats, string? actionDamageType)

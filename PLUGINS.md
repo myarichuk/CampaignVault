@@ -766,7 +766,8 @@ steps+:
   | `passiveBonus` | `value`, optional `subject: Investigation` | adds to passive Perception (or passive Investigation) |
 
   `damageType` on `resistance` and `damageReduction` may list several, comma-separated. Initiative, speed and passive
-  bonuses have no action to carry a toggle or an assertion, so only unconditional ones count.
+  bonuses have no action to carry a toggle or an assertion, so only unconditional ones count. A conditional `resistance`
+  (`assert: [raging]`, "while raging") is checked against the attack that deals the damage, like an attack bonus.
   Any effect can add `weapon: [ranged, melee, oneHanded, finesse, twoHanded, heavy]` (checked from the weapon's tags),
   `toggle: name` (the player opts in with an action parameter), or `assert: [flag]` with a `when:` sentence (the DM
   claims the condition holds). Anything beyond this stays description text, for the DM.

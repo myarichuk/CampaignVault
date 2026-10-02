@@ -342,9 +342,24 @@ internal static class FeatEffectRules
     }
 
     /// <summary>Whether the target's effects give resistance to the damage type (halves it).</summary>
-    public static bool ResistsDamage(IReadOnlyList<ActiveFeatEffect> targetEffects, string? damageType) =>
-        !string.IsNullOrWhiteSpace(damageType)
-        && OfKind(targetEffects, FeatEffectKinds.Resistance).Any(a => NamesType(a.Effect, damageType));
+    /// <remarks>
+    /// A conditional resistance (a toggle, an assertion or a weapon condition: "while raging", "from nonmagical weapons") holds
+    /// only when <paramref name="action"/>, the attack, meets it; without an action only unconditional ones count.
+    /// </remarks>
+    public static bool ResistsDamage(
+        IReadOnlyList<ActiveFeatEffect> targetEffects, string? damageType, RulesetAction? action = null, List<string>? notes = null)
+    {
+        if (string.IsNullOrWhiteSpace(damageType))
+            return false;
+
+        var weapon = action is null ? default : WeaponProfile.Read(action);
+        var asserted = action is null ? new HashSet<string>() : Asserted(action);
+        return OfKind(targetEffects, FeatEffectKinds.Resistance).Any(a =>
+            NamesType(a.Effect, damageType)
+            && (!IsConditional(a.Effect) || action is not null && Applies(a, action, weapon, asserted, notes ?? [])));
+    }
+
+    private static bool IsConditional(FeatEffect e) => e.Assert.Count > 0 || e.Toggle is not null || e.Weapon.Count > 0;
 
     /// <summary>
     /// How much the target's effects take off this damage before resistance: each <c>damageReduction</c> whose type fits

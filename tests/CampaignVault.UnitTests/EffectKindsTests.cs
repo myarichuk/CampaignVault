@@ -103,4 +103,22 @@ public sealed class EffectKindsTests : IDisposable
         Assert.Equal(expected, FeatEffectRules.DamageReduction(effects, damageType, attack, notes));
         Assert.Equal(expected > 0 || damageType == "slashing", notes.Count > 0);
     }
+
+    [Theory]
+    [InlineData("fire", null, true)]          // unconditional: always
+    [InlineData("slashing", null, false)]     // conditional, and the DM didn't claim it
+    [InlineData("slashing", "enraged", true)]
+    public void Resistance_WithACondition_HoldsOnlyWhenAsserted(string damageType, string? assert, bool expected)
+    {
+        ActiveFeatEffect[] effects =
+        [
+            new("Warded", new FeatEffect { Kind = "resistance", DamageType = "fire" }),
+            new("Fury", new FeatEffect { Kind = "resistance", DamageType = "slashing", Assert = ["enraged"], When = "while enraged" }),
+        ];
+        var attack = new RulesetAction { ActionType = RulesetActionType.Attack, ActionName = "Attack", CharacterId = "chars/a" };
+        if (assert is not null) attack.Parameters["assert"] = assert;
+
+        Assert.Equal(expected, FeatEffectRules.ResistsDamage(effects, damageType, attack));
+        Assert.False(FeatEffectRules.ResistsDamage(effects, "slashing"));   // no attack to check the condition against
+    }
 }
