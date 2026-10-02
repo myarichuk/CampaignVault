@@ -5,4 +5,5 @@ name: ride
 system: pf2e
 mechanicalSummary: Automatically succeed at commanding your mount to move
 extraPools: []
+category: general
 level: 1

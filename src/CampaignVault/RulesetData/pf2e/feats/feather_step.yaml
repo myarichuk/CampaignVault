@@ -4,6 +4,9 @@
 name: feather_step
 system: pf2e
 prerequisite: Dexterity +2
+prerequisites:
+  - { ability: Dexterity, min: 2 }
 mechanicalSummary: Step into difficult terrain
 extraPools: []
+category: general
 level: 1

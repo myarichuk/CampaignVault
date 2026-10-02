@@ -4,7 +4,10 @@
 name: monstrosity_shape
 system: pf2e
 prerequisite: Untamed Form
+prerequisites:
+  - { feat: untamed_form }
 mechanicalSummary: You can transform into a powerful magical creature.
 extraPools: []
+category: class
 classes: [druid]
 level: 16

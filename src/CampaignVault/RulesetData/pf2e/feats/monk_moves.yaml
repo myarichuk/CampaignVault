@@ -4,6 +4,9 @@
 name: monk_moves
 system: pf2e
 prerequisite: Monk Dedication
+prerequisites:
+  - { feat: monk_dedication }
 mechanicalSummary: You gain a +10-foot status bonus to your Speed when you’re not wearing armor.
 extraPools: []
+category: archetype
 level: 8

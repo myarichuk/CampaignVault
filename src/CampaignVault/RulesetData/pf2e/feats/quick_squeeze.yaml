@@ -4,6 +4,10 @@
 name: quick_squeeze
 system: pf2e
 prerequisite: Trained in Acrobatics
+prerequisites:
+  - { skill: Acrobatics, rank: trained }
 mechanicalSummary: Move swiftly as you Squeeze
 extraPools: []
+category: skill
+skills: [Acrobatics]
 level: 1

@@ -5,5 +5,6 @@ name: unbalancing_finisher
 system: pf2e
 mechanicalSummary: You attack with a flashy assault that leaves your target off balance.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 2

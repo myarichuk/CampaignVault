@@ -1,3 +1,4 @@
+using CampaignVault.Rulesets.Creation;
 using CampaignVault.Data.Templates;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
@@ -341,12 +342,15 @@ public class LevelUpChangeHandler : IWorldChangeHandler
     private readonly CampaignDocumentKeys _keys;
     private readonly CharacterBootstrapOrchestrator _bootstrap;
     private readonly ResourcePoolInitializer _poolInitializer;
+    private readonly LevelUpPlanner? _planner;
 
     public LevelUpChangeHandler(
         CampaignDocumentKeys keys,
         CharacterBootstrapOrchestrator bootstrap,
-        ResourcePoolInitializer poolInitializer)
+        ResourcePoolInitializer poolInitializer,
+        LevelUpPlanner? planner = null)
     {
+        _planner = planner;
         _keys = keys ?? throw new ArgumentNullException(nameof(keys));
         _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
         _poolInitializer = poolInitializer ?? throw new ArgumentNullException(nameof(poolInitializer));
@@ -393,6 +397,38 @@ public class LevelUpChangeHandler : IWorldChangeHandler
         }
 
         var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(ctx, _keys, ct);
+
+        // The picks go in before the level's hit points are derived, so a Constitution improvement counts for them.
+        var pickMessages = new List<string>();
+        var plan = _planner?.Plan(character, activeSystem, levelUp.ClassGained);
+        if (levelUp.Picks is { Count: > 0 } picks)
+        {
+            if (levelUp.LevelsGained != 1)
+            {
+                return ChangeHandlerResult.Failure("picks apply to one level at a time: set levelsGained to 1.");
+            }
+
+            if (plan is null)
+            {
+                return ChangeHandlerResult.Failure(
+                    $"No authored progression for {character.ClassLevel ?? "this character's class"} ({activeSystem}), so picks can't be checked. Use 'choices' to record them.");
+            }
+
+            var problems = _planner!.Validate(plan, character, picks);
+            if (problems.Count > 0)
+            {
+                return ChangeHandlerResult.Failure($"level_up picks refused: {string.Join(" ", problems)}");
+            }
+
+            pickMessages.AddRange(_planner.Apply(plan, character, picks));
+        }
+        else if (plan is { Slots.Count: > 0 } && levelUp.LevelsGained == 1 && plan.Slots.Any(s => s.Required))
+        {
+            ctx.RecordMessage(
+                $"Warning: level {plan.CharacterLevel} of {plan.ClassName} asks for {string.Join(", ", plan.Slots.Where(s => s.Required).Select(s => s.Id))}; "
+                + "none were given in 'picks', so they aren't applied. Ask the player (lookup kind:'level_up' lists the options) and commit them as picks.");
+        }
+
         var previousMax = character.MaxHp;
         var report = await _bootstrap.ApplyLevelGainAsync(new BootstrapContext
         {
@@ -439,6 +475,11 @@ public class LevelUpChangeHandler : IWorldChangeHandler
         // something the caller could compute itself.
         ctx.RecordMessage(
             $"Level up: {character.Name} gained {levelUp.LevelsGained} level(s). MaxHp {previousMax} → {character.MaxHp}.");
+
+        if (pickMessages.Count > 0)
+        {
+            ctx.RecordMessage($"{character.Name} chose: {string.Join("; ", pickMessages)}.");
+        }
 
         ApplyLevelUpChoices(character, levelUp, ctx);
 

@@ -28,30 +28,24 @@ levels:
             type: Enum
             required: true
             options:
-              - id: abjuration
-                label: "School of Abjuration"
-                description: "Protective magic and wards."
-              - id: conjuration
-                label: "School of Conjuration"
-                description: "Summoning and teleportation."
-              - id: divination
-                label: "School of Divination"
-                description: "Foresight and scrying."
-              - id: enchantment
-                label: "School of Enchantment"
-                description: "Beguiling and controlling minds."
               - id: evocation
                 label: "School of Evocation"
-                description: "Raw elemental destruction."
-              - id: illusion
-                label: "School of Illusion"
-                description: "Deceiving senses and minds."
-              - id: necromancy
-                label: "School of Necromancy"
-                description: "Power over life and death."
-              - id: transmutation
-                label: "School of Transmutation"
-                description: "Changing matter and energy."
+                description: "Evocation savant, sculpt spells, potent cantrip, empowered evocation, overchannel."
+                features:
+                  2:
+                    - name: "Evocation Savant"
+                      description: "Copying an evocation spell into your spellbook takes half the gold and time."
+                    - name: "Sculpt Spells"
+                      description: "When you cast an evocation spell that affects creatures you can see, choose 1 + the spell's level of them: they succeed on its save and take no damage where they'd take half."
+                  6:
+                    - name: "Potent Cantrip"
+                      description: "A creature that succeeds on a save against your cantrip takes half its damage (but no other effect)."
+                  10:
+                    - name: "Empowered Evocation"
+                      description: "Add your Intelligence modifier to one damage roll of any wizard evocation spell you cast."
+                  14:
+                    - name: "Overchannel"
+                      description: "When you cast a wizard spell of 1st to 5th level that deals damage, deal its maximum damage. After the first use before a long rest, each further use deals you 2d12 necrotic damage per spell level, rising by 1d12 each time; the damage ignores resistance and immunity."
   3:
     spellsKnown: 10
     proficiencyBonus: 2

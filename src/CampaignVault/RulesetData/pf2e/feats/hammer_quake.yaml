@@ -4,6 +4,9 @@
 name: hammer_quake
 system: pf2e
 prerequisite: Mauler Dedication
+prerequisites:
+  - { feat: mauler_dedication }
 mechanicalSummary: You smash the ground with your weapon, knocking nearby creatures to the ground.
 extraPools: []
+category: archetype
 level: 14

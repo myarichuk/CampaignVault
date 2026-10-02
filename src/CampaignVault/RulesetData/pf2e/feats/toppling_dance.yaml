@@ -4,6 +4,10 @@
 name: toppling_dance
 system: pf2e
 prerequisite: Dance Underfoot
+prerequisites:
+  - { feat: dance_underfoot }
 mechanicalSummary: "While sharing a creature's space using Dance Underfoot, your melee weapons and unarmed attacks gain the trip trait, but only against the creature whose space you share."
 extraPools: []
+category: ancestry
+ancestries: [halfling]
 level: 13

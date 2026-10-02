@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: healing font
 mechanicalSummary: Your vitality is even more vibrant and restorative.
 extraPools: []
+category: class
 classes: [cleric]
 level: 1

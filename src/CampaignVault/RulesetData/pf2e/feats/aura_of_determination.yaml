@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: "champion's aura"
 mechanicalSummary: Your aura protects against powers that would twist the mind and body.
 extraPools: []
+category: class
 classes: [champion]
 level: 14

@@ -4,6 +4,9 @@
 name: aerial_piledriver
 system: pf2e
 prerequisite: Wrestler Dedication
+prerequisites:
+  - { feat: wrestler_dedication }
 mechanicalSummary: Heaving both yourself and your opponent into the air, you bring them crashing to the ground.
 extraPools: []
+category: archetype
 level: 10

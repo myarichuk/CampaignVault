@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: initial revelation spell
 mechanicalSummary: Divine power reveals greater mysteries to you.
 extraPools: []
+category: class
 classes: [oracle]
 level: 6

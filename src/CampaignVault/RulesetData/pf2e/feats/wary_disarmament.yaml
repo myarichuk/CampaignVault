@@ -4,6 +4,10 @@
 name: wary_disarmament
 system: pf2e
 prerequisite: Expert in Thievery
+prerequisites:
+  - { skill: Thievery, rank: expert }
 mechanicalSummary: +2 to AC or saves against devices or traps while disarming
 extraPools: []
+category: skill
+skills: [Thievery]
 level: 2

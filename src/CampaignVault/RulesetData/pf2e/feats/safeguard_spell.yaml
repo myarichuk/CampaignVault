@@ -5,5 +5,6 @@ name: safeguard_spell
 system: pf2e
 mechanicalSummary: You are inured to the effects of your own spells.
 extraPools: []
+category: class
 classes: [sorcerer]
 level: 6

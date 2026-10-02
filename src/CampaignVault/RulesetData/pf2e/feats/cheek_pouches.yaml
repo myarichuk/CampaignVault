@@ -5,4 +5,6 @@ name: cheek_pouches
 system: pf2e
 mechanicalSummary: Your cheeks are stretchy, and you can store up to four items of light Bulk or less in these cheek pouches.
 extraPools: []
+category: ancestry
+ancestries: [ratfolk]
 level: 1

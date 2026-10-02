@@ -4,7 +4,10 @@
 name: incredible_luck
 system: pf2e
 prerequisite: Charmed Life
+prerequisites:
+  - { feat: charmed_life }
 mechanicalSummary: You always seem to bounce back from the worst.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 18

@@ -5,4 +5,6 @@ name: unburdened_iron
 system: pf2e
 mechanicalSummary: "You've learned techniques first devised by your ancestors during their ancient wars, allowing you to comfortably wear massive suits of armor."
 extraPools: []
+category: ancestry
+ancestries: [dwarf]
 level: 1

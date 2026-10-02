@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: scout
+system: pf2e
+description: "You called the wilderness home as you found trails and guided travelers. Your wanderlust could have called you to the adventuring life, or perhaps you served as a scout for soldiers and found you liked battle."
+boosts: [Dexterity, Wisdom]
+skillProficiencies: [Survival]
+lore: Lore related to one terrain you scouted in (such as Forest Lore or Cavern Lore)
+skillFeat: forager
+feature: Forager

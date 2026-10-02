@@ -4,7 +4,11 @@
 name: convincing_illusion
 system: pf2e
 prerequisite: Expert in Deception
+prerequisites:
+  - { skill: Deception, rank: expert }
 mechanicalSummary: You use your deceptive skills to make your illusions seem even more real.
 extraPools: []
+category: class
 classes: [wizard]
+skills: [Deception]
 level: 6

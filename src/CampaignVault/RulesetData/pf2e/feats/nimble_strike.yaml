@@ -4,7 +4,10 @@
 name: nimble_strike
 system: pf2e
 prerequisite: Nimble Roll
+prerequisites:
+  - { feat: nimble_roll }
 mechanicalSummary: You’re cunning enough to find an opening in an opponent’s attack.
 extraPools: []
+category: class
 classes: [rogue]
 level: 10

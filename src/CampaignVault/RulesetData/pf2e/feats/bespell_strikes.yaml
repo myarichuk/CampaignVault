@@ -5,5 +5,6 @@ name: bespell_strikes
 system: pf2e
 mechanicalSummary: You siphon spell energy into one weapon you’re wielding, or into one of your unarmed attacks, such as a fist.
 extraPools: []
+category: class
 classes: [oracle, sorcerer, wizard]
 level: 4

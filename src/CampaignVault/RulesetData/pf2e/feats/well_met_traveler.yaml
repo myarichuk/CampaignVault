@@ -5,4 +5,6 @@ name: well_met_traveler
 system: pf2e
 mechanicalSummary: You naturally adopt a pleasant and affable demeanor when meeting others.
 extraPools: []
+category: ancestry
+ancestries: [catfolk]
 level: 1

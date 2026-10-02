@@ -4,6 +4,9 @@
 name: expert_eldritch_archer_spellcasting
 system: pf2e
 prerequisite: Basic Eldritch Archer Spellcasting
+prerequisites:
+  - { feat: basic_eldritch_archer_spellcasting }
 mechanicalSummary: You learn additional eldritch archer magic.
 extraPools: []
+category: archetype
 level: 12

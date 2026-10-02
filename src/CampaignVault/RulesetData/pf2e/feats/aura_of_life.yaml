@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: "champion's aura"
 mechanicalSummary: Your aura protects against the power of the Void.
 extraPools: []
+category: class
 classes: [champion]
 level: 14

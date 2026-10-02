@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: obedience cause
 mechanicalSummary: Disobeying your Iron Command has lasting consequences.
 extraPools: []
+category: class
 classes: [champion]
 level: 1

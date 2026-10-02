@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: redemption cause
 mechanicalSummary: Guilt clouds the minds of those who ignore your Glimpse of Redemption.
 extraPools: []
+category: class
 classes: [champion]
 level: 1

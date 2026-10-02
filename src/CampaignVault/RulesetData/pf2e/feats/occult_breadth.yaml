@@ -4,6 +4,9 @@
 name: occult_breadth
 system: pf2e
 prerequisite: Basic Bard Spellcasting
+prerequisites:
+  - { feat: basic_bard_spellcasting }
 mechanicalSummary: Your repertoire expands, and you can cast more occult spells each day.
 extraPools: []
+category: archetype
 level: 8

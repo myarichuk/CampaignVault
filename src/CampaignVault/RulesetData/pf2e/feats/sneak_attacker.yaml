@@ -4,6 +4,9 @@
 name: sneak_attacker
 system: pf2e
 prerequisite: Rogue Dedication
+prerequisites:
+  - { feat: rogue_dedication }
 mechanicalSummary: You gain the sneak attack class feature, except it deals 1d4 damage, increasing to 1d6 at 6th level.
 extraPools: []
+category: archetype
 level: 4

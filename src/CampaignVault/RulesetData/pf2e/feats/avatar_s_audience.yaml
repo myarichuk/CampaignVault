@@ -5,5 +5,6 @@ name: avatar_s_audience
 system: pf2e
 mechanicalSummary: Your extensive service affords you certain divine privileges.
 extraPools: []
+category: class
 classes: [cleric]
 level: 20

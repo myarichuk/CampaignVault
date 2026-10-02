@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: harmful font or healing font
 mechanicalSummary: Divine power is always at your fingertips, swiftly responding to your call.
 extraPools: []
+category: class
 classes: [cleric]
 level: 14

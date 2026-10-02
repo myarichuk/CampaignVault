@@ -4,6 +4,10 @@
 name: quick_jump
 system: pf2e
 prerequisite: Trained in Athletics
+prerequisites:
+  - { skill: Athletics, rank: trained }
 mechanicalSummary: High Jump or Long Jump as a single action
 extraPools: []
+category: skill
+skills: [Athletics]
 level: 1

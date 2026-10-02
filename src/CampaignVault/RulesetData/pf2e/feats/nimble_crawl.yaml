@@ -4,6 +4,10 @@
 name: nimble_crawl
 system: pf2e
 prerequisite: Expert in Acrobatics
+prerequisites:
+  - { skill: Acrobatics, rank: expert }
 mechanicalSummary: Crawl at a faster rate
 extraPools: []
+category: skill
+skills: [Acrobatics]
 level: 2

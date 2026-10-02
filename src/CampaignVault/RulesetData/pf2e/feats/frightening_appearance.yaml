@@ -4,6 +4,11 @@
 name: frightening_appearance
 system: pf2e
 prerequisite: Startling Appearance; Expert in Intimidation
+prerequisites:
+  - { feat: startling_appearance }
+  - { skill: Intimidation, rank: expert }
 mechanicalSummary: Your dramatic appearances can frighten bystanders.
 extraPools: []
+category: archetype
+skills: [Intimidation]
 level: 12

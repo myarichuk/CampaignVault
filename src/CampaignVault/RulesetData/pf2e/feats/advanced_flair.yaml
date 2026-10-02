@@ -4,6 +4,9 @@
 name: advanced_flair
 system: pf2e
 prerequisite: Basic Flair
+prerequisites:
+  - { feat: basic_flair }
 mechanicalSummary: You gain one swashbuckler feat.
 extraPools: []
+category: archetype
 level: 6

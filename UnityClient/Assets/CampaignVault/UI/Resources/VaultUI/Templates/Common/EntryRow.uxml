@@ -1,0 +1,22 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- EntryRowViewModel: one row of an editable list, its cells side by side, then a button to take it off.
+         A header row has captions for cells and keeps the button's place (unseen) so the columns line up. -->
+    <ui:VisualElement class="cv-row cv-entry">
+        <Bindings>
+            <cv:ClassBinding property="cls-header" data-source-path="IsHeader" class-name="cv-entry--header" />
+            <cv:ClassBinding property="cls-stretch" data-source-path="Stretches" class-name="cv-entry--stretch" />
+        </Bindings>
+        <cv:Repeater class="cv-entry__cells">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Cells" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+        <cv:VaultButton icon="close" class="cv-btn--icon cv-btn--small cv-entry__remove">
+            <Bindings>
+                <ui:DataBinding property="name" data-source-path="RemoveName" binding-mode="ToTarget" />
+                <ui:DataBinding property="tooltip" data-source-path="RemoveHint" binding-mode="ToTarget" />
+                <ui:DataBinding property="command" data-source-path="Remove" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultButton>
+    </ui:VisualElement>
+</ui:UXML>

@@ -4,6 +4,9 @@
 name: scout_s_charge
 system: pf2e
 prerequisite: Scout Dedication
+prerequisites:
+  - { feat: scout_dedication }
 mechanicalSummary: You meander around unpredictably, and then ambush your opponents without warning.
 extraPools: []
+category: archetype
 level: 4

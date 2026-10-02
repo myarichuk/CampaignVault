@@ -5,5 +5,6 @@ name: reactive_interference
 system: pf2e
 mechanicalSummary: Grabbing a sleeve, swiping with your weapon, or creating another obstruction, you reflexively foil an enemy’s response.
 extraPools: []
+category: class
 classes: [commander, rogue]
 level: 12

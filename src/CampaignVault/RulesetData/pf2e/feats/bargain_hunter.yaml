@@ -4,6 +4,10 @@
 name: bargain_hunter
 system: pf2e
 prerequisite: Trained in Diplomacy
+prerequisites:
+  - { skill: Diplomacy, rank: trained }
 mechanicalSummary: Earn Income by searching for deals
 extraPools: []
+category: skill
+skills: [Diplomacy]
 level: 1

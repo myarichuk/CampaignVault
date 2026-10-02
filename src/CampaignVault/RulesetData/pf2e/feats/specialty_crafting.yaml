@@ -4,6 +4,10 @@
 name: specialty_crafting
 system: pf2e
 prerequisite: Trained in Crafting
+prerequisites:
+  - { skill: Crafting, rank: trained }
 mechanicalSummary: Gain bonuses to Craft certain items
 extraPools: []
+category: skill
+skills: [Crafting]
 level: 1

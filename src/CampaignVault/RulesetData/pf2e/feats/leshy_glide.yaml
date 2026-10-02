@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Leaf Leshy heritage or Cat Fall
 mechanicalSummary: Using your own leaves, you can control your descent.
 extraPools: []
+category: ancestry
+ancestries: [leshy]
 level: 5

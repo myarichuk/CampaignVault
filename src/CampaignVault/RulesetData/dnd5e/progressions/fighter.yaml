@@ -19,12 +19,18 @@ levels:
               - id: archery
                 label: "Archery"
                 description: "+2 to attack rolls with ranged weapons."
+                effects:
+                  - { kind: attackBonus, value: 2, weapon: [ranged] }
               - id: defense
                 label: "Defense"
                 description: "+1 AC while wearing armor."
+                effects:
+                  - { kind: armorClassBonus, value: 1, assert: [wearingArmor], when: "the character is wearing armor" }
               - id: dueling
                 label: "Dueling"
                 description: "+2 damage with one-handed melee weapon."
+                effects:
+                  - { kind: damageBonus, value: 2, weapon: [melee, oneHanded] }
               - id: greatWeaponFighting
                 label: "Great Weapon Fighting"
                 description: "Reroll 1s and 2s on damage dice for two-handed weapons."
@@ -53,19 +59,32 @@ levels:
             options:
               - id: champion
                 label: "Champion"
-                description: "Improved criticals, remarkable athlete, additional fighting style."
-              - id: battleMaster
-                label: "Battle Master"
-                description: "Combat maneuvers with superiority dice."
-              - id: eldritchKnight
-                label: "Eldritch Knight"
-                description: "Wizard spellcasting, weapon bond, war magic."
-              - id: psiWarrior
-                label: "Psi Warrior"
-                description: "Psionic powers, telekinetic movement, defensive psionics."
-              - id: runeKnight
-                label: "Rune Knight"
-                description: "Giant runes, rune magic, giant's might."
+                description: "Improved and superior criticals, remarkable athlete, an extra fighting style, survivor."
+                features:
+                  3:
+                    - name: "Improved Critical"
+                      description: "Your weapon attacks score a critical hit on a roll of 19 or 20."
+                      effects:
+                        - { kind: critRange, value: 19 }
+                  7:
+                    - name: "Remarkable Athlete"
+                      description: "Add half your proficiency bonus (rounded up) to Strength, Dexterity and Constitution checks you aren't proficient in. A running long jump goes a number of feet further equal to your Strength modifier."
+                  10:
+                    - name: "Additional Fighting Style"
+                      description: "Choose a second fighting style."
+                      choices:
+                        fightingStyle:
+                          type: "Enum"
+                          required: true
+                          prompt: "Additional Fighting Style"
+                  15:
+                    - name: "Superior Critical"
+                      description: "Your weapon attacks score a critical hit on a roll of 18 to 20."
+                      effects:
+                        - { kind: critRange, value: 18 }
+                  18:
+                    - name: "Survivor"
+                      description: "At the start of each of your turns, if you have no more than half your hit points left (and at least 1), you regain 5 + your Constitution modifier hit points."
   4:
     proficiencyBonus: 2
     features:

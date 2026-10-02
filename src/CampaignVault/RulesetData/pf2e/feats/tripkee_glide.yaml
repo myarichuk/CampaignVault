@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Windweb Tripkee heritage
 mechanicalSummary: You can use your webbed feet to guide your fall.
 extraPools: []
+category: ancestry
+ancestries: [tripkee]
 level: 5

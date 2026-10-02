@@ -5,5 +5,6 @@ name: patron_s_presence
 system: pf2e
 mechanicalSummary: Your patron can direct its attention through your familiar, and its mere presence becomes an ominous weight on the minds of other beings to distract them and blot out their magic.
 extraPools: []
+category: class
 classes: [witch]
 level: 14

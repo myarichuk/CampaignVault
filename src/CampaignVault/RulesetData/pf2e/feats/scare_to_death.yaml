@@ -4,6 +4,10 @@
 name: scare_to_death
 system: pf2e
 prerequisite: Legendary in Intimidation
+prerequisites:
+  - { skill: Intimidation, rank: legendary }
 mechanicalSummary: Scare a target so much, they might die
 extraPools: []
+category: skill
+skills: [Intimidation]
 level: 15

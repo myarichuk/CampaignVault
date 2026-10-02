@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: spirit instinct
 mechanicalSummary: Your strength is part of your rage.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 6

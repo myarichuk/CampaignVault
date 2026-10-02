@@ -5,4 +5,6 @@ name: avenge_ally
 system: pf2e
 mechanicalSummary: "Though you know that you will eventually outlive your companions, seeing them at death's door brings clarity to your attacks."
 extraPools: []
+category: ancestry
+ancestries: [elf]
 level: 13

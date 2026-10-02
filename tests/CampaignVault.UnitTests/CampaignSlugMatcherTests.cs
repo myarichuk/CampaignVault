@@ -15,20 +15,20 @@ public class CampaignSlugMatcherTests
         {
             new()
             {
-                Id = "campaigns/sword-coast/meta",
-                Name = "sword-coast",
-                DisplayName = "Sword Coast",
+                Id = "campaigns/amber-coast/meta",
+                Name = "amber-coast",
+                DisplayName = "Amber Coast",
                 System = RulesetSystem.Dnd5e,
             }
         };
 
         var suggestions = CampaignSlugMatcher.FindSuggestions(
-            "swordcoast",
+            "ambercoast",
             campaigns,
             c => new CampaignSuggestion(c.Name, c.DisplayName, c.System, 0, null));
 
         Assert.Single(suggestions);
-        Assert.Equal("sword-coast", suggestions[0].Slug);
+        Assert.Equal("amber-coast", suggestions[0].Slug);
     }
 
     [Fact]
@@ -38,15 +38,15 @@ public class CampaignSlugMatcherTests
         {
             new()
             {
-                Id = "campaigns/sword-coast/meta",
-                Name = "sword-coast",
-                DisplayName = "Sword Coast",
+                Id = "campaigns/amber-coast/meta",
+                Name = "amber-coast",
+                DisplayName = "Amber Coast",
                 System = RulesetSystem.Dnd5e,
             }
         };
 
         var suggestions = CampaignSlugMatcher.FindSuggestions(
-            "sword-coast",
+            "amber-coast",
             campaigns,
             c => new CampaignSuggestion(c.Name, c.DisplayName, c.System, 0, null));
 
@@ -61,20 +61,20 @@ public class CampaignSlugMatcherTests
         {
             new()
             {
-                Id = $"campaigns/sword-coast-{suffix}/meta",
-                Name = $"sword-coast-{suffix}",
-                DisplayName = "Sword Coast",
+                Id = $"campaigns/amber-coast-{suffix}/meta",
+                Name = $"amber-coast-{suffix}",
+                DisplayName = "Amber Coast",
                 System = RulesetSystem.Dnd5e,
             }
         };
 
         var suggestions = CampaignSlugMatcher.FindSuggestions(
-            $"swordcoast{suffix}",
+            $"ambercoast{suffix}",
             campaigns,
             c => new CampaignSuggestion(c.Name, c.DisplayName, c.System, 0, null));
 
         Assert.Single(suggestions);
-        Assert.Equal($"sword-coast-{suffix}", suggestions[0].Slug);
+        Assert.Equal($"amber-coast-{suffix}", suggestions[0].Slug);
     }
 
     [Fact]

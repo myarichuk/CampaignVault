@@ -5,4 +5,6 @@ name: first_world_magic
 system: pf2e
 mechanicalSummary: Your connection to the First World grants you a primal innate spell, much like those of the fey.
 extraPools: []
+category: ancestry
+ancestries: [gnome]
 level: 1

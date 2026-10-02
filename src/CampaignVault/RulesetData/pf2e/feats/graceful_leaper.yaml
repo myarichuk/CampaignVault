@@ -4,6 +4,11 @@
 name: graceful_leaper
 system: pf2e
 prerequisite: Acrobat Dedication; Master in Acrobatics
+prerequisites:
+  - { feat: acrobat_dedication }
+  - { skill: Acrobatics, rank: master }
 mechanicalSummary: Mass and muscle are meaningless when you propel yourself through the air; only grace and balance matter.
 extraPools: []
+category: skill
+skills: [Acrobatics]
 level: 7

@@ -5,4 +5,6 @@ name: elude_trouble
 system: pf2e
 mechanicalSummary: Stride up to your Speed.
 extraPools: []
+category: ancestry
+ancestries: [catfolk]
 level: 17

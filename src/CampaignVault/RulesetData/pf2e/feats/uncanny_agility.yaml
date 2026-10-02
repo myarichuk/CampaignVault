@@ -5,4 +5,6 @@ name: uncanny_agility
 system: pf2e
 mechanicalSummary: You have near-supernatural poise that lets you move swiftly across the most unsteady surfaces.
 extraPools: []
+category: ancestry
+ancestries: [tengu]
 level: 1

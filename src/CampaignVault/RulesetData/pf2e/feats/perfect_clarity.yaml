@@ -5,5 +5,6 @@ name: perfect_clarity
 system: pf2e
 mechanicalSummary: You burn out all your rage to ensure that your attack lands and your mind remains free.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 18

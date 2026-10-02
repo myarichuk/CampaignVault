@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: Acute Scent or scent
 mechanicalSummary: Your scent is preternaturally sharp, and you can always rely on your sense of smell to help guide you when your vision is compromised.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 4

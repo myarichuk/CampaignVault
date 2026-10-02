@@ -4,6 +4,9 @@
 name: monk_s_flurry
 system: pf2e
 prerequisite: Monk Dedication
+prerequisites:
+  - { feat: monk_dedication }
 mechanicalSummary: You gain the Flurry of Blows action.
 extraPools: []
+category: archetype
 level: 10

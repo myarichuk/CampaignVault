@@ -1,11 +1,17 @@
 # Character builder recipe: a D&D 5e player character. Steps run in this order; each step's choice is stored in the
 # draft under its key. Plugins add steps with `patches: pc` + `steps+:` (and `after: <key>` to place them).
-# Step kinds, sources and validators: CHARACTER_CREATION_PLAN.md / PLUGINS.md.
+# Step kinds, sources and validators: PLUGINS.md.
 name: pc
 system: dnd5e
+# Levels 2-20: the levels step asks for every choice the class's progression makes up to the draft's level.
+maxLevel: 20
 steps:
   - { key: race, kind: pickOne, source: races, prompt: Race }
   - { key: class, kind: pickOne, source: classes, prompt: Class }
+  # Named powers (gods, patrons, bloodlines) are plugin or homebrew content, so these steps show only when one fits the class.
+  - { key: deity, kind: pickOne, source: deities, optional: true, prompt: Deity }
+  - { key: patron, kind: pickOne, source: patrons, optional: true, prompt: Patron }
+  - { key: lineage, kind: pickOne, source: lineages, optional: true, prompt: Lineage }
   - { key: background, kind: pickOne, source: backgrounds, prompt: Background }
   - key: abilities
     kind: abilityScores
@@ -20,5 +26,8 @@ steps:
     source: classSkills
     countFrom: class.skillChoices.count
     exclude: background.skillProficiencies
+  # Subclass, fighting style, ability score improvements...: shown when the class has a choice at or below the level.
+  # Before spells, so an improvement to the casting ability is in the prepared count.
+  - { key: levels, kind: levelChoices, prompt: Level choices }
   - { key: spells, kind: spells, source: spells, when: "class.casterType != None", prompt: Spells }
   - { key: identity, kind: identity, prompt: Who they are }

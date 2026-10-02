@@ -5,4 +5,6 @@ name: goblin_scuttle
 system: pf2e
 mechanicalSummary: "You take advantage of your ally's movement to adjust your position."
 extraPools: []
+category: ancestry
+ancestries: [goblin]
 level: 1

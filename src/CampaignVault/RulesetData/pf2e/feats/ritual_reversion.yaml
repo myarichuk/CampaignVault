@@ -5,4 +5,6 @@ name: ritual_reversion
 system: pf2e
 mechanicalSummary: You can temporarily revert to a less conspicuous form without diminishing your senses.
 extraPools: []
+category: ancestry
+ancestries: [leshy]
 level: 5

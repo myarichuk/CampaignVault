@@ -5,4 +5,5 @@ name: archer_dedication
 system: pf2e
 mechanicalSummary: You have familiarity with all weapons in the bow and crossbow weapon groups.
 extraPools: []
+category: archetype
 level: 2

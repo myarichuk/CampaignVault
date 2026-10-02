@@ -5,5 +5,6 @@ name: terraforming_trickery
 system: pf2e
 mechanicalSummary: You know how to channel the transformative aspects of your blood magic to alter your surroundings.
 extraPools: []
+category: class
 classes: [sorcerer]
 level: 12

@@ -4,6 +4,9 @@
 name: precious_ammunition
 system: pf2e
 prerequisite: Eldritch Archer Dedication
+prerequisites:
+  - { feat: eldritch_archer_dedication }
 mechanicalSummary: You have learned to mimic the power that lies between magic and material.
 extraPools: []
+category: archetype
 level: 8

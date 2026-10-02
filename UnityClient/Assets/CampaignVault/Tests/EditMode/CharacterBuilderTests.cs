@@ -113,6 +113,27 @@ namespace CampaignVault.UnityClient.Tests
         }
 
         [Test]
+        public void Dependents_ComeFromTheServersReads_WhenItSendsThem()
+        {
+            // PF2e: what a step reads isn't in its paths (a heritage's source reads the ancestry), so the server says.
+            var b = new BuilderState();
+            b.Reset("scratch", "pf2e", "pc");
+            VaultController.ReadSteps(b, Parse("{\"system\":\"pf2e\",\"kind\":\"pc\",\"steps\":["
+                + "{\"key\":\"ancestry\",\"kind\":\"pickOne\",\"source\":\"races\"},"
+                + "{\"key\":\"heritage\",\"kind\":\"pickOne\",\"source\":\"heritages\"},"
+                + "{\"key\":\"background\",\"kind\":\"pickOne\",\"source\":\"backgrounds\"},"
+                + "{\"key\":\"ancestryBoosts\",\"kind\":\"allocate\",\"source\":\"ancestryBoosts\",\"countFrom\":\"ancestry.freeBoosts\"},"
+                + "{\"key\":\"skills\",\"kind\":\"pickN\",\"source\":\"untrainedSkills\",\"countPlus\":\"modifier.intelligence\"}],"
+                + "\"reads\":{\"ancestry\":[],\"heritage\":[\"ancestry\"],\"background\":[],\"ancestryBoosts\":[\"ancestry\"],"
+                + "\"skills\":[\"ancestry\",\"background\",\"ancestryBoosts\"]}}"));
+
+            CollectionAssert.AreEqual(new[] { "ancestry" }, BuilderDependencies.Reads(b.Step("heritage")));
+            CollectionAssert.AreEqual(new[] { "heritage", "ancestryBoosts", "skills" }, BuilderDependencies.Dependents("ancestry", b.Steps));
+            CollectionAssert.AreEqual(new[] { "skills" }, BuilderDependencies.Dependents("background", b.Steps));
+            CollectionAssert.AreEqual(new[] { "skills" }, BuilderDependencies.Dependents("ancestryBoosts", b.Steps));
+        }
+
+        [Test]
         public void ChangingClass_ClearsSkillsAndSpells_AndSaysSo()
         {
             var steps = Steps();
@@ -220,6 +241,20 @@ namespace CampaignVault.UnityClient.Tests
                 StringAssert.EndsWith("= " + total, log);
             }
             Assert.IsFalse(AbilityDice.IsValid("roll well"));
+        }
+
+        [Test]
+        public void AnOption_FromAPlugin_ReadsItsHomebrewTag_AndTheCardShowsIt()
+        {
+            var shipped = BuilderOption.Parse(Parse("{\"id\":\"champion\",\"label\":\"Champion\"}"));
+            var plugin = BuilderOption.Parse(Parse("{\"id\":\"emberKnight\",\"label\":\"Ember Knight\",\"homebrew\":true}"));
+
+            Assert.IsFalse(shipped.Homebrew);
+            Assert.IsTrue(plugin.Homebrew);
+
+            var card = new OptionViewModel("opt-emberKnight", plugin, delegate { });
+            card.Update(plugin, false, false, false, string.Empty);
+            Assert.IsTrue(card.Homebrew);
         }
 
         [Test]

@@ -5,5 +5,6 @@ name: furious_grab
 system: pf2e
 mechanicalSummary: "You grab your foe while it's distracted by your attack."
 extraPools: []
+category: class
 classes: [barbarian]
 level: 12

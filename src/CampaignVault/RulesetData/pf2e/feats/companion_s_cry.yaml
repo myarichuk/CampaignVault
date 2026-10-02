@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: an animal companion
 mechanicalSummary: You can urge your companion to do its utmost.
 extraPools: []
+category: class
 classes: [ranger]
 level: 4

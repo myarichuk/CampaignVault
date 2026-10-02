@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: prisoner
+system: pf2e
+description: "You might have been imprisoned for crimes (whether you were guilty or not), or enslaved for some part of your upbringing. In your adventuring life, you take full advantage of your newfound freedom."
+boosts: [Strength, Constitution]
+skillProficiencies: [Stealth]
+lore: Underworld Lore
+skillFeat: experienced_smuggler
+feature: Experienced Smuggler

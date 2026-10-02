@@ -5,5 +5,6 @@ name: tiger_stance
 system: pf2e
 mechanicalSummary: You enter the stance of a tiger and can make tiger claw attacks.
 extraPools: []
+category: class
 classes: [monk]
 level: 1

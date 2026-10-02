@@ -5,5 +5,6 @@ name: instant_opening
 system: pf2e
 mechanicalSummary: You distract your opponent with a few choice words or a rude gesture.
 extraPools: []
+category: class
 classes: [rogue]
 level: 14

@@ -1,3 +1,4 @@
+using CampaignVault.Models;
 using YamlDotNet.Core;
 using YamlDotNet.Core.Events;
 using YamlDotNet.Serialization;
@@ -26,6 +27,11 @@ internal sealed class FeatureDefinitionYamlConverter : IYamlTypeConverter
             Name = raw?.Name ?? "",
             Description = raw?.Description,
             Choices = raw?.Choices ?? [],
+            Effects = raw?.Effects ?? [],
+            HpPerLevel = raw?.HpPerLevel ?? 0,
+            UnarmoredArmorClass = raw?.UnarmoredArmorClass,
+            Spells = raw?.Spells ?? [],
+            SpellOptions = raw?.SpellOptions ?? [],
         };
     }
 
@@ -37,6 +43,11 @@ internal sealed class FeatureDefinitionYamlConverter : IYamlTypeConverter
         public string Name { get; set; } = "";
         public string? Description { get; set; }
         public Dictionary<string, LevelUpChoiceDefinition> Choices { get; set; } = [];
+        public List<FeatEffect> Effects { get; set; } = [];
+        public int HpPerLevel { get; set; }
+        public UnarmoredArmorClass? UnarmoredArmorClass { get; set; }
+        public Dictionary<int, List<string>> Spells { get; set; } = [];
+        public Dictionary<int, List<string>> SpellOptions { get; set; } = [];
     }
 }
 
@@ -62,6 +73,11 @@ internal sealed class ChoiceOptionYamlConverter : IYamlTypeConverter
             Id = raw?.Id ?? "",
             Label = raw?.Label ?? raw?.Id ?? "",
             Description = raw?.Description,
+            Skills = raw?.Skills ?? [],
+            ExtraSkills = raw?.ExtraSkills ?? 0,
+            KeyAbility = raw?.KeyAbility,
+            Effects = raw?.Effects ?? [],
+            Features = raw?.Features ?? [],
         };
     }
 
@@ -73,5 +89,10 @@ internal sealed class ChoiceOptionYamlConverter : IYamlTypeConverter
         public string Id { get; set; } = "";
         public string? Label { get; set; }
         public string? Description { get; set; }
+        public List<string> Skills { get; set; } = [];
+        public int ExtraSkills { get; set; }
+        public string? KeyAbility { get; set; }
+        public List<FeatEffect> Effects { get; set; } = [];
+        public Dictionary<int, List<FeatureDefinition>> Features { get; set; } = [];
     }
 }

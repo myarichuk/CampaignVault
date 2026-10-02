@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: You have a swim Speed
 mechanicalSummary: When you use the Step action, you can ignore difficult terrain caused by flooding, swamps, or quicksand.
 extraPools: []
+category: ancestry
+ancestries: [lizardfolk]
 level: 1

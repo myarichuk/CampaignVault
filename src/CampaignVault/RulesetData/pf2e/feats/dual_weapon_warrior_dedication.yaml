@@ -5,4 +5,5 @@ name: dual_weapon_warrior_dedication
 system: pf2e
 mechanicalSummary: "You're exceptional in your use of two weapons."
 extraPools: []
+category: archetype
 level: 2

@@ -4,6 +4,10 @@
 name: discreet_inquiry
 system: pf2e
 prerequisite: Expert in Deception or Expert in Diplomacy
+prerequisites:
+  - { anyOf: [{ skill: Deception, rank: expert }, { skill: Diplomacy, rank: expert }] }
 mechanicalSummary: You are subtle in your efforts to learn the things you need to know.
 extraPools: []
+category: skill
+skills: [Deception, Diplomacy]
 level: 2

@@ -4,7 +4,10 @@
 name: crashing_slam
 system: pf2e
 prerequisite: Slam Down
+prerequisites:
+  - { feat: slam_down }
 mechanicalSummary: You can dash your foe to the ground with a single blow.
 extraPools: []
+category: class
 classes: [fighter]
 level: 10

@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: low-light vision or scent
 mechanicalSummary: Your senses gain even greater clarity.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 6

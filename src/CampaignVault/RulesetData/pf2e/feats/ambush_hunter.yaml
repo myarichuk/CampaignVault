@@ -5,4 +5,6 @@ name: ambush_hunter
 system: pf2e
 mechanicalSummary: You are always searching for the perfect opportunity to ambush your enemies.
 extraPools: []
+category: ancestry
+ancestries: [kholo]
 level: 9

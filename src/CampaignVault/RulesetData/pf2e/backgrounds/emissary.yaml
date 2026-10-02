@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: emissary
+system: pf2e
+description: "As a diplomat or messenger, you traveled to lands far and wide. Communicating with new people and forming alliances were your stock and trade."
+boosts: [Intelligence, Charisma]
+skillProficiencies: [Society]
+lore: "Lore related to one city you've visited often"
+skillFeat: multilingual
+feature: Multilingual

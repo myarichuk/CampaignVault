@@ -4,7 +4,11 @@
 name: brutal_bully
 system: pf2e
 prerequisite: Expert in Athletics
+prerequisites:
+  - { skill: Athletics, rank: expert }
 mechanicalSummary: You push your foes around and leave bruises.
 extraPools: []
+category: class
 classes: [barbarian]
+skills: [Athletics]
 level: 6

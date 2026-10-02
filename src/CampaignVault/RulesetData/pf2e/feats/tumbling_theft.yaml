@@ -4,6 +4,11 @@
 name: tumbling_theft
 system: pf2e
 prerequisite: Expert in Acrobatics; Expert in Thievery
+prerequisites:
+  - { skill: Acrobatics, rank: expert }
+  - { skill: Thievery, rank: expert }
 mechanicalSummary: "You reach for an opponent's item as you move past a foe."
 extraPools: []
+category: skill
+skills: [Acrobatics, Thievery]
 level: 7

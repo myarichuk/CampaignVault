@@ -5,4 +5,6 @@ name: necromantic_physiology
 system: pf2e
 mechanicalSummary: Your unusual physiology has developed in a way that makes it difficult for parasites and other infestations to prey upon you.
 extraPools: []
+category: ancestry
+ancestries: [dhampir]
 level: 5

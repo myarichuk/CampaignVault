@@ -104,7 +104,7 @@ Plugins/
 
 **Adult / optional content:** belongs in separate repos referencing PluginSdk; the main repo ships only neutral samples (e.g. `plugins/CraftingMode`).
 
-**Compatibility:** host engine version is `0.11.0` (`EngineVersion.Current`). Set `minEngineVersion` accordingly.
+**Compatibility:** host engine version is `0.13.0` (`EngineVersion.Current`). Set `minEngineVersion` accordingly.
 
 In-tree reference: `plugins/CraftingMode` (mode id `crafting`, `$type` `crafting_step`).
 
@@ -484,6 +484,8 @@ Standard subdirectories (must match provider names):
 - `conditions/` — Condition definitions (ConditionDefinitionProvider)
 - `backgrounds/` — Background definitions (BackgroundDefinitionProvider)
 - `progressions/` — Class progression tables (ProgressionDefinitionProvider)
+- `classOptions/` — One option of a class's choice per file: a subclass, a patron, a fighting style (see "Adding a subclass")
+- `powers/` — Named powers: gods, patrons, bloodlines, one per file (NamedPowerProvider; see "Named powers"). None ship
 - `items/` — Item/equipment definitions (ItemDefinitionProvider) — not restricted to weapons/armor; see below.
 - `creation/` — Character builder recipes, one file per kind: `pc`, `companion` (CreationRecipeProvider); see below.
 - `statblocks/` — Stat block schemas the builder edits (CreationRecipeProvider).
@@ -618,6 +620,7 @@ list edits apply. Steps match by `key:` in `steps+:` / `steps-:`.
 # RulesetData/dnd5e/creation/pc.yaml (shipped; shortened)
 name: pc
 system: dnd5e
+maxLevel: 20                                # the highest level the builder builds at (absent: no limit)
 steps:
   - { key: race, kind: pickOne, source: races }
   - { key: class, kind: pickOne, source: classes }
@@ -626,6 +629,7 @@ steps:
     source: classSkills
     countFrom: class.skillChoices.count     # a path: the chosen class template's field
     exclude: background.skillProficiencies  # options to leave out
+  - { key: levels, kind: levelChoices }    # subclass, fighting style, ability score improvements...
   - { key: spells, kind: spells, source: spells, when: "class.casterType != None" }
   - { key: identity, kind: identity }
 ```
@@ -641,17 +645,186 @@ steps+:
 
 - **kind:** `pickOne`, `pickN`, `abilityScores`, `allocate`, `spells`, `feats`, `identity`, `levelChoices`.
   The client draws one widget per kind, so no client work is needed for a new step.
-- **source:** `races`, `classes`, `backgrounds`, `classSkills`, `skills`, `spells`, `feats`, `creatures`,
-  `abilities`, `startingEquipment`. Templates gated by `requires:` are never offered.
-- **Constraints are data, not code:** `count`, `countFrom` and `exclude` (paths), `when` (`path`,
-  `path == value` or `path != value`), `optional`. Anything else is a named validator.
-- **Where the choice goes:** the stats field named by `target:` or the key (`race`, `background`, `feats`);
-  otherwise a level-1 `levelUpChoices` record per value (5e class skills are derived from these).
+- **source:** `races`, `classes`, `backgrounds`, `classSkills`, `skills`, `untrainedSkills` (skills the chosen
+  class and background don't already train), `spells`, `feats`, `creatures`, `abilities`, `startingEquipment`.
+  PF2e: `heritages` (the chosen ancestry's), `backgroundSkills` (a background's "Nature or Occultism"),
+  `ancestryBoosts` (abilities the ancestry doesn't boost already), `backgroundBoosts`, `keyAbilities` (the class
+  progression's `keyAbility`, plus any a class feature picked allows), and `ancestryFeats` / `classFeats` / `skillFeats` / `generalFeats` (that `category`,
+  at or below the draft's level, for its class or ancestry). Templates gated by `requires:` are never offered.
+- **Constraints are data, not code:** `count`, `countFrom` and `exclude` (paths), `countPlus` (paths added to the
+  count, joined by `+`: `modifier.intelligence`, the ability modifier the draft's choices give so far, and
+  `classFeatures.extraSkills`, the extra skills a picked class feature gives), `when` (`path`,
+  `path == value` or `path != value`), `optional`. A `feats` step with no count takes it from the class's
+  progression (every feat of its category up to the draft's level) and isn't shown when that is 0. Anything else is
+  a named validator.
+- **`levelChoices`** needs no source: it asks for every choice the chosen class's progression
+  (`progressions/<class>.yaml`, the `choices:` under a level's features) makes at levels 1 to the draft's, one slot
+  per choice with id `<level>.<choice key>`, or only those of its `choiceTypes:` (PF2e asks for the class features,
+  `[Enum, FeatSelection]`, before the skills, and for `[SkillIncrease, AttributeBoosts]` after them). Its choice is an
+  object of slot → option id, or a list: `{"2.subclass": "evocation", "2.invocation": ["agonizingBlast",
+  "repellingBlast"]}`. A choice's `count:` is how many different options it takes ("choose two invocations"); one
+  picked at an earlier level of the same key can't be picked again. A choice with no options of its own (a later
+  invocation) offers that key's options from another level. Choice types:
+  - `AsiOrFeat` takes one ability (+2), two (+1 each) or one feat instead (its `prerequisites` checked), and no score
+    may pass 20.
+  - `SkillIncrease` (PF2e) raises one skill a rank: trained or expert at any level, master from 7, legendary from 15.
+  - `AttributeBoosts` (PF2e, `count: 4`) raises that many different attribute modifiers by 1; at +4 or more a boost
+    is partial and two make +1.
+  - `SkillProficiency` (5e, with `count:`) makes that many skills proficient, ones the character isn't proficient in
+    yet (a Lore bard's three). Use the key `skills` so they're derived like the class's skill picks.
+  - An option may say what it gives: `skills:` it trains (a racket's Thievery: not offered by the skills step, trained
+    on the sheet), `extraSkills:` (more skill picks; the skills step's `countPlus` reads it), `keyAbility:` (offered
+    by the key attribute step), `effects:` (what it does to rolls, the feat effect vocabulary: Archery's
+    `{ kind: attackBonus, value: 2, weapon: [ranged] }`) and `features:` (a subclass's, by class level).
+
+  **Subclass features.** An option's `features:` is a map of class level to features, written like the class's own.
+  Once the option is picked, its features count from their level, and their `choices:` become slots (a hunter's prey
+  at 3; a choice with no options borrows the key's, like the champion's second fighting style). A feature can carry:
+
+  ```yaml
+  - id: draconic
+    label: Draconic Bloodline
+    features:
+      1:
+        - name: Draconic Resilience
+          description: Your hit point maximum rises by 1 per sorcerer level. Without armor, your AC is 13 + Dexterity.
+          hpPerLevel: 1                                          # added to max HP, per character level
+          unarmoredArmorClass: { base: 13, abilities: [Dexterity] }   # the best formula wins when no armor is worn
+      6:
+        - name: Elemental Affinity
+          description: ...                                       # text only: the DM applies it
+  ```
+
+  A feature's `effects:` take the same vocabulary as an option's (fixed values only; a bonus that scales with a
+  modifier stays text). Features are never stored on the character: get_entity (`classFeatures`) and the
+  builder preview read them from the progression and the recorded picks, so a fix to the data reaches every character.
+  The engine applies `effects`, `hpPerLevel`, `unarmoredArmorClass` and `spells`; everything else is the description,
+  which the DM reads. The class's own features take the same fields (Unarmored Defense is
+  `unarmoredArmorClass: { base: 10, abilities: [Dexterity, Constitution] }`).
+
+  **Spells from a feature.** `spells:` (class level → spell ids) are given outright: always prepared, they join the
+  sheet's prepared list once the class level is reached (a domain's, an oath's, a circle's) and cost no pick.
+  `spellOptions:` adds spells to the class's list *to choose from* instead (a patron's expanded list): the builder's
+  spells step offers them beside the class's own, and each costs a pick like any other.
+
+  **Effect vocabulary** (`effects:` on a feat, feature or option; fixed values only, the DM supplies facts, never numbers):
+
+  | kind | needs | does |
+  |---|---|---|
+  | `attackBonus`, `damageBonus`, `skillBonus`, `saveBonus`, `armorClassBonus` | `value` | adds to that roll (`subject` narrows a skill or save) |
+  | `advantage`, `disadvantage` | `on: attack\|check\|save` | rolls with it (`subject` narrows); any of each cancels (5e) |
+  | `extraDamage` | `dice: 1d8`, optional `damageType` | rolled on a hit and again on a critical hit (5e attacks) |
+  | `critRange` | `value: 19` | a natural d20 at or above it is a critical hit (the lowest wins) |
+  | `resistance` | `damageType` | damage of that type to the character is halved (5e attacks) |
+
+  Any effect can add `weapon: [ranged, melee, oneHanded, finesse, twoHanded, heavy]` (checked from the weapon's tags),
+  `toggle: name` (the player opts in with an action parameter), or `assert: [flag]` with a `when:` sentence (the DM
+  claims the condition holds). Anything beyond this stays description text, for the DM.
+
+  **Adding a subclass (or patron, or fighting style) from a plugin.** One file in `classOptions/` joins a class's
+  choice; nothing of the class is restated, and it shows in the builder with a "homebrew" tag:
+
+  ```yaml
+  # RulesetData/dnd5e/classOptions/ember_knight.yaml
+  name: emberKnight           # the option id, recorded on the character
+  class: fighter              # the class's progression name or alias
+  choice: subclass            # the choice's key; "subclass" when left out
+  label: Ember Knight
+  description: A knight of the kindled blade.
+  features:
+    3: [{ name: Kindled Blade, description: ..., effects: [{ kind: damageBonus, value: 1, weapon: [melee] }] }]
+  ```
+
+  It takes the option fields above (`skills`, `keyAbility`, `effects`, `features`, `inherits:`, `requires:`). A file
+  naming a class with no progression is skipped with a warning; it never replaces a shipped option of the same id.
+
+  **Switching off shipped content.** In a `patches:` file, `hidden: true` removes any shipped template (a background, a
+  race, a feat...) from every list and lookup, and `hideOptions+: [champion]` on a progression removes shipped
+  options from its choices. A character that already recorded one keeps the record, but the option gives nothing and
+  isn't offered again. (`requires:` instead keeps the content and gates it on a plugin or mode.)
+
+  **Homebrew tag.** Anything that didn't come from the host's own data (a plugin's template or option) is offered with a
+  "homebrew" tag in the builder, because the shipped rules are the free-licensed ones.
+
+  **The DM's own homebrew.** A campaign can hold its own subclasses (class options), ancestries and named powers, written
+  as the same YAML a plugin file holds and saved with the campaign by `world_build`:
+  `homebrew: [{ kind: classOption | ancestry | power, system: dnd5e, yaml: "name: ember_knight\nclass: fighter\n..." }]`.
+  The YAML is read as that template and refused with the reason when it has no name, a class option names no class the
+  ruleset has, or a power has no valid type. Saving the same kind, system and name again replaces it; `isArchived: true`
+  stops offering it (characters that have it keep it). The campaign's builder lists it, tagged homebrew, and no other
+  campaign sees it. It is the last layer, so a homebrew name replaces a shipped or plugin template of the same name, and
+  a homebrew ancestry or power can `inherits:` from one. The campaign's own feats and spells (`upsert_feat`, `upsert_spell`) are offered in its builder too, tagged homebrew: a feat among a 5e improvement's feats, a spell in a caster's list when its `classes` name the class and its level fits. A PF2e feat has no category, so it isn't offered in the ancestry, class, skill or general feat steps.
+
+  **Named powers (gods, patrons, bloodlines).** Nothing named ships, because every name is somebody's setting. A
+  plugin adds them in `powers/`, and a recipe step lists them:
+
+  ```yaml
+  # RulesetData/dnd5e/powers/lantern_keeper.yaml
+  name: lantern_keeper
+  type: deity              # deity | patron | lineage
+  label: The Lantern Keeper
+  classes: [cleric]        # who may take it; empty means any class
+  offers: [light, trickery]   # the class choice's options it joins (a cleric's domains, a warlock's patron kind)
+  # choice: subclass       # which choice `offers` narrows; "subclass" when left out
+  # narrows: { font: [healingFont] }   # more choices it narrows, by choice key (a PF2e deity: domain, font)
+
+  ```
+
+  The shipped `pc` recipes already hold three optional steps (`deity`, `patron`, `lineage`; sources `deities`,
+  `patrons`, `lineages`), each shown only when a power fits the picked class, so a plugin adds only the power file. A
+  power with `classes:` is only listed for those classes. Once
+  one is picked, the class's choice (`choice:`, the subclass by default) offers only the options in `offers:`; if none
+  of them exist for the class, the choice stays whole, so a god that offers nothing the class has is harmless. The pick
+  is recorded in the character's `levelUpChoices` under the step's key.
+
+  The PF2e cleric has no deity in the shipped data, so it picks two `domain`s and a divine `font` itself (a house rule,
+  RULES_GAPS.md). A PF2e deity plugin narrows those: `narrows: { domain: [healing, sun, truth], font: [healingFont] }`.
+
+  Picks are recorded as `levelUpChoices` at their level, as `level_up` records them; improvements and boosts raise
+  the scores or modifiers, a feat joins `feats`, and skill increases set the skill ranks. The step isn't shown for a
+  class with no such choices up to the level, and a step with `choiceTypes` waits for the class. Spells gained by
+  level stay the `spells` step's (its counts follow the level). Hit points above level 1 are the hit die's average:
+  the builder never rolls.
+- **Feat prerequisites:** a feat's `prerequisite:` text is shown on its option; its `prerequisites:` list is checked
+  (`feat.prerequisites`, run by every `feats` step and on a feat taken instead of an improvement). Each entry is one of
+  `{ skill: Athletics, rank: trained }`, `{ ability: Strength, min: 13 }` (a 5e score, a PF2e modifier),
+  `{ feat: shield_block }`, `{ classFeature: leaf }` (an option id picked in a levelChoices step), or
+  `{ anyOf: [...] }`. `generate_pf2e_feats.py` writes them from the text it can read; 5e's are written by hand. A
+  validator can read the same facts at the path `sheet` (`sheet.skillRanks`, `sheet.abilities`, `sheet.feats`,
+  `sheet.classFeatures`).
+- **Where the choice goes:** the stats field named by `target:` or the key (`race`, `background`, `feats`); an
+  `allocate` step's picks are attribute boosts, +1 each to the stats field `<ability>Mod`; otherwise a level-1
+  `levelUpChoices` record per value (5e class skills and PF2e trained skills are derived from these).
+- **PF2e validators** (`RulesetData/pf2e/creation/pc.yaml`): `pf2e.boosts` (an ancestry's free boosts go where it
+  doesn't boost already; one of a background's two goes to an attribute it names), `pf2e.featEligibility` (level,
+  class, ancestry, category), `pf2e.classSkills` (the
+  fighter's "Acrobatics or Athletics"). They read the steps keyed `ancestry`, `background` and `class`.
 - **Validators** are C# classes implementing `IRecipeValidator` (PluginSdk, `CampaignVault.Rulesets.Creation`),
   found by scanning plugin assemblies. A recipe naming a step kind, source or validator that doesn't exist stops
   the server at startup with every problem listed.
 - **A whole system** that a recipe can't express can implement `ICharacterCreation` instead. Preview and
   commit still run through the host's bootstrap pipeline and `world_build`.
+
+**Stat block schemas (`statblocks/`).** An `identity` step with `schema:` edits a stat block (a companion's), one
+field per stats field of the same name, or a line of the character's notes (`creatureType`, `challengeRating`,
+`attacks`, `traits`, `stance`), or one of the character's psychology lists (`descriptors` → traits, `drives` → wants,
+`fears` → fears: Narrative's `nature` schema). The schema's `title:` captions the editor ("Stat block" without one),
+and any field's `hint:` is shown in the empty field. Field `type`:
+
+- `int` (`min`, `max`), `text` (a bare number is fine), with `required` and `group` (fields of a group are drawn
+  together); `compact: true` draws a short text field as a narrow box beside the numbers (numbers always are).
+- `modifiers`: an object of name to whole number (`{"Perception": 4}`, or the text "Perception +4, Stealth +6"),
+  names from `source: skills | abilities`, each within `min`..`max`.
+- `choice`: one name from `source:` (`creatureTypes`: the SRD 5.1 types for dnd5e), picked from a searchable list.
+- `rows`: a list of objects, one per row, with `columns:` (`key`, `label`, `type: text | int | dice`, `min`,
+  `max`, `required`), `item:` (what one row is called, for the add button) and `max:` (the most rows). Text form:
+  rows split by `;`, columns by `,` in column order, a whole-number second column may share the name's part:
+  `"Bite +3, 1d6+1 piercing, reach 5 ft.; Claw +3, 1d4+1 slashing"`.
+- `list`: short entries, as a list or one text split at commas, semicolons and line breaks; `min`..`max` is how
+  many (none is fine unless `required`).
+
+The server checks every value against its field (`statBlock.fields`) and refuses to start on a field that lands
+nowhere, an unknown type, or a `modifiers`/`choice` field whose source has no names in that system.
 
 ### Item Definition
 
@@ -1195,5 +1368,5 @@ Deferred capabilities (not yet implemented):
 
 ---
 
-**Last updated:** engine 0.11.0 — `IRollModifierProvider`/`RollQuery`/`RollModifier` (what buffs, conditions, willpower and plugin rules do to rolls; `IChangeContext.ResolveRollModifiers` for plugin rolls), `SystemExtension.WillpowerDrained` and willpower that matters (charm, fear, compulsion and mental saves; rest restores what was drained), `SpellDefinition.tags`, effective speed (`Speed` modifiers now slow travel and show on cards, plus a context line for chases); engine 0.10.0 — `IWorldTimeObserver`/`TimeAdvance` (plugin time hook), `apply_effect` (clamped, expiring, non-stacking buffs/debuffs; `persistent` for curses and auras), the consequence beat (`consequences`, `consequenceCooldownHours`, `consequenceMaxPerDay` options), `tether` (subject → anchor with break DC), ammunition (`ammoType`, `ammoPerShot`, `fireModes`, `mode`), and weapon bursts that fan out round-robin over targets; engine 0.9.0 — `ActorActionAttribute` and `ActionBlock` (the host refuses a marked verb, and core attack/spell/item-use actions, from an actor who is incapacitated, stunned, paralyzed, petrified, unconscious or carries a `BlocksAllActions` status; whoever applies such a status must give it an exit); engine 0.8.0 — public `EngineOnlyAttribute`, `plugin.json` `systems`, `IModeStateMachine.TryAddParticipant`/`TryRemoveParticipant` and `core.mode_joined.v1`/`core.mode_left.v1` (host handling of `mode_transition` join/leave and `systems` lands after the SDK publish); engine 0.7.0 — `IPluginCampaignOptionsUpgrader`, `IContextTurn.Config`/`Time`/`LoadCharacterAsync`, `playerOnlyModeIds`, owner-managed pools, host-enforced mode action slots
+**Last updated:** engine 0.13.0 — character creation contracts (`ICharacterCreation`, `IRecipeValidator`, `CharacterDraft`, `CreationOption.Values`), `FeatEffect`/`RulesetTemplate.Requires`, `SpellRepertoire`, explicit death; engine 0.11.0 — `IRollModifierProvider`/`RollQuery`/`RollModifier` (what buffs, conditions, willpower and plugin rules do to rolls; `IChangeContext.ResolveRollModifiers` for plugin rolls), `SystemExtension.WillpowerDrained` and willpower that matters (charm, fear, compulsion and mental saves; rest restores what was drained), `SpellDefinition.tags`, effective speed (`Speed` modifiers now slow travel and show on cards, plus a context line for chases); engine 0.10.0 — `IWorldTimeObserver`/`TimeAdvance` (plugin time hook), `apply_effect` (clamped, expiring, non-stacking buffs/debuffs; `persistent` for curses and auras), the consequence beat (`consequences`, `consequenceCooldownHours`, `consequenceMaxPerDay` options), `tether` (subject → anchor with break DC), ammunition (`ammoType`, `ammoPerShot`, `fireModes`, `mode`), and weapon bursts that fan out round-robin over targets; engine 0.9.0 — `ActorActionAttribute` and `ActionBlock` (the host refuses a marked verb, and core attack/spell/item-use actions, from an actor who is incapacitated, stunned, paralyzed, petrified, unconscious or carries a `BlocksAllActions` status; whoever applies such a status must give it an exit); engine 0.8.0 — public `EngineOnlyAttribute`, `plugin.json` `systems`, `IModeStateMachine.TryAddParticipant`/`TryRemoveParticipant` and `core.mode_joined.v1`/`core.mode_left.v1` (host handling of `mode_transition` join/leave and `systems` lands after the SDK publish); engine 0.7.0 — `IPluginCampaignOptionsUpgrader`, `IContextTurn.Config`/`Time`/`LoadCharacterAsync`, `playerOnlyModeIds`, owner-managed pools, host-enforced mode action slots
 **Plugin API version:** 1.4 (adds the 0.8.0 contracts above; 1.3 added `IPluginCampaignOptionsUpgrader` and the 0.7.0 hooks above; 1.2 added `IPluginTraitsUpgrader`; 1.1 added `IInteractionMode`/`IModeStateMachine`/`IWorldChangeObserver`; `IRulesetModule` surface unchanged from 1.0)

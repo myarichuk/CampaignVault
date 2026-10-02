@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: harmful font
 mechanicalSummary: The mordant power of your void energy grows.
 extraPools: []
+category: class
 classes: [cleric]
 level: 1

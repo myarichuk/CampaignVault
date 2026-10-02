@@ -4,6 +4,9 @@
 name: call_your_shot
 system: pf2e
 prerequisite: Play to the Crowd
+prerequisites:
+  - { feat: play_to_the_crowd }
 mechanicalSummary: "When you successfully Play to the Crowd, add the following to the list of benefits you can choose from:   A creature you can see within 30 feet becomes frightened 2.  \n"
 extraPools: []
+category: archetype
 level: 8

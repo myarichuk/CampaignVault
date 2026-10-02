@@ -4,7 +4,10 @@
 name: ultimate_mercy
 system: pf2e
 prerequisite: Mercy
+prerequisites:
+  - { feat: mercy }
 mechanicalSummary: Your mercy transcends the bounds of life and death.
 extraPools: []
+category: class
 classes: [champion]
 level: 18

@@ -5,5 +5,6 @@ name: reactive_shield
 system: pf2e
 mechanicalSummary: You can snap your shield into place just as you would take a blow, avoiding the hit at the last second.
 extraPools: []
+category: class
 classes: [fighter]
 level: 1

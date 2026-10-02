@@ -48,6 +48,16 @@ namespace CampaignVault.UnityClient.Model
             public string Detail = string.Empty;
         }
 
+        /// <summary>A class feature from get_entity or the builder preview: a subclass's when <see cref="From"/> is set.</summary>
+        public sealed class ClassFeature
+        {
+            public int Level;
+            public string Name = string.Empty;
+            public string Description = string.Empty;
+            public string From = string.Empty;
+            public readonly List<string> Spells = new List<string>();
+        }
+
         public sealed class Recent
         {
             public string Summary = string.Empty;
@@ -81,6 +91,8 @@ namespace CampaignVault.UnityClient.Model
         public string Speed = string.Empty;
         public int ProficiencyBonus = -1;
         public int PassivePerception = -1;
+        /// <summary>PF2e: the Perception modifier (a creature lists it with its skills), or int.MinValue.</summary>
+        public int Perception = int.MinValue;
         public int SpellDc = -1;
         public int SpellAttack = int.MinValue;
         public string SpellAbility = string.Empty;
@@ -95,6 +107,14 @@ namespace CampaignVault.UnityClient.Model
         public readonly List<Resource> Resources = new List<Resource>();
         public readonly List<string> Conditions = new List<string>();
         public readonly List<string> Features = new List<string>();
+        /// <summary>What the class and subclass give at the character's level, in level order (the server reads them from the progression).</summary>
+        public readonly List<ClassFeature> ClassFeatures = new List<ClassFeature>();
+        /// <summary>For a player character or companion: whether the next level can be gained, and is earned by XP. Null for anyone else.</summary>
+        public LevelUpStatus LevelUp;
+        /// <summary>Who they are (psychology traits: a Narrative character's three descriptors), what they want, what they fear.</summary>
+        public readonly List<string> Nature = new List<string>();
+        public readonly List<string> Drives = new List<string>();
+        public readonly List<string> Fears = new List<string>();
         public readonly List<Gear> Equipped = new List<Gear>();
         public readonly List<Gear> Carried = new List<Gear>();
         public readonly List<Recent> RecentEvents = new List<Recent>();
@@ -163,9 +183,27 @@ namespace CampaignVault.UnityClient.Model
             if (stats.Kind == JsonKind.Object) { sheet.Stats = stats; sheet.ReadStats(stats, classLevel); }
             else { sheet.ClassLine = classLevel; }
 
+            var psychology = character.Get("psychology");
+            ReadTexts(psychology.GetArray("traits"), sheet.Nature);
+            ReadTexts(psychology.GetArray("wants"), sheet.Drives);
+            ReadTexts(psychology.GetArray("fears"), sheet.Fears);
+
             foreach (var c in character.GetArray("conditions")) { sheet.AddCondition(c.Kind == JsonKind.String ? c.StringValue : c.GetString("name", string.Empty)); }
             var needs = character.Get("needs").Get("activeNeeds");
             sheet.ReadNeeds(needs.Kind == JsonKind.Object ? needs : payload.Get("knownNeeds"));
+            sheet.LevelUp = LevelUpStatus.Parse(payload.Get("levelUp"));
+            foreach (var f in payload.GetArray("classFeatures"))
+            {
+                var feature = new ClassFeature
+                {
+                    Level = (int)f.GetNumber("level", 0),
+                    Name = f.GetString("name", string.Empty),
+                    Description = f.GetString("description", string.Empty),
+                    From = f.GetString("from", string.Empty),
+                };
+                foreach (var spell in f.GetArray("spells")) { if (spell.Kind == JsonKind.String) { feature.Spells.Add(Title(spell.StringValue.Replace('_', ' '))); } }
+                if (feature.Name.Length > 0) { sheet.ClassFeatures.Add(feature); }
+            }
             ReadGear(payload.GetArray("equipped"), sheet.Equipped);
             ReadGear(payload.GetArray("carried"), sheet.Carried);
             foreach (var e in payload.GetArray("recentInteractions"))
@@ -182,13 +220,39 @@ namespace CampaignVault.UnityClient.Model
             return sheet;
         }
 
+        private static void ReadTexts(List<JsonValue> items, List<string> into)
+        {
+            foreach (var v in items) { if (v.Kind == JsonKind.String && v.StringValue.Trim().Length > 0) { into.Add(v.StringValue.Trim()); } }
+        }
+
+        /// <summary>
+        /// The nature lines both sheets show: the descriptors as one sentence, then "Drives: ..." and "Fears: ...".
+        /// Empty when the character has none.
+        /// </summary>
+        public List<string> NatureLines()
+        {
+            var lines = new List<string>();
+            if (Nature.Count > 0) { lines.Add(Sentence(string.Join(", ", Nature.ToArray()))); }
+            if (Drives.Count > 0) { lines.Add("Drives: " + Sentence(string.Join("; ", Drives.ToArray()))); }
+            if (Fears.Count > 0) { lines.Add("Fears: " + Sentence(string.Join("; ", Fears.ToArray()))); }
+            return lines;
+        }
+
+        private static string Sentence(string text)
+        {
+            if (text.Length == 0) { return text; }
+            text = char.ToUpperInvariant(text[0]) + text.Substring(1);
+            char last = text[text.Length - 1];
+            return last == '.' || last == '!' || last == '?' ? text : text + ".";
+        }
+
         private void ReadStats(JsonValue stats, string classLevel)
         {
             System = stats.GetString("$system", string.Empty).ToLowerInvariant();
             if (System != "dnd5e" && System != "pf2e") { System = string.Empty; }
             Level = (int)stats.GetNumber("level", -1);
             ArmorClass = (int)stats.GetNumber("armorClass", -1);
-            Background = stats.GetString("background", string.Empty);
+            Background = Named(stats.GetString("background", string.Empty));
             SpellAbility = stats.GetString("spellcastingAbility", string.Empty);
             if (Speed.Length == 0)
             {
@@ -212,14 +276,17 @@ namespace CampaignVault.UnityClient.Model
             {
                 string ancestry = stats.GetString("ancestry", string.Empty);
                 string heritage = stats.GetString("heritage", string.Empty);
-                Lineage = heritage.Length > 0 && ancestry.Length > 0 && heritage.IndexOf(ancestry, StringComparison.OrdinalIgnoreCase) < 0
-                    ? heritage + " " + ancestry : heritage.Length > 0 ? heritage : ancestry;
+                Lineage = Named(heritage.Length > 0 && ancestry.Length > 0 && heritage.IndexOf(ancestry, StringComparison.OrdinalIgnoreCase) < 0
+                    ? heritage + " " + ancestry : heritage.Length > 0 ? heritage : ancestry);
                 foreach (var a in AbilityNames)
                 {
                     Abilities.Add(new Ability { Short = a[0], Name = a[1], Mod = (int)stats.GetNumber(a[1].ToLowerInvariant() + "Mod", 0) });
                 }
                 ReadRanked(Pf2eSaves, stats.Get("savingThrowModifiers"), stats.Get("saveProficiencies"), Saves);
                 ReadRanked(Pf2eSkills, stats.Get("skillModifiers"), stats.Get("skillProficiencies"), Skills);
+                ReadLore(stats.Get("skillModifiers"), stats.Get("skillProficiencies"));
+                int perception;
+                if (TryGetInt(stats.Get("skillModifiers"), "Perception", out perception)) { Perception = perception; }
                 SpellDc = (int)stats.GetNumber("spellDc", -1);
                 // PF2e sheets without a spellcasting proficiency still carry defaults; only casters show the DC.
                 if (stats.GetString("spellcastingProficiency", string.Empty).Length == 0 || !HasCasterFeature(stats)) { SpellDc = -1; SpellAbility = string.Empty; }
@@ -230,7 +297,7 @@ namespace CampaignVault.UnityClient.Model
             }
             else if (System == "dnd5e")
             {
-                Lineage = stats.GetString("race", string.Empty);
+                Lineage = Named(stats.GetString("race", string.Empty));
                 foreach (var a in AbilityNames)
                 {
                     int score = (int)stats.GetNumber(a[1].ToLowerInvariant(), 10);
@@ -314,7 +381,20 @@ namespace CampaignVault.UnityClient.Model
                 int listed;
                 bool hasMod = TryGetInt(mods, row[0], out listed);
                 int rank = RankOf(GetStringCI(ranks, row[0]));
-                into.Add(new Check { Name = row[0], Ability = row[1], Mod = hasMod ? listed : ModOf(row[1]), Rank = rank });
+                // A stat block creature lists its modifiers with no rank: listed is as good as trained.
+                into.Add(new Check { Name = row[0], Ability = row[1], Mod = hasMod ? listed : ModOf(row[1]), Rank = rank > 0 ? rank : hasMod ? 1 : 0 });
+            }
+        }
+
+        /// <summary>PF2e Lore skills ("Warfare Lore"), which no fixed table lists: Intelligence skills, after the others.</summary>
+        private void ReadLore(JsonValue mods, JsonValue ranks)
+        {
+            if (mods.Kind != JsonKind.Object || mods.ObjectValue == null) { return; }
+            foreach (var kv in mods.ObjectValue)
+            {
+                if (!kv.Key.EndsWith(" Lore", StringComparison.OrdinalIgnoreCase) || kv.Value.Kind != JsonKind.Number) { continue; }
+                int rank = RankOf(GetStringCI(ranks, kv.Key));
+                Skills.Add(new Check { Name = Title(kv.Key), Ability = "INT", Mod = (int)kv.Value.NumberValue, Rank = rank > 0 ? rank : 1 });
             }
         }
 
@@ -485,6 +565,12 @@ namespace CampaignVault.UnityClient.Model
             if (low < 40) { return "Shaken"; }
             if (m >= 80 && w >= 60) { return "Bold"; }
             return "Steady";
+        }
+
+        /// <summary>A template name as a title: "rock_dwarf" → "Rock Dwarf", "half-elf" → "Half-Elf".</summary>
+        public static string Named(string id)
+        {
+            return Title((id ?? string.Empty).Replace('_', ' '));
         }
 
         public static string Title(string text)

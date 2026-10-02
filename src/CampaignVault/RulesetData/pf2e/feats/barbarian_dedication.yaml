@@ -4,6 +4,10 @@
 name: barbarian_dedication
 system: pf2e
 prerequisite: Constitution +2; Strength +2
+prerequisites:
+  - { ability: Constitution, min: 2 }
+  - { ability: Strength, min: 2 }
 mechanicalSummary: You become trained in Athletics; if you were already trained in Athletics, you instead become trained in a skill of your choice.
 extraPools: []
+category: archetype
 level: 2

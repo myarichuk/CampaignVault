@@ -4,6 +4,9 @@
 name: skill_training
 system: pf2e
 prerequisite: Intelligence +1
+prerequisites:
+  - { ability: Intelligence, min: 1 }
 mechanicalSummary: Become trained in a skill
 extraPools: []
+category: skill
 level: 1

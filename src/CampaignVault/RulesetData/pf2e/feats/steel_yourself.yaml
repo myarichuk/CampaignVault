@@ -4,6 +4,9 @@
 name: steel_yourself
 system: pf2e
 prerequisite: Marshal Dedication
+prerequisites:
+  - { feat: marshal_dedication }
 mechanicalSummary: You encourage an ally to toughen up, giving them a fighting chance.
 extraPools: []
+category: archetype
 level: 4

@@ -1,5 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
-    <!-- SpellsStepViewModel. -->
+    <!-- SpellsStepViewModel, and LevelChoicesStepViewModel (its sections are the level choices). -->
     <ui:Template name="Notice" src="OptionsNotice.uxml" />
     <ui:Template name="Filter" src="OptionsFilter.uxml" />
     <ui:VisualElement class="cv-builder__widget">

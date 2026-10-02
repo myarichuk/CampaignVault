@@ -4,7 +4,11 @@
 name: stay_down
 system: pf2e
 prerequisite: Master in Athletics
+prerequisites:
+  - { skill: Athletics, rank: master }
 mechanicalSummary: You have ways of keeping your foes down.
 extraPools: []
+category: class
 classes: [rogue]
+skills: [Athletics]
 level: 14

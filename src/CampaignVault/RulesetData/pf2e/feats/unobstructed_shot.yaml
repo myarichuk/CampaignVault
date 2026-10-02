@@ -4,6 +4,11 @@
 name: unobstructed_shot
 system: pf2e
 prerequisite: Archer Dedication; Expert in Athletics
+prerequisites:
+  - { feat: archer_dedication }
+  - { skill: Athletics, rank: expert }
 mechanicalSummary: With a quick use of brute force, you remove an obstacle and take a calculated shot as part of the same motion.
 extraPools: []
+category: archetype
+skills: [Athletics]
 level: 10

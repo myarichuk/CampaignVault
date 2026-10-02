@@ -4,7 +4,10 @@
 name: heal_mount
 system: pf2e
 prerequisite: Faithful Steed; lay on hands
+prerequisites:
+  - { feat: faithful_steed }
 mechanicalSummary: Your devotion to your mount manifests as a surge of vital energy.
 extraPools: []
+category: class
 classes: [champion]
 level: 8

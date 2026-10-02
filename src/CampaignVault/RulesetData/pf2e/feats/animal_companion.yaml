@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: "[Druid] animal order"
 mechanicalSummary: You gain the service of a young animal companion (page 206) that travels with you on your adventures and obeys any simple commands you give it to the best of its abilities.
 extraPools: []
+category: class
 classes: [druid, ranger]
 level: 1

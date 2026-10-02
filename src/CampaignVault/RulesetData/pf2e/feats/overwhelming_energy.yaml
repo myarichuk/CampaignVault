@@ -5,5 +5,6 @@ name: overwhelming_energy
 system: pf2e
 mechanicalSummary: With a complex gesture, you call upon the primal power of your spell to overcome enemies’ resistances.
 extraPools: []
+category: class
 classes: [druid, sorcerer, wizard]
 level: 10

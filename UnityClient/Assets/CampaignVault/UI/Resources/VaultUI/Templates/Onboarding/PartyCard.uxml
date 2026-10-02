@@ -1,5 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
-    <!-- PartyMemberViewModel: one built character. -->
+    <!-- PartyMemberViewModel: one built character, or a DM draft to review (its issues listed under the line). -->
     <cv:VaultCard class="cv-row cv-onboarding__member">
         <ui:VisualElement class="cv-grow">
             <ui:Label class="cv-question">
@@ -12,9 +12,16 @@
                     <ui:DataBinding property="text" data-source-path="Line" binding-mode="ToTarget" />
                 </Bindings>
             </ui:Label>
+            <ui:Label class="cv-body cv-text-blood">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Issues" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Issues" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
         </ui:VisualElement>
-        <cv:VaultButton label="EDIT" icon="look" class="cv-btn--small cv-btn--ghost">
+        <cv:VaultButton icon="look" class="cv-btn--small cv-btn--ghost">
             <Bindings>
+                <ui:DataBinding property="label" data-source-path="EditLabel" binding-mode="ToTarget" />
                 <ui:DataBinding property="name" data-source-path="EditName" binding-mode="ToTarget" />
                 <ui:DataBinding property="command" data-source-path="Edit" binding-mode="ToTarget" />
             </Bindings>

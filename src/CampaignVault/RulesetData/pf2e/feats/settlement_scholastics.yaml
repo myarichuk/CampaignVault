@@ -4,6 +4,9 @@
 name: settlement_scholastics
 system: pf2e
 prerequisite: Archaeologist Dedication
+prerequisites:
+  - { feat: archaeologist_dedication }
 mechanicalSummary: Your studies open up new horizons.
 extraPools: []
+category: skill
 level: 4

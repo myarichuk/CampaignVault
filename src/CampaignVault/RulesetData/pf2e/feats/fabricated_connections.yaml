@@ -4,6 +4,11 @@
 name: fabricated_connections
 system: pf2e
 prerequisite: Dandy Dedication; Master in Deception
+prerequisites:
+  - { feat: dandy_dedication }
+  - { skill: Deception, rank: master }
 mechanicalSummary: You can lie about having taken an action so convincingly that you acquire all the tangible benefits of having successfully completed it.
 extraPools: []
+category: skill
+skills: [Deception]
 level: 7

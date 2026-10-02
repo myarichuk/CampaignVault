@@ -5,5 +5,6 @@ name: desperate_prayer
 system: pf2e
 mechanicalSummary: You call out to your deity in a plea for their aid.
 extraPools: []
+category: class
 classes: [champion]
 level: 1

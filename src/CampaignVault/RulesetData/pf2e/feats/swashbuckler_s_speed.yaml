@@ -4,6 +4,9 @@
 name: swashbuckler_s_speed
 system: pf2e
 prerequisite: Swashbuckler Dedication
+prerequisites:
+  - { feat: swashbuckler_dedication }
 mechanicalSummary: You move with a swashbuckler’s speed and grace.
 extraPools: []
+category: archetype
 level: 8

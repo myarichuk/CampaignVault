@@ -1,0 +1,193 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using CampaignVault.Data.Templates;
+
+namespace CampaignVault.Rulesets.Creation;
+
+/// <summary>
+/// One choice a class's progression asks for at a level up to the draft's: a wizard's arcane tradition at 2, an ability
+/// score improvement at 4, a fighter's fighting style at 1. A <see cref="CreationStepKinds.LevelChoices"/> step's choice
+/// is an object of slot id → pick (a string, or for an ability score improvement a list).
+/// </summary>
+public sealed record LevelChoiceSlot
+{
+    /// <summary><c>&lt;level&gt;.&lt;choice key&gt;</c>: <c>2.subclass</c>, <c>4.asiOrFeat</c>. Its options carry it as their group.</summary>
+    public string Id { get; init; } = null!;
+
+    public int Level { get; init; }
+
+    /// <summary>The progression's choice key, recorded on the character (<c>levelUpChoices</c>) like level_up's.</summary>
+    public string Key { get; init; } = null!;
+
+    /// <summary>"Level 2 · Arcane Tradition".</summary>
+    public string Title { get; init; } = null!;
+
+    /// <summary>The progression's <see cref="ChoiceType"/>: Enum, AsiOrFeat, FeatSelection, FreeText, SkillIncrease or AttributeBoosts.</summary>
+    public string Type { get; init; } = null!;
+
+    public bool Required { get; init; }
+
+    /// <summary>
+    /// How many picks: the choice's count (two metamagic options), or for an ability score improvement 2 at most (two
+    /// abilities at +1).
+    /// </summary>
+    public int Picks { get; init; } = 1;
+
+    /// <summary>
+    /// AsiOrFeat and AttributeBoosts: the option ids that are abilities. For an improvement one of them is +2, two are +1
+    /// each, and any other option of the slot is a feat, taken instead.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? Abilities { get; init; }
+
+    /// <summary>What the slot offers (group: its id). Sent with the step's options, not with the slot.</summary>
+    [JsonIgnore]
+    public IReadOnlyList<CreationOption> Options { get; init; } = [];
+
+    /// <summary>The progression's own options by id, with what they give (a racket's skills and key attribute).</summary>
+    [JsonIgnore]
+    public IReadOnlyDictionary<string, ChoiceOption> Data { get; init; } = new Dictionary<string, ChoiceOption>();
+
+    /// <summary>The levelChoices step whose choice holds this slot's picks.</summary>
+    [JsonIgnore]
+    public string Step { get; init; } = null!;
+
+    public bool IsAsi => Type == nameof(ChoiceType.AsiOrFeat);
+
+    /// <summary>PF2e attribute boosts: <see cref="Picks"/> different attributes, each +1.</summary>
+    public bool IsBoosts => Type == nameof(ChoiceType.AttributeBoosts);
+
+    /// <summary>PF2e skill increase: one skill a rank up.</summary>
+    public bool IsSkillIncrease => Type == nameof(ChoiceType.SkillIncrease);
+
+    /// <summary>5e: skills the character isn't proficient in yet, <see cref="Picks"/> of them (a Lore bard's three).</summary>
+    public bool IsSkillProficiency => Type == nameof(ChoiceType.SkillProficiency);
+
+    /// <summary>A pick names an option once per character (a subclass, an invocation); boosts and increases repeat across levels.</summary>
+    public bool Unique => !IsAsi && !IsBoosts && !IsSkillIncrease;
+
+    /// <summary>The ability score increases a pick list gives: one ability is +2, two are +1 each. Empty for a feat.</summary>
+    public IReadOnlyList<(string Ability, int Amount)> Increases(IReadOnlyList<string> picks)
+    {
+        if (!IsAsi || picks.Count is 0 or > 2 || Abilities is null)
+            return [];
+
+        var names = picks.Select(p => Abilities.FirstOrDefault(a => a.Equals(p, StringComparison.OrdinalIgnoreCase))).ToList();
+        if (names.Any(n => n is null))
+            return [];
+
+        return names.Count == 1 ? [(names[0]!, 2)] : [.. names.Select(n => (n!, 1))];
+    }
+}
+
+/// <summary>Reads and builds the level choice slots of a draft.</summary>
+public static class LevelChoiceSlots
+{
+    /// <summary>
+    /// Every choice of the class's progression at levels 1 to <paramref name="level"/> of the given types (all when empty),
+    /// in level order, for the levelChoices step <paramref name="step"/>. Spell picks are the spells step's, so
+    /// SpellSelection choices are left out. A choice with no options of its own (a later invocation) offers the options of
+    /// the same key at another level; a skill increase or proficiency offers the system's skills, attribute boosts the
+    /// abilities. A picked option's features add their choices (a hunter's prey once the hunter is picked):
+    /// <paramref name="picked"/> gives the picks by level and choice key.
+    /// </summary>
+    public static IReadOnlyList<LevelChoiceSlot> For(
+        ProgressionDefinition progression,
+        int level,
+        IReadOnlyList<CreationOption> feats,
+        string step,
+        IReadOnlyCollection<string>? types = null,
+        IReadOnlyList<string>? skills = null,
+        Func<int, string, IEnumerable<string>>? picked = null)
+    {
+        var slots = new List<LevelChoiceSlot>();
+        foreach (var (at, choice) in progression.ChoicesUpTo(level, picked ?? ((_, _) => [])).Select(g => (g.Level, g.Choice)))
+        {
+            if (choice.Type == ChoiceType.SpellSelection)
+                continue;
+
+            if (types is { Count: > 0 } && !types.Contains(choice.Type.ToString(), StringComparer.OrdinalIgnoreCase))
+                continue;
+
+            var id = $"{at}.{choice.Key}";
+            var slot = new LevelChoiceSlot
+            {
+                Id = id,
+                Level = at,
+                Key = choice.Key,
+                Title = $"Level {at} · {Humanize(choice.Prompt ?? choice.Key)}",
+                Type = choice.Type.ToString(),
+                Required = choice.Required,
+                Picks = Math.Max(1, choice.Count),
+                Step = step,
+            };
+            switch (choice.Type)
+            {
+                case ChoiceType.AsiOrFeat:
+                    var abilities = choice.AbilityOptions.Count > 0 ? choice.AbilityOptions : [.. CreationSources.AbilityNames];
+                    slots.Add(slot with
+                    {
+                        Picks = 2,
+                        Abilities = abilities,
+                        Options =
+                        [
+                            .. abilities.Select(a => new CreationOption(a, a, "One ability +2, or two abilities +1 each.", id)),
+                            .. feats.Select(f => f with { Group = id }),
+                        ],
+                    });
+                    break;
+                case ChoiceType.AttributeBoosts:
+                    slots.Add(slot with
+                    {
+                        Abilities = CreationSources.AbilityNames,
+                        Options = [.. CreationSources.AbilityNames.Select(a => new CreationOption(a, a, null, id))],
+                    });
+                    break;
+                case ChoiceType.SkillIncrease:
+                case ChoiceType.SkillProficiency:
+                    slots.Add(slot with { Options = [.. (skills ?? []).Select(k => new CreationOption(k, k, null, id))] });
+                    break;
+                default:
+                    var options = progression.OptionsFor(choice);
+                    slots.Add(slot with
+                    {
+                        Options = [.. options.Select(o => new CreationOption(o.Id, o.Label == o.Id ? Humanize(o.Id) : o.Label, o.Description, id) { Homebrew = o.Homebrew })],
+                        Data = options.GroupBy(o => o.Id, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase),
+                    });
+                    break;
+            }
+        }
+
+        return slots;
+    }
+
+    /// <summary>The draft's picks per slot id: each value as a list (a string counts as one). Empty when the step has no object.</summary>
+    public static IReadOnlyDictionary<string, IReadOnlyList<string>> Picks(CharacterDraft draft, string stepKey)
+    {
+        var picks = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+        if (!draft.Choices.TryGetValue(stepKey, out var value) || value.ValueKind != JsonValueKind.Object)
+            return picks;
+
+        foreach (var slot in value.EnumerateObject())
+        {
+            IReadOnlyList<string> list = slot.Value.ValueKind switch
+            {
+                JsonValueKind.String => [slot.Value.GetString()!],
+                JsonValueKind.Array => [.. slot.Value.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.String).Select(e => e.GetString()!)],
+                _ => [],
+            };
+            list = [.. list.Select(p => p.Trim()).Where(p => p.Length > 0)];
+            if (list.Count > 0)
+                picks[slot.Name] = list;
+        }
+
+        return picks;
+    }
+
+    /// <summary>"agonizingBlast" → "Agonizing Blast", "Arcane Tradition" stays.</summary>
+    public static string Humanize(string text)
+    {
+        var spaced = System.Text.RegularExpressions.Regex.Replace(text, "(?<=[a-z])(?=[A-Z])", " ");
+        return CreationSources.Label(spaced);
+    }
+}

@@ -4,6 +4,10 @@
 name: ward_medic
 system: pf2e
 prerequisite: Expert in Medicine
+prerequisites:
+  - { skill: Medicine, rank: expert }
 mechanicalSummary: Treat several patients at once
 extraPools: []
+category: skill
+skills: [Medicine]
 level: 2

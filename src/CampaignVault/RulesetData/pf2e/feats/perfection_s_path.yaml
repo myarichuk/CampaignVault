@@ -4,6 +4,9 @@
 name: perfection_s_path
 system: pf2e
 prerequisite: Monk Dedication; expert in at least one saving throw
+prerequisites:
+  - { feat: monk_dedication }
 mechanicalSummary: Choose one saving throw (Fortitude, Reflex, or Will) in which you’re an expert.
 extraPools: []
+category: archetype
 level: 12

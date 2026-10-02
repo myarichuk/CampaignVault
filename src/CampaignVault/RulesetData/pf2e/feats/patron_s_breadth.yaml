@@ -4,6 +4,9 @@
 name: patron_s_breadth
 system: pf2e
 prerequisite: Basic Witch Spellcasting
+prerequisites:
+  - { feat: basic_witch_spellcasting }
 mechanicalSummary: You can cast more spells each day.
 extraPools: []
+category: archetype
 level: 8

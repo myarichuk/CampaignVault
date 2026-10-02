@@ -5,4 +5,6 @@ name: cave_climber
 system: pf2e
 mechanicalSummary: After years of clambering through caverns, you can climb easily anywhere you go.
 extraPools: []
+category: ancestry
+ancestries: [goblin]
 level: 9

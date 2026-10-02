@@ -5,4 +5,6 @@ name: draconic_scent
 system: pf2e
 mechanicalSummary: Your sense of smell has heightened to be as keen as that of a dragon.
 extraPools: []
+category: ancestry
+ancestries: [dragonblood]
 level: 5

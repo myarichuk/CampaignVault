@@ -4,6 +4,10 @@
 name: multilingual
 system: pf2e
 prerequisite: Trained in Society
+prerequisites:
+  - { skill: Society, rank: trained }
 mechanicalSummary: Learn two new languages
 extraPools: []
+category: skill
+skills: [Society]
 level: 1

@@ -5,4 +5,6 @@ name: croak_talker
 system: pf2e
 mechanicalSummary: You can communicate with the simplest of frogs and other similar creatures using longwinded croaks.
 extraPools: []
+category: ancestry
+ancestries: [tripkee]
 level: 1

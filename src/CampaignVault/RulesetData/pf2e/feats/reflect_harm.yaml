@@ -5,5 +5,6 @@ name: reflect_harm
 system: pf2e
 mechanicalSummary: You can wrap your magic around you like a cloak that causes those who dare to target you with spells to suffer a similar fate.
 extraPools: []
+category: class
 classes: [sorcerer]
 level: 14

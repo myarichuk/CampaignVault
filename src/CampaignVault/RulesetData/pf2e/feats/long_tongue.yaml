@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Snaptongue Tripkee heritage
 mechanicalSummary: "You've learned to stretch your exceptionally long tongue beyond its original limits."
 extraPools: []
+category: ancestry
+ancestries: [tripkee]
 level: 5

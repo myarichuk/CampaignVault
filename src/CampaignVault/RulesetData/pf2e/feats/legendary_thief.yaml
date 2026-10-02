@@ -4,6 +4,11 @@
 name: legendary_thief
 system: pf2e
 prerequisite: Legendary in Thievery; Pickpocket
+prerequisites:
+  - { skill: Thievery, rank: legendary }
+  - { feat: pickpocket }
 mechanicalSummary: Steal what would normally be impossible to steal
 extraPools: []
+category: skill
+skills: [Thievery]
 level: 15

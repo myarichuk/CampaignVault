@@ -4,6 +4,9 @@
 name: arcane_breadth
 system: pf2e
 prerequisite: Basic Wizard Spellcasting
+prerequisites:
+  - { feat: basic_wizard_spellcasting }
 mechanicalSummary: Your thorough studies allow you to cast more arcane spells each day.
 extraPools: []
+category: archetype
 level: 8

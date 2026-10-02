@@ -5,4 +5,6 @@ name: resist_ruin
 system: pf2e
 mechanicalSummary: Your duskwalker heritage allows you to extend protection against void energy.
 extraPools: []
+category: ancestry
+ancestries: [duskwalker]
 level: 13

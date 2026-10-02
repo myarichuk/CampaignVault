@@ -4,6 +4,9 @@
 name: unseat
 system: pf2e
 prerequisite: Cavalier Dedication
+prerequisites:
+  - { feat: cavalier_dedication }
 mechanicalSummary: With a mighty blow from atop your companion, you attempt to knock an opponent off their mount.
 extraPools: []
+category: archetype
 level: 10

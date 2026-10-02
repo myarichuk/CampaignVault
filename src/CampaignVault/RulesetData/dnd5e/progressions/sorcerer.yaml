@@ -23,25 +23,80 @@ levels:
             options:
               - id: draconic
                 label: "Draconic Bloodline"
-                description: "Dragon ancestor, dragon resilience, elemental affinity, dragon wings, draconic presence."
-              - id: wildMagic
-                label: "Wild Magic"
-                description: "Wild magic surge, tides of chaos, bend luck, controlled chaos, spell bombardment."
-              - id: storm
-                label: "Storm Sorcery"
-                description: "Wind speaker, tempestuous magic, heart of the storm, storm guide, wind soul."
+                description: "Dragon ancestor, draconic resilience, elemental affinity, dragon wings, draconic presence."
+                features:
+                  1:
+                    - name: "Dragon Ancestor"
+                      description: "You speak, read and write Draconic. When you make a Charisma check interacting with dragons, your proficiency bonus is doubled if it applies."
+                      choices:
+                        dragonAncestor:
+                          type: "Enum"
+                          required: true
+                          prompt: "Dragon Ancestor"
+                          options:
+                            - id: "black"
+                              label: "Black dragon"
+                              description: "Damage type: acid."
+                            - id: "blue"
+                              label: "Blue dragon"
+                              description: "Damage type: lightning."
+                            - id: "brass"
+                              label: "Brass dragon"
+                              description: "Damage type: fire."
+                            - id: "bronze"
+                              label: "Bronze dragon"
+                              description: "Damage type: lightning."
+                            - id: "copper"
+                              label: "Copper dragon"
+                              description: "Damage type: acid."
+                            - id: "gold"
+                              label: "Gold dragon"
+                              description: "Damage type: fire."
+                            - id: "green"
+                              label: "Green dragon"
+                              description: "Damage type: poison."
+                            - id: "red"
+                              label: "Red dragon"
+                              description: "Damage type: fire."
+                            - id: "silver"
+                              label: "Silver dragon"
+                              description: "Damage type: cold."
+                            - id: "white"
+                              label: "White dragon"
+                              description: "Damage type: cold."
+                    - name: "Draconic Resilience"
+                      description: "Your hit point maximum rises by 1 per sorcerer level. Without armor, your AC is 13 + your Dexterity modifier."
+                      hpPerLevel: 1
+                      unarmoredArmorClass:
+                        base: 13
+                        abilities: ["Dexterity"]
+                  6:
+                    - name: "Elemental Affinity"
+                      description: "When a spell you cast deals your ancestor's damage type, add your Charisma modifier to one damage roll of it. You can spend 1 sorcery point to gain resistance to that type for 1 hour."
+                  14:
+                    - name: "Dragon Wings"
+                      description: "Bonus action: sprout dragon wings and gain a flying speed equal to your speed, until you dismiss them. Not through armor not made for them."
+                  18:
+                    - name: "Draconic Presence"
+                      description: "Action, 5 sorcery points: for 1 minute (concentration), a 60-ft. aura of awe or fear; each hostile creature starting its turn there makes a Wisdom save or is charmed (awe) or frightened (fear) until the aura ends. A success makes it immune for 24 hours."
   2:
     spellsKnown: 3
     proficiencyBonus: 2
     features:
       - name: "Font of Magic"
         description: "Sorcery points = sorcerer level. Flexible casting (convert slots to points and vice versa)."
+    spellSlots: {1: 3}
+  3:
+    spellsKnown: 4
+    proficiencyBonus: 2
+    features:
       - name: "Metamagic"
         description: "Choose two metamagic options (Careful, Distant, Empowered, Extended, Heightened, Quickened, Subtle, Twinned)."
         choices:
           metamagic:
             type: Enum
             required: true
+            count: 2
             options:
               - id: careful
                 label: "Careful Spell"
@@ -67,17 +122,6 @@ levels:
               - id: twinned
                 label: "Twinned Spell"
                 description: "Spend sorcery points = spell level: target second creature with single-target spell."
-    spellSlots: {1: 3}
-  3:
-    spellsKnown: 4
-    proficiencyBonus: 2
-    features:
-      - name: "Metamagic"
-        description: "Choose one more metamagic option."
-        choices:
-          metamagic:
-            type: Enum
-            required: true
     spellSlots: {1: 4, 2: 2}
   4:
     cantripsKnown: 5
@@ -100,13 +144,6 @@ levels:
   6:
     spellsKnown: 7
     proficiencyBonus: 3
-    features:
-      - name: "Metamagic"
-        description: "Choose one more metamagic option."
-        choices:
-          metamagic:
-            type: Enum
-            required: true
     spellSlots: {1: 4, 2: 3, 3: 3}
   7:
     spellsKnown: 8
@@ -177,6 +214,13 @@ levels:
   17:
     spellsKnown: 15
     proficiencyBonus: 6
+    features:
+      - name: "Metamagic"
+        description: "Choose one more metamagic option."
+        choices:
+          metamagic:
+            type: Enum
+            required: true
     spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1, 7: 1, 8: 1, 9: 1}
   18:
     proficiencyBonus: 6

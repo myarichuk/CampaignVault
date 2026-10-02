@@ -4,6 +4,10 @@
 name: beastmaster_dedication
 system: pf2e
 prerequisite: Trained in Nature
+prerequisites:
+  - { skill: Nature, rank: trained }
 mechanicalSummary: You gain the service of a young animal companion that travels with you and obeys your commands.
 extraPools: []
+category: archetype
+skills: [Nature]
 level: 2

@@ -4,6 +4,9 @@
 name: treat_condition
 system: pf2e
 prerequisite: Medic Dedication
+prerequisites:
+  - { feat: medic_dedication }
 mechanicalSummary: You treat an adjacent creature in an attempt to reduce the clumsy, enfeebled, or sickened condition.
 extraPools: []
+category: skill
 level: 4

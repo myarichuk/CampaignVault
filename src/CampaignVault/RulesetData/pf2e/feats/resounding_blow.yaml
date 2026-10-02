@@ -5,5 +5,6 @@ name: resounding_blow
 system: pf2e
 mechanicalSummary: You strike your enemy in the head with such force that its ears ring.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 10

@@ -5,4 +5,6 @@ name: tengu_weapon_familiarity
 system: pf2e
 mechanicalSummary: You gain access to all uncommon weapons with the tengu trait plus the katana, khakkara, temple sword, and wakizashi.
 extraPools: []
+category: ancestry
+ancestries: [tengu]
 level: 1

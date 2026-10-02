@@ -4,6 +4,10 @@
 name: bone_investiture
 system: pf2e
 prerequisite: Bone Magic
+prerequisites:
+  - { feat: bone_magic }
 mechanicalSummary: You encase yourself in spiritual dinosaur bones to become a Huge dinosaur.
 extraPools: []
+category: ancestry
+ancestries: [lizardfolk]
 level: 13

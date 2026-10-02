@@ -4,7 +4,10 @@
 name: improved_dueling_riposte
 system: pf2e
 prerequisite: Dueling Riposte
+prerequisites:
+  - { feat: dueling_riposte }
 mechanicalSummary: Your weapon whirls and darts, striking foes whenever the slightest opening or moment of weakness presents itself.
 extraPools: []
+category: class
 classes: [fighter]
 level: 12

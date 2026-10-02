@@ -4,7 +4,10 @@
 name: improved_poison_weapon
 system: pf2e
 prerequisite: Poison Weapon
+prerequisites:
+  - { feat: poison_weapon }
 mechanicalSummary: You deliver poisons in ways that maximize their harmful effects.
 extraPools: []
+category: class
 classes: [rogue]
 level: 8

@@ -5,4 +5,6 @@ name: grandmother_s_wisdom
 system: pf2e
 mechanicalSummary: You carry the bones of your ancestors with you, and you can ask them for counsel.
 extraPools: []
+category: ancestry
+ancestries: [kholo]
 level: 9

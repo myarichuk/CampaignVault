@@ -4,6 +4,10 @@
 name: thorned_seedpod
 system: pf2e
 prerequisite: Seedpod
+prerequisites:
+  - { feat: seedpod }
 mechanicalSummary: When your seedpods strike a felling blow, they burst into viciously thorny vines.
 extraPools: []
+category: ancestry
+ancestries: [leshy]
 level: 9

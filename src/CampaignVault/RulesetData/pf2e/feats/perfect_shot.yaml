@@ -5,5 +5,6 @@ name: perfect_shot
 system: pf2e
 mechanicalSummary: After watching the motions of combat with incredible intensity and precision, you fire at your prey at the perfect moment to deliver maximum pain.
 extraPools: []
+category: class
 classes: [ranger]
 level: 18

@@ -4,7 +4,10 @@
 name: wolf_drag
 system: pf2e
 prerequisite: Wolf Stance
+prerequisites:
+  - { feat: wolf_stance }
 mechanicalSummary: You rip your enemy off their feet.
 extraPools: []
+category: class
 classes: [monk]
 level: 6

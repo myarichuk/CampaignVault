@@ -5,4 +5,5 @@ name: breath_control
 system: pf2e
 mechanicalSummary: Hold your breath longer and gain benefits against inhaled threats
 extraPools: []
+category: general
 level: 1

@@ -5,5 +5,6 @@ name: symphony_of_the_unfettered_heart
 system: pf2e
 mechanicalSummary: You learn the symphony of the unfettered heart composition spell (page 371), which enables you to protect an ally against incapacitating conditions.
 extraPools: []
+category: class
 classes: [bard]
 level: 10

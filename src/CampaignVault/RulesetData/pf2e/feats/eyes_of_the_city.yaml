@@ -4,6 +4,10 @@
 name: eyes_of_the_city
 system: pf2e
 prerequisite: Trained in Diplomacy or Trained in Society
+prerequisites:
+  - { anyOf: [{ skill: Diplomacy, rank: trained }, { skill: Society, rank: trained }] }
 mechanicalSummary: You can track down targets with the help of locals.
 extraPools: []
+category: skill
+skills: [Diplomacy, Society]
 level: 2

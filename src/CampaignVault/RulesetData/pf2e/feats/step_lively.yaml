@@ -5,4 +5,6 @@ name: step_lively
 system: pf2e
 mechanicalSummary: You are an expert at avoiding the lumbering footsteps of larger creatures.
 extraPools: []
+category: ancestry
+ancestries: [halfling]
 level: 5

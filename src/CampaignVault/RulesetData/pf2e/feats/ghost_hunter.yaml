@@ -3,6 +3,8 @@
 # official Archives of Nethys database (elasticsearch.aonprd.com).
 name: ghost_hunter
 system: pf2e
-mechanicalSummary: Your connection to the Boneyard ensures that your blows strike true against spectral beings.
+mechanicalSummary: Your connection to the realm of the dead ensures that your blows strike true against spectral beings.
 extraPools: []
+category: ancestry
+ancestries: [duskwalker]
 level: 1

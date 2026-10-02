@@ -5,5 +5,6 @@ name: felling_shot
 system: pf2e
 mechanicalSummary: Your ranged attacks can shoot an unprepared foe right out of the air.
 extraPools: []
+category: class
 classes: [rogue]
 level: 12

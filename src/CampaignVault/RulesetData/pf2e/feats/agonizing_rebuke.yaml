@@ -5,4 +5,6 @@ name: agonizing_rebuke
 system: pf2e
 mechanicalSummary: When you terrorize your enemies, you also cause them painful mental distress.
 extraPools: []
+category: ancestry
+ancestries: [hobgoblin]
 level: 5

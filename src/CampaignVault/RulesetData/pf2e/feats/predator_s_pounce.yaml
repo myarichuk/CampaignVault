@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: animal instinct
 mechanicalSummary: You close the distance to your prey in a blur, pouncing on the creature before it can react.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 12

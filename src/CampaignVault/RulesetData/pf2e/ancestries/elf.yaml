@@ -1,7 +1,52 @@
-# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
 name: elf
 system: pf2e
-description: Long-lived people with keen senses and affinity for magic
-traits: [Low-Light Vision, Elven Weapon Familiarity]
+description: "Elves are a tall, long-lived people with a strong tradition of art and magic."
+hp: 6
 size: Medium
 baseSpeed: 30
+abilityBonuses: { Dexterity: 1, Intelligence: 1, Constitution: -1 }
+freeBoosts: 1
+traits: [Low-Light Vision]
+heritages:
+  - name: ancient_elf
+    label: Ancient Elf
+    description: "In your long life, you've dabbled in many paths and many styles. A typical ancient elf is at least 100 years old, though you might be younger at the GM's discretion. Choose a class other than your own. You gain the multiclass dedication feat for that class, even though you don't meet its level prerequisite. You must still meet its other prerequisites to gain the feat."
+  - name: arctic_elf
+    label: Arctic Elf
+    description: "You dwell deep in the frozen north and have gained incredible resilience against cold environments, granting you cold resistance equal to half your level (minimum 1). You treat environmental cold effects as if they were one step less extreme (incredible cold becomes extreme, extreme cold becomes severe, and so on)."
+  - name: cavern_elf
+    label: Cavern Elf
+    description: You were born or spent many years in underground tunnels or caverns where light is scarce. You gain darkvision.
+  - name: seer_elf
+    label: Seer Elf
+    description: "You have an inborn ability to detect and understand magical phenomena. You can cast the _detect magic_ cantrip as an arcane innate spell at will. A cantrip is heightened to a spell rank equal to half your level rounded up. In addition, you gain a +1 circumstance bonus to checks to Identify Magic and to Decipher Writing of a magical nature. These skill actions typically use the Arcana, Nature, Occultism, or Religion skill."
+  - name: whisper_elf
+    label: Whisper Elf
+    description: "Your ears are finely tuned, able to detect even the slightest whispers of sound. You gain a +2 circumstance bonus when using the Seek action to find hidden or undetected creatures within 30 feet of you. When you target an opponent that is concealed from you or hidden from you, reduce the DC of the flat check to 3 for a concealed target or 9 for a hidden one. This benefit doesn't apply if you can't hear or if the creature is incapable of making sound (for example, if it's affected by a _silence_ spell)."
+  - name: woodland_elf
+    label: Woodland Elf
+    description: "You're adapted to life in the forest, the deep jungle, or a similar environment, and you know how to climb trees and use foliage to your advantage. When Climbing trees, vines, and other foliage, you move at half your Speed on a success and at full Speed on a critical success (and you move at full Speed on a success if you have Quick Climb). This doesn't affect you if you're using a climb Speed."
+  - name: aiuvarin
+    label: Aiuvarin
+    description: "Versatile heritage. You have elves, or possibly other aiuvarins, in your family tree. You have pointed ears and other telltale signs of elf heritage. You gain the elf trait, the aiuvarin trait, and low-light vision. In addition, when you gain an ancestry feat, you can choose from aiuvarin and elf feats in addition to those from your ancestry."
+  - name: changeling
+    label: Changeling
+    description: "Versatile heritage. Your mother was a hag. Your eyes' heterochromia is the most obvious signifier of this parentage, but you likely also have a slighter build, paler skin, and darker hair than most members of your other parent's ancestry. You gain the changeling trait. You also gain low-light vision, or you gain darkvision if your ancestry already has low-light vision. You can select from changeling feats and feats from your other parent's ancestry whenever you gain an ancestry feat."
+  - name: dhampir
+    label: Dhampir
+    description: "Versatile heritage. You are the scion of a vampire, half living and half undead, gifted with uncanny charm and grace, a bloodless pallor, and elongated incisors. You gain the dhampir trait, in addition to the traits from your ancestry. You have the void healing ability, which means you are harmed by vitality damage and healed by void effects as if you were undead. You also gain low-light vision, or you gain darkvision if your ancestry already has low-light vision. You can select from dhampir feats and feats from your ancestry whenever you gain an ancestry feat."
+  - name: dragonblood
+    label: Dragonblood
+    description: "Versatile heritage. You're descended in some way from a dragon. Your physical features might show this outwardly, with a pair of draconic horns, patches of scaly skin, or even a tail, or you might develop an internal reserve of draconic power. You gain the dragonblood trait, in addition to the traits from your ancestry. Add Draconic to your ancestry's list of additional languages (allowing you to choose it as a language if your Intelligence modifier is positive). When you roll a success on a saving throw against a fear effect, you get a critical success instead. You can choose from dragonblood feats and feats from your ancestry whenever you gain an ancestry feat."
+  - name: dromaar
+    label: Dromaar
+    description: "Versatile heritage. Orcish strength emboldens your bloodline. You have a green tinge to your skin and other indicators of orc heritage. You gain the orc trait, the dromaar trait, and low-light vision. When you gain an ancestry feat, you can choose from dromaar and orc feats in addition to those from your ancestry."
+  - name: duskwalker
+    label: Duskwalker
+    description: "Versatile heritage. Thanks to an ancient bargain, your soul has been reborn as a duskwalker, a planar scion with a connection to psychopomps. You gain the duskwalker trait. You also gain low-light vision, or you gain darkvision if your ancestry already has low-light vision. Neither your body nor your spirit can ever become undead. You can select from duskwalker feats and feats from your ancestry whenever you gain an ancestry feat."
+  - name: nephilim
+    label: Nephilim
+    description: "Versatile heritage. Your nature is influenced by celestials, fiends, or monitors. This manifests as a combination of features that belie your heritage, such as golden eyes, a halo, horns, or a tail. You gain the nephilim trait, in addition to the traits from your ancestry. You gain low-light vision, or you gain darkvision if your ancestry already has low-light vision. You can choose from nephilim feats and feats from your ancestry whenever you gain an ancestry feat."

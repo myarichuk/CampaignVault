@@ -4,7 +4,10 @@
 name: mountain_stronghold
 system: pf2e
 prerequisite: Mountain Stance
+prerequisites:
+  - { feat: mountain_stance }
 mechanicalSummary: You focus on your connection to the earth and call upon the mountain to block attacks against you.
 extraPools: []
+category: class
 classes: [monk]
 level: 6

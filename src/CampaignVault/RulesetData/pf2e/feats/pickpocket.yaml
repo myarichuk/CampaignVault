@@ -4,6 +4,10 @@
 name: pickpocket
 system: pf2e
 prerequisite: Trained in Thievery
+prerequisites:
+  - { skill: Thievery, rank: trained }
 mechanicalSummary: Steal or Palm an Object more effectively
 extraPools: []
+category: skill
+skills: [Thievery]
 level: 1

@@ -4,6 +4,10 @@
 name: jinx_glutton
 system: pf2e
 prerequisite: Eat Fortune
+prerequisites:
+  - { feat: eat_fortune }
 mechanicalSummary: You can Eat Fortune once per hour, rather than once per day.
 extraPools: []
+category: ancestry
+ancestries: [tengu]
 level: 13

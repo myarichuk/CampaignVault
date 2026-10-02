@@ -4,6 +4,9 @@
 name: bloodline_breadth
 system: pf2e
 prerequisite: Basic Sorcerer Spellcasting
+prerequisites:
+  - { feat: basic_sorcerer_spellcasting }
 mechanicalSummary: Your repertoire expands, and you can cast more spells of your bloodline’s tradition each day.
 extraPools: []
+category: archetype
 level: 8

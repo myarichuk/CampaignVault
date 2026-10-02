@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: barkeep
+system: pf2e
+description: "You have five specialties: hefting barrels, drinking, polishing steins, drinking, and drinking. You worked in a bar, where you learned how to hold your liquor and rowdily socialize."
+boosts: [Constitution, Charisma]
+skillProficiencies: [Diplomacy]
+lore: Alcohol Lore
+skillFeat: hobnobber
+feature: Hobnobber

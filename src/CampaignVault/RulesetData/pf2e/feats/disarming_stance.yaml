@@ -4,7 +4,11 @@
 name: disarming_stance
 system: pf2e
 prerequisite: Trained in Athletics
+prerequisites:
+  - { skill: Athletics, rank: trained }
 mechanicalSummary: You adopt a fencing stance that improves your control over your weapon.
 extraPools: []
+category: class
 classes: [fighter]
+skills: [Athletics]
 level: 6

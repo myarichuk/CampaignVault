@@ -5,4 +5,6 @@ name: cringe
 system: pf2e
 mechanicalSummary: With pitiful posturing, you cause your foe to pull back a deadly attack.
 extraPools: []
+category: ancestry
+ancestries: [kobold]
 level: 1

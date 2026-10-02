@@ -4,7 +4,11 @@
 name: anticipate_ambush
 system: pf2e
 prerequisite: Expert in Stealth
+prerequisites:
+  - { skill: Stealth, rank: expert }
 mechanicalSummary: You keep watch for any hidden creatures or dangerous sites, moving at half your travel Speed.
 extraPools: []
+category: class
 classes: [rogue]
+skills: [Stealth]
 level: 6

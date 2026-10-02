@@ -5,4 +5,6 @@ name: tusks
 system: pf2e
 mechanicalSummary: You have particularly long, jagged tusks perfect for tearing meat from bone.
 extraPools: []
+category: ancestry
+ancestries: [orc]
 level: 1

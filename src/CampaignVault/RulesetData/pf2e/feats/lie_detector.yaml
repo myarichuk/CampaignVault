@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: empiricism or interrogation methodology
 mechanicalSummary: "You're adept at noticing the tells of a liar\u2014sweat, flushing, a quavering voice, a quickening pulse."
 extraPools: []
+category: class
 classes: [investigator]
 level: 4

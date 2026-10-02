@@ -5,4 +5,6 @@ name: ask_the_bones
 system: pf2e
 mechanicalSummary: You keep the bone of an ancestor or a friend to call upon for advice.
 extraPools: []
+category: ancestry
+ancestries: [kholo]
 level: 1

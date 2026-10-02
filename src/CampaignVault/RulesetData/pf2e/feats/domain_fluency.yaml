@@ -4,7 +4,10 @@
 name: domain_fluency
 system: pf2e
 prerequisite: Domain Acumen
+prerequisites:
+  - { feat: domain_acumen }
 mechanicalSummary: You command a deep understanding of the domains related to your mystery.
 extraPools: []
+category: class
 classes: [oracle]
 level: 12

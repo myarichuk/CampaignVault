@@ -5,4 +5,6 @@ name: gnome_obsession
 system: pf2e
 mechanicalSummary: You might have a flighty nature, but when a topic captures your attention, you dive into it headfirst.
 extraPools: []
+category: ancestry
+ancestries: [gnome]
 level: 1

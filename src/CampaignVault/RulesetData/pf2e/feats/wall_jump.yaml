@@ -4,6 +4,10 @@
 name: wall_jump
 system: pf2e
 prerequisite: Master in Athletics
+prerequisites:
+  - { skill: Athletics, rank: master }
 mechanicalSummary: Jump off walls
 extraPools: []
+category: skill
+skills: [Athletics]
 level: 7

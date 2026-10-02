@@ -4,6 +4,10 @@
 name: incredible_ferocity
 system: pf2e
 prerequisite: Orc Ferocity
+prerequisites:
+  - { feat: orc_ferocity }
 mechanicalSummary: Given time to collect yourself after a near-death scrape, you can rebuild your ferocity and withstand additional finishing blows.
 extraPools: []
+category: ancestry
+ancestries: [orc]
 level: 13

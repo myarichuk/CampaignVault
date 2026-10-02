@@ -5,5 +5,6 @@ name: raging_intimidation
 system: pf2e
 mechanicalSummary: Your fury fills your foes with fear.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 1

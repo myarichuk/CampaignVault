@@ -4,6 +4,9 @@
 name: advanced_dogma
 system: pf2e
 prerequisite: Basic Dogma
+prerequisites:
+  - { feat: basic_dogma }
 mechanicalSummary: You gain one cleric feat.
 extraPools: []
+category: archetype
 level: 6

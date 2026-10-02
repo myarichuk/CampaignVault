@@ -127,7 +127,12 @@ public static class OnboardingBrief
                 break;
         }
 
-        if (solo && Answer(OnboardingQuestionCatalog.SoloCompanions) == "yes")
+        var companionsBuilt = built && party!.CompanionIds.Count > 0;
+        if (companionsBuilt)
+        {
+            sb.AppendLine($"{step++}. The companions are already built too (ids above): NPCs with isPartyCompanion=true and a stat block. Do NOT world_build them again; place them with the party, and play them from their notes (shared history, stance).");
+        }
+        else if (solo && Answer(OnboardingQuestionCatalog.SoloCompanions) == "yes")
         {
             sb.AppendLine($"{step++}. world_build 1–2 companion NPCs with isPartyCompanion=true and full systemStats, each with a reason to travel with the player character.");
         }

@@ -4,6 +4,11 @@
 name: intimidating_prowess
 system: pf2e
 prerequisite: Strength +3; Expert in Intimidation
+prerequisites:
+  - { ability: Strength, min: 3 }
+  - { skill: Intimidation, rank: expert }
 mechanicalSummary: Gain a bonus to physically Demoralize a target
 extraPools: []
+category: skill
+skills: [Intimidation]
 level: 2

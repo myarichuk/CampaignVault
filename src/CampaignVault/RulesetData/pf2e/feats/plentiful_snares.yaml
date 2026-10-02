@@ -4,6 +4,9 @@
 name: plentiful_snares
 system: pf2e
 prerequisite: Snarecrafter Dedication
+prerequisites:
+  - { feat: snarecrafter_dedication }
 mechanicalSummary: You can prepare incredible numbers of snares each day out of simple ingredients.
 extraPools: []
+category: archetype
 level: 12

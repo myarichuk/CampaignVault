@@ -4,6 +4,9 @@
 name: skill_mastery_rogue
 system: pf2e
 prerequisite: Rogue Dedication; trained in at least one skill and expert in at least one skill
+prerequisites:
+  - { feat: rogue_dedication }
 mechanicalSummary: Increase your proficiency rank in one of your skills from expert to master and in another of your skills from trained to expert.
 extraPools: []
+category: archetype
 level: 8

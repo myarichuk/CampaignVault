@@ -12,7 +12,7 @@
             </cv:Repeater>
             <ui:VisualElement class="cv-builder__level">
                 <Bindings>
-                    <cv:ClassBinding property="cls-hidden" data-source-path="HasSteps" class-name="cv-hidden" invert="true" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="ShowLevel" class-name="cv-hidden" invert="true" />
                 </Bindings>
                 <ui:Label text="LEVEL" class="cv-caption" />
                 <cv:VaultButton icon="chevron" tooltip="One level lower" class="cv-btn--icon cv-btn--small cv-btn--ghost cv-builder__down">
@@ -99,6 +99,36 @@
                             <ui:DataBinding property="itemsSource" data-source-path="Warnings" binding-mode="ToTarget" />
                         </Bindings>
                     </cv:Repeater>
+                    <ui:VisualElement name="builder-filled" class="cv-card cv-builder__advice">
+                        <Bindings>
+                            <cv:ClassBinding property="cls-hidden" data-source-path="ShowFilled" class-name="cv-hidden" invert="true" />
+                        </Bindings>
+                        <ui:VisualElement class="cv-row">
+                            <ui:Label text="THE DM FILLED IN" class="cv-caption cv-card__title cv-grow" />
+                            <cv:VaultButton name="builder-fill-dismiss" icon="close" tooltip="Dismiss" class="cv-btn--icon cv-btn--ghost cv-btn--small">
+                                <Bindings>
+                                    <ui:DataBinding property="command" data-source-path="DismissFill" binding-mode="ToTarget" />
+                                </Bindings>
+                            </cv:VaultButton>
+                        </ui:VisualElement>
+                        <ui:Label class="cv-body cv-text-blood">
+                            <Bindings>
+                                <ui:DataBinding property="text" data-source-path="FillError" binding-mode="ToTarget" />
+                                <cv:ClassBinding property="cls-hidden" data-source-path="FillError" class-name="cv-hidden" invert="true" />
+                            </Bindings>
+                        </ui:Label>
+                        <cv:Repeater item-template="Common/RichText">
+                            <Bindings>
+                                <ui:DataBinding property="itemsSource" data-source-path="FillParagraphs" binding-mode="ToTarget" />
+                            </Bindings>
+                        </cv:Repeater>
+                        <ui:Label name="builder-filled-text" class="cv-body cv-muted">
+                            <Bindings>
+                                <ui:DataBinding property="text" data-source-path="FilledText" binding-mode="ToTarget" />
+                                <cv:ClassBinding property="cls-hidden" data-source-path="FilledText" class-name="cv-hidden" invert="true" />
+                            </Bindings>
+                        </ui:Label>
+                    </ui:VisualElement>
                     <cv:ContentPresenter name="builder-widget">
                         <Bindings>
                             <ui:DataBinding property="content" data-source-path="StepWidget" binding-mode="ToTarget" />
@@ -187,6 +217,14 @@
                     <ui:DataBinding property="command" data-source-path="Ask" binding-mode="ToTarget" />
                     <ui:DataBinding property="enabledSelf" data-source-path="CanAsk" binding-mode="ToTarget" />
                     <ui:DataBinding property="tooltip" data-source-path="AskHint" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+            <cv:VaultButton name="builder-fill" icon="spark" class="cv-btn--ghost">
+                <Bindings>
+                    <ui:DataBinding property="label" data-source-path="FillLabel" binding-mode="ToTarget" />
+                    <ui:DataBinding property="command" data-source-path="Fill" binding-mode="ToTarget" />
+                    <ui:DataBinding property="enabledSelf" data-source-path="CanFill" binding-mode="ToTarget" />
+                    <ui:DataBinding property="tooltip" data-source-path="FillHint" binding-mode="ToTarget" />
                 </Bindings>
             </cv:VaultButton>
         </ui:VisualElement>

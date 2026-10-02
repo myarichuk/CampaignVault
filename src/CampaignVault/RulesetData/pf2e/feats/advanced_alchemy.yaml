@@ -4,6 +4,9 @@
 name: advanced_alchemy
 system: pf2e
 prerequisite: Alchemist Dedication
+prerequisites:
+  - { feat: alchemist_dedication }
 mechanicalSummary: You gain the advanced alchemy benefits
 extraPools: []
+category: archetype
 level: 4

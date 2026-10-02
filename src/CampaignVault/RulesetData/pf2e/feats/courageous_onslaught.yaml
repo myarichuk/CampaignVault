@@ -4,7 +4,11 @@
 name: courageous_onslaught
 system: pf2e
 prerequisite: Courageous Advance; Courageous Assault
+prerequisites:
+  - { feat: courageous_advance }
+  - { feat: courageous_assault }
 mechanicalSummary: You use your performance to orchestrate an onslaught against your enemies.
 extraPools: []
+category: class
 classes: [bard]
 level: 16

@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Spellhorn Kobold heritage
 mechanicalSummary: Your inborn arcane power grows.
 extraPools: []
+category: ancestry
+ancestries: [kobold]
 level: 9

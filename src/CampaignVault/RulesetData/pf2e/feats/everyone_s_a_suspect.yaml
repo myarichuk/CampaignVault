@@ -5,5 +5,6 @@ name: everyone_s_a_suspect
 system: pf2e
 mechanicalSummary: You are so suspicious of everyone you meet that you keep mental notes on how to defeat them all—even your own allies.
 extraPools: []
+category: class
 classes: [investigator]
 level: 20

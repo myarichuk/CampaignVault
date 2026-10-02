@@ -4,6 +4,10 @@
 name: legendary_laugh
 system: pf2e
 prerequisite: Laughing Kholo
+prerequisites:
+  - { feat: laughing_kholo }
 mechanicalSummary: Your laugher echoes in the minds of your enemies.
 extraPools: []
+category: ancestry
+ancestries: [kholo]
 level: 17

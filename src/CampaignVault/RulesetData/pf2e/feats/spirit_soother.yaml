@@ -5,4 +5,6 @@ name: spirit_soother
 system: pf2e
 mechanicalSummary: You are attuned to the minute sounds and sensations of restless spirits.
 extraPools: []
+category: ancestry
+ancestries: [duskwalker]
 level: 5

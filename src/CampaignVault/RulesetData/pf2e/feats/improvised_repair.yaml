@@ -5,4 +5,5 @@ name: improvised_repair
 system: pf2e
 mechanicalSummary: You can hastily patch damaged equipment together, but the temporary fix lacks the full care required for lasting repairs.
 extraPools: []
+category: general
 level: 3

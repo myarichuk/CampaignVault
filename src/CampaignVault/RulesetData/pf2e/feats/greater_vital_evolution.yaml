@@ -4,7 +4,10 @@
 name: greater_vital_evolution
 system: pf2e
 prerequisite: Primal Evolution or Divine Evolution
+prerequisites:
+  - { anyOf: [{ feat: primal_evolution }, { feat: divine_evolution }] }
 mechanicalSummary: Vital power surges through you like a font of energy.
 extraPools: []
+category: class
 classes: [sorcerer]
 level: 16

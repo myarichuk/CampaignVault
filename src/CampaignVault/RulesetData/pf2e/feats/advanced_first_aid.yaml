@@ -4,6 +4,10 @@
 name: advanced_first_aid
 system: pf2e
 prerequisite: Master in Medicine
+prerequisites:
+  - { skill: Medicine, rank: master }
 mechanicalSummary: Use First Aid to reduce frightened and sickened condition values
 extraPools: []
+category: skill
+skills: [Medicine]
 level: 7

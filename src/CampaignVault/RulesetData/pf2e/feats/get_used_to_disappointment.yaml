@@ -4,7 +4,11 @@
 name: get_used_to_disappointment
 system: pf2e
 prerequisite: Expert in Intimidation
+prerequisites:
+  - { skill: Intimidation, rank: expert }
 mechanicalSummary: "You capitalize on an opponent's failure with smug attitude and swagger, reminding them of the gap in skill between you and your opponent."
 extraPools: []
+category: class
 classes: [swashbuckler]
+skills: [Intimidation]
 level: 12

@@ -4,6 +4,9 @@
 name: poison_coat
 system: pf2e
 prerequisite: Poisoner Dedication
+prerequisites:
+  - { feat: poisoner_dedication }
 mechanicalSummary: In nature, certain animals are covered in venomous spines, and just brushing against them can prove deadly.
 extraPools: []
+category: archetype
 level: 6

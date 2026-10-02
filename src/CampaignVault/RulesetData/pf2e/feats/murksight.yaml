@@ -5,5 +5,6 @@ name: murksight
 system: pf2e
 mechanicalSummary: Your vision pierces through non-magical fog, mist, rain, and snow.
 extraPools: []
+category: class
 classes: [witch]
 level: 8

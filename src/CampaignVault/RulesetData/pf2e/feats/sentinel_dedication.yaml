@@ -5,4 +5,5 @@ name: sentinel_dedication
 system: pf2e
 mechanicalSummary: You have trained carefully to maximize the protective qualities of your armor.
 extraPools: []
+category: archetype
 level: 2

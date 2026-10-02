@@ -5,5 +5,6 @@ name: that_s_odd
 system: pf2e
 mechanicalSummary: When you enter a new location, such as a room or corridor, you immediately notice one thing out of the ordinary.
 extraPools: []
+category: class
 classes: [investigator]
 level: 1

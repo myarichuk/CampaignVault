@@ -5,5 +5,6 @@ name: cleave
 system: pf2e
 mechanicalSummary: You swing clear through one foe and into another.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 6

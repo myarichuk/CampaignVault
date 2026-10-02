@@ -1,0 +1,23 @@
+# Source: SRD 5.1 (CC-BY-4.0), adapted as a party companion template. Edit freely in the builder.
+name: Thug
+system: dnd5e
+description: A hired bruiser, loyal as long as the coin is good.
+challengeRating: "1/2"
+hp: 32
+defense: 11
+companion: true
+statBlock:
+  creatureType: Humanoid
+  challengeRating: "1/2"
+  statBlockHp: "32"
+  armorClass: "11"
+  movement: "30"
+  strength: "15"
+  dexterity: "11"
+  constitution: "14"
+  intelligence: "10"
+  wisdom: "10"
+  charisma: "11"
+  attacks: "Mace +4, 1d6+2 bludgeoning, reach 5 ft.; Heavy crossbow +2, 1d10 piercing, range 100/400 ft."
+  skillModifiers: "Intimidation +2"
+  traits: "Multiattack: two melee attacks. Pack Tactics: advantage on an attack roll when an ally is within 5 ft. of the target and not incapacitated."

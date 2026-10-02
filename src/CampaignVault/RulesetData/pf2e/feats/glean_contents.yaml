@@ -4,6 +4,10 @@
 name: glean_contents
 system: pf2e
 prerequisite: Trained in Society
+prerequisites:
+  - { skill: Society, rank: trained }
 mechanicalSummary: You are adept at quickly scanning loose papers and carefully discerning the contents of sealed letters without damaging the seal.
 extraPools: []
+category: skill
+skills: [Society]
 level: 1

@@ -5,4 +5,6 @@ name: halo
 system: pf2e
 mechanicalSummary: You have a halo of light and goodness that sheds light with the effects of a divine  light  cantrip.
 extraPools: []
+category: ancestry
+ancestries: [nephilim]
 level: 1

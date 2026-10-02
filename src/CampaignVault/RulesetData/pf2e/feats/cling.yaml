@@ -5,4 +5,6 @@ name: cling
 system: pf2e
 mechanicalSummary: You hang onto a foe to harry them into submission.
 extraPools: []
+category: ancestry
+ancestries: [goblin]
 level: 9

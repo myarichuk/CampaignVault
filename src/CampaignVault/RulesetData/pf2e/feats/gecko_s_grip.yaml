@@ -5,4 +5,6 @@ name: gecko_s_grip
 system: pf2e
 mechanicalSummary: You cling to walls with a preternatural grip.
 extraPools: []
+category: ancestry
+ancestries: [lizardfolk]
 level: 5

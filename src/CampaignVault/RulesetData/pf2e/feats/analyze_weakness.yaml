@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: sneak attack 2d6
 mechanicalSummary: Your knowledge of a creature’s physiology helps you attack with pinpoint accuracy.
 extraPools: []
+category: class
 classes: [rogue]
 level: 6

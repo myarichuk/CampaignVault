@@ -4,6 +4,11 @@
 name: occult_resistance
 system: pf2e
 prerequisite: Expert in Occultism
+prerequisites:
+  - { skill: Occultism, rank: expert }
 mechanicalSummary: Your study of occult practices has shown you how to best defend against them.
 extraPools: []
+category: ancestry
+ancestries: [changeling]
+skills: [Occultism]
 level: 9

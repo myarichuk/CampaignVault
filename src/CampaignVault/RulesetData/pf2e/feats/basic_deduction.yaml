@@ -4,6 +4,9 @@
 name: basic_deduction
 system: pf2e
 prerequisite: Investigator Dedication
+prerequisites:
+  - { feat: investigator_dedication }
 mechanicalSummary: You gain a 1st- or 2nd-level investigator feat of your choice.
 extraPools: []
+category: archetype
 level: 4

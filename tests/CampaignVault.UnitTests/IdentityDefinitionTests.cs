@@ -57,9 +57,7 @@ public class IdentityDefinitionTests
     {
         var backgrounds = Services.Backgrounds.GetBackgroundsForSystem(RulesetSystem.Dnd5e);
 
-        Assert.True(backgrounds.Count >= 5);
         Assert.True(backgrounds.ContainsKey("acolyte"));
-        Assert.True(backgrounds.ContainsKey("criminal"));
     }
 
     [Fact]

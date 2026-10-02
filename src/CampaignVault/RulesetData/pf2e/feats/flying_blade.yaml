@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: precise strike
 mechanicalSummary: You apply your flashy techniques to thrown weapons as easily as melee attacks.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 1

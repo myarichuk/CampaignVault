@@ -5,5 +5,6 @@ name: parting_shot
 system: pf2e
 mechanicalSummary: You jump back and make a quick shot that catches your opponent by surprise.
 extraPools: []
+category: class
 classes: [fighter]
 level: 4

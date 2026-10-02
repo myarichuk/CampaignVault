@@ -4,6 +4,11 @@
 name: impeccable_crafting
 system: pf2e
 prerequisite: Master in Crafting; Specialty Crafting
+prerequisites:
+  - { skill: Crafting, rank: master }
+  - { feat: specialty_crafting }
 mechanicalSummary: Craft items more efficiently
 extraPools: []
+category: skill
+skills: [Crafting]
 level: 7

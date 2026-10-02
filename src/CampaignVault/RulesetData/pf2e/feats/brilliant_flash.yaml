@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: grandeur cause
 mechanicalSummary: Your light cleanses souls of fear.
 extraPools: []
+category: class
 classes: [champion]
 level: 1

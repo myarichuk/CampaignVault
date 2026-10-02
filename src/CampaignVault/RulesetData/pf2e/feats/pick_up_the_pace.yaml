@@ -4,6 +4,9 @@
 name: pick_up_the_pace
 system: pf2e
 prerequisite: Constitution +2
+prerequisites:
+  - { ability: Constitution, min: 2 }
 mechanicalSummary: You lead by example and can help others push themselves beyond their normal limits.
 extraPools: []
+category: general
 level: 3

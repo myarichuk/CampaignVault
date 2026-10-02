@@ -4,7 +4,10 @@
 name: lead_investigator
 system: pf2e
 prerequisite: Clue Them All In
+prerequisites:
+  - { feat: clue_them_all_in }
 mechanicalSummary: You spend 1 minute briefing up to four allies about one of your open investigations.
 extraPools: []
+category: class
 classes: [investigator]
 level: 18

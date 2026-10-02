@@ -5,4 +5,6 @@ name: stonewall
 system: pf2e
 mechanicalSummary: The strength of stone overcomes you so strongly that it replaces your stout body.
 extraPools: []
+category: ancestry
+ancestries: [dwarf]
 level: 17

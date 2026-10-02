@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- EntryCellViewModel, a text box: commits on blur or Enter. -->
+    <cv:VaultField is-delayed="true" class="cv-entry__cell">
+        <Bindings>
+            <ui:DataBinding property="name" data-source-path="Name" binding-mode="ToTarget" />
+            <ui:DataBinding property="placeholder" data-source-path="Hint" binding-mode="ToTarget" />
+            <ui:DataBinding property="value" data-source-path="Value" binding-mode="TwoWay" />
+            <cv:ClassBinding property="cls-name" data-source-path="IsName" class-name="cv-entry__cell--name" />
+            <cv:ClassBinding property="cls-narrow" data-source-path="IsNarrow" class-name="cv-entry__cell--narrow" />
+            <cv:ClassBinding property="cls-wide" data-source-path="IsWide" class-name="cv-entry__cell--wide" />
+        </Bindings>
+    </cv:VaultField>
+</ui:UXML>

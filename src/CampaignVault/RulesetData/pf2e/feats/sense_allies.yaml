@@ -5,4 +5,6 @@ name: sense_allies
 system: pf2e
 mechanicalSummary: Like many humans raised in a close-knit community, you have always been strongly attuned to the presence of others.
 extraPools: []
+category: ancestry
+ancestries: [human]
 level: 5

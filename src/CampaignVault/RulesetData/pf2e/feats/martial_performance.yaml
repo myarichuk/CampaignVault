@@ -4,7 +4,10 @@
 name: martial_performance
 system: pf2e
 prerequisite: warrior muse
+prerequisites:
+  - { classFeature: warrior }
 mechanicalSummary: Your muse has taught you how to handle a wider variety of weapons than most bards, empowering you to effortlessly blend your performance into combat tools.
 extraPools: []
+category: class
 classes: [bard]
 level: 1

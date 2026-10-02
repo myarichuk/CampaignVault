@@ -5,4 +5,6 @@ name: irrepressible
 system: pf2e
 mechanicalSummary: You are easily able to ward off attempts to play on your fears and emotions.
 extraPools: []
+category: ancestry
+ancestries: [halfling]
 level: 9

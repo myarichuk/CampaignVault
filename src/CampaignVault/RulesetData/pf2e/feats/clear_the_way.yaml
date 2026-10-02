@@ -4,6 +4,9 @@
 name: clear_the_way
 system: pf2e
 prerequisite: Mauler Dedication
+prerequisites:
+  - { feat: mauler_dedication }
 mechanicalSummary: You put your body behind your massive weapon and swing, shoving enemies to clear a wide path.
 extraPools: []
+category: archetype
 level: 6

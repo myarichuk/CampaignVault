@@ -5,4 +5,6 @@ name: goblin_weapon_familiarity
 system: pf2e
 mechanicalSummary: Others might look upon them with disdain, but you know that the weapons of your people are as effective as they are sharp.
 extraPools: []
+category: ancestry
+ancestries: [goblin]
 level: 1

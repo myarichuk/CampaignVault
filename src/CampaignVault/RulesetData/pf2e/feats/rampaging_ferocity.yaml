@@ -4,6 +4,10 @@
 name: rampaging_ferocity
 system: pf2e
 prerequisite: Orc Ferocity
+prerequisites:
+  - { feat: orc_ferocity }
 mechanicalSummary: You lash out viciously even as you fend off death.
 extraPools: []
+category: ancestry
+ancestries: [orc]
 level: 17

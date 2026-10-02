@@ -5,5 +5,6 @@ name: song_of_marching
 system: pf2e
 mechanicalSummary: You learn the song of marching composition cantrip, which enables you and your allies to cross vast distances without strain.
 extraPools: []
+category: class
 classes: [bard]
 level: 6

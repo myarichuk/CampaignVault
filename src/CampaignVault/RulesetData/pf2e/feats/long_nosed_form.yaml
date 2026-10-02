@@ -5,4 +5,6 @@ name: long_nosed_form
 system: pf2e
 mechanicalSummary: You transform into a specific, curious-looking human form.
 extraPools: []
+category: ancestry
+ancestries: [tengu]
 level: 5

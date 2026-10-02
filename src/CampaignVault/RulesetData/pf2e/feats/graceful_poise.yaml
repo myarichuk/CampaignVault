@@ -4,7 +4,10 @@
 name: graceful_poise
 system: pf2e
 prerequisite: Double Slice
+prerequisites:
+  - { feat: double_slice }
 mechanicalSummary: With the right positioning, your off-hand weapon can strike like a scorpion’s stinger.
 extraPools: []
+category: class
 classes: [fighter]
 level: 16

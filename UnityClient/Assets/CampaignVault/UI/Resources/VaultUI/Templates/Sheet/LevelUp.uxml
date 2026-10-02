@@ -1,0 +1,50 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- The level-up menu (LevelUpViewModel): what the next level gives, then its choices as the builder's section cards. -->
+    <ui:Template name="Notice" src="../Builder/OptionsNotice.uxml" />
+    <ui:VisualElement name="body">
+        <ui:Instance template="Notice" />
+        <ui:Label name="levelup-intro" class="cv-h2">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Intro" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Intro" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label name="levelup-xp" class="cv-caption">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="XpLine" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="XpLine" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label name="levelup-gains" class="cv-body">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Gains" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Gains" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <cv:Repeater item-template="Builder/SpellSection">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Sections" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+    </ui:VisualElement>
+    <ui:VisualElement name="foot">
+        <ui:Label name="levelup-status" class="cv-body cv-muted cv-grow">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Status" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:Label name="levelup-error" class="cv-body cv-text-blood">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Error" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Error" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <cv:VaultButton name="levelup-apply" icon="seal" class="cv-btn--primary">
+            <Bindings>
+                <ui:DataBinding property="label" data-source-path="ApplyLabel" binding-mode="ToTarget" />
+                <ui:DataBinding property="command" data-source-path="Apply" binding-mode="ToTarget" />
+                <ui:DataBinding property="enabledSelf" data-source-path="CanApply" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultButton>
+    </ui:VisualElement>
+</ui:UXML>

@@ -4,7 +4,10 @@
 name: verdant_metamorphosis
 system: pf2e
 prerequisite: leaf order
+prerequisites:
+  - { classFeature: leaf }
 mechanicalSummary: You have turned into a plant version of yourself, gaining the plant trait and losing traits inappropriate for your new form (typically humanoid).
 extraPools: []
+category: class
 classes: [druid]
 level: 14

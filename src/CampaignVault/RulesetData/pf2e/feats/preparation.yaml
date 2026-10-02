@@ -5,5 +5,6 @@ name: preparation
 system: pf2e
 mechanicalSummary: You survey the battlefield, calculating the possibilities.
 extraPools: []
+category: class
 classes: [rogue]
 level: 12

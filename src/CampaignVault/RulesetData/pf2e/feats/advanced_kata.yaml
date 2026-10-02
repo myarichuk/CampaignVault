@@ -4,6 +4,9 @@
 name: advanced_kata
 system: pf2e
 prerequisite: Basic Kata
+prerequisites:
+  - { feat: basic_kata }
 mechanicalSummary: You gain one monk feat.
 extraPools: []
+category: archetype
 level: 6

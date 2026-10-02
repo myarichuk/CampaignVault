@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Skyborn Tengu heritage
 mechanicalSummary: You Fly.
 extraPools: []
+category: ancestry
+ancestries: [tengu]
 level: 5

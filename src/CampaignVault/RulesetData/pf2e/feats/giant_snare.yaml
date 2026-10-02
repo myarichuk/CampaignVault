@@ -4,6 +4,9 @@
 name: giant_snare
 system: pf2e
 prerequisite: Snarecrafter Dedication
+prerequisites:
+  - { feat: snarecrafter_dedication }
 mechanicalSummary: You can create bigger snares for quick deployment, making it more likely for a creature to walk into your snares.
 extraPools: []
+category: archetype
 level: 10

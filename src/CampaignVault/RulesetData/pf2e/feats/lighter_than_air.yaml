@@ -4,7 +4,10 @@
 name: lighter_than_air
 system: pf2e
 prerequisite: Water Walker
+prerequisites:
+  - { feat: water_walker }
 mechanicalSummary: Your mysterious steps become even lighter, transcending the mortal world altogether.
 extraPools: []
+category: class
 classes: [oracle]
 level: 14

@@ -4,7 +4,10 @@
 name: lasting_armament
 system: pf2e
 prerequisite: Sanctify Armament
+prerequisites:
+  - { feat: sanctify_armament }
 mechanicalSummary: When you sanctify a weapon, it remains sanctified for an extended period.
 extraPools: []
+category: class
 classes: [cleric]
 level: 14

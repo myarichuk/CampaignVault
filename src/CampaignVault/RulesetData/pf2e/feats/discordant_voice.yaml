@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: Courageous Anthem
 mechanicalSummary: Your courageous anthem lets loose a discordant shriek that imbues your allies’ attacks with powerful sonic reverberations.
 extraPools: []
+category: class
 classes: [bard]
 level: 18

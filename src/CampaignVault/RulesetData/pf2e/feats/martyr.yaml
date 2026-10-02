@@ -5,5 +5,6 @@ name: martyr
 system: pf2e
 mechanicalSummary: You go to extreme lengths to support your allies, even when it means bringing harm to yourself.
 extraPools: []
+category: class
 classes: [cleric]
 level: 8

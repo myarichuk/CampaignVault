@@ -4,6 +4,11 @@
 name: herbalist_dedication
 system: pf2e
 prerequisite: Natural Medicine; Trained in Nature
+prerequisites:
+  - { feat: natural_medicine }
+  - { skill: Nature, rank: trained }
 mechanicalSummary: You can create natural remedies.
 extraPools: []
+category: archetype
+skills: [Nature]
 level: 2

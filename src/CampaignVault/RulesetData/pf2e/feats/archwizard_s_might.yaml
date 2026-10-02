@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: "archwizard's spellcraft"
 mechanicalSummary: You have mastered the greatest secrets of arcane magic.
 extraPools: []
+category: class
 classes: [wizard]
 level: 20

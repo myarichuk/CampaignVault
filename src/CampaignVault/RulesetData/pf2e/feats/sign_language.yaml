@@ -4,6 +4,10 @@
 name: sign_language
 system: pf2e
 prerequisite: Trained in Society
+prerequisites:
+  - { skill: Society, rank: trained }
 mechanicalSummary: Learn sign languages
 extraPools: []
+category: skill
+skills: [Society]
 level: 1

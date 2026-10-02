@@ -4,6 +4,10 @@
 name: quick_unlock
 system: pf2e
 prerequisite: Master in Thievery
+prerequisites:
+  - { skill: Thievery, rank: master }
 mechanicalSummary: Pick a Lock with 1 action
 extraPools: []
+category: skill
+skills: [Thievery]
 level: 7

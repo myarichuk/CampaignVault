@@ -4,6 +4,11 @@
 name: pack_stalker
 system: pf2e
 prerequisite: Expert in Stealth
+prerequisites:
+  - { skill: Stealth, rank: expert }
 mechanicalSummary: Ambushes are an honored kholo tradition.
 extraPools: []
+category: ancestry
+ancestries: [kholo]
+skills: [Stealth]
 level: 5

@@ -5,5 +5,6 @@ name: pied_piping
 system: pf2e
 mechanicalSummary: You learn the  pied piping  composition spell, which enables you to control the actions of weak-minded individuals.
 extraPools: []
+category: class
 classes: [bard]
 level: 20

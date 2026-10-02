@@ -4,6 +4,12 @@
 name: rope_runner
 system: pf2e
 prerequisite: Pirate Dedication; Trained in Acrobatics; Trained in Athletics
+prerequisites:
+  - { feat: pirate_dedication }
+  - { skill: Acrobatics, rank: trained }
+  - { skill: Athletics, rank: trained }
 mechanicalSummary: You run and climb across ropes and rigging almost as easily as on the ground.
 extraPools: []
+category: skill
+skills: [Acrobatics, Athletics]
 level: 4

@@ -6,4 +6,5 @@ system: pf2e
 prerequisite: Master in Perception
 mechanicalSummary: When you scout, you are particularly alert for danger, granting your allies precious moments to prepare to fight.
 extraPools: []
+category: general
 level: 11

@@ -4,6 +4,9 @@
 name: counter_perform
 system: pf2e
 prerequisite: Bard Dedication
+prerequisites:
+  - { feat: bard_dedication }
 mechanicalSummary: You gain the counter performance composition spell.
 extraPools: []
+category: archetype
 level: 6

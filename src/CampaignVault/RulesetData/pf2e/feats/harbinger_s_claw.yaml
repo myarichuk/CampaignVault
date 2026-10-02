@@ -5,4 +5,6 @@ name: harbinger_s_claw
 system: pf2e
 mechanicalSummary: You caw ominously, cursing the creature with misfortune.
 extraPools: []
+category: ancestry
+ancestries: [tengu]
 level: 13

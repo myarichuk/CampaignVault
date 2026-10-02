@@ -4,6 +4,10 @@
 name: soaring_form
 system: pf2e
 prerequisite: Soaring Flight
+prerequisites:
+  - { feat: soaring_flight }
 mechanicalSummary: You have a fly Speed of 20 feet at all times.
 extraPools: []
+category: ancestry
+ancestries: [tengu]
 level: 9

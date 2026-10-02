@@ -4,7 +4,10 @@
 name: improved_invigorating_elixir
 system: pf2e
 prerequisite: Invigorating Elixir
+prerequisites:
+  - { feat: invigorating_elixir }
 mechanicalSummary: Choose physical invigoration or mental invigoration, and add the listed conditions to those you can choose for an invigorating elixir.
 extraPools: []
+category: class
 classes: [alchemist]
 level: 8

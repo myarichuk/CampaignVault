@@ -5,4 +5,6 @@ name: greater_than_the_sum
 system: pf2e
 mechanicalSummary: You call upon the familial bonds you share with your allies and other ratfolk to become an overwhelming force in battle.
 extraPools: []
+category: ancestry
+ancestries: [ratfolk]
 level: 17

@@ -4,7 +4,10 @@
 name: quick_shield_block
 system: pf2e
 prerequisite: Shield Block
+prerequisites:
+  - { feat: shield_block }
 mechanicalSummary: You can bring your shield into place with hardly a thought.
 extraPools: []
+category: class
 classes: [champion, fighter]
 level: 8

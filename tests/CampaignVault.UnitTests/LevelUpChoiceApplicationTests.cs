@@ -54,13 +54,13 @@ public class LevelUpChoiceApplicationTests : IClassFixture<RavenDBFixture>
         {
             CharacterId = "chars/fighter",
             LevelsGained = 1,
-            Choices = new Dictionary<string, string> { ["subclass"] = "battleMaster" },
+            Choices = new Dictionary<string, string> { ["subclass"] = "champion" },
         }, ctx, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         var entry = Assert.Single(fighter.SystemStats!.LevelUpChoices);
         Assert.Equal("subclass", entry.Key);
-        Assert.Equal("battleMaster", entry.Value);
+        Assert.Equal("champion", entry.Value);
         Assert.Equal(3, entry.Level);
     }
 

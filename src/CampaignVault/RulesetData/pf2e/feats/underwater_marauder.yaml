@@ -4,6 +4,10 @@
 name: underwater_marauder
 system: pf2e
 prerequisite: Trained in Athletics
+prerequisites:
+  - { skill: Athletics, rank: trained }
 mechanicalSummary: Fight more effectively underwater
 extraPools: []
+category: skill
+skills: [Athletics]
 level: 1

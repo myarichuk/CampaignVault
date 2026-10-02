@@ -6,4 +6,5 @@ system: pf2e
 prerequisite: trained in martial weapons
 mechanicalSummary: "You don't take the normal \u20132 penalty to attack rolls with improvised weapons."
 extraPools: []
+category: archetype
 level: 2

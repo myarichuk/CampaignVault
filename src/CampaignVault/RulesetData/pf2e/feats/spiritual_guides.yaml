@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: spirit instinct
 mechanicalSummary: Though no one sees them and only you can hear them, the spirits around you constantly chatter, save when you are raging.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 4

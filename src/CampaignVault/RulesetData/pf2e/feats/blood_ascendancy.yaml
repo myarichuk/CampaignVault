@@ -4,7 +4,10 @@
 name: blood_ascendancy
 system: pf2e
 prerequisite: Blood Rising
+prerequisites:
+  - { feat: blood_rising }
 mechanicalSummary: When you would benefit from a blood magic effect through Blood Rising, you can choose to benefit from two different blood magic effects you know.
 extraPools: []
+category: class
 classes: [sorcerer]
 level: 14

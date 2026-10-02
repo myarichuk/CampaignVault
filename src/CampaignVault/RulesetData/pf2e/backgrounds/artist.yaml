@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: artist
+system: pf2e
+description: "Your art is your greatest passion, whatever form it takes. Adventuring might help you find inspiration, or simply be a way to survive until you become a world-famous artist."
+boosts: [Dexterity, Charisma]
+skillProficiencies: [Crafting]
+lore: Art Lore
+skillFeat: specialty_crafting
+feature: Specialty Crafting

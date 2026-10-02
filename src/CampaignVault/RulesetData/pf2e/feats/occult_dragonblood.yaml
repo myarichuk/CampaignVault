@@ -5,4 +5,6 @@ name: occult_dragonblood
 system: pf2e
 mechanicalSummary: Your blood contains a tiny fragment of unusual or inexplicable power from a mysterious dragon, such as a conspirator dragon or omen dragon.
 extraPools: []
+category: ancestry
+ancestries: [dragonblood]
 level: 1

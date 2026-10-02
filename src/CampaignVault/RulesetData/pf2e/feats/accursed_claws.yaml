@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: claw unarmed attack
 mechanicalSummary: Your claws carry your mother’s hag magic.
 extraPools: []
+category: ancestry
+ancestries: [changeling]
 level: 9

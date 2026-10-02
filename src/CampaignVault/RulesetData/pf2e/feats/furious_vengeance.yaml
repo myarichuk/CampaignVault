@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: fury instinct
 mechanicalSummary: "Your enemy's blow fuels your rage and provokes your immediate retaliation."
 extraPools: []
+category: class
 classes: [barbarian]
 level: 16

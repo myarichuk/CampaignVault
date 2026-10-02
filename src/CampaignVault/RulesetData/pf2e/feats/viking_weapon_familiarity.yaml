@@ -4,6 +4,9 @@
 name: viking_weapon_familiarity
 system: pf2e
 prerequisite: Viking Dedication
+prerequisites:
+  - { feat: viking_dedication }
 mechanicalSummary: From childhood, you have been exposed to traditional viking combat techniques, and you soon learned to handle axe, sword, and shield in battle.
 extraPools: []
+category: archetype
 level: 4

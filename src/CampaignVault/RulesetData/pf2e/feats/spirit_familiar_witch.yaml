@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: divine or occult patron
 mechanicalSummary: Your familiar can subsume its body to become pure spirit.
 extraPools: []
+category: class
 classes: [witch]
 level: 8

@@ -4,6 +4,9 @@
 name: flensing_slice
 system: pf2e
 prerequisite: Dual-Weapon Warrior Dedication
+prerequisites:
+  - { feat: dual_weapon_warrior_dedication }
 mechanicalSummary: When you hit with both attacks with Double Slice, you flense the target, making it bleed and creating a weak spot.
 extraPools: []
+category: archetype
 level: 8

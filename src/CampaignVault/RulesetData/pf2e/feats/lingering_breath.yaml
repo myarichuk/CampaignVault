@@ -4,6 +4,10 @@
 name: lingering_breath
 system: pf2e
 prerequisite: Breath of the Dragon
+prerequisites:
+  - { feat: breath_of_the_dragon }
 mechanicalSummary: Your draconic breath destroys the surrounding environment and leaves your enemies in pain.
 extraPools: []
+category: ancestry
+ancestries: [dragonblood]
 level: 17

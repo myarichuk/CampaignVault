@@ -5,4 +5,6 @@ name: rough_rider
 system: pf2e
 mechanicalSummary: You are especially good at riding traditional goblin mounts.
 extraPools: []
+category: ancestry
+ancestries: [goblin]
 level: 1

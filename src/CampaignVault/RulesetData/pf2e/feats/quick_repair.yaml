@@ -4,6 +4,10 @@
 name: quick_repair
 system: pf2e
 prerequisite: Trained in Crafting
+prerequisites:
+  - { skill: Crafting, rank: trained }
 mechanicalSummary: Repair items quickly
 extraPools: []
+category: skill
+skills: [Crafting]
 level: 1

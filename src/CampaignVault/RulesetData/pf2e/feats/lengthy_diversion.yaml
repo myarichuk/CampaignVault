@@ -4,6 +4,10 @@
 name: lengthy_diversion
 system: pf2e
 prerequisite: Trained in Deception
+prerequisites:
+  - { skill: Deception, rank: trained }
 mechanicalSummary: Remain hidden after you Create a Diversion
 extraPools: []
+category: skill
+skills: [Deception]
 level: 1

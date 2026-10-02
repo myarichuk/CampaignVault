@@ -4,6 +4,9 @@
 name: basic_dogma
 system: pf2e
 prerequisite: Cleric Dedication
+prerequisites:
+  - { feat: cleric_dedication }
 mechanicalSummary: You gain a 1st- or 2nd-level cleric feat.
 extraPools: []
+category: archetype
 level: 4

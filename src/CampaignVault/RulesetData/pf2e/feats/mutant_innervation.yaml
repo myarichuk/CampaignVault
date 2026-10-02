@@ -5,5 +5,6 @@ name: mutant_innervation
 system: pf2e
 mechanicalSummary: Basic mutagens that affect your mind and thoughts can make you communicate telepathically, protect you from being detected, or let you communicate with anyone.
 extraPools: []
+category: class
 classes: [alchemist]
 level: 14

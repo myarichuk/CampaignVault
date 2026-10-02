@@ -5,4 +5,6 @@ name: form_of_the_dragon
 system: pf2e
 mechanicalSummary: You can briefly transform into a paragon of your draconic ancestry.
 extraPools: []
+category: ancestry
+ancestries: [dragonblood]
 level: 17

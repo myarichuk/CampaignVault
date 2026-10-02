@@ -4,6 +4,9 @@
 name: prescient_consumable
 system: pf2e
 prerequisite: Prescient Planner
+prerequisites:
+  - { feat: prescient_planner }
 mechanicalSummary: Procure consumable items with Prescient Planner
 extraPools: []
+category: general
 level: 7

@@ -5,5 +5,6 @@ name: known_weaknesses
 system: pf2e
 mechanicalSummary: Whenever you Devise a Stratagem, you can also attempt a check to Recall Knowledge as part of that action before rolling the d20.
 extraPools: []
+category: class
 classes: [investigator]
 level: 1

@@ -5,4 +5,5 @@ name: canny_acumen
 system: pf2e
 mechanicalSummary: Become an expert in a saving throw or Perception
 extraPools: []
+category: general
 level: 1

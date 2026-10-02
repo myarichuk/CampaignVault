@@ -5,5 +5,6 @@ name: overwhelming_blow
 system: pf2e
 mechanicalSummary: You throw your weight into a powerful attack that leaves you vulnerable.
 extraPools: []
+category: class
 classes: [fighter]
 level: 16

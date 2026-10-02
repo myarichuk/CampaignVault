@@ -5,4 +5,6 @@ name: regrowth
 system: pf2e
 mechanicalSummary: Your command over your vital essence allows you or an ally to recover from grievous wounds.
 extraPools: []
+category: ancestry
+ancestries: [leshy]
 level: 17

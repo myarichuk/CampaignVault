@@ -4,7 +4,10 @@
 name: guiding_riposte
 system: pf2e
 prerequisite: Dueling Riposte
+prerequisites:
+  - { feat: dueling_riposte }
 mechanicalSummary: By shifting your weight and angling your weapon, you guide your opponent to a more favorable position.
 extraPools: []
+category: class
 classes: [fighter]
 level: 14

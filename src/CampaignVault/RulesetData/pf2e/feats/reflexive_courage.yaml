@@ -4,7 +4,10 @@
 name: reflexive_courage
 system: pf2e
 prerequisite: warrior muse
+prerequisites:
+  - { classFeature: warrior }
 mechanicalSummary: You bellow a ferocious call to arms, inspiring yourself to lash out at a foe.
 extraPools: []
+category: class
 classes: [bard]
 level: 8

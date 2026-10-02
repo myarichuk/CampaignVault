@@ -5,5 +5,6 @@ name: aggressive_block
 system: pf2e
 mechanicalSummary: You push back as you block, knocking your foe away or off balance.
 extraPools: []
+category: class
 classes: [fighter]
 level: 2

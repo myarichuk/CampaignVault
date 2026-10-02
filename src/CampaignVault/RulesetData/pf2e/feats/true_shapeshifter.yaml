@@ -4,7 +4,11 @@
 name: true_shapeshifter
 system: pf2e
 prerequisite: Dragon Shape; Untamed Form
+prerequisites:
+  - { feat: dragon_shape }
+  - { feat: untamed_form }
 mechanicalSummary: You transcend the limitations of form.
 extraPools: []
+category: class
 classes: [druid]
 level: 20

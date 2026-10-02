@@ -4,7 +4,11 @@
 name: stealthy_companion
 system: pf2e
 prerequisite: Animal Companion; Camouflage
+prerequisites:
+  - { feat: animal_companion }
+  - { feat: camouflage }
 mechanicalSummary: You’ve trained your animal companion to blend in to its surroundings.
 extraPools: []
+category: class
 classes: [ranger]
 level: 14

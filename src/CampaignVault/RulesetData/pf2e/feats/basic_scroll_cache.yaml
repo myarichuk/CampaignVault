@@ -4,6 +4,9 @@
 name: basic_scroll_cache
 system: pf2e
 prerequisite: Scroll Trickster Dedication
+prerequisites:
+  - { feat: scroll_trickster_dedication }
 mechanicalSummary: You have a vast and overflowing collection of scroll  scraps, riddled with errors and misspellings and leaking energy like a sieve.
 extraPools: []
+category: archetype
 level: 6

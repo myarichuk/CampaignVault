@@ -4,7 +4,10 @@
 name: eternal_elixir
 system: pf2e
 prerequisite: Extend Elixir
+prerequisites:
+  - { feat: extend_elixir }
 mechanicalSummary: Your body readily accepts and retains minor changes.
 extraPools: []
+category: class
 classes: [alchemist]
 level: 16

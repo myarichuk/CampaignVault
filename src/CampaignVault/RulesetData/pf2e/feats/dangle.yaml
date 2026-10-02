@@ -5,4 +5,6 @@ name: dangle
 system: pf2e
 mechanicalSummary: "You can hang by your tail from any suitable anchor point, such as a tree branch, balcony, or rocky outcropping (subject to the GM's discretion), typically while climbing."
 extraPools: []
+category: ancestry
+ancestries: [lizardfolk]
 level: 9

@@ -5,4 +5,6 @@ name: draconic_aspect
 system: pf2e
 mechanicalSummary: You have an obvious draconic feature, such as sharp claws, a snout full of sharp teeth, or strong reptilian tail, that you can use offensively.
 extraPools: []
+category: ancestry
+ancestries: [dragonblood]
 level: 1

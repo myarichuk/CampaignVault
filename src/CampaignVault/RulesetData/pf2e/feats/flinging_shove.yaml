@@ -4,7 +4,10 @@
 name: flinging_shove
 system: pf2e
 prerequisite: Aggressive Block or Brutish Shove
+prerequisites:
+  - { anyOf: [{ feat: aggressive_block }, { feat: brutish_shove }] }
 mechanicalSummary: Whether you’re shoving opponents with a shield or a large weapon, you’ve learned to push them even further.
 extraPools: []
+category: class
 classes: [fighter]
 level: 12

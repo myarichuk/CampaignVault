@@ -1,3 +1,4 @@
+using System;
 using CampaignVault.UnityClient.App;
 using CampaignVault.UnityClient.UI.Mvvm;
 using CampaignVault.UnityClient.UI.Sheet;
@@ -12,12 +13,14 @@ namespace CampaignVault.UnityClient.UI
     {
         private readonly VaultAppState _state;
         private readonly VaultController _controller;
+        private readonly Action<string> _openLevelUp;
         private string _id = string.Empty;
 
-        public CharacterSheetOverlay(VaultAppState state, VaultController controller)
+        public CharacterSheetOverlay(VaultAppState state, VaultController controller, Action<string> openLevelUp = null)
         {
             _state = state;
             _controller = controller;
+            _openLevelUp = openLevelUp;
         }
 
         protected override string Title { get { return "Character"; } }
@@ -32,7 +35,7 @@ namespace CampaignVault.UnityClient.UI
 
         public void SetCharacter(string id) { _id = id ?? string.Empty; }
 
-        protected override ViewModel CreateViewModel() { return new SheetPageViewModel(_state, _controller, _id); }
+        protected override ViewModel CreateViewModel() { return new SheetPageViewModel(_state, _controller, _id, _openLevelUp); }
 
         public override void OnOpen()
         {

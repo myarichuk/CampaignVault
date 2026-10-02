@@ -4,7 +4,10 @@
 name: ricochet_feint
 system: pf2e
 prerequisite: Ricochet Stance (Rogue)
+prerequisites:
+  - { feat: ricochet_stance_rogue }
 mechanicalSummary: While in Ricochet Stance, you can bounce a thrown weapon off a foe to distract them.
 extraPools: []
+category: class
 classes: [rogue]
 level: 12

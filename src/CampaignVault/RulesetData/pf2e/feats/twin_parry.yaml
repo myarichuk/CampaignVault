@@ -5,5 +5,6 @@ name: twin_parry
 system: pf2e
 mechanicalSummary: You use your two weapons to parry attacks.
 extraPools: []
+category: class
 classes: [fighter, ranger]
 level: 4

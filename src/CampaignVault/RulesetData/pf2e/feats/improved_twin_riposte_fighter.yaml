@@ -4,7 +4,10 @@
 name: improved_twin_riposte_fighter
 system: pf2e
 prerequisite: Twin Riposte
+prerequisites:
+  - { feat: twin_riposte }
 mechanicalSummary: Your weapons are a blur, blocking and biting at your foes.
 extraPools: []
+category: class
 classes: [fighter]
 level: 14

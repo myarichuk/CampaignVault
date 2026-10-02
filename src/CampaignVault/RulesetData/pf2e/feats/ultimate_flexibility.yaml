@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: improved flexibility
 mechanicalSummary: Your experience keeps you on your toes, helping you adopt complex strategies on the fly and face the most dangerous challenges.
 extraPools: []
+category: class
 classes: [fighter]
 level: 20

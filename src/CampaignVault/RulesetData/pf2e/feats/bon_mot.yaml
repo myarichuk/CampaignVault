@@ -4,6 +4,10 @@
 name: bon_mot
 system: pf2e
 prerequisite: Trained in Diplomacy
+prerequisites:
+  - { skill: Diplomacy, rank: trained }
 mechanicalSummary: You launch an insightful quip at a foe, distracting them.
 extraPools: []
+category: skill
+skills: [Diplomacy]
 level: 1

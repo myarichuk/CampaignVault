@@ -5,4 +5,6 @@ name: vomit_stomach
 system: pf2e
 mechanicalSummary: In dire circumstances you can vomit out your stomach to expel toxins.
 extraPools: []
+category: ancestry
+ancestries: [tripkee]
 level: 5

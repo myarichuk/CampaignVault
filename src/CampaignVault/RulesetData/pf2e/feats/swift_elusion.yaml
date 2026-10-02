@@ -4,7 +4,11 @@
 name: swift_elusion
 system: pf2e
 prerequisite: Legendary in Acrobatics
+prerequisites:
+  - { skill: Acrobatics, rank: legendary }
 mechanicalSummary: Attempt an Acrobatics check against the foe’s Reflex DC.
 extraPools: []
+category: class
 classes: [rogue]
+skills: [Acrobatics]
 level: 16

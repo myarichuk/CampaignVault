@@ -4,7 +4,10 @@
 name: shared_clarity
 system: pf2e
 prerequisite: Premonition of Clarity
+prerequisites:
+  - { feat: premonition_of_clarity }
 mechanicalSummary: You can project your premonitions of clarity to your allies.
 extraPools: []
+category: class
 classes: [cleric]
 level: 18

@@ -5,5 +5,6 @@ name: shielded_stride
 system: pf2e
 mechanicalSummary: When your shield is up, your enemies’ blows can’t touch you.
 extraPools: []
+category: class
 classes: [fighter]
 level: 4

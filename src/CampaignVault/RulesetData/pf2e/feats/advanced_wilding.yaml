@@ -4,6 +4,9 @@
 name: advanced_wilding
 system: pf2e
 prerequisite: Basic Wilding
+prerequisites:
+  - { feat: basic_wilding }
 mechanicalSummary: You gain one druid feat.
 extraPools: []
+category: archetype
 level: 6

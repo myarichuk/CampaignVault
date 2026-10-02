@@ -5,4 +5,6 @@ name: breath_of_the_dragon
 system: pf2e
 mechanicalSummary: Tapping into the physiology of your draconic ancestor, you can exhale a torrent of energy in a 15-foot cone or a 30-foot line, dealing 1d4 damage.
 extraPools: []
+category: ancestry
+ancestries: [dragonblood]
 level: 1

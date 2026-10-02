@@ -4,7 +4,10 @@
 name: improved_knockback
 system: pf2e
 prerequisite: Knockback Strike
+prerequisites:
+  - { feat: knockback_strike }
 mechanicalSummary: When you successfully Shove a creature, increase both the distance you can push the creature and the distance you can move to follow along with the target by 5 feet on a success or 10 feet on a critical success.
 extraPools: []
+category: class
 classes: [monk]
 level: 12

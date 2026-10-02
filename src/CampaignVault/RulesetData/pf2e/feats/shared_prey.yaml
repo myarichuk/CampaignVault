@@ -4,7 +4,11 @@
 name: shared_prey
 system: pf2e
 prerequisite: "Double Prey; Warden's Boon"
+prerequisites:
+  - { feat: double_prey }
+  - { feat: warden_s_boon }
 mechanicalSummary: Hunting as a duo, you and your ally both single out your prey.
 extraPools: []
+category: class
 classes: [ranger]
 level: 14

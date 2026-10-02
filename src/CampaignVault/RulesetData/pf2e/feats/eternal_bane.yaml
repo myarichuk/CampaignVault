@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: unholy
 mechanicalSummary: Your life has made you a nexus for your deity’s vile power.
 extraPools: []
+category: class
 classes: [cleric]
 level: 16

@@ -6,4 +6,5 @@ system: pf2e
 prerequisite: expert in a skill with the Recall Knowledge action; Assurance in that skill
 mechanicalSummary: Recall Knowledge as a free action once per round
 extraPools: []
+category: skill
 level: 2

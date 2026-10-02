@@ -5,5 +5,6 @@ name: tangled_forest_stance
 system: pf2e
 mechanicalSummary: "You extend your arms like gnarled branches to interfere with your foes' movements."
 extraPools: []
+category: class
 classes: [monk]
 level: 8

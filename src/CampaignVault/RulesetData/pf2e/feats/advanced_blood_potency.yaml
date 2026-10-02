@@ -4,6 +4,9 @@
 name: advanced_blood_potency
 system: pf2e
 prerequisite: Basic Blood Potency
+prerequisites:
+  - { feat: basic_blood_potency }
 mechanicalSummary: You gain one sorcerer feat.
 extraPools: []
+category: archetype
 level: 6

@@ -20,27 +20,42 @@ levels:
             type: Enum
             required: true
             options:
-              - id: knowledge
-                label: "Knowledge Domain"
-                description: "Divine knowledge, blessings of knowledge, channel divinity: knowledge of the ages."
               - id: life
                 label: "Life Domain"
-                description: "Healing focus, channel divinity: preserve life, blessed healer."
-              - id: light
-                label: "Light Domain"
-                description: "Fire/radiance spells, channel divinity: radiance of the dawn, warding flare."
-              - id: nature
-                label: "Nature Domain"
-                description: "Nature spells, channel divinity: charm animals/plants, dampen elements."
-              - id: tempest
-                label: "Tempest Domain"
-                description: "Storm spells, channel divinity: destructive wrath, thunderbolt strike."
-              - id: trickery
-                label: "Trickery Domain"
-                description: "Illusion spells, channel divinity: invoke duplicity, cloak of shadows."
-              - id: war
-                label: "War Domain"
-                description: "Battle spells, channel divinity: guided strike, war god's blessing."
+                description: "Heavy armor, disciple of life, preserve life, blessed healer, supreme healing."
+                features:
+                  1:
+                    - name: "Bonus Proficiency"
+                      description: "Proficiency with heavy armor."
+                    - name: "Disciple of Life"
+                      description: "A spell of 1st level or higher that restores hit points restores 2 + the spell's level more."
+                    - name: "Domain Spells"
+                      description: "Always prepared, and not counted against the spells you prepare."
+                      spells:
+                        1: ["bless", "cure_wounds"]
+                        3: ["lesser_restoration", "spiritual_weapon"]
+                        5: ["beacon_of_hope", "revivify"]
+                        7: ["death_ward", "guardian_of_faith"]
+                        9: ["mass_cure_wounds", "raise_dead"]
+                  2:
+                    - name: "Channel Divinity: Preserve Life"
+                      description: "Action: restore hit points equal to five times your cleric level, divided as you choose among creatures within 30 ft. No creature goes above half its hit point maximum. Doesn't work on undead or constructs."
+                  6:
+                    - name: "Blessed Healer"
+                      description: "When a spell of 1st level or higher you cast restores another creature's hit points, you regain 2 + the spell's level hit points."
+                  8:
+                    - name: "Divine Strike"
+                      description: "Once on each of your turns, when a weapon attack hits, it deals an extra 1d8 radiant damage (2d8 from 14th level)."
+                      effects:
+                        - { kind: extraDamage, dice: "1d8", damageType: radiant, toggle: divineStrike }
+                  14:
+                    - name: "Divine Strike (14th level)"
+                      description: "Divine Strike's extra damage is 2d8 in all."
+                      effects:
+                        - { kind: extraDamage, dice: "1d8", damageType: radiant, toggle: divineStrike }
+                  17:
+                    - name: "Supreme Healing"
+                      description: "Instead of rolling the dice of a healing spell, use the highest number each die could roll."
   2:
     proficiencyBonus: 2
     features:
@@ -80,8 +95,8 @@ levels:
   8:
     proficiencyBonus: 3
     features:
-      - name: "Divine Strike (1d8)"
-        description: "Once per turn, add 1d8 radiant/necrotic to weapon attack."
+      - name: "Divine Domain Feature"
+        description: "Gain a feature from your divine domain."
       - name: "Destroy Undead (CR 1)"
       - name: "Ability Score Improvement"
         choices:
@@ -103,7 +118,6 @@ levels:
     proficiencyBonus: 4
     features:
       - name: "Destroy Undead (CR 2)"
-      - name: "Divine Strike (2d8)"
     spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1}
   12:
     proficiencyBonus: 4
@@ -138,7 +152,6 @@ levels:
     proficiencyBonus: 6
     features:
       - name: "Destroy Undead (CR 4)"
-      - name: "Divine Strike (3d8)"
     spellSlots: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1, 7: 1, 8: 1, 9: 1}
   18:
     proficiencyBonus: 6

@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: champion’s aura
 mechanicalSummary: You focus your divine power to extend your influence and protection.
 extraPools: []
+category: class
 classes: [champion]
 level: 6

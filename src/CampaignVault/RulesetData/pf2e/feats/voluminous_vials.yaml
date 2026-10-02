@@ -4,6 +4,11 @@
 name: voluminous_vials
 system: pf2e
 prerequisite: Alchemist Dedication; Expert in Crafting
+prerequisites:
+  - { feat: alchemist_dedication }
+  - { skill: Crafting, rank: expert }
 mechanicalSummary: Your number of versatile vials per day increases to 5.
 extraPools: []
+category: archetype
+skills: [Crafting]
 level: 6

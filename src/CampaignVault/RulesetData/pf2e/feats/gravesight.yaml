@@ -5,4 +5,6 @@ name: gravesight
 system: pf2e
 mechanicalSummary: You can see in the darkness as easily as a psychopomp.
 extraPools: []
+category: ancestry
+ancestries: [duskwalker]
 level: 1

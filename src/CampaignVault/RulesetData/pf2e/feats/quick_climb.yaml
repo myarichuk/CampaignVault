@@ -4,6 +4,10 @@
 name: quick_climb
 system: pf2e
 prerequisite: Master in Athletics
+prerequisites:
+  - { skill: Athletics, rank: master }
 mechanicalSummary: Climb swiftly
 extraPools: []
+category: skill
+skills: [Athletics]
 level: 7

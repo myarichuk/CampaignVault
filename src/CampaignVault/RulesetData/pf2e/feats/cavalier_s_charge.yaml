@@ -4,6 +4,9 @@
 name: cavalier_s_charge
 system: pf2e
 prerequisite: Cavalier Dedication
+prerequisites:
+  - { feat: cavalier_dedication }
 mechanicalSummary: You Command an Animal to order your mount to Stride twice.
 extraPools: []
+category: archetype
 level: 4

@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Witch Kholo heritage
 mechanicalSummary: It takes a very brave person to enter the laughter-haunted forest where you dwell.
 extraPools: []
+category: ancestry
+ancestries: [kholo]
 level: 5

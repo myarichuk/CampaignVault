@@ -5,5 +5,6 @@ name: revealing_stab
 system: pf2e
 mechanicalSummary: You drive your piercing weapon into an imperceptible foe, revealing its location to your allies.
 extraPools: []
+category: class
 classes: [fighter]
 level: 6

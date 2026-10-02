@@ -4,6 +4,9 @@
 name: basic_maneuver
 system: pf2e
 prerequisite: Fighter Dedication
+prerequisites:
+  - { feat: fighter_dedication }
 mechanicalSummary: You gain a 1st- or 2nd-level fighter feat.
 extraPools: []
+category: archetype
 level: 4

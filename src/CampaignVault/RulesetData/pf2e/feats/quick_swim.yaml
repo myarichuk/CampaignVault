@@ -4,6 +4,10 @@
 name: quick_swim
 system: pf2e
 prerequisite: Master in Athletics
+prerequisites:
+  - { skill: Athletics, rank: master }
 mechanicalSummary: Swim quickly
 extraPools: []
+category: skill
+skills: [Athletics]
 level: 7

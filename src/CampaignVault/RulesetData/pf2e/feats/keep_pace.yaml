@@ -4,6 +4,9 @@
 name: keep_pace
 system: pf2e
 prerequisite: Bounty Hunter Dedication
+prerequisites:
+  - { feat: bounty_hunter_dedication }
 mechanicalSummary: Once you are upon your prey, they can’t escape.
 extraPools: []
+category: archetype
 level: 6

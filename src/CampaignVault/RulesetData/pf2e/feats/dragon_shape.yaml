@@ -4,7 +4,10 @@
 name: dragon_shape
 system: pf2e
 prerequisite: Soaring Shape
+prerequisites:
+  - { feat: soaring_shape }
 mechanicalSummary: You can take on the shape of some of the world’s most fearsome creatures.
 extraPools: []
+category: class
 classes: [druid]
 level: 12

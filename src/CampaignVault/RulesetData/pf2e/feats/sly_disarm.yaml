@@ -5,5 +5,6 @@ name: sly_disarm
 system: pf2e
 mechanicalSummary: You can Disarm a creature through sleight of hand rather than brute force.
 extraPools: []
+category: class
 classes: [rogue]
 level: 6

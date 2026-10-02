@@ -4,7 +4,11 @@
 name: wandering_oasis
 system: pf2e
 prerequisite: Master in Survival
+prerequisites:
+  - { skill: Survival, rank: master }
 mechanicalSummary: You’re surrounded by soothing energy.
 extraPools: []
+category: class
 classes: [druid]
+skills: [Survival]
 level: 12

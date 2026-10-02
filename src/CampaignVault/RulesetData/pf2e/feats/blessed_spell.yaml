@@ -4,6 +4,10 @@
 name: blessed_spell
 system: pf2e
 prerequisite: Blessed One Dedication; Mercy; ability to cast spells from spell slots
+prerequisites:
+  - { feat: blessed_one_dedication }
+  - { feat: mercy }
 mechanicalSummary: When you focus your magic on an ally, you can remove harmful conditions.
 extraPools: []
+category: archetype
 level: 8

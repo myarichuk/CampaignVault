@@ -5,5 +5,6 @@ name: flinging_charge
 system: pf2e
 mechanicalSummary: You throw a weapon to distract your opponent as you close the gap to begin your assault.
 extraPools: []
+category: class
 classes: [fighter]
 level: 10

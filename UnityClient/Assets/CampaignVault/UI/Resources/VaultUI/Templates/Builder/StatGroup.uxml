@@ -1,0 +1,16 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- StatGroupViewModel: a group's caption, then its fields; compact ones wrap side by side. -->
+    <ui:VisualElement class="cv-statgroup">
+        <ui:Label class="cv-caption cv-builder__group">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Title" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Title" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <cv:Repeater item-template="Builder/StatField" class="cv-statgroup__fields">
+            <Bindings>
+                <ui:DataBinding property="itemsSource" data-source-path="Fields" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:Repeater>
+    </ui:VisualElement>
+</ui:UXML>

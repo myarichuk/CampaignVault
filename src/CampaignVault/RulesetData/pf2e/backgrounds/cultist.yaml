@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: cultist
+system: pf2e
+description: "You were (or still are) a member of a cult whose rites may involve sacred dances to ensure a strong harvest or dire rituals that call upon dark powers. You might have taken up adventuring to further your cult’s aims, to initiate yourself into the world’s grander mysteries, or to flee unsavory practices or strictures."
+boosts: [Intelligence, Charisma]
+skillProficiencies: [Occultism]
+lore: Lore related to your deity or cult
+skillFeat: schooled_in_secrets
+feature: Schooled in Secrets

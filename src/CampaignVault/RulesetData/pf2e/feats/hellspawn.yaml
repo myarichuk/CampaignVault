@@ -5,4 +5,6 @@ name: hellspawn
 system: pf2e
 mechanicalSummary: Your lineage descends from devils, conniving schemers of Hell.
 extraPools: []
+category: ancestry
+ancestries: [nephilim]
 level: 1

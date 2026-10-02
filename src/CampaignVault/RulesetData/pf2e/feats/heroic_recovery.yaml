@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: healing font
 mechanicalSummary: The restorative power of your healing invigorates the recipient.
 extraPools: []
+category: class
 classes: [cleric]
 level: 10

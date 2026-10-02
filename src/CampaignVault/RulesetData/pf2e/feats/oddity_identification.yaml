@@ -4,6 +4,10 @@
 name: oddity_identification
 system: pf2e
 prerequisite: Trained in Occultism
+prerequisites:
+  - { skill: Occultism, rank: trained }
 mechanicalSummary: Recognize magic involving minds, fortune, or secrets
 extraPools: []
+category: skill
+skills: [Occultism]
 level: 1

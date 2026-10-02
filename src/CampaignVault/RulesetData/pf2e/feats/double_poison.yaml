@@ -5,5 +5,6 @@ name: double_poison
 system: pf2e
 mechanicalSummary: You can apply two different infused injury poisons to the same weapon, though not to a piece of ammunition.
 extraPools: []
+category: class
 classes: [alchemist]
 level: 14

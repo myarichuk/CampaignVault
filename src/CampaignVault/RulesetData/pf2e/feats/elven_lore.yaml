@@ -5,4 +5,6 @@ name: elven_lore
 system: pf2e
 mechanicalSummary: "You've studied traditional elven arts, learning about arcane magic and the world around you."
 extraPools: []
+category: ancestry
+ancestries: [elf]
 level: 1

@@ -5,4 +5,6 @@ name: left_hand_blood
 system: pf2e
 mechanicalSummary: "It's said that the flesh of the right side of a hyena can heal diseases, but that the flesh of the left side is deadly and poisonous."
 extraPools: []
+category: ancestry
+ancestries: [kholo]
 level: 5

@@ -90,6 +90,32 @@
             </ui:VisualElement>
             <ui:VisualElement class="cv-sheet__section">
                 <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Nature" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:VisualElement class="cv-sheet__heading">
+                    <ui:Label text="NATURE" class="cv-caption" />
+                </ui:VisualElement>
+                <cv:Repeater item-template="Sheet/Feature" class="cv-features">
+                    <Bindings>
+                        <ui:DataBinding property="itemsSource" data-source-path="Nature" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:Repeater>
+            </ui:VisualElement>
+            <ui:VisualElement class="cv-sheet__section">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="ClassFeatures" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:VisualElement class="cv-sheet__heading">
+                    <ui:Label text="CLASS FEATURES" class="cv-caption" />
+                </ui:VisualElement>
+                <cv:Repeater item-template="Sheet/FeatureText" class="cv-feature-texts">
+                    <Bindings>
+                        <ui:DataBinding property="itemsSource" data-source-path="ClassFeatures" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:Repeater>
+            </ui:VisualElement>
+            <ui:VisualElement class="cv-sheet__section">
+                <Bindings>
                     <cv:ClassBinding property="cls-hidden" data-source-path="Features" class-name="cv-hidden" invert="true" />
                 </Bindings>
                 <ui:VisualElement class="cv-sheet__heading">

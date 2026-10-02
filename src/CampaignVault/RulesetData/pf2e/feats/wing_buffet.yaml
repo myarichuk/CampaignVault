@@ -4,6 +4,11 @@
 name: wing_buffet
 system: pf2e
 prerequisite: Expert in Athletics
+prerequisites:
+  - { skill: Athletics, rank: expert }
 mechanicalSummary: You have a pair of draconic wings strong enough to batter your foes away and shove them away.
 extraPools: []
+category: ancestry
+ancestries: [dragonblood]
+skills: [Athletics]
 level: 9

@@ -4,6 +4,9 @@
 name: incredible_mount
 system: pf2e
 prerequisite: Impressive Mount
+prerequisites:
+  - { feat: impressive_mount }
 mechanicalSummary: Under your care and training, your mount has realized its innate potential.
 extraPools: []
+category: archetype
 level: 8

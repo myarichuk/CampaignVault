@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Trained in Warfare Lore or Trained in Athletics
 mechanicalSummary: You are practiced in helping yourself and others don heavy gear.
 extraPools: []
+category: skill
+skills: [Athletics, Lore]
 level: 1

@@ -5,4 +5,6 @@ name: elven_weapon_familiarity
 system: pf2e
 mechanicalSummary: You favor bows and other elegant weapons.
 extraPools: []
+category: ancestry
+ancestries: [elf]
 level: 1

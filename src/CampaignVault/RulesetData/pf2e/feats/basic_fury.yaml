@@ -4,6 +4,9 @@
 name: basic_fury
 system: pf2e
 prerequisite: Barbarian Dedication
+prerequisites:
+  - { feat: barbarian_dedication }
 mechanicalSummary: You gain a 1st- or 2nd-level barbarian feat.
 extraPools: []
+category: archetype
 level: 4

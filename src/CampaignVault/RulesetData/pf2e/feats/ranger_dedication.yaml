@@ -4,6 +4,9 @@
 name: ranger_dedication
 system: pf2e
 prerequisite: Dexterity +2
+prerequisites:
+  - { ability: Dexterity, min: 2 }
 mechanicalSummary: You become trained in Survival; if you were already trained in Survival, you instead become trained in another skill of your choice.
 extraPools: []
+category: archetype
 level: 2

@@ -26,7 +26,7 @@ internal static class ToolProfiles
     /// </summary>
     public static readonly IReadOnlySet<string> ClientOnlyTools = new HashSet<string>(StringComparer.Ordinal)
     {
-        "character_builder",
+        "character_builder", "character_level_up",
     };
 
     /// <summary>The tools a tools/list shows: everything served except <see cref="ClientOnlyTools"/>.</summary>

@@ -4,6 +4,9 @@
 name: uncanny_dodge
 system: pf2e
 prerequisite: Rogue Dedication
+prerequisites:
+  - { feat: rogue_dedication }
 mechanicalSummary: You gain the deny advantage class feature.
 extraPools: []
+category: archetype
 level: 10

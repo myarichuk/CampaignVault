@@ -5,5 +5,6 @@ name: impressive_landing
 system: pf2e
 mechanicalSummary: You slam into the ground, shattering it around you.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 10

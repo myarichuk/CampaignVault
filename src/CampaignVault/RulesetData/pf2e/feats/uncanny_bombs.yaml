@@ -4,7 +4,10 @@
 name: uncanny_bombs
 system: pf2e
 prerequisite: Far Lobber
+prerequisites:
+  - { feat: far_lobber }
 mechanicalSummary: You lob bombs unerringly, despite obstructions or distance.
 extraPools: []
+category: class
 classes: [alchemist]
 level: 12

@@ -4,6 +4,10 @@
 name: fighter_dedication
 system: pf2e
 prerequisite: Strength +2; Dexterity +2
+prerequisites:
+  - { ability: Strength, min: 2 }
+  - { ability: Dexterity, min: 2 }
 mechanicalSummary: You become trained in martial weapons.
 extraPools: []
+category: archetype
 level: 2

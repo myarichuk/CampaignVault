@@ -4,6 +4,10 @@
 name: charming_liar
 system: pf2e
 prerequisite: Trained in Deception
+prerequisites:
+  - { skill: Deception, rank: trained }
 mechanicalSummary: Improve a target’s attitude with your lies
 extraPools: []
+category: skill
+skills: [Deception]
 level: 1

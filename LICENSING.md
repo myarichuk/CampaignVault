@@ -23,7 +23,9 @@ CampaignVault bundles game reference content from two systems:
 - **Source**: D&D 5e System Reference Document (SRD) 5.1, spells and equipment pulled from dnd5eapi.co (an MIT-licensed API wrapper strictly over SRD 5.1 data)
 - **Scope**: Core rules including classes, spells, conditions, backgrounds, mechanics, and mundane weapons/armor. Magic items (e.g. *Vorpal Sword*, *Armor +1*) are deliberately excluded — `scripts/generate_items.py` filters them out by `url` prefix, not by name, since they carry no fixed SRD stat block
 - **Feats**: SRD 5.1's own inclusion criteria exclude nearly all feats (Wizards' stated criteria: SRD-eligible content must have a 3e SRD equivalent and be vital to how a class/item/monster works). **Grappler is the only feat in the official SRD 5.1** — CampaignVault ships only that one for dnd5e; it does not include PHB feats like Alert, Great Weapon Master, Lucky, Tough, or War Caster, since those are not CC-BY-4.0 licensed.
-- **Reference**: https://dndbeyond.com/srd, and the bundled SRD-OGL_V5.1.pdf in this repository
+- **Subclasses and backgrounds**: SRD 5.1 has one subclass per class (Berserker, Lore, Life, Land, Champion, Open Hand, Devotion, Hunter, Thief, Draconic Bloodline, the Fiend, Evocation) and one background (Acolyte), so CampaignVault ships only those. Other subclass options are limited to what the SRD lists too (fighting styles, invocations, metamagic). Anything more comes from a plugin or the DM's homebrew (RULES_GAPS.md).
+- **Hand-kept files** (`progressions/`, `races/`, `backgrounds/`, `pools/`, `feats/`): short summaries of SRD 5.1 rules in our own words; nothing outside the SRD.
+- **Reference**: https://dndbeyond.com/srd and the dnd5eapi.co SRD 5.1 data (subclass features were checked against its /api/2014/subclasses endpoints)
 - **Attribution**: Wizards of the Coast LLC, https://dnd.wizards.com
 - **Restrictions**: Content is limited to the official SRD — no proprietary sourcebook material, Forgotten Realms setting-specific content, or licensed properties
 

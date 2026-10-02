@@ -4,7 +4,10 @@
 name: specialized_companion_ranger
 system: pf2e
 prerequisite: Incredible Companion (Ranger)
+prerequisites:
+  - { feat: incredible_companion_ranger }
 mechanicalSummary: Your animal companion continues to grow in power and ability, and it is now cunning enough to become specialized.
 extraPools: []
+category: class
 classes: [ranger]
 level: 16

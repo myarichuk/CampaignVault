@@ -235,6 +235,7 @@ namespace CampaignVault.UnityClient.App
                 _prefs.Save();
             }
             AddRecap(digest);
+            AnnounceLevelUps(digest);
             _s.Notify(StateArea.Session | StateArea.Pc | StateArea.Companions);
         }
 
@@ -1262,6 +1263,8 @@ namespace CampaignVault.UnityClient.App
             ob.Draft = string.Empty;
             ob.Party.Clear();
             ob.PartyLevel = 1;
+            ob.Drafting = false;
+            ob.DraftError = string.Empty;
             ob.ClearBrainstorm();
             SetOnboarding(OnboardingPhase.Idle, string.Empty);
         }

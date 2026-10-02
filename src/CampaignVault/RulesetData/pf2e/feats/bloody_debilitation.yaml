@@ -4,7 +4,11 @@
 name: bloody_debilitation
 system: pf2e
 prerequisite: Trained in Medicine; Debilitating Strike
+prerequisites:
+  - { skill: Medicine, rank: trained }
 mechanicalSummary: Your attacks slice arteries and veins.
 extraPools: []
+category: class
 classes: [rogue]
+skills: [Medicine]
 level: 12

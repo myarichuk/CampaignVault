@@ -4,7 +4,10 @@
 name: focused_shot
 system: pf2e
 prerequisite: Monastic Archer Stance
+prerequisites:
+  - { feat: monastic_archer_stance }
 mechanicalSummary: You achieve a state of perfect calm before unleashing your attack, opening your mind to the minute movements of the world around you to increase your accuracy.
 extraPools: []
+category: class
 classes: [monk]
 level: 12

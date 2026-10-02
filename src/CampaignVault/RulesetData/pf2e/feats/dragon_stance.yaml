@@ -5,5 +5,6 @@ name: dragon_stance
 system: pf2e
 mechanicalSummary: "You enter the stance of a dragon and make powerful leg strikes like a lashing dragon's tail."
 extraPools: []
+category: class
 classes: [monk]
 level: 1

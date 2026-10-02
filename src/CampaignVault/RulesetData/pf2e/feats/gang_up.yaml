@@ -5,5 +5,6 @@ name: gang_up
 system: pf2e
 mechanicalSummary: You and your allies harry an opponent in concert.
 extraPools: []
+category: class
 classes: [rogue]
 level: 6

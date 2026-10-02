@@ -5,5 +5,6 @@ name: twin_takedown
 system: pf2e
 mechanicalSummary: You swiftly attack your hunted prey with each of your weapons, potentially combining their damage into a single devastating attack.
 extraPools: []
+category: class
 classes: [ranger]
 level: 1

@@ -4,6 +4,9 @@
 name: spinebreaker
 system: pf2e
 prerequisite: Wrestler Dedication
+prerequisites:
+  - { feat: wrestler_dedication }
 mechanicalSummary: You squeeze your opponent in a vicious bear hug, putting intense pressure on their nerves, joints, or other pain points.
 extraPools: []
+category: archetype
 level: 10

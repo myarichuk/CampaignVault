@@ -4,6 +4,9 @@
 name: stunning_appearance
 system: pf2e
 prerequisite: Startling Appearance
+prerequisites:
+  - { feat: startling_appearance }
 mechanicalSummary: Your sudden appearance leaves your foe unable to respond.
 extraPools: []
+category: archetype
 level: 16

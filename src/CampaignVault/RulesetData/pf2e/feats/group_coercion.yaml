@@ -4,6 +4,10 @@
 name: group_coercion
 system: pf2e
 prerequisite: Trained in Intimidation
+prerequisites:
+  - { skill: Intimidation, rank: trained }
 mechanicalSummary: Coerce multiple targets simultaneously
 extraPools: []
+category: skill
+skills: [Intimidation]
 level: 1

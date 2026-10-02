@@ -5,4 +5,5 @@ name: additional_lore
 system: pf2e
 mechanicalSummary: Become trained in another Lore subcategory
 extraPools: []
+category: skill
 level: 1

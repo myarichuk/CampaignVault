@@ -4,7 +4,10 @@
 name: shield_of_faith
 system: pf2e
 prerequisite: Domain Initiate
+prerequisites:
+  - { feat: domain_initiate }
 mechanicalSummary: Residual energy from your domain spells bolsters your defenses.
 extraPools: []
+category: class
 classes: [cleric]
 level: 10

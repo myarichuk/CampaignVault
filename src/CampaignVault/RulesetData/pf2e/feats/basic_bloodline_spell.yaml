@@ -4,6 +4,9 @@
 name: basic_bloodline_spell
 system: pf2e
 prerequisite: Sorcerer Dedication
+prerequisites:
+  - { feat: sorcerer_dedication }
 mechanicalSummary: You gain your bloodline’s initial bloodline spell.
 extraPools: []
+category: archetype
 level: 4

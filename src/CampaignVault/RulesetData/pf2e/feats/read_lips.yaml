@@ -4,6 +4,10 @@
 name: read_lips
 system: pf2e
 prerequisite: Trained in Society
+prerequisites:
+  - { skill: Society, rank: trained }
 mechanicalSummary: Read the lips of people you can see
 extraPools: []
+category: skill
+skills: [Society]
 level: 1

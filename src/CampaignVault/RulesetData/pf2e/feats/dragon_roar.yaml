@@ -4,7 +4,10 @@
 name: dragon_roar
 system: pf2e
 prerequisite: Dragon Stance
+prerequisites:
+  - { feat: dragon_stance }
 mechanicalSummary: You bellow, instilling fear in your enemies.
 extraPools: []
+category: class
 classes: [monk]
 level: 6

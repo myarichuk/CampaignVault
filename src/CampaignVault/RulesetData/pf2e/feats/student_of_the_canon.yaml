@@ -4,6 +4,10 @@
 name: student_of_the_canon
 system: pf2e
 prerequisite: Trained in Religion
+prerequisites:
+  - { skill: Religion, rank: trained }
 mechanicalSummary: More accurately recognize the tenets of your faith or philosophy
 extraPools: []
+category: skill
+skills: [Religion]
 level: 1

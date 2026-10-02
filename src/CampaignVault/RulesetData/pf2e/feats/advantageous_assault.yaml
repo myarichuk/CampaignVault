@@ -5,5 +5,6 @@ name: advantageous_assault
 system: pf2e
 mechanicalSummary: After compromising your enemy’s movement, you deliver a more deadly blow.
 extraPools: []
+category: class
 classes: [fighter]
 level: 6

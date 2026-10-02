@@ -4,6 +4,9 @@
 name: basic_devotion
 system: pf2e
 prerequisite: Champion Dedication
+prerequisites:
+  - { feat: champion_dedication }
 mechanicalSummary: You gain a 1st- or 2nd-level champion feat.
 extraPools: []
+category: archetype
 level: 4

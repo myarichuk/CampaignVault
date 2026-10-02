@@ -4,7 +4,10 @@
 name: form_control
 system: pf2e
 prerequisite: Untamed Form
+prerequisites:
+  - { feat: untamed_form }
 mechanicalSummary: With additional care and effort, you can take on an alternate shape for a longer period of time.
 extraPools: []
+category: class
 classes: [druid]
 level: 4

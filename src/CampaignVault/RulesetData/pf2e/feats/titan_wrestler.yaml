@@ -4,6 +4,10 @@
 name: titan_wrestler
 system: pf2e
 prerequisite: Trained in Athletics
+prerequisites:
+  - { skill: Athletics, rank: trained }
 mechanicalSummary: Disarm, Grapple, Shove, or Trip larger creatures
 extraPools: []
+category: skill
+skills: [Athletics]
 level: 1

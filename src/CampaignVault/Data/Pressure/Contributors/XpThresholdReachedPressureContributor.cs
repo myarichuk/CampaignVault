@@ -58,7 +58,8 @@ public sealed class XpThresholdReachedPressureContributor : IPressureContributor
 
                 var message = $"{character.Name} (L{currentLevel}) has {xp} XP — enough to reach level {nextLevel} " +
                     $"(needed {xpRequired} XP). Call lookup kind:'level_up' characterId:'{character.Id}' " +
-                    "to see any choices (subclass, feat, ASI) to talk through with the player before committing.";
+                    "to see its 'slots' (subclass, feat, ability improvement, PF2e boosts and skill increase) to talk through with the player, " +
+                    "then commit level_up with their answers as 'picks' (slot id → option ids). If the player is at the Unity client they may already be choosing.";
 
                 if (xpSurplus > 0)
                 {

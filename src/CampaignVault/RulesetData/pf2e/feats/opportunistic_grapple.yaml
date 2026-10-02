@@ -4,6 +4,9 @@
 name: opportunistic_grapple
 system: pf2e
 prerequisite: Bounty Hunter Dedication
+prerequisites:
+  - { feat: bounty_hunter_dedication }
 mechanicalSummary: You use an opening to capture your prey.
 extraPools: []
+category: archetype
 level: 8

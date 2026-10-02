@@ -5,5 +5,6 @@ name: sap_life
 system: pf2e
 mechanicalSummary: You draw the life force out of your enemies.
 extraPools: []
+category: class
 classes: [cleric]
 level: 2

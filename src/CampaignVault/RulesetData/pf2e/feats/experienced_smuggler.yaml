@@ -4,6 +4,10 @@
 name: experienced_smuggler
 system: pf2e
 prerequisite: Trained in Stealth
+prerequisites:
+  - { skill: Stealth, rank: trained }
 mechanicalSummary: Conceal items from observers more effectively
 extraPools: []
+category: skill
+skills: [Stealth]
 level: 1

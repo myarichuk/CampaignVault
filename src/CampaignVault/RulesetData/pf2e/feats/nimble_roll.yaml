@@ -4,7 +4,10 @@
 name: nimble_roll
 system: pf2e
 prerequisite: Nimble Dodge
+prerequisites:
+  - { feat: nimble_dodge }
 mechanicalSummary: You throw yourself into a roll to escape imminent danger.
 extraPools: []
+category: class
 classes: [rogue]
 level: 8

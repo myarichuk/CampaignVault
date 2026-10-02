@@ -4,7 +4,10 @@
 name: powerful_shove
 system: pf2e
 prerequisite: Aggressive Block or Brutish Shove
+prerequisites:
+  - { anyOf: [{ feat: aggressive_block }, { feat: brutish_shove }] }
 mechanicalSummary: You can push larger foes around with your attack.
 extraPools: []
+category: class
 classes: [fighter]
 level: 4

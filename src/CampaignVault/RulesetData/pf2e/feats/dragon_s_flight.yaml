@@ -5,4 +5,6 @@ name: dragon_s_flight
 system: pf2e
 mechanicalSummary: "You have grown a small pair of draconic wings or have honed your use of the wings you've had since birth."
 extraPools: []
+category: ancestry
+ancestries: [dragonblood]
 level: 5

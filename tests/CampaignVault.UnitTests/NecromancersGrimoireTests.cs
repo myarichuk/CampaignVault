@@ -20,22 +20,50 @@ namespace CampaignVault.Tests;
 /// </summary>
 public class NecromancersGrimoireTests
 {
-    private static string PluginDataDir()
+    private static string PluginSourceDir()
     {
         var repo = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
         return Path.Combine(repo, "plugins", "NecromancersGrimoire", "RulesetData");
     }
 
-    private static SpellDefinitionProvider SpellProvider()
+    private static readonly Lazy<string> DataDir = new(() =>
     {
-        var dir = Path.Combine(Path.GetTempPath(), "cv_grimoire_spell_" + Guid.NewGuid());
-        return new SpellDefinitionProvider(PluginDataDir(), typeof(SpellDefinitionProvider).Assembly);
-    }
+        // A copy, never the plugin's own folder: a provider's root is the host layer, which extracts every shipped
+        // default into it, and that once filled the plugin with hundreds of copies of the base spells, items and creatures.
+        var dir = Path.Combine(Path.GetTempPath(), "cv_grimoire_" + Guid.NewGuid());
+        var source = PluginSourceDir();
+        foreach (var file in Directory.EnumerateFiles(source, "*.yaml", SearchOption.AllDirectories))
+        {
+            var target = Path.Combine(dir, Path.GetRelativePath(source, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target);
+        }
+        return dir;
+    });
 
-    private static CreatureDefinitionProvider CreatureProvider()
+    private static string PluginDataDir() => DataDir.Value;
+
+    private static SpellDefinitionProvider SpellProvider() =>
+        new(PluginDataDir(), typeof(SpellDefinitionProvider).Assembly);
+
+    private static CreatureDefinitionProvider CreatureProvider() =>
+        new(PluginDataDir(), typeof(CreatureDefinitionProvider).Assembly);
+
+    [Fact]
+    public void Plugin_HoldsOnlyItsOwnContent()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "cv_grimoire_creature_" + Guid.NewGuid());
-        return new CreatureDefinitionProvider(PluginDataDir(), typeof(CreatureDefinitionProvider).Assembly);
+        var root = Path.GetDirectoryName(Path.GetDirectoryName(PluginSourceDir()))!;
+        Assert.Empty(Directory.EnumerateFiles(root, ".extracted-manifest.json", SearchOption.AllDirectories));
+        // No file shares its name with a default the host ships (those are extracted copies, not the plugin's content).
+        var shipped = typeof(CreatureDefinitionProvider).Assembly.GetManifestResourceNames()
+            .Where(n => n.StartsWith("CampaignVault.RulesetData.dnd5e.", StringComparison.Ordinal))
+            .Select(n => n["CampaignVault.RulesetData.dnd5e.".Length..])
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var copies = Directory.EnumerateFiles(PluginSourceDir(), "*.yaml", SearchOption.AllDirectories)
+            .Select(f => Path.GetRelativePath(Path.Combine(PluginSourceDir(), "dnd5e"), f).Replace(Path.DirectorySeparatorChar, '.'))
+            .Where(shipped.Contains)
+            .ToList();
+        Assert.Empty(copies);
     }
 
     [Fact]

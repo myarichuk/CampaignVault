@@ -5,5 +5,6 @@ name: reactive_pursuit
 system: pf2e
 mechanicalSummary: You keep pace with a retreating foe.
 extraPools: []
+category: class
 classes: [rogue]
 level: 4

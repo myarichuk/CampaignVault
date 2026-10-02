@@ -4,6 +4,9 @@
 name: evasiveness_rogue
 system: pf2e
 prerequisite: Rogue Dedication; expert in Reflex saves
+prerequisites:
+  - { feat: rogue_dedication }
 mechanicalSummary: Your proficiency rank for Reflex saves increases to master.
 extraPools: []
+category: archetype
 level: 12

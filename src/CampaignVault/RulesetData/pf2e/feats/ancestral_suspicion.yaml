@@ -5,4 +5,6 @@ name: ancestral_suspicion
 system: pf2e
 mechanicalSummary: Long-lived elves have seen civilizations rise and fall, often at the hands of outside forces. As a result, they have developed a wariness of others who might seek to influence or control them.
 extraPools: []
+category: ancestry
+ancestries: [elf]
 level: 5

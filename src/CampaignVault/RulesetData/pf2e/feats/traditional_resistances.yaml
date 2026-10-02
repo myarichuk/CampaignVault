@@ -4,6 +4,10 @@
 name: traditional_resistances
 system: pf2e
 prerequisite: Arcane Dragonblood, Divine Dragonblood, Occult Dragonblood, or Primal Dragonblood
+prerequisites:
+  - { anyOf: [{ feat: arcane_dragonblood }, { feat: divine_dragonblood }, { feat: occult_dragonblood }, { feat: primal_dragonblood }] }
 mechanicalSummary: Due to your blood, you have some resistance to certain types of magic.
 extraPools: []
+category: ancestry
+ancestries: [dragonblood]
 level: 5

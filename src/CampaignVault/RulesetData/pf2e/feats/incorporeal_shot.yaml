@@ -4,6 +4,9 @@
 name: incorporeal_shot
 system: pf2e
 prerequisite: Eldritch Archer Dedication
+prerequisites:
+  - { feat: eldritch_archer_dedication }
 mechanicalSummary: You can concentrate an immense amount of magic to create a piece of ammunition that phases through everything but your target.
 extraPools: []
+category: archetype
 level: 16

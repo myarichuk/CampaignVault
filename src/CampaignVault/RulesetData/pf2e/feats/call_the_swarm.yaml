@@ -4,6 +4,10 @@
 name: call_the_swarm
 system: pf2e
 prerequisite: Ratspeak
+prerequisites:
+  - { feat: ratspeak }
 mechanicalSummary: You give a shrill whistle and point, and a massive swarm of rats pours forth from the surrounding terrain to fill a 30-foot burst within 120 feet.
 extraPools: []
+category: ancestry
+ancestries: [ratfolk]
 level: 17

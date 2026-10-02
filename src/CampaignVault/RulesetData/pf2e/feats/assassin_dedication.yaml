@@ -4,6 +4,11 @@
 name: assassin_dedication
 system: pf2e
 prerequisite: Trained in Deception; Trained in Stealth
+prerequisites:
+  - { skill: Deception, rank: trained }
+  - { skill: Stealth, rank: trained }
 mechanicalSummary: "You've trained to assassinate your foes, and you do so with tenacity and precision."
 extraPools: []
+category: archetype
+skills: [Deception, Stealth]
 level: 2

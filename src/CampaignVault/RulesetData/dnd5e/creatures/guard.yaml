@@ -1,0 +1,23 @@
+# Source: SRD 5.1 (CC-BY-4.0), adapted as a party companion template. Edit freely in the builder.
+name: Guard
+system: dnd5e
+description: A watchman or caravan guard hired to keep the party safe.
+challengeRating: "1/8"
+hp: 11
+defense: 16
+companion: true
+statBlock:
+  creatureType: Humanoid
+  challengeRating: "1/8"
+  statBlockHp: "11"
+  armorClass: "16"
+  movement: "30"
+  strength: "13"
+  dexterity: "12"
+  constitution: "12"
+  intelligence: "10"
+  wisdom: "11"
+  charisma: "10"
+  attacks: "Spear +3, 1d6+1 piercing, reach 5 ft. or range 20/60 ft."
+  skillModifiers: "Perception +2"
+  traits: "Chain shirt and shield."

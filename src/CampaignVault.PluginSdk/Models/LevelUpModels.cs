@@ -47,6 +47,10 @@ public class PendingLevelUpChoice
 
     [JsonPropertyName("abilityOptions")]
     public List<string> AbilityOptions { get; set; } = [];
+
+    /// <summary>How many different options to take (two metamagic options at once). Record each as its own choice.</summary>
+    [JsonPropertyName("count")]
+    public int Count { get; set; } = 1;
 }
 
 /// <summary>
@@ -76,6 +80,12 @@ public class PendingLevelUpChoicesResponse
     /// </summary>
     public Pf2eLevelBudget? Pf2eBudget { get; set; }
 
+    /// <summary>
+    /// The same choices as <see cref="Choices"/> in the shape a menu is built from, with the PF2e attribute boosts and skill
+    /// increases and the 5e ability score improvement's feats spelled out. Commit the answers as <c>picks</c> (slot id → options).
+    /// </summary>
+    public List<PendingLevelUpSlot> Slots { get; set; } = [];
+
     public string Summary { get; set; } = null!;
 }
 
@@ -86,4 +96,73 @@ public class Pf2eLevelBudget
     public int GeneralFeats { get; set; }
     public int AncestryFeats { get; set; }
     public int AbilityBoosts { get; set; }
+}
+
+/// <summary>One choice of the level being gained, ready to ask: <c>4.asiOrFeat</c>, <c>3.subclass</c>, <c>5.skillIncrease</c>.</summary>
+public class PendingLevelUpSlot
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = null!;
+
+    [JsonPropertyName("title")]
+    public string Title { get; set; } = null!;
+
+    /// <summary>Enum, AsiOrFeat, AttributeBoosts, SkillIncrease, SkillProficiency, FeatSelection or FreeText.</summary>
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = null!;
+
+    [JsonPropertyName("required")]
+    public bool Required { get; set; }
+
+    /// <summary>How many options to pick. An ability score improvement is one ability (+2) or two (+1 each), or one feat.</summary>
+    [JsonPropertyName("picks")]
+    public int Picks { get; set; } = 1;
+
+    [JsonPropertyName("abilities")]
+    public List<string>? Abilities { get; set; }
+
+    [JsonPropertyName("options")]
+    public List<PendingLevelUpOption> Options { get; set; } = [];
+}
+
+public class PendingLevelUpOption
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = null!;
+
+    [JsonPropertyName("label")]
+    public string Label { get; set; } = null!;
+
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    [JsonPropertyName("homebrew")]
+    public bool Homebrew { get; set; }
+}
+
+/// <summary>
+/// Whether a character can gain a level now, as the sheet shows it. <see cref="Ready"/> is the XP rule: the campaign's
+/// XP table (or custom thresholds) says the character has enough. Milestone campaigns are never ready by XP; the DM or
+/// the player decides, so a player character can always ask for the menu while <see cref="Possible"/>.
+/// </summary>
+public class LevelUpStatus
+{
+    [JsonPropertyName("possible")]
+    public bool Possible { get; set; }
+
+    [JsonPropertyName("ready")]
+    public bool Ready { get; set; }
+
+    [JsonPropertyName("level")]
+    public int Level { get; set; }
+
+    [JsonPropertyName("targetLevel")]
+    public int TargetLevel { get; set; }
+
+    [JsonPropertyName("xp")]
+    public int Xp { get; set; }
+
+    /// <summary>The XP the target level needs, or null for milestone campaigns and systems with no XP table.</summary>
+    [JsonPropertyName("xpNeeded")]
+    public int? XpNeeded { get; set; }
 }

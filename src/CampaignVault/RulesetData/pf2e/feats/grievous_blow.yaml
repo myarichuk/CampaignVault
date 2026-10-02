@@ -4,6 +4,9 @@
 name: grievous_blow
 system: pf2e
 prerequisite: Martial Artist Dedication
+prerequisites:
+  - { feat: martial_artist_dedication }
 mechanicalSummary: You know how to deliver focused, powerful blows that bypass your enemies’ resistances.
 extraPools: []
+category: archetype
 level: 8

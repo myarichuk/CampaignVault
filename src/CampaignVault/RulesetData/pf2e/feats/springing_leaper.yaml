@@ -4,6 +4,11 @@
 name: springing_leaper
 system: pf2e
 prerequisite: Expert in Athletics
+prerequisites:
+  - { skill: Athletics, rank: expert }
 mechanicalSummary: Your powerful legs allow you to make sudden and dramatic leaps.
 extraPools: []
+category: ancestry
+ancestries: [catfolk]
+skills: [Athletics]
 level: 5

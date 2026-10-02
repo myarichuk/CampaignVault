@@ -4,6 +4,11 @@
 name: shoving_sweep
 system: pf2e
 prerequisite: Mauler Dedication; Expert in Athletics
+prerequisites:
+  - { feat: mauler_dedication }
+  - { skill: Athletics, rank: expert }
 mechanicalSummary: You swing your weapon at your foe, rebuffing them back.
 extraPools: []
+category: archetype
+skills: [Athletics]
 level: 8

@@ -3,6 +3,7 @@ using CampaignVault.Data;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
+using CampaignVault.Services;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 using static CampaignVault.Data.ClimateCycle;
@@ -20,6 +21,7 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
     private readonly IPressureManager _pressureManager;
     private readonly IPressureOrchestrator _pressureOrchestrator;
     private readonly IRulesetModuleSelector _rulesetSelector;
+    private readonly ProgressionDefinitionProvider? _progressionProvider;
 
     public ExplorationTools(
         CampaignRepository repository,
@@ -28,9 +30,11 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
         CampaignDocumentKeys keys,
         IPressureManager pressureManager,
         IPressureOrchestrator pressureOrchestrator,
-        ILogger<ExplorationTools>? logger = null)
+        ILogger<ExplorationTools>? logger = null,
+        ProgressionDefinitionProvider? progressionProvider = null)
         : base(repository, keys, logger)
     {
+        _progressionProvider = progressionProvider;
         _behaviorSynthesizer = behaviorSynthesizer;
         _rulesetSelector = rulesetSelector;
         _pressureManager = pressureManager;
@@ -246,6 +250,8 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
                 RelevantMemories = [.. enrichment.RelevantMemories],
                 Equipped = equipped,
                 Carried = carried,
+                ClassFeatures = CharacterClassFeatures.Views(npc, config.ActiveSystem, _progressionProvider),
+                LevelUp = LevelUpStatusReader.For(npc, config, _progressionProvider),
                 TurnIntent = enrichment.TurnIntent,
                 AssociatedPlotThreads = associatedMinimal
             };

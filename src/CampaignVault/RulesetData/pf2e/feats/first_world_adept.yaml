@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: at least one primal innate spell
 mechanicalSummary: Over time your fey magic has grown stronger.
 extraPools: []
+category: ancestry
+ancestries: [gnome]
 level: 9

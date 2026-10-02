@@ -5,5 +5,6 @@ name: vivacious_bravado
 system: pf2e
 mechanicalSummary: Your ego swells, granting you a temporary reprieve from your pain.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 8

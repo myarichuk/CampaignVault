@@ -30,6 +30,7 @@ namespace CampaignVault.UnityClient.App
         Busy = 1 << 13,
         Plugins = 1 << 14,
         Builder = 1 << 15,
+        LevelUp = 1 << 16,
         All = ~0,
     }
 
@@ -89,6 +90,24 @@ namespace CampaignVault.UnityClient.App
         public int Level = 1;
         public string Kind = "pc";
         public CharacterDraft Draft = new CharacterDraft();
+        /// <summary>Drafted by the DM and not reviewed yet: Id is a placeholder ("draft-1"), nothing is saved until the builder commits it.</summary>
+        public bool Pending;
+        /// <summary>What the drafter changed or dropped, and what the preview objected to: shown on the card until it is reviewed.</summary>
+        public readonly List<string> Issues = new List<string>();
+    }
+
+    /// <summary>The level-up menu for one character: loaded from character_level_up, picked like the builder's level choices.</summary>
+    public sealed class LevelUpState
+    {
+        public string CharacterId = string.Empty;
+        public bool Loading;
+        public bool Applying;
+        public string Error = string.Empty;
+        public LevelUpOffer Offer;
+        /// <summary>The builder's level choice: slot id → option id(s).</summary>
+        public JsonValue Choice;
+        /// <summary>Set when the level was gained: the overlay closes itself.</summary>
+        public bool Done;
     }
 
     public sealed class OnboardingState
@@ -120,6 +139,9 @@ namespace CampaignVault.UnityClient.App
         /// <summary>The party step: characters built so far (kept across the builder round trips), and the starting level.</summary>
         public readonly List<PartyMember> Party = new List<PartyMember>();
         public int PartyLevel = 1;
+        /// <summary>"DM drafts companions": the one model call is out.</summary>
+        public bool Drafting;
+        public string DraftError = string.Empty;
 
         /// <summary>Pre-fills the current question's field (a brainstormed write-up); cleared per question.</summary>
         public string Draft = string.Empty;
@@ -153,6 +175,8 @@ namespace CampaignVault.UnityClient.App
         public int Count = -1;
         /// <summary>A spells step's picks per group (cantrips, known, prepared).</summary>
         public readonly Dictionary<string, int> GroupCounts = new Dictionary<string, int>();
+        /// <summary>A levelChoices step's slots, in level order (each option's group is a slot id).</summary>
+        public readonly List<LevelSlot> Slots = new List<LevelSlot>();
         public string Error = string.Empty;
 
         public int GroupCount(string group)
@@ -207,6 +231,8 @@ namespace CampaignVault.UnityClient.App
         public readonly List<BuilderStep> Steps = new List<BuilderStep>();
         public readonly List<StatBlockSchema> StatBlocks = new List<StatBlockSchema>();
         public string Current = string.Empty;
+        /// <summary>The recipe's highest level (from the server's steps); 0 until they load.</summary>
+        public int MaxLevel;
         /// <summary>Step key → its options, for the draft as it was when they loaded.</summary>
         public readonly Dictionary<string, StepOptions> Options = new Dictionary<string, StepOptions>(StringComparer.OrdinalIgnoreCase);
         public readonly AbilityWork Abilities = new AbilityWork();
@@ -227,6 +253,8 @@ namespace CampaignVault.UnityClient.App
         public string CommittedId = string.Empty;
         /// <summary>The draft belongs to the campaign being set up (the onboarding party step), not the one at the table.</summary>
         public bool ForOnboarding;
+        /// <summary>The party card this draft came from when it is a DM draft under review (its placeholder id); the commit replaces that card.</summary>
+        public string PendingKey = string.Empty;
         /// <summary>Bumped on every draft change, so a slow reply about an older draft is dropped.</summary>
         public int Revision;
 
@@ -240,6 +268,16 @@ namespace CampaignVault.UnityClient.App
         public readonly List<string> Suggested = new List<string>();
         /// <summary>Ids the DM suggested that aren't options: shown, never dropped silently.</summary>
         public readonly List<string> NotOptions = new List<string>();
+
+        // "The DM fills the rest": one model call proposes picks for every open step; the player reviews them.
+        public bool FillBusy;
+        public string FillError = string.Empty;
+        /// <summary>What the DM said about its picks, shown until dismissed or the next fill.</summary>
+        public string FillReply = string.Empty;
+        /// <summary>The titles of the steps the DM filled.</summary>
+        public readonly List<string> Filled = new List<string>();
+        /// <summary>Step key → the DM's picks that weren't options there ("pyromancy (Level 2 · Arcane Tradition)"): left open, flagged on the step.</summary>
+        public readonly Dictionary<string, List<string>> Rejected = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
         public BuilderStep Step(string key)
         {
@@ -262,6 +300,7 @@ namespace CampaignVault.UnityClient.App
         public void Reset(string slug, string system, string kind)
         {
             ForOnboarding = false;
+            PendingKey = string.Empty;
             Slug = slug ?? string.Empty;
             System = system ?? string.Empty;
             Draft = new CharacterDraft { Kind = kind ?? "pc" };
@@ -291,6 +330,17 @@ namespace CampaignVault.UnityClient.App
             AskReply = string.Empty;
             Suggested.Clear();
             NotOptions.Clear();
+            MaxLevel = 0;
+            ClearFill();
+        }
+
+        public void ClearFill()
+        {
+            FillBusy = false;
+            FillError = string.Empty;
+            FillReply = string.Empty;
+            Filled.Clear();
+            Rejected.Clear();
         }
     }
 
@@ -372,6 +422,10 @@ namespace CampaignVault.UnityClient.App
         public readonly Dictionary<string, string> ToolsErrors = new Dictionary<string, string>();
         public readonly OnboardingState Onboarding = new OnboardingState();
         public readonly BuilderState Builder = new BuilderState();
+        /// <summary>The level-up menu (Templates/Sheet/LevelUp.uxml): what the next level offers, and the picks so far.</summary>
+        public readonly LevelUpState LevelUp = new LevelUpState();
+        /// <summary>Party members whose earned level the player was already told about ("id@level"), so the toast comes once.</summary>
+        public readonly HashSet<string> LevelUpAnnounced = new HashSet<string>();
         /// <summary>The connected server's GET /plugins, as of the last load.</summary>
         public readonly List<PluginEntry> Plugins = new List<PluginEntry>();
         public string PluginsError = string.Empty;
@@ -403,12 +457,12 @@ namespace CampaignVault.UnityClient.App
         public event Action SetupRequested;
         /// <summary>Chat was tried with no campaign at the table: the UI should open the campaign book.</summary>
         public event Action CampaignsRequested;
-        /// <summary>The onboarding party step wants the builder: a new character (empty id) or the one with this id.</summary>
-        public event Action<string> PartyBuilderRequested;
+        /// <summary>The onboarding party step wants the builder: a new character of this kind (pc or companion) when the id is empty, else the one with this id.</summary>
+        public event Action<string, string> PartyBuilderRequested;
 
-        public void RequestPartyBuilder(string editId)
+        public void RequestPartyBuilder(string editId, string kind)
         {
-            if (PartyBuilderRequested != null) { PartyBuilderRequested(editId ?? string.Empty); }
+            if (PartyBuilderRequested != null) { PartyBuilderRequested(editId ?? string.Empty, string.IsNullOrEmpty(kind) ? "pc" : kind); }
         }
 
         public void Notify(StateArea area)

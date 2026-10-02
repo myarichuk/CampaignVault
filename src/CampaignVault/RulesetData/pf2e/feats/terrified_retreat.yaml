@@ -4,6 +4,10 @@
 name: terrified_retreat
 system: pf2e
 prerequisite: Master in Intimidation
+prerequisites:
+  - { skill: Intimidation, rank: master }
 mechanicalSummary: Cause foes you Demoralize to flee
 extraPools: []
+category: skill
+skills: [Intimidation]
 level: 7

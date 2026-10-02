@@ -1,5 +1,6 @@
 using CampaignVault.AutofacModules;
 using CampaignVault.Data;
+using CampaignVault.Data.Templates;
 using CampaignVault.Models;
 using CampaignVault.Plugins;
 using Microsoft.Extensions.Logging;
@@ -52,7 +53,12 @@ public abstract class CampaignToolBase
                 Summary: NoCampaignSelectedSummary));
         }
 
-        return ExecuteAsync(session => action(effective, session), saveChanges);
+        // The campaign's homebrew (subclasses, ancestries, powers) is in effect for everything the call does.
+        return ExecuteAsync(async session =>
+        {
+            using var homebrew = HomebrewScope.Enter(await _repository.GetHomebrewSnapshotAsync(session, effective));
+            return await action(effective, session);
+        }, saveChanges);
     }
 
     protected async Task<ToolResult<T>> ExecuteAsync<T>(Func<IAsyncDocumentSession, Task<ToolResult<T>>> action, bool saveChanges = true)

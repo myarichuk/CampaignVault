@@ -5,5 +5,6 @@ name: extravagant_parry
 system: pf2e
 mechanicalSummary: You use one-handed weapons to parry with style.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 1

@@ -4,6 +4,10 @@
 name: boulder_roll
 system: pf2e
 prerequisite: Rock Runner
+prerequisites:
+  - { feat: rock_runner }
 mechanicalSummary: Your dwarven build allows you to push foes around, just like a mighty boulder tumbles through a subterranean cavern.
 extraPools: []
+category: ancestry
+ancestries: [dwarf]
 level: 5

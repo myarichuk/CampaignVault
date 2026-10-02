@@ -4,6 +4,9 @@
 name: follow_up_strike
 system: pf2e
 prerequisite: Martial Artist Dedication
+prerequisites:
+  - { feat: martial_artist_dedication }
 mechanicalSummary: You have trained rigorously to use all parts of your body as a weapon, and when you miss with an attack, you can usually continue the attack with a different body part and still deal damage.
 extraPools: []
+category: archetype
 level: 6

@@ -4,6 +4,9 @@
 name: investigator_s_stratagem
 system: pf2e
 prerequisite: Investigator Dedication
+prerequisites:
+  - { feat: investigator_dedication }
 mechanicalSummary: You play out battles in your head, allowing you to strike when the time is right.
 extraPools: []
+category: archetype
 level: 4

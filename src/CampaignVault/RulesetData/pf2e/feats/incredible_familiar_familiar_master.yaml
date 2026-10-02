@@ -4,6 +4,9 @@
 name: incredible_familiar_familiar_master
 system: pf2e
 prerequisite: Enhanced Familiar
+prerequisites:
+  - { feat: enhanced_familiar }
 mechanicalSummary: Your familiar is infused with even more magic than other familiars.
 extraPools: []
+category: archetype
 level: 10

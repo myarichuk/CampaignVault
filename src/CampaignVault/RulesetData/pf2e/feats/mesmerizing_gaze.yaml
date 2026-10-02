@@ -4,6 +4,9 @@
 name: mesmerizing_gaze
 system: pf2e
 prerequisite: Celebrity Dedication
+prerequisites:
+  - { feat: celebrity_dedication }
 mechanicalSummary: When you meet someone’s gaze, they’re unable to look away from you.
 extraPools: []
+category: archetype
 level: 6

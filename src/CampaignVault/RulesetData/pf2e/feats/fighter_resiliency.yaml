@@ -4,6 +4,9 @@
 name: fighter_resiliency
 system: pf2e
 prerequisite: Fighter Dedication; class granting no more Hit Points per level than 8 + your Constitution modifier
+prerequisites:
+  - { feat: fighter_dedication }
 mechanicalSummary: You gain 3 additional Hit Points for each fighter archetype class feat you have.
 extraPools: []
+category: archetype
 level: 4

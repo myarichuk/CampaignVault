@@ -5,4 +5,6 @@ name: stonemason_s_eye
 system: pf2e
 mechanicalSummary: You understand the intricacies of stonework.
 extraPools: []
+category: ancestry
+ancestries: [dwarf]
 level: 1

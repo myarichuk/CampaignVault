@@ -5,5 +5,6 @@ name: intimidating_strike
 system: pf2e
 mechanicalSummary: Your blow not only wounds creatures but also shatters their confidence.
 extraPools: []
+category: class
 classes: [barbarian, fighter]
 level: 2

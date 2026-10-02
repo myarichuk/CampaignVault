@@ -4,6 +4,9 @@
 name: rolling_landing
 system: pf2e
 prerequisite: Cat Fall
+prerequisites:
+  - { feat: cat_fall }
 mechanicalSummary: You land with quick rolls that help you keep your momentum.
 extraPools: []
+category: skill
 level: 2

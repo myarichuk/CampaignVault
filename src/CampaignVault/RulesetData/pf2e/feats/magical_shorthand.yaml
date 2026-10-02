@@ -4,6 +4,10 @@
 name: magical_shorthand
 system: pf2e
 prerequisite: Expert in Arcana, Expert in Nature, Expert in Occultism, or Expert in Religion
+prerequisites:
+  - { anyOf: [{ skill: Arcana, rank: expert }, { skill: Nature, rank: expert }, { skill: Occultism, rank: expert }, { skill: Religion, rank: expert }] }
 mechanicalSummary: Learn spells quickly and at a reduced cost
 extraPools: []
+category: skill
+skills: [Arcana, Nature, Occultism, Religion]
 level: 2

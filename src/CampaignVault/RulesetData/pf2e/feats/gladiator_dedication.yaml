@@ -4,6 +4,9 @@
 name: gladiator_dedication
 system: pf2e
 prerequisite: Impressive Performance
+prerequisites:
+  - { feat: impressive_performance }
 mechanicalSummary: You know how to turn combat into a form of entertainment.
 extraPools: []
+category: archetype
 level: 2

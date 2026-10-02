@@ -4,7 +4,10 @@
 name: emblazon_antimagic
 system: pf2e
 prerequisite: Emblazon Armament
+prerequisites:
+  - { feat: emblazon_armament }
 mechanicalSummary: Your deity’s symbol protects against offensive magic.
 extraPools: []
+category: class
 classes: [cleric]
 level: 12

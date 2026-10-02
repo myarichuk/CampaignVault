@@ -4,7 +4,11 @@
 name: blank_slate
 system: pf2e
 prerequisite: Legendary in Deception
+prerequisites:
+  - { skill: Deception, rank: legendary }
 mechanicalSummary: Your deceptions confound even the most powerful magic that could spy on you.
 extraPools: []
+category: class
 classes: [rogue]
+skills: [Deception]
 level: 16

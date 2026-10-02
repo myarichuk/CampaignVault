@@ -4,7 +4,11 @@
 name: deimatic_display
 system: pf2e
 prerequisite: Trained in Intimidation
+prerequisites:
+  - { skill: Intimidation, rank: trained }
 mechanicalSummary: Imitating animal threat displays, you make yourself appear larger and more imposing.
 extraPools: []
+category: class
 classes: [druid]
+skills: [Intimidation]
 level: 8

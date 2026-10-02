@@ -4,6 +4,12 @@
 name: analyze_idiolect
 system: pf2e
 prerequisite: Linguist Dedication; Expert in Deception; Expert in Society
+prerequisites:
+  - { feat: linguist_dedication }
+  - { skill: Deception, rank: expert }
+  - { skill: Society, rank: expert }
 mechanicalSummary: You break down a specific individual’s idiolect, memorizing their speech mannerisms and habits.
 extraPools: []
+category: skill
+skills: [Deception, Society]
 level: 6

@@ -4,7 +4,10 @@
 name: ferocious_shape
 system: pf2e
 prerequisite: Untamed Form
+prerequisites:
+  - { feat: untamed_form }
 mechanicalSummary: You’ve mastered the shape of dinosaurs.
 extraPools: []
+category: class
 classes: [druid]
 level: 8

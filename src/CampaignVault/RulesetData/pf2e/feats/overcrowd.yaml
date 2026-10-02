@@ -5,4 +5,6 @@ name: overcrowd
 system: pf2e
 mechanicalSummary: As long as you are Small, you can end your movement in the same square as a Small ally.
 extraPools: []
+category: ancestry
+ancestries: [ratfolk]
 level: 9

@@ -4,7 +4,10 @@
 name: triumphant_inspiration
 system: pf2e
 prerequisite: warrior muse
+prerequisites:
+  - { classFeature: warrior }
 mechanicalSummary: With a triumphant shout, you inspire your allies.
 extraPools: []
+category: class
 classes: [bard]
 level: 14

@@ -4,6 +4,9 @@
 name: basic_wilding
 system: pf2e
 prerequisite: Druid Dedication
+prerequisites:
+  - { feat: druid_dedication }
 mechanicalSummary: You gain a 1st- or 2nd-level druid feat.
 extraPools: []
+category: archetype
 level: 4

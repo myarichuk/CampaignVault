@@ -5,5 +5,6 @@ name: ley_line_conduit
 system: pf2e
 mechanicalSummary: You can draw magic from the ley lines of the world.
 extraPools: []
+category: class
 classes: [druid]
 level: 20

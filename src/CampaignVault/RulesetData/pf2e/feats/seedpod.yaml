@@ -5,4 +5,6 @@ name: seedpod
 system: pf2e
 mechanicalSummary: Your body produces a nearly endless supply of hard seedpods.
 extraPools: []
+category: ancestry
+ancestries: [leshy]
 level: 1

@@ -4,6 +4,9 @@
 name: poultice_preparation
 system: pf2e
 prerequisite: Herbalist Dedication
+prerequisites:
+  - { feat: herbalist_dedication }
 mechanicalSummary: When you create an elixir as an herbal item, you can prepare it as a poultice instead.
 extraPools: []
+category: archetype
 level: 4

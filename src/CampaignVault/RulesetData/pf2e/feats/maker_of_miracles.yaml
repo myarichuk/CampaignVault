@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: miraculous spell
 mechanicalSummary: You are a conduit for truly deific power.
 extraPools: []
+category: class
 classes: [cleric]
 level: 20

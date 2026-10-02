@@ -4,7 +4,10 @@
 name: distracting_feint
 system: pf2e
 prerequisite: scoundrel racket
+prerequisites:
+  - { classFeature: scoundrel }
 mechanicalSummary: Your Feints are far more distracting than normal.
 extraPools: []
+category: class
 classes: [rogue]
 level: 2

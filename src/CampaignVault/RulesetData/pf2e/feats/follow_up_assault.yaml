@@ -5,5 +5,6 @@ name: follow_up_assault
 system: pf2e
 mechanicalSummary: Even in the face of failure you press the attack, determined to succeed.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 8

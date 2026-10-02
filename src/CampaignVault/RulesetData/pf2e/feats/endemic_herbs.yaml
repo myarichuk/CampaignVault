@@ -4,6 +4,11 @@
 name: endemic_herbs
 system: pf2e
 prerequisite: Herbalist Dedication; Trained in Survival
+prerequisites:
+  - { feat: herbalist_dedication }
+  - { skill: Survival, rank: trained }
 mechanicalSummary: The herbal items you create use medicinal plants endemic to your location.
 extraPools: []
+category: archetype
+skills: [Survival]
 level: 6

@@ -4,7 +4,10 @@
 name: suspect_of_opportunity
 system: pf2e
 prerequisite: Person of Interest
+prerequisites:
+  - { feat: person_of_interest }
 mechanicalSummary: Sometimes something intrudes upon your case unexpectedly, such as an ambush sent to bring your investigation to a close.
 extraPools: []
+category: class
 classes: [investigator]
 level: 10

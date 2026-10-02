@@ -5,5 +5,6 @@ name: siphon_power
 system: pf2e
 mechanicalSummary: You draw upon the reservoir of your patron’s magic that resides within your familiar.
 extraPools: []
+category: class
 classes: [witch]
 level: 16

@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: a bloodline based on a specific type of creature
 mechanicalSummary: You permanently mutate to become more like the creatures of your bloodline.
 extraPools: []
+category: class
 classes: [sorcerer]
 level: 20

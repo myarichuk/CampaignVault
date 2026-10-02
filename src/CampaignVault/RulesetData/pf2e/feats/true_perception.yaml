@@ -6,4 +6,5 @@ system: pf2e
 prerequisite: Legendary in Perception
 mechanicalSummary: Your perceptive abilities and ability to process sensory information are so far beyond the pale that you notice minute discrepancies in all sorts of illusions and physical transformations.
 extraPools: []
+category: general
 level: 19

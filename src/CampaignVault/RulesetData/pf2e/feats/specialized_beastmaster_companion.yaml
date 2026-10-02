@@ -4,6 +4,9 @@
 name: specialized_beastmaster_companion
 system: pf2e
 prerequisite: Incredible Beastmaster Companion
+prerequisites:
+  - { feat: incredible_beastmaster_companion }
 mechanicalSummary: Your nimble and savage animal companions become cunning enough to become specialized.
 extraPools: []
+category: archetype
 level: 14

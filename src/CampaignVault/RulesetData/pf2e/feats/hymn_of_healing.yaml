@@ -5,5 +5,6 @@ name: hymn_of_healing
 system: pf2e
 mechanicalSummary: You learn the hymn of healing composition spell, which imbues your music with rich melodies that help your allies recover from harm.
 extraPools: []
+category: class
 classes: [bard]
 level: 1

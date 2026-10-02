@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: warrior
+system: pf2e
+description: "In your younger days, you waded into battle as a mercenary, a warrior defending a nomadic people, or a member of a militia or army. You might have wanted to break out from the regimented structure of these forces, or you could have always been as independent a warrior as you are now."
+boosts: [Strength, Constitution]
+skillProficiencies: [Intimidation]
+lore: Warfare Lore
+skillFeat: intimidating_glare
+feature: Intimidating Glare

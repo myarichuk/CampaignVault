@@ -4,7 +4,12 @@
 name: implausible_infiltration
 system: pf2e
 prerequisite: Legendary in Acrobatics; Quick Squeeze
+prerequisites:
+  - { skill: Acrobatics, rank: legendary }
+  - { feat: quick_squeeze }
 mechanicalSummary: You find tiny imperfections and somehow fit yourself through them, possibly moving directly through the wall or floor.
 extraPools: []
+category: class
 classes: [rogue]
+skills: [Acrobatics]
 level: 18

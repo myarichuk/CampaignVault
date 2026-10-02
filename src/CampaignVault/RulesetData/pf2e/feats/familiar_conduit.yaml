@@ -4,6 +4,9 @@
 name: familiar_conduit
 system: pf2e
 prerequisite: Familiar Master Dedication; able to cast spells
+prerequisites:
+  - { feat: familiar_master_dedication }
 mechanicalSummary: Under your tutelage, your familiar has grown attuned to the hidden currents of the world and can serve as a conduit for your magic.
 extraPools: []
+category: archetype
 level: 4

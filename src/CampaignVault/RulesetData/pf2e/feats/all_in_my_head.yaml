@@ -5,5 +5,6 @@ name: all_in_my_head
 system: pf2e
 mechanicalSummary: Using your occult connections and incredible powers of persuasion, you convince yourself that the triggering damage is a figment of your imagination.
 extraPools: []
+category: class
 classes: [bard]
 level: 18

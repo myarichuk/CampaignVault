@@ -4,6 +4,10 @@
 name: rapid_mantel
 system: pf2e
 prerequisite: Expert in Athletics
+prerequisites:
+  - { skill: Athletics, rank: expert }
 mechanicalSummary: Pull yourself onto ledges quickly
 extraPools: []
+category: skill
+skills: [Athletics]
 level: 2

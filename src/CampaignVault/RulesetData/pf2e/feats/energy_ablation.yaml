@@ -5,5 +5,6 @@ name: energy_ablation
 system: pf2e
 mechanicalSummary: As you direct destructive energy at a foe, you can divert some of its power into a protective barrier that shields you from harm.
 extraPools: []
+category: class
 classes: [wizard]
 level: 2

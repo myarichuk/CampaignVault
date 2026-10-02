@@ -4,6 +4,10 @@
 name: quiet_allies
 system: pf2e
 prerequisite: Expert in Stealth
+prerequisites:
+  - { skill: Stealth, rank: expert }
 mechanicalSummary: Roll a single Stealth check when sneaking with allies
 extraPools: []
+category: skill
+skills: [Stealth]
 level: 2

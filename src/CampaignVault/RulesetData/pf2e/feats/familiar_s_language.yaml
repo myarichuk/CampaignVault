@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: a familiar
 mechanicalSummary: You’ve learned to speak with your familiar and other creatures like it.
 extraPools: []
+category: class
 classes: [witch]
 level: 2

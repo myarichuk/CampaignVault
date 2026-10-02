@@ -1,7 +1,9 @@
+using CampaignVault.Rulesets.Creation;
 using System.ComponentModel;
 using CampaignVault.Data;
 using CampaignVault.Data.Templates;
 using CampaignVault.Models;
+using CampaignVault.Rulesets;
 using CampaignVault.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -22,6 +24,7 @@ public class CampaignManagementTools(
     CreatureDefinitionProvider creatureProvider,
     ProgressionDefinitionProvider progressionProvider,
     ItemDefinitionProvider itemProvider,
+    LevelUpPlanner levelUpPlanner,
     ILogger<CampaignManagementTools>? logger = null)
     : CampaignToolBase(repository, keys, logger), IMcpServerTool
 {
@@ -316,7 +319,7 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
 
     // Served through lookup(kind: <rules kind>); no longer an MCP tool of its own.
     [Description(
-        "Ruleset reference lookup by 'kind': handbook (classes/races/feats/conditions), spells (query=name and/or className; filter by level), creatures (stat-block templates), items (item templates), item_tags, level_up (characterId required; then commit one level_up change). Templates only: place live instances with world_build.")]
+        "Ruleset reference lookup by 'kind': handbook (classes/races/feats/conditions), spells (query=name and/or className; filter by level), creatures (stat-block templates), items (item templates), item_tags, level_up (characterId required: lists 'slots', the next level's choices with their options; commit one level_up change with the player's answers as 'picks', slot id → option ids). Templates only: place live instances with world_build.")]
     public async Task<ToolResult<object>> GetRulesReference(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,
@@ -482,24 +485,38 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
                 return new ToolResult<PendingLevelUpChoicesResponse>(true, response, response.Summary);
             }
 
+            // The class's features and choices at the new level, plus those of the options it picked (a subclass's).
+            var found = progressionProvider.TryGetProgression(system, className, out var progression);
+            var picked = CharacterClassFeatures.Picked(character.SystemStats, multiclass: true);
+            var features = found
+                ? [.. progression!.FeaturesUpTo(targetLevel, picked).Where(f => f.Level == targetLevel).Select(f => f.Feature)]
+                : levelDef.Features;
+            var choices = found
+                ? [.. progression!.ChoicesUpTo(targetLevel, picked).Where(c => c.Level == targetLevel).Select(c => c.Choice)]
+                : levelDef.Choices;
             response.Features =
             [
-                .. levelDef.Features.Select(f =>
+                .. features.Select(f =>
                     string.IsNullOrWhiteSpace(f.Description) ? f.Name : $"{f.Name}: {f.Description}")
             ];
 
             response.Choices =
             [
-                .. levelDef.Choices.Select(c => new PendingLevelUpChoice
+                .. choices.Select(c => new PendingLevelUpChoice
                 {
                     Key = c.Key,
                     Prompt = c.Prompt,
                     Type = c.Type,
                     Required = c.Required,
-                    Options = c.Options,
+                    Options = found ? progression!.OptionsFor(c) : c.Options,
                     AbilityOptions = c.AbilityOptions,
+                    Count = c.Count,
                 })
             ];
+
+            response.Slots = levelUpPlanner.Plan(character, system) is { } plan
+                ? [.. plan.Slots.Select(LevelUpPlanner.Describe)]
+                : [];
 
             if (system == RulesetSystem.Pathfinder2e
                 && (levelDef.ClassFeats is > 0 || levelDef.SkillFeats is > 0 || levelDef.GeneralFeats is > 0

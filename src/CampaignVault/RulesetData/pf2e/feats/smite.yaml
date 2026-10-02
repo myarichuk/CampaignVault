@@ -5,5 +5,6 @@ name: smite
 system: pf2e
 mechanicalSummary: "You single out one enemy to destroy in your deity's name."
 extraPools: []
+category: class
 classes: [champion]
 level: 6

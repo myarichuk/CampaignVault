@@ -4,6 +4,10 @@
 name: marshal_dedication
 system: pf2e
 prerequisite: Trained in Diplomacy or Trained in Intimidation; trained in martial weapons
+prerequisites:
+  - { anyOf: [{ skill: Diplomacy, rank: trained }, { skill: Intimidation, rank: trained }] }
 mechanicalSummary: You’ve combined your social skills and combat training to become a talented combat leader.
 extraPools: []
+category: archetype
+skills: [Diplomacy, Intimidation]
 level: 2

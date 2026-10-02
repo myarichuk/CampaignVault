@@ -1,0 +1,12 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: hermit
+system: pf2e
+description: "In an isolated place—like a cave, remote oasis, or secluded mansion—you lived a life of solitude. Adventuring might represent your first foray out among other people in some time. This might be a welcome reprieve from solitude or an unwanted change, but in either case, you’re likely still rough around the edges."
+boosts: [Constitution, Intelligence]
+skillProficiencies: []
+skillOptions: [Nature, Occultism]
+lore: Lore related to the terrain you lived in as a hermit (such as Cave Lore or Desert Lore)
+skillFeat: dubious_knowledge
+feature: Dubious Knowledge

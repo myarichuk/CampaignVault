@@ -4,7 +4,10 @@
 name: flashy_roll
 system: pf2e
 prerequisite: Flashy Dodge
+prerequisites:
+  - { feat: flashy_dodge }
 mechanicalSummary: You can use Flashy Dodge before attempting a Reflex save, in addition to its original trigger.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 8

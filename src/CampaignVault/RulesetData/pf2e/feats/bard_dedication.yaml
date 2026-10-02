@@ -4,6 +4,9 @@
 name: bard_dedication
 system: pf2e
 prerequisite: Charisma +2
+prerequisites:
+  - { ability: Charisma, min: 2 }
 mechanicalSummary: You cast spells like a bard and gain the Cast a Spell activity.
 extraPools: []
+category: archetype
 level: 2

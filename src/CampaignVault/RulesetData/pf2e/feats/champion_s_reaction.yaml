@@ -4,6 +4,9 @@
 name: champion_s_reaction
 system: pf2e
 prerequisite: Champion Dedication
+prerequisites:
+  - { feat: champion_dedication }
 mechanicalSummary: You can gain and use the champion’s reaction associated with your cause
 extraPools: []
+category: archetype
 level: 6

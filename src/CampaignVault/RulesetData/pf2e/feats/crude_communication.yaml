@@ -4,6 +4,9 @@
 name: crude_communication
 system: pf2e
 prerequisite: Linguist Dedication
+prerequisites:
+  - { feat: linguist_dedication }
 mechanicalSummary: Even if you don’t speak a creature’s language, you can rely on inflection, root words, and body language to infer rudimentary meaning.
 extraPools: []
+category: archetype
 level: 8

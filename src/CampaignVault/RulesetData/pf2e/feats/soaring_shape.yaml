@@ -4,7 +4,10 @@
 name: soaring_shape
 system: pf2e
 prerequisite: Untamed Form
+prerequisites:
+  - { feat: untamed_form }
 mechanicalSummary: Wings free you from the shackles of the ground below.
 extraPools: []
+category: class
 classes: [druid]
 level: 8

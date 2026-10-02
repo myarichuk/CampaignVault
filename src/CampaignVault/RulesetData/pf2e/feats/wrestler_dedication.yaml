@@ -4,6 +4,10 @@
 name: wrestler_dedication
 system: pf2e
 prerequisite: Trained in Athletics
+prerequisites:
+  - { skill: Athletics, rank: trained }
 mechanicalSummary: Your training in the wrestling arts has made you particularly adept at moving, striking, and grappling while unencumbered.
 extraPools: []
+category: archetype
+skills: [Athletics]
 level: 2

@@ -4,6 +4,9 @@
 name: quick_shot
 system: pf2e
 prerequisite: Archer Dedication
+prerequisites:
+  - { feat: archer_dedication }
 mechanicalSummary: You draw your bow and attack with the same action.
 extraPools: []
+category: archetype
 level: 4

@@ -5,4 +5,6 @@ name: stonewalker
 system: pf2e
 mechanicalSummary: You have a deep reverence for and connection to stone.
 extraPools: []
+category: ancestry
+ancestries: [dwarf]
 level: 9

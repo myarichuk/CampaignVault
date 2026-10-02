@@ -4,7 +4,10 @@
 name: wild_winds_initiate
 system: pf2e
 prerequisite: Qi Spells
+prerequisites:
+  - { feat: qi_spells }
 mechanicalSummary: You learn a stance that lets you attack from a distance.
 extraPools: []
+category: class
 classes: [monk]
 level: 8

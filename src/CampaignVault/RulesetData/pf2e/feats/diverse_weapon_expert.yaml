@@ -4,6 +4,9 @@
 name: diverse_weapon_expert
 system: pf2e
 prerequisite: Fighter Dedication; expert in any kind of weapon or unarmed attack
+prerequisites:
+  - { feat: fighter_dedication }
 mechanicalSummary: Your proficiency ranks for simple weapons and martial weapons increase to expert, and your proficiency rank for advanced weapons increases to trained.
 extraPools: []
+category: archetype
 level: 12

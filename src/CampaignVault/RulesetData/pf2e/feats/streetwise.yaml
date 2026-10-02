@@ -4,6 +4,10 @@
 name: streetwise
 system: pf2e
 prerequisite: Trained in Society
+prerequisites:
+  - { skill: Society, rank: trained }
 mechanicalSummary: Use Society to Gather Information and Recall Knowledge
 extraPools: []
+category: skill
+skills: [Society]
 level: 1

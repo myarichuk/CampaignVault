@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: Inner Upheaval
 mechanicalSummary: You can color your qi in bright elemental energy.
 extraPools: []
+category: class
 classes: [monk]
 level: 2

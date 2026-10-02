@@ -18,7 +18,7 @@ levels:
     proficiencyBonus: 2
     features:
       - name: "Fighting Style"
-        description: "Choose: Archery, Defense, Dueling, Two-Weapon Fighting, Close Quarters Shooter, etc."
+        description: "Choose: Archery, Defense, Dueling or Two-Weapon Fighting."
         choices:
           fightingStyle:
             type: Enum
@@ -27,12 +27,18 @@ levels:
               - id: archery
                 label: "Archery"
                 description: "+2 to attack rolls with ranged weapons."
+                effects:
+                  - { kind: attackBonus, value: 2, weapon: [ranged] }
               - id: defense
                 label: "Defense"
                 description: "+1 AC while wearing armor."
+                effects:
+                  - { kind: armorClassBonus, value: 1, assert: [wearingArmor], when: "the character is wearing armor" }
               - id: dueling
                 label: "Dueling"
                 description: "+2 damage with one-handed melee weapon."
+                effects:
+                  - { kind: damageBonus, value: 2, weapon: [melee, oneHanded] }
               - id: twoWeaponFighting
                 label: "Two-Weapon Fighting"
                 description: "Add ability modifier to off-hand attack damage."
@@ -51,12 +57,78 @@ levels:
               - id: hunter
                 label: "Hunter"
                 description: "Hunter's prey, defensive tactics, multiattack, superior hunter's defense."
-              - id: beastMaster
-                label: "Beast Master"
-                description: "Ranger's companion, exceptional training, bestial fury, share spells."
-              - id: gloomStalker
-                label: "Gloom Stalker"
-                description: "Dread ambusher, umbral sight, iron mind, stalker's flurry."
+                features:
+                  3:
+                    - name: "Hunter's Prey"
+                      description: "Choose one."
+                      choices:
+                        huntersPrey:
+                          type: "Enum"
+                          required: true
+                          prompt: "Hunter's Prey"
+                          options:
+                            - id: "colossusSlayer"
+                              label: "Colossus Slayer"
+                              description: "Once per turn, a weapon hit deals an extra 1d8 damage to a creature below its hit point maximum."
+                              effects:
+                                - { kind: extraDamage, dice: "1d8", toggle: colossusSlayer, assert: [targetHurt], when: "the target is below its hit point maximum" }
+                            - id: "giantKiller"
+                              label: "Giant Killer"
+                              description: "When a Large or larger creature within 5 ft. hits or misses you with an attack, you can use your reaction to attack it right after, if you can see it."
+                            - id: "hordeBreaker"
+                              label: "Horde Breaker"
+                              description: "Once on each of your turns, when you make a weapon attack, you can make another against a different creature within 5 ft. of the first target and in range."
+                  7:
+                    - name: "Defensive Tactics"
+                      description: "Choose one."
+                      choices:
+                        defensiveTactics:
+                          type: "Enum"
+                          required: true
+                          prompt: "Defensive Tactics"
+                          options:
+                            - id: "escapeTheHorde"
+                              label: "Escape the Horde"
+                              description: "Opportunity attacks against you have disadvantage."
+                            - id: "multiattackDefense"
+                              label: "Multiattack Defense"
+                              description: "When a creature hits you with an attack, you gain +4 AC against its later attacks this turn."
+                            - id: "steelWill"
+                              label: "Steel Will"
+                              description: "Advantage on saving throws against being frightened."
+                  11:
+                    - name: "Multiattack"
+                      description: "Choose one."
+                      choices:
+                        multiattack:
+                          type: "Enum"
+                          required: true
+                          prompt: "Multiattack"
+                          options:
+                            - id: "volley"
+                              label: "Volley"
+                              description: "Action: a ranged attack against any number of creatures within 10 ft. of a point you can see in range, with a separate roll and ammunition for each."
+                            - id: "whirlwindAttack"
+                              label: "Whirlwind Attack"
+                              description: "Action: a melee attack against any number of creatures within 5 ft. of you, with a separate roll for each."
+                  15:
+                    - name: "Superior Hunter's Defense"
+                      description: "Choose one."
+                      choices:
+                        superiorHuntersDefense:
+                          type: "Enum"
+                          required: true
+                          prompt: "Superior Hunter's Defense"
+                          options:
+                            - id: "evasion"
+                              label: "Evasion"
+                              description: "When a Dexterity save would halve an area's damage, you take none on a success and half on a failure."
+                            - id: "standAgainstTheTide"
+                              label: "Stand Against the Tide"
+                              description: "When a hostile creature misses you with a melee attack, you can use your reaction to have it repeat the attack against another creature (not itself) of your choice."
+                            - id: "uncannyDodge"
+                              label: "Uncanny Dodge"
+                              description: "When an attacker you can see hits you, you can use your reaction to halve the attack's damage."
     spellSlots: {1: 3}
   4:
     proficiencyBonus: 2

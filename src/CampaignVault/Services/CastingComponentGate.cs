@@ -35,7 +35,7 @@ public static class CastingComponentGate
     public const string WaivesSomatic = "WaivesSomaticComponents";
     public const string WaivesMaterial = "WaivesMaterialComponents";
 
-    /// <summary>Passive FeatDefinition/CustomFeat CastingWaivers value for feats like War Caster.</summary>
+    /// <summary>Passive FeatDefinition/CustomFeat CastingWaivers value for feats that let a caster work with full hands.</summary>
     public const string SomaticHandsFullWaiver = "SomaticHandsFull";
 
     public sealed record SpellComponents(bool Verbal, bool Somatic, bool Material);

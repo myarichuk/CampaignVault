@@ -4,7 +4,11 @@
 name: shove_down
 system: pf2e
 prerequisite: Trained in Athletics
+prerequisites:
+  - { skill: Athletics, rank: trained }
 mechanicalSummary: You leverage your weight to topple foes that you move.
 extraPools: []
+category: class
 classes: [rogue]
+skills: [Athletics]
 level: 6

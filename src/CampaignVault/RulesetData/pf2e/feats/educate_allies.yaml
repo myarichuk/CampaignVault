@@ -4,7 +4,10 @@
 name: educate_allies
 system: pf2e
 prerequisite: Well-Versed
+prerequisites:
+  - { feat: well_versed }
 mechanicalSummary: You tweak the properties of your composition spell to convey a bit of your defensive knowledge.
 extraPools: []
+category: class
 classes: [bard]
 level: 6

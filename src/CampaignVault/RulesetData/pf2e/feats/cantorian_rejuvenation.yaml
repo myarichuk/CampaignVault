@@ -5,4 +5,6 @@ name: cantorian_rejuvenation
 system: pf2e
 mechanicalSummary: The life-giving energy that flows in your blood revitalizes you.
 extraPools: []
+category: ancestry
+ancestries: [hobgoblin]
 level: 9

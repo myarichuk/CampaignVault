@@ -4,6 +4,9 @@
 name: primal_breadth
 system: pf2e
 prerequisite: Basic Druid Spellcasting
+prerequisites:
+  - { feat: basic_druid_spellcasting }
 mechanicalSummary: Increase the spell slots you gain from druid archetype feats by 1 for each spell rank other than your two highest druid spell slots.
 extraPools: []
+category: archetype
 level: 8

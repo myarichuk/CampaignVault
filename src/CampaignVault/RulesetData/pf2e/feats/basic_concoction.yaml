@@ -4,6 +4,9 @@
 name: basic_concoction
 system: pf2e
 prerequisite: Alchemist Dedication
+prerequisites:
+  - { feat: alchemist_dedication }
 mechanicalSummary: You gain a 1st- or 2nd-level alchemist feat.
 extraPools: []
+category: archetype
 level: 4

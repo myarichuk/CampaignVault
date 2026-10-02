@@ -4,6 +4,12 @@
 name: snare_genius
 system: pf2e
 prerequisite: Snare Crafting; Expert in Crafting
+prerequisites:
+  - { feat: snare_crafting }
+  - { skill: Crafting, rank: expert }
 mechanicalSummary: If the snare normally takes 1 minute to Craft, you can Craft it with 3 Interact actions instead.
 extraPools: []
+category: ancestry
+ancestries: [kobold]
+skills: [Crafting]
 level: 5

@@ -18,7 +18,7 @@ levels:
     proficiencyBonus: 2
     features:
       - name: "Fighting Style"
-        description: "Choose: Defense, Protection, Dueling, Great Weapon Fighting, Blessed Warrior (cantrips)."
+        description: "Choose: Defense, Dueling, Great Weapon Fighting or Protection."
         choices:
           fightingStyle:
             type: Enum
@@ -27,18 +27,19 @@ levels:
               - id: defense
                 label: "Defense"
                 description: "+1 AC while wearing armor."
+                effects:
+                  - { kind: armorClassBonus, value: 1, assert: [wearingArmor], when: "the character is wearing armor" }
               - id: protection
                 label: "Protection"
                 description: "Impose disadvantage on attacks against allies within 5 ft."
               - id: dueling
                 label: "Dueling"
                 description: "+2 damage with one-handed melee weapon."
+                effects:
+                  - { kind: damageBonus, value: 2, weapon: [melee, oneHanded] }
               - id: greatWeaponFighting
                 label: "Great Weapon Fighting"
                 description: "Reroll 1s and 2s on damage dice for two-handed weapons."
-              - id: blessedWarrior
-                label: "Blessed Warrior"
-                description: "Learn two cleric cantrips (Cha is spellcasting ability)."
       - name: "Spellcasting"
         description: "Prepare paladin spells. Cha is spellcasting ability."
         spellSlots: {1: 2}
@@ -56,13 +57,30 @@ levels:
             options:
               - id: devotion
                 label: "Oath of Devotion"
-                description: "Channel Divinity: Sacred Weapon, Turn the Unholy. Aura of Devotion."
-              - id: ancients
-                label: "Oath of the Ancients"
-                description: "Channel Divinity: Nature's Wrath, Turn the Faithless. Aura of Warding."
-              - id: vengeance
-                label: "Oath of Vengeance"
-                description: "Channel Divinity: Abjure Enemy, Vow of Enmity. Relentless Avenger."
+                description: "Oath spells, sacred weapon, turn the unholy, aura of devotion, purity of spirit, holy nimbus."
+                features:
+                  3:
+                    - name: "Oath Spells"
+                      description: "Always prepared, and not counted against the spells you prepare."
+                      spells:
+                        3: ["protection_from_evil_and_good", "sanctuary"]
+                        5: ["lesser_restoration", "zone_of_truth"]
+                        9: ["beacon_of_hope", "dispel_magic"]
+                        13: ["freedom_of_movement", "guardian_of_faith"]
+                        17: ["commune", "flame_strike"]
+                    - name: "Channel Divinity: Sacred Weapon"
+                      description: "Action: for 1 minute, add your Charisma modifier (at least +1) to attack rolls with one weapon you hold. It sheds bright light in a 20-ft. radius and counts as magical."
+                    - name: "Channel Divinity: Turn the Unholy"
+                      description: "Action: each fiend or undead within 30 ft. that can see or hear you makes a Wisdom save or is turned for 1 minute or until it takes damage."
+                  7:
+                    - name: "Aura of Devotion"
+                      description: "You and friendly creatures within 10 ft. of you can't be charmed while you're conscious. The aura reaches 30 ft. at 18th level."
+                  15:
+                    - name: "Purity of Spirit"
+                      description: "You're always under the effects of a protection from evil and good spell."
+                  20:
+                    - name: "Holy Nimbus"
+                      description: "Action, once per long rest: for 1 minute you shine bright light in a 30-ft. radius; enemies starting their turn in it take 10 radiant damage, and you have advantage on saves against spells cast by fiends or undead."
     spellSlots: {1: 3}
   4:
     proficiencyBonus: 2

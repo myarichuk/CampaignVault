@@ -64,16 +64,54 @@ internal sealed class RulesetContentLayers<T> where T : RulesetTemplate
     public IReadOnlyCollection<string> Systems => _layers.Keys;
 
     /// <summary>Every template of this kind for <paramref name="system"/>, layered, patched and resolved. Empty for an unknown system.</summary>
-    public IReadOnlyDictionary<string, T> Resolve(string system)
+    public IReadOnlyDictionary<string, T> Resolve(string system) => Resolve(system, []);
+
+    /// <summary>
+    /// Like <see cref="Resolve(string)"/>, with a campaign's homebrew as the last layer: YAML texts, each one template or
+    /// patch, read the way a plugin file is. A text that doesn't parse is skipped with a warning (it was checked when saved).
+    /// </summary>
+    public IReadOnlyDictionary<string, T> Resolve(string system, IReadOnlyList<string> campaignYaml)
     {
-        if (!_layers.TryGetValue(system, out var layers) || layers.Count == 0)
+        _layers.TryGetValue(system, out var layers);
+        layers ??= [];
+        if (layers.Count == 0 && campaignYaml.Count == 0)
             return new Dictionary<string, T>(StringComparer.OrdinalIgnoreCase);
 
-        var raw = new Dictionary<string, T>(StringComparer.OrdinalIgnoreCase);
-        var patches = new List<T>();
+        var layerList = new List<(IReadOnlyDictionary<string, T> Templates, IReadOnlyList<T> Patches, string Source)>();
         foreach (var (loader, source) in layers)
         {
             var (templates, layerPatches) = loader.LoadLayer();
+            layerList.Add((templates, layerPatches, source));
+        }
+
+        if (campaignYaml.Count > 0)
+        {
+            var parser = new RulesetTemplateLoader<T>(string.Empty, typeof(T).Assembly, "campaign", _logger);
+            var homebrew = new Dictionary<string, T>(StringComparer.OrdinalIgnoreCase);
+            var homebrewPatches = new List<T>();
+            foreach (var yaml in campaignYaml)
+            {
+                try
+                {
+                    var template = parser.Parse(yaml, "campaign homebrew");
+                    if (template?.PatchTarget != null)
+                        homebrewPatches.Add(template);
+                    else if (template?.Name != null)
+                        homebrew[template.Name] = template;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "A campaign {Kind} homebrew template didn't parse; skipped.", typeof(T).Name);
+                }
+            }
+
+            layerList.Add((homebrew, homebrewPatches, "campaign"));
+        }
+
+        var raw = new Dictionary<string, T>(StringComparer.OrdinalIgnoreCase);
+        var patches = new List<T>();
+        foreach (var (templates, layerPatches, source) in layerList)
+        {
             foreach (var (name, template) in templates)
             {
                 if (raw.TryGetValue(name, out var earlier) && earlier.Source != source)
@@ -108,7 +146,11 @@ internal sealed class RulesetContentLayers<T> where T : RulesetTemplate
         }
 
         var resolver = new RulesetTemplateResolver<T>(name => raw.GetValueOrDefault(name), _merge);
-        return resolver.ResolveAll(raw, _logger);
+        var resolved = resolver.ResolveAll(raw, _logger);
+        // Hidden after inheritance resolved, so a child of a hidden template still finds its parent.
+        return resolved.Values.Any(t => t.Hidden)
+            ? resolved.Where(kv => !kv.Value.Hidden).ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase)
+            : resolved;
     }
 
     private static string SourceLabel(string root) =>

@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: ancestors mystery or battle mystery
 mechanicalSummary: You beseech warrior spirits to come forth and aid you.
 extraPools: []
+category: class
 classes: [oracle]
 level: 10

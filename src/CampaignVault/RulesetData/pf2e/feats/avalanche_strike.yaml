@@ -4,6 +4,9 @@
 name: avalanche_strike
 system: pf2e
 prerequisite: Mauler Dedication
+prerequisites:
+  - { feat: mauler_dedication }
 mechanicalSummary: You attack all nearby adversaries.
 extraPools: []
+category: archetype
 level: 16

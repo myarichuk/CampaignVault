@@ -5,4 +5,6 @@ name: cat_s_luck
 system: pf2e
 mechanicalSummary: You instinctively twist away from danger.
 extraPools: []
+category: ancestry
+ancestries: [catfolk]
 level: 1

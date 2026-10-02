@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: life mystery or tempest mystery
 mechanicalSummary: "Water is the source of life, and you draw upon this primordial force to heal your allies' wounds."
 extraPools: []
+category: class
 classes: [oracle]
 level: 10

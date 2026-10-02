@@ -70,6 +70,8 @@
 .cv-option--suggested { border-color: var(--arcane); }
 .cv-option--full { opacity: 0.5; }
 
+/* ------------------------------------------------------------ stat block: skills (modifiers) */
+
 /* ------------------------------------------------------------ ability table */
 .cv-builder__methods { margin-bottom: var(--sp-4); }
 .cv-abilitytable { margin-bottom: var(--sp-4); }
@@ -93,3 +95,9 @@
 .cv-builder__roll { align-self: flex-start; margin-bottom: var(--sp-3); }
 .cv-builder__askfield { margin-bottom: 0; }
 .cv-builder__asksend { margin-left: var(--sp-2); }
+
+/* Stat block groups: full-width fields stack; compact ones (numbers, a challenge rating) sit side by side and wrap. */
+.cv-statgroup__fields { flex-direction: row; flex-wrap: wrap; align-items: flex-end; }
+.cv-statfield { width: 100%; }
+.cv-statfield--compact { width: auto; min-width: 104px; margin-right: var(--sp-3); }
+.cv-statfield--compact .cv-field { margin-left: 0; margin-right: 0; }

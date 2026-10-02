@@ -4,6 +4,10 @@
 name: crafter_s_appraisal
 system: pf2e
 prerequisite: Trained in Crafting
+prerequisites:
+  - { skill: Crafting, rank: trained }
 mechanicalSummary: "Your knowledge of items' construction allows you to discern their magical effects as well."
 extraPools: []
+category: skill
+skills: [Crafting]
 level: 1

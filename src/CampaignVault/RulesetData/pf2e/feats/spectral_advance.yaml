@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: blessed swiftness
 mechanicalSummary: You gain the  spectral advance  devotion spell
 extraPools: []
+category: class
 classes: [champion]
 level: 10

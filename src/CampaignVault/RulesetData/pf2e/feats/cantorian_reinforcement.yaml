@@ -5,4 +5,6 @@ name: cantorian_reinforcement
 system: pf2e
 mechanicalSummary: The life energy that helped create the first hobgoblins is particularly potent in you, protecting you from ongoing maladies.
 extraPools: []
+category: ancestry
+ancestries: [hobgoblin]
 level: 1

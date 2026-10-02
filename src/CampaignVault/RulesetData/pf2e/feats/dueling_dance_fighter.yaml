@@ -4,7 +4,10 @@
 name: dueling_dance_fighter
 system: pf2e
 prerequisite: Dueling Parry (Fighter)
+prerequisites:
+  - { feat: dueling_parry_fighter }
 mechanicalSummary: Using a free hand as pivot and balance, you both attack and defend with your weapon.
 extraPools: []
+category: class
 classes: [fighter]
 level: 12

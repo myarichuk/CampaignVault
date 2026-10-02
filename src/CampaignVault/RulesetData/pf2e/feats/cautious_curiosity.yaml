@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: at least one arcane or occult innate spell gained from a gnome heritage or gnome ancestry feat
 mechanicalSummary: "You've learned a few magical techniques for getting yourself both into and out of trouble unnoticed."
 extraPools: []
+category: ancestry
+ancestries: [gnome]
 level: 9

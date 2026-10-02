@@ -5,5 +5,6 @@ name: share_rage
 system: pf2e
 mechanicalSummary: "You stoke an ally's fury."
 extraPools: []
+category: class
 classes: [barbarian]
 level: 8

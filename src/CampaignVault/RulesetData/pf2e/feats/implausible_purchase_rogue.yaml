@@ -4,7 +4,10 @@
 name: implausible_purchase_rogue
 system: pf2e
 prerequisite: Predictive Purchase (Rogue)
+prerequisites:
+  - { feat: predictive_purchase_rogue }
 mechanicalSummary: You can use Prescient Planner even if you have already used it after purchasing goods, and you can Interact to draw the item as a single action instead of a 2-action activity.
 extraPools: []
+category: class
 classes: [rogue]
 level: 18

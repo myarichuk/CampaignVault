@@ -4,6 +4,9 @@
 name: blessed_sacrifice
 system: pf2e
 prerequisite: Blessed One Dedication
+prerequisites:
+  - { feat: blessed_one_dedication }
 mechanicalSummary: You gain the protector’s sacrifice domain spell
 extraPools: []
+category: archetype
 level: 4

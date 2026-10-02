@@ -5,5 +5,6 @@ name: premonition_of_clarity
 system: pf2e
 mechanicalSummary: Your deity sends you a vision of faith to steel you against mental attacks.
 extraPools: []
+category: class
 classes: [cleric]
 level: 14

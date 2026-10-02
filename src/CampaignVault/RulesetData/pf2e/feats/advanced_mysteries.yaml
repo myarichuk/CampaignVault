@@ -4,6 +4,9 @@
 name: advanced_mysteries
 system: pf2e
 prerequisite: Basic Mysteries
+prerequisites:
+  - { feat: basic_mysteries }
 mechanicalSummary: You gain one oracle feat.
 extraPools: []
+category: archetype
 level: 6

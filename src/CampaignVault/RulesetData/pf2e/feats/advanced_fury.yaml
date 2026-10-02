@@ -4,6 +4,9 @@
 name: advanced_fury
 system: pf2e
 prerequisite: Basic Fury
+prerequisites:
+  - { feat: basic_fury }
 mechanicalSummary: You gain one barbarian feat.
 extraPools: []
+category: archetype
 level: 6

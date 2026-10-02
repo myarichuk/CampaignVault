@@ -5,5 +5,6 @@ name: flexible_studies
 system: pf2e
 mechanicalSummary: "You've collected a cross-section of information on various disciplines you can refer to when preparing for various tasks."
 extraPools: []
+category: class
 classes: [investigator]
 level: 1

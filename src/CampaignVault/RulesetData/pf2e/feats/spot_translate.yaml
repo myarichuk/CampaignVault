@@ -4,6 +4,9 @@
 name: spot_translate
 system: pf2e
 prerequisite: Linguist Dedication
+prerequisites:
+  - { feat: linguist_dedication }
 mechanicalSummary: You bridge a language gap, repeating the message in a different language that you know.
 extraPools: []
+category: archetype
 level: 4

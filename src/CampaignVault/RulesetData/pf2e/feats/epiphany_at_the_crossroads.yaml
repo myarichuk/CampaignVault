@@ -5,5 +5,6 @@ name: epiphany_at_the_crossroads
 system: pf2e
 mechanicalSummary: The crossroads between life and death is a place that can reveal many secrets.
 extraPools: []
+category: class
 classes: [oracle]
 level: 12

@@ -4,7 +4,10 @@
 name: versatile_signature
 system: pf2e
 prerequisite: polymath muse
+prerequisites:
+  - { classFeature: polymath }
 mechanicalSummary: "You\u2019re always tweaking your\r\navailable repertoire."
 extraPools: []
+category: class
 classes: [bard]
 level: 4

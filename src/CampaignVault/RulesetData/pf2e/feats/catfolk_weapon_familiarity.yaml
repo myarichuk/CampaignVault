@@ -5,4 +5,6 @@ name: catfolk_weapon_familiarity
 system: pf2e
 mechanicalSummary: You gain access to all uncommon weapons with the catfolk trait.
 extraPools: []
+category: ancestry
+ancestries: [catfolk]
 level: 1

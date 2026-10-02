@@ -5,4 +5,6 @@ name: sneaky
 system: pf2e
 mechanicalSummary: Stealth is an important tool in your arsenal.
 extraPools: []
+category: ancestry
+ancestries: [hobgoblin]
 level: 1

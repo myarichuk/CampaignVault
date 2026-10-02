@@ -34,6 +34,8 @@ namespace CampaignVault.UnityClient.Flows
         public Dictionary<string, int> Needs = new Dictionary<string, int>();
         public int MemoryCount;
         public List<string> KeyMemories = new List<string>();
+        /// <summary>The campaign's XP rule says this character has earned the next level.</summary>
+        public bool LevelUpReady;
 
         public double HpFraction
         {
@@ -150,6 +152,7 @@ namespace CampaignVault.UnityClient.Flows
                     Location = p.GetStringAny(new[] { "locationId", "LocationId", "location", "Location" }, string.Empty),
                     Activity = p.GetStringAny(new[] { "activity", "Activity" }, string.Empty),
                     MemoryCount = (int)p.GetNumber("memoryCount", p.GetNumber("MemoryCount", 0)),
+                    LevelUpReady = p.GetBool("levelUpReady", p.GetBool("LevelUpReady", false)),
                 };
                 ParseHp(p.GetStringAny(new[] { "hp", "Hp" }, string.Empty), out member.CurHp, out member.MaxHp);
                 double level = p.GetNumber("level", p.GetNumber("Level", -1));

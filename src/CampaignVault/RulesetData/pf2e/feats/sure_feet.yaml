@@ -5,4 +5,6 @@ name: sure_feet
 system: pf2e
 mechanicalSummary: Whether keeping your balance or climbing, your feet easily find purchase.
 extraPools: []
+category: ancestry
+ancestries: [halfling]
 level: 1

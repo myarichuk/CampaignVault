@@ -4,6 +4,9 @@
 name: pirate_combat_training
 system: pf2e
 prerequisite: Pirate Dedication
+prerequisites:
+  - { feat: pirate_dedication }
 mechanicalSummary: "You're particularly skilled at wielding the weapons used traditionally by pirates."
 extraPools: []
+category: archetype
 level: 4

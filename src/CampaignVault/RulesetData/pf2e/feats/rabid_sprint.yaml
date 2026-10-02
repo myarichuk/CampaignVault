@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Dog Kholo heritage
 mechanicalSummary: You run on all fours as fast as you can.
 extraPools: []
+category: ancestry
+ancestries: [kholo]
 level: 5

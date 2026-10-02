@@ -5,5 +5,6 @@ name: snap_shot
 system: pf2e
 mechanicalSummary: You can react with ranged weapons when a creature is in close quarters.
 extraPools: []
+category: class
 classes: [ranger]
 level: 6

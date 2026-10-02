@@ -4,6 +4,9 @@
 name: defend_mount
 system: pf2e
 prerequisite: Cavalier Dedication
+prerequisites:
+  - { feat: cavalier_dedication }
 mechanicalSummary: You interpose yourself between an attacker and your mount, defending your mount from harm.
 extraPools: []
+category: archetype
 level: 6

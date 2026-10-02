@@ -5,5 +5,6 @@ name: warden_s_guidance
 system: pf2e
 mechanicalSummary: You convey your prey’s location to your allies with a series of careful words or gestures.
 extraPools: []
+category: class
 classes: [ranger]
 level: 14

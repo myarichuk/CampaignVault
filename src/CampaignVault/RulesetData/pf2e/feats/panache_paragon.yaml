@@ -5,5 +5,6 @@ name: panache_paragon
 system: pf2e
 mechanicalSummary: "You find opportunities to perform stylish feats in the moments between others' heartbeats and eye blinks."
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 20

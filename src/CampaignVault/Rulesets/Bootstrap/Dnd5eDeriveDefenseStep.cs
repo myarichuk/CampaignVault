@@ -1,8 +1,13 @@
 using CampaignVault.Models;
+using CampaignVault.Services;
 
 namespace CampaignVault.Rulesets.Bootstrap;
 
-public sealed class Dnd5eDeriveDefenseStep : IBootstrapStep
+/// <summary>
+/// Armor class from worn armor, or without armor the best a class feature gives (Unarmored Defense: 10 + Dexterity +
+/// Constitution, from the progression data when <paramref name="progressions"/> is given), else 10 + Dexterity.
+/// </summary>
+public sealed class Dnd5eDeriveDefenseStep(ProgressionDefinitionProvider? progressions = null) : IBootstrapStep
 {
     public string Name => "dnd5e.derive_defense";
 
@@ -25,10 +30,12 @@ public sealed class Dnd5eDeriveDefenseStep : IBootstrapStep
         else
         {
             var dexMod = stats.GetAbilityModifier(stats.Dexterity);
-            stats.ArmorClass = 10 + dexMod;
+            var feature = CharacterClassFeatures.UnarmoredArmorClass(
+                context.Character, RulesetSystem.Dnd5e, progressions, a => stats.GetAbilityModifier(Score(stats, a)));
+            stats.ArmorClass = Math.Max(10 + dexMod, feature ?? 0);
 
             hints.Add(
-                $"Worn armor not detected for {context.Character.Name}. Base AC is unarmored (10 + DEX). "
+                $"Worn armor not detected for {context.Character.Name}. Base AC is unarmored ({(feature > 10 + dexMod ? "a class feature's formula" : "10 + DEX")}). "
                 + "To equip starting armor, world_build's items[] with equipZones/equipLayer/isEquipped:true so AC applies immediately, e.g.: "
                 + $"{{ \"id\": \"items/{context.Character.Id}-armor\", \"name\": \"Chain Shirt\", "
                 + $"\"holderId\": \"{context.Character.Id}\", \"coreCategory\": \"Armor\", "
@@ -44,4 +51,15 @@ public sealed class Dnd5eDeriveDefenseStep : IBootstrapStep
             LlmHints = hints,
         };
     }
+
+    private static int Score(Dnd5eExtension stats, string ability) => ability.ToLowerInvariant() switch
+    {
+        "strength" => stats.Strength,
+        "dexterity" => stats.Dexterity,
+        "constitution" => stats.Constitution,
+        "intelligence" => stats.Intelligence,
+        "wisdom" => stats.Wisdom,
+        "charisma" => stats.Charisma,
+        _ => 10,
+    };
 }

@@ -4,6 +4,11 @@
 name: party_crasher
 system: pf2e
 prerequisite: Dandy Dedication; Master in Society
+prerequisites:
+  - { feat: dandy_dedication }
+  - { skill: Society, rank: master }
 mechanicalSummary: You attend all the fashionable society parties, no matter how exclusive they might be.
 extraPools: []
+category: skill
+skills: [Society]
 level: 7

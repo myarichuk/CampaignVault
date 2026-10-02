@@ -5,4 +5,6 @@ name: anchoring_roots
 system: pf2e
 mechanicalSummary: Small roots sprout from your feet, steadying you as you move.
 extraPools: []
+category: ancestry
+ancestries: [leshy]
 level: 5

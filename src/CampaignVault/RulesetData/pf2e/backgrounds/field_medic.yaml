@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: field_medic
+system: pf2e
+description: "In the chaotic rush of battle, you learned to adapt to rapidly changing conditions as you administered to battle casualties. You patched up soldiers, guards, or other combatants, and learned a fair amount about the logistics of war."
+boosts: [Constitution, Wisdom]
+skillProficiencies: [Medicine]
+lore: Warfare Lore
+skillFeat: battle_medicine
+feature: Battle Medicine

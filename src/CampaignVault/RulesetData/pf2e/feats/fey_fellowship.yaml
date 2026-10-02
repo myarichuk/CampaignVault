@@ -5,4 +5,6 @@ name: fey_fellowship
 system: pf2e
 mechanicalSummary: Your enhanced fey connection (either through your blood or via prolonged contact with their kind) affords you a warmer reception from creatures of the First World as well as tools to foil their tricks or withstand their magic.
 extraPools: []
+category: ancestry
+ancestries: [gnome]
 level: 1

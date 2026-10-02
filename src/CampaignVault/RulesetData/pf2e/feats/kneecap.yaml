@@ -5,4 +5,6 @@ name: kneecap
 system: pf2e
 mechanicalSummary: "You deliver a punishing blow to an enemy's knee, shin, or other vulnerable anatomy within your reach."
 extraPools: []
+category: ancestry
+ancestries: [goblin]
 level: 5

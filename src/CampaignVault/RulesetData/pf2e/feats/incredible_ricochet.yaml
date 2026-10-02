@@ -4,7 +4,10 @@
 name: incredible_ricochet
 system: pf2e
 prerequisite: Incredible Aim
+prerequisites:
+  - { feat: incredible_aim }
 mechanicalSummary: After your first shot singles out your opponent’s position, you direct another that ricochets around obstacles and strikes unerringly.
 extraPools: []
+category: class
 classes: [fighter]
 level: 12

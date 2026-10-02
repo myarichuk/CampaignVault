@@ -4,7 +4,10 @@
 name: peerless_warden
 system: pf2e
 prerequisite: Initiate Warden
+prerequisites:
+  - { feat: initiate_warden }
 mechanicalSummary: Your mastery of primal magic has given you access to the greatest secrets of warden magic.
 extraPools: []
+category: class
 classes: [ranger]
 level: 10

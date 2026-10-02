@@ -4,7 +4,10 @@
 name: advanced_deity_s_domain
 system: pf2e
 prerequisite: "Deity's Domain"
+prerequisites:
+  - { feat: deity_s_domain }
 mechanicalSummary: "Through your conviction, you have glimpsed the deeper secrets of your deity's domain."
 extraPools: []
+category: class
 classes: [champion]
 level: 8

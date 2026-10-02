@@ -4,6 +4,10 @@
 name: distracting_performance
 system: pf2e
 prerequisite: Expert in Performance
+prerequisites:
+  - { skill: Performance, rank: expert }
 mechanicalSummary: Your performances are especially distracting, allowing your allies to Sneak away with ease.
 extraPools: []
+category: skill
+skills: [Performance]
 level: 2

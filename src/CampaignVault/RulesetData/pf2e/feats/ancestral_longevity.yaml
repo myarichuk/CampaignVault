@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: at least 100 years old
 mechanicalSummary: You have accumulated a vast array of lived knowledge over the years.
 extraPools: []
+category: ancestry
+ancestries: [elf]
 level: 1

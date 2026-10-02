@@ -4,7 +4,10 @@
 name: witch_s_communion
 system: pf2e
 prerequisite: "Witch's Charge"
+prerequisites:
+  - { feat: witch_s_charge }
 mechanicalSummary: You can keep watch over multiple charges.
 extraPools: []
+category: class
 classes: [witch]
 level: 10

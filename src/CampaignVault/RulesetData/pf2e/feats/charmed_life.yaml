@@ -4,7 +4,10 @@
 name: charmed_life
 system: pf2e
 prerequisite: Charisma +2
+prerequisites:
+  - { ability: Charisma, min: 2 }
 mechanicalSummary: When danger calls, you have a strange knack for coming out on top.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 2

@@ -5,4 +5,6 @@ name: speak_with_kindred
 system: pf2e
 mechanicalSummary: You have a connection with creatures that share your physiology.
 extraPools: []
+category: ancestry
+ancestries: [leshy]
 level: 5

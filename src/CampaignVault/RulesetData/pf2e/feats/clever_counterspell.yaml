@@ -4,7 +4,11 @@
 name: clever_counterspell
 system: pf2e
 prerequisite: Counterspell; Quick Recognition
+prerequisites:
+  - { feat: counterspell }
+  - { feat: quick_recognition }
 mechanicalSummary: You creatively apply your prepared spells to Counterspell a much wider variety of your opponents’ magic.
 extraPools: []
+category: class
 classes: [wizard]
 level: 12

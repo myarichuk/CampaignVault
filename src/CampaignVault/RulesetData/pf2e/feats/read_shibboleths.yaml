@@ -4,6 +4,11 @@
 name: read_shibboleths
 system: pf2e
 prerequisite: Linguist Dedication; Master in Society
+prerequisites:
+  - { feat: linguist_dedication }
+  - { skill: Society, rank: master }
 mechanicalSummary: All communication is filled with slight tells and signals.
 extraPools: []
+category: skill
+skills: [Society]
 level: 7

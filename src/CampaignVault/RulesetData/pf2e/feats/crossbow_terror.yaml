@@ -4,6 +4,9 @@
 name: crossbow_terror
 system: pf2e
 prerequisite: Archer Dedication
+prerequisites:
+  - { feat: archer_dedication }
 mechanicalSummary: Your skill with a crossbow strikes terror into your opponents when you threaten them with the next bolt.
 extraPools: []
+category: archetype
 level: 6

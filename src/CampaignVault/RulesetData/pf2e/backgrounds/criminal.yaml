@@ -1,6 +1,11 @@
-# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
 name: criminal
 system: pf2e
-description: You eked out a living in dark alleys and back rooms
-skillProficiencies: [Stealth, Thievery]
-feature: Underworld Contacts
+description: "As an unscrupulous independent or as a member of an underworld organization, you lived a life of crime. You might have become an adventurer to seek redemption, to escape the law, or simply to get access to bigger and better loot."
+boosts: [Dexterity, Intelligence]
+skillProficiencies: [Stealth]
+lore: Underworld Lore
+skillFeat: experienced_smuggler
+feature: Experienced Smuggler

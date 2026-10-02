@@ -4,7 +4,10 @@
 name: impaling_briars
 system: pf2e
 prerequisite: leaf order
+prerequisites:
+  - { classFeature: leaf }
 mechanicalSummary: You can fill an area with devastating briars.
 extraPools: []
+category: class
 classes: [druid]
 level: 16

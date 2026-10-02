@@ -44,6 +44,7 @@ namespace CampaignVault.UnityClient.UI
         private OnboardingOverlay _onboarding;
         private InspectorOverlay _inspector;
         private CharacterSheetOverlay _sheet;
+        private LevelUpOverlay _levelUp;
         private CharacterBuilderOverlay _builder;
         private bool _codexOpen = true;
         private bool _codexUserChoice;
@@ -103,7 +104,8 @@ namespace CampaignVault.UnityClient.UI
             _settings = new SettingsOverlay(_state, _controller, OpenSetup);
             _setup = new SetupOverlay(_state, _controller, OpenOnboarding, OpenCampaigns);
             _inspector = new InspectorOverlay(_state, _controller);
-            _sheet = new CharacterSheetOverlay(_state, _controller);
+            _levelUp = new LevelUpOverlay(_state, _controller);
+            _sheet = new CharacterSheetOverlay(_state, _controller, OpenLevelUp);
             _builder = new CharacterBuilderOverlay(_state, _controller);
 
             BuildTopBar();
@@ -240,14 +242,22 @@ namespace CampaignVault.UnityClient.UI
         }
 
         /// <summary>The builder for the campaign being set up, over the onboarding page: a new character or the one with this id.</summary>
-        public void OpenPartyBuilder(string editId)
+        public void OpenPartyBuilder(string editId, string kind)
         {
             if (_overlays.IsOpen(_builder)) { return; }
-            _builder.SetPartyTarget(editId);
+            _builder.SetPartyTarget(editId, kind);
             _overlays.Open(_builder);
         }
 
         public CharacterBuilderOverlay Builder { get { return _builder; } }
+
+        /// <summary>The level-up menu for a character, over the sheet. The sheet reloads when it closes, to show the new level.</summary>
+        public void OpenLevelUp(string id)
+        {
+            if (_overlays.IsOpen(_levelUp)) { return; }
+            _levelUp.SetCharacter(id);
+            _overlays.Open(_levelUp);
+        }
 
         public void OpenSheet(string id)
         {

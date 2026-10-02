@@ -5,4 +5,6 @@ name: dwarven_weapon_familiarity
 system: pf2e
 mechanicalSummary: Your kin have instilled in you an affinity for hard-hitting weapons, and you prefer these to more elegant arms.
 extraPools: []
+category: ancestry
+ancestries: [dwarf]
 level: 1

@@ -5,4 +5,6 @@ name: duskwalker_magic
 system: pf2e
 mechanicalSummary: Your connection to psychopomps gives you the power to glimpse the near future and protect corpses from the ravages of undeath.
 extraPools: []
+category: ancestry
+ancestries: [duskwalker]
 level: 9

@@ -5,5 +5,6 @@ name: blood_rising
 system: pf2e
 mechanicalSummary: "The magic in your blood surges in response to your foe's spell."
 extraPools: []
+category: class
 classes: [sorcerer]
 level: 1

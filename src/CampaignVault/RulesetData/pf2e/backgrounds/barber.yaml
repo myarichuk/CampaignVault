@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: barber
+system: pf2e
+description: "Haircuts, dentistry, bloodletting, and surgery—if it takes a steady hand and a razor, you can do it. You may have taken to the road to expand your skills or test yourself against a world that leaves your patients so battered and bruised."
+boosts: [Dexterity, Wisdom]
+skillProficiencies: [Medicine]
+lore: Surgery Lore
+skillFeat: risky_surgery
+feature: Risky Surgery

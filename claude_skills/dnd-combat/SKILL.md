@@ -88,7 +88,7 @@ Pool order and pre-combining don't matter (`4d6+2d8`, `40d6` for Meteor Swarm al
 
 Before resolving a `Spell` action, check whether the caster can actually supply what the spell requires:
 - **Verbal** — can the caster speak? Gagged, silenced, or similar conditions block this.
-- **Somatic** — does the caster have a free hand/gesture available? Bound or fully-occupied hands block this (unless a feat like War Caster waives it).
+- **Somatic** — does the caster have a free hand/gesture available? Bound or fully-occupied hands block this (unless a feat waives it).
 - **Material** — does the caster possess the required component/focus, or is it a costly component they're carrying?
 
 When *you* apply a status effect (Gagged, Bound, silence zone, etc.) that should block a component, tag it so the engine catches it on later turns: set `BlocksVerbalComponents`, `BlocksSomaticComponents`, `BlocksMaterialComponents`, or `BlocksAllActions` (any nonzero value) in that status effect's `statModifiers` (lifting feat/effect uses the matching `Waives*` key). A `[SpellcastingBlocked]` rejection is a legitimate outcome — narrate why, don't retry around it.

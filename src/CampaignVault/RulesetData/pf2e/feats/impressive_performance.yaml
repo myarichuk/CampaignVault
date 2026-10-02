@@ -4,6 +4,10 @@
 name: impressive_performance
 system: pf2e
 prerequisite: Trained in Performance
+prerequisites:
+  - { skill: Performance, rank: trained }
 mechanicalSummary: Make an Impression with Performance
 extraPools: []
+category: skill
+skills: [Performance]
 level: 1

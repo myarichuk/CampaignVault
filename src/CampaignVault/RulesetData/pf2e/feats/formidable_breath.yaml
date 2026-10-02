@@ -4,6 +4,10 @@
 name: formidable_breath
 system: pf2e
 prerequisite: Breath of the Dragon
+prerequisites:
+  - { feat: breath_of_the_dragon }
 mechanicalSummary: Thanks to rigorous breathing exercises and a diet similar to that of your lineage, your magical breath is more powerful.
 extraPools: []
+category: ancestry
+ancestries: [dragonblood]
 level: 9

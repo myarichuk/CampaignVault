@@ -5,5 +5,6 @@ name: reconstruct_the_scene
 system: pf2e
 mechanicalSummary: You spend 1 minute surveying a small location (such as a single room) to get an impression of events that occurred there in the last day.
 extraPools: []
+category: class
 classes: [investigator, rogue]
 level: 16

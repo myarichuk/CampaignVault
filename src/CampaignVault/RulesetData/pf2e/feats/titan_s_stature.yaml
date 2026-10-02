@@ -4,7 +4,10 @@
 name: titan_s_stature
 system: pf2e
 prerequisite: "Giant's Stature"
+prerequisites:
+  - { feat: giant_s_stature }
 mechanicalSummary: You grow to even greater size.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 12

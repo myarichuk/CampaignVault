@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Trained in Lore
 mechanicalSummary: Prevent critical failures when Earning Income
 extraPools: []
+category: skill
+skills: [Lore]
 level: 1

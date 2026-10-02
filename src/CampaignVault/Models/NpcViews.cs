@@ -92,6 +92,16 @@ public class NpcContextView
     /// </summary>
     public CharacterDetailView Character { get; set; } = null!;
     public IEnumerable<EventSummaryView> RecentInteractions { get; set; } = [];
+
+    /// <summary>
+    /// The class features the character has at its level, from its progression and recorded choices (a subclass's
+    /// included). The description is the rule to apply; the engine applies only the ones with effects.
+    /// </summary>
+    public IReadOnlyList<CampaignVault.Rulesets.ClassFeatureView> ClassFeatures { get; set; } = [];
+
+    /// <summary>For a player character or companion: whether the next level can be gained (and is earned, by XP). Null for anyone else.</summary>
+    public LevelUpStatus? LevelUp { get; set; }
+
     public string? BehavioralSummary { get; set; }
 
     /// <summary>

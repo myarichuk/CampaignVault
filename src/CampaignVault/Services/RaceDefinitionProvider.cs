@@ -13,6 +13,7 @@ public class RaceDefinitionProvider : IRulesetYamlProvider
     private readonly RulesetContentLayers<RaceDefinition> _layers;
     private readonly Dictionary<string, IReadOnlyDictionary<string, RaceDefinition>?> _cache =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<(string, string), IReadOnlyDictionary<string, RaceDefinition>> _campaignCache = [];
     private readonly object _lock = new();
     private readonly ILogger? _logger;
 
@@ -26,13 +27,24 @@ public class RaceDefinitionProvider : IRulesetYamlProvider
     {
         lock (_lock)
         {
-            if (_cache.TryGetValue(system, out var cached) && cached != null)
+            if (!_cache.TryGetValue(system, out var cached) || cached == null)
+            {
+                cached = _layers.Resolve(system);
+                _cache[system] = cached;
+            }
+
+            // The campaign's own ancestries, when it has any (HomebrewScope), are layered on for that call only.
+            var homebrew = HomebrewScope.Current;
+            var entries = homebrew?.For(HomebrewKinds.Ancestry, system) ?? [];
+            if (homebrew is null || entries.Count == 0)
                 return cached;
 
-            var resolved = _layers.Resolve(system);
-
-            _cache[system] = resolved;
-            return resolved;
+            if (_campaignCache.Count > 16)
+                _campaignCache.Clear();
+            var key = (homebrew.Stamp, system);
+            if (!_campaignCache.TryGetValue(key, out var withHomebrew))
+                _campaignCache[key] = withHomebrew = _layers.Resolve(system, [.. entries.Select(e => e.Yaml)]);
+            return withHomebrew;
         }
     }
 
@@ -45,6 +57,9 @@ public class RaceDefinitionProvider : IRulesetYamlProvider
     public void Reload()
     {
         lock (_lock)
+        {
             _cache.Clear();
+            _campaignCache.Clear();
+        }
     }
 }

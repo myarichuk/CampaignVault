@@ -4,7 +4,10 @@
 name: brutal_beating
 system: pf2e
 prerequisite: ruffian racket
+prerequisites:
+  - { classFeature: ruffian }
 mechanicalSummary: Your critical hits shakes your foes’ confidence.
 extraPools: []
+category: class
 classes: [rogue]
 level: 2

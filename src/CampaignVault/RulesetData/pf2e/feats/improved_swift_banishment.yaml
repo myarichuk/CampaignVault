@@ -4,7 +4,10 @@
 name: improved_swift_banishment
 system: pf2e
 prerequisite: Swift Banishment
+prerequisites:
+  - { feat: swift_banishment }
 mechanicalSummary: You easily banish creatures with your weapon.
 extraPools: []
+category: class
 classes: [cleric]
 level: 18

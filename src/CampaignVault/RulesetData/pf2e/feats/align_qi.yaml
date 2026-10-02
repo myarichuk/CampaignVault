@@ -4,7 +4,10 @@
 name: align_qi
 system: pf2e
 prerequisite: Qi Spells
+prerequisites:
+  - { feat: qi_spells }
 mechanicalSummary: The power of your qi soothes your wounds and energizes you for battle.
 extraPools: []
+category: class
 classes: [monk]
 level: 6

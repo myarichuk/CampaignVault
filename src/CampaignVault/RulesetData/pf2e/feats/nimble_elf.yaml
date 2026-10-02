@@ -5,4 +5,6 @@ name: nimble_elf
 system: pf2e
 mechanicalSummary: Your muscles are tightly honed.
 extraPools: []
+category: ancestry
+ancestries: [elf]
 level: 1

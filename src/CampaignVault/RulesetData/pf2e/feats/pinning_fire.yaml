@@ -5,5 +5,6 @@ name: pinning_fire
 system: pf2e
 mechanicalSummary: "You target your opponent's clothing, equipment, or loose flesh with a series of piercing projectiles to pin them to the ground or a nearby surface."
 extraPools: []
+category: class
 classes: [monk]
 level: 8

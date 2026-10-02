@@ -1,0 +1,12 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: teacher
+system: pf2e
+description: "You are incredibly knowledgeable, skilled, and perhaps even trained to teach children and adults about the world and its wonders. From books to classes, you’re committed to imparting knowledge to all. Not everything can be taught or learned from a book, though, so you’ve become an adventurer to learn subjects more directly and bring that wisdom back to your students."
+boosts: [Intelligence, Wisdom]
+skillProficiencies: []
+skillOptions: [Performance, Society]
+lore: Academia Lore
+skillFeat: experienced_professional
+feature: Experienced Professional

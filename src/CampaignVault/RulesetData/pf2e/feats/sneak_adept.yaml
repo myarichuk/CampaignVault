@@ -4,7 +4,11 @@
 name: sneak_adept
 system: pf2e
 prerequisite: Master in Stealth
+prerequisites:
+  - { skill: Stealth, rank: master }
 mechanicalSummary: It’s almost impossible to spot you.
 extraPools: []
+category: class
 classes: [rogue]
+skills: [Stealth]
 level: 10

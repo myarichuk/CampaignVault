@@ -4,6 +4,9 @@
 name: scout_s_pounce
 system: pf2e
 prerequisite: Scout Dedication
+prerequisites:
+  - { feat: scout_dedication }
 mechanicalSummary: You leap from the shadows to strike at your foes.
 extraPools: []
+category: archetype
 level: 10

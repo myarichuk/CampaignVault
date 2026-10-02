@@ -4,7 +4,10 @@
 name: greater_distracting_shot
 system: pf2e
 prerequisite: Distracting Shot
+prerequisites:
+  - { feat: distracting_shot }
 mechanicalSummary: Even a single missile can throw off your enemy’s balance, and more powerful attacks leave it flustered for longer.
 extraPools: []
+category: class
 classes: [ranger]
 level: 16

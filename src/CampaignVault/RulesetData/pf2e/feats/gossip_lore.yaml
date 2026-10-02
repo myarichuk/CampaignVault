@@ -4,6 +4,9 @@
 name: gossip_lore
 system: pf2e
 prerequisite: Dandy Dedication
+prerequisites:
+  - { feat: dandy_dedication }
 mechanicalSummary: Your time gossiping in fashionable salons keeps you informed on every topic.
 extraPools: []
+category: archetype
 level: 4

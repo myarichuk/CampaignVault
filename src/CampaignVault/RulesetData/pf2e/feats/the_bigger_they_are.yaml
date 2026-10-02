@@ -5,5 +5,6 @@ name: the_bigger_they_are
 system: pf2e
 mechanicalSummary: With reckless speed, you dash, jump and swing around a creature to find a more vulnerable spot.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 12

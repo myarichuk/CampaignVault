@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: tax_collector
+system: pf2e
+description: "Reviled but required, you were sent when taxes were due. Performing your job might have required travel and persuasion, or perhaps you were responsible for collecting taxes on trade. Either way, it sometimes meant dirty hands, and adventuring seemed the next logical step to you."
+boosts: [Strength, Charisma]
+skillProficiencies: [Intimidation]
+lore: Lore for the settlement that employed you
+skillFeat: quick_coercion
+feature: Quick Coercion

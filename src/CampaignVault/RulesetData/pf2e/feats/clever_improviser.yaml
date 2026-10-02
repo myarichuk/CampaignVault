@@ -5,4 +5,6 @@ name: clever_improviser
 system: pf2e
 mechanicalSummary: You’ve learned how to handle situations when you’re out of your depth.
 extraPools: []
+category: ancestry
+ancestries: [human]
 level: 5

@@ -4,7 +4,11 @@
 name: overextending_feint
 system: pf2e
 prerequisite: Trained in Deception
+prerequisites:
+  - { skill: Deception, rank: trained }
 mechanicalSummary: You goad a foe into overextending.
 extraPools: []
+category: class
 classes: [rogue]
+skills: [Deception]
 level: 1

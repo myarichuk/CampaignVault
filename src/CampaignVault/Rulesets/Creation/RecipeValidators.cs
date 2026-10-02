@@ -1,4 +1,7 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using CampaignVault.Data.Templates;
+using CampaignVault.Services;
 
 namespace CampaignVault.Rulesets.Creation;
 
@@ -13,6 +16,9 @@ public static class RecipeValidatorNames
     public const string AbilityScoresPointBuy = "abilityScores.pointBuy";
     public const string AbilityScoresRollRange = "abilityScores.rollRange";
     public const string SpellsCountForLevel = "spells.countForLevel";
+    public const string StatBlockFields = "statBlock.fields";
+    public const string CompanionPower = "companion.power";
+    public const string FeatPrerequisites = "feat.prerequisites";
 }
 
 /// <summary>A pickOne choice must be one of the step's options (when it has a source).</summary>
@@ -270,4 +276,232 @@ public sealed class SpellsCountForLevelValidator : IRecipeValidator
 
     private static HashSet<string> Ids(IReadOnlyList<CreationOption> options, string group) =>
         options.Where(o => o.Group == group).Select(o => o.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+}
+
+/// <summary>
+/// A stat block's values against its schema: only known keys, whole numbers inside the field's range, required fields
+/// present. The client checks the same ranges, but a model-drafted block never passed through the client's editor.
+/// The message starts with the field's label so the step shows which field to fix.
+/// </summary>
+public sealed class StatBlockFieldsValidator(CreationRecipeProvider recipes) : IRecipeValidator
+{
+    public string Name => RecipeValidatorNames.StatBlockFields;
+
+    public IEnumerable<CreationIssue> Validate(CharacterDraft draft, CreationStep step, CreationContext ctx)
+    {
+        if (string.IsNullOrWhiteSpace(step.Schema)
+            || !recipes.GetStatBlocksForSystem(ctx.System).TryGetValue(step.Schema, out var schema))
+            yield break;
+
+        var values = draft.Choices.TryGetValue(step.Key, out var v) && v.ValueKind == JsonValueKind.Object
+            ? v.EnumerateObject().ToDictionary(p => p.Name, p => p.Value, StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var key in values.Keys.Where(k => !schema.Fields.Any(f => f.Key.Equals(k, StringComparison.OrdinalIgnoreCase))))
+            yield return CreationIssue.Error(step.Key, $"'{key}' isn't a field of the {schema.Name} stat block.");
+
+        foreach (var field in schema.Fields)
+        {
+            var label = field.Label ?? field.Key;
+            if (!values.TryGetValue(field.Key, out var value) || value.ValueKind == JsonValueKind.Null)
+            {
+                if (field.Required)
+                    yield return CreationIssue.Error(step.Key, $"{label}: required.");
+                continue;
+            }
+
+            if (field.Type == "int")
+            {
+                if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out var n))
+                {
+                    yield return CreationIssue.Error(step.Key, $"{label}: must be a whole number.");
+                    continue;
+                }
+
+                if (field.Min is { } min && n < min)
+                    yield return CreationIssue.Error(step.Key, $"{label}: {n} is below {min}.");
+                else if (field.Max is { } max && n > max)
+                    yield return CreationIssue.Error(step.Key, $"{label}: {n} is above {max}.");
+            }
+            else if (field.Type == "modifiers")
+            {
+                foreach (var issue in Modifiers(step.Key, label, field, value, ctx.System))
+                    yield return issue;
+            }
+            else if (field.Type == "choice")
+            {
+                var names = CreationSources.FieldNames(ctx.System, field.Source);
+                var picked = value.ValueKind == JsonValueKind.String ? value.GetString()!.Trim() : null;
+                if (picked == null || !names.Contains(picked, StringComparer.OrdinalIgnoreCase))
+                    yield return CreationIssue.Error(step.Key, $"{label}: '{(picked ?? value.ToString())}' isn't one of: {string.Join(", ", names)}.");
+            }
+            else if (field.Type == "rows")
+            {
+                foreach (var issue in Rows(step.Key, label, field, value))
+                    yield return issue;
+            }
+            else if (field.Type == "list")
+            {
+                if (value.ValueKind is not (JsonValueKind.String or JsonValueKind.Array))
+                {
+                    yield return CreationIssue.Error(step.Key, $"{label}: must be text, its entries separated by commas.");
+                    continue;
+                }
+
+                var count = DraftCharacterMapper.ListEntries(value).Count;
+                if (count > 0 && field.Min is { } fewest && count < fewest)
+                    yield return CreationIssue.Error(step.Key, $"{label}: {Many(fewest, field.Max)}, separated by commas (you gave {count}).");
+                else if (field.Max is { } most && count > most)
+                    yield return CreationIssue.Error(step.Key, $"{label}: {Many(field.Min, most)}, separated by commas (you gave {count}).");
+            }
+            // A bare number is fine as text (a challenge rating of 1).
+            else if (value.ValueKind is not (JsonValueKind.String or JsonValueKind.Number))
+            {
+                yield return CreationIssue.Error(step.Key, $"{label}: must be text.");
+            }
+        }
+    }
+
+    /// <summary>"three", "up to three", "two to four".</summary>
+    private static string Many(int? fewest, int? most) => (fewest, most) switch
+    {
+        ({ } a, { } b) when a == b => Words(a),
+        ({ } a, { } b) => $"{Words(a)} to {Words(b)}",
+        (null, { } b) => $"up to {Words(b)}",
+        ({ } a, null) => $"at least {Words(a)}",
+        _ => "any number",
+    };
+
+    private static string Words(int n) => n is >= 0 and <= 10
+        ? new[] { "none", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten" }[n]
+        : n.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// A <c>modifiers</c> field: an object of name → whole number (or the templates' "Perception +5" text), each name
+    /// from the field's source, once.
+    /// </summary>
+    private static IEnumerable<CreationIssue> Modifiers(string stepKey, string label, StatBlockField field, JsonElement value, string system)
+    {
+        value = StatModifierText.Normalize(value);
+        if (value.ValueKind != JsonValueKind.Object)
+        {
+            yield return CreationIssue.Error(stepKey, $"{label}: must be names with whole numbers, like {{\"Perception\": 4}}.");
+            yield break;
+        }
+
+        var names = CreationSources.FieldNames(system, field.Source);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in value.EnumerateObject())
+        {
+            if (names.Count > 0 && !names.Contains(entry.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                yield return CreationIssue.Error(stepKey, $"{label}: '{entry.Name}' is not one of the {field.Source}.");
+                continue;
+            }
+
+            if (!seen.Add(entry.Name))
+            {
+                yield return CreationIssue.Error(stepKey, $"{label}: {entry.Name} is listed twice.");
+                continue;
+            }
+
+            if (entry.Value.ValueKind != JsonValueKind.Number || !entry.Value.TryGetInt32(out var n))
+                yield return CreationIssue.Error(stepKey, $"{label}: {entry.Name} must be a whole number.");
+            else if (field.Min is { } min && n < min)
+                yield return CreationIssue.Error(stepKey, $"{label}: {entry.Name} {n:+0;-0;0} is below {min}.");
+            else if (field.Max is { } max && n > max)
+                yield return CreationIssue.Error(stepKey, $"{label}: {entry.Name} {n:+0;-0;0} is above {max}.");
+        }
+    }
+
+    /// <summary>
+    /// A <c>rows</c> field: a list (or the templates' "Bite +3, 1d6+1 piercing" text) of up to <c>max</c> rows, each with
+    /// only the field's columns, required ones filled, numbers whole and in range, damage as dice.
+    /// </summary>
+    private static IEnumerable<CreationIssue> Rows(string stepKey, string label, StatBlockField field, JsonElement value)
+    {
+        var columns = field.Columns ?? [];
+        value = StatRowsText.Normalize(value, columns);
+        if (value.ValueKind != JsonValueKind.Array)
+        {
+            yield return CreationIssue.Error(stepKey, $"{label}: must be a list of rows, like [{{\"{columns.FirstOrDefault()?.Key ?? "name"}\": \"...\"}}].");
+            yield break;
+        }
+
+        var count = value.GetArrayLength();
+        if (field.Max is { } most && count > most)
+            yield return CreationIssue.Error(stepKey, $"{label}: {count} rows, at most {most}.");
+
+        var index = 0;
+        foreach (var row in value.EnumerateArray())
+        {
+            index++;
+            if (row.ValueKind != JsonValueKind.Object)
+            {
+                yield return CreationIssue.Error(stepKey, $"{label}: row {index} must be an object.");
+                continue;
+            }
+
+            var name = columns.Count > 0 && row.TryGetProperty(columns[0].Key, out var n) && n.ValueKind == JsonValueKind.String
+                       && !string.IsNullOrWhiteSpace(n.GetString())
+                ? n.GetString()!.Trim()
+                : $"row {index}";
+            foreach (var extra in row.EnumerateObject().Where(p => !columns.Any(c => c.Key.Equals(p.Name, StringComparison.OrdinalIgnoreCase))))
+                yield return CreationIssue.Error(stepKey, $"{label}: {name} has '{extra.Name}', which isn't a column ({string.Join(", ", columns.Select(c => c.Key))}).");
+
+            foreach (var column in columns)
+            {
+                var what = (column.Label ?? column.Key).ToLowerInvariant();
+                var cell = row.EnumerateObject().FirstOrDefault(p => p.Name.Equals(column.Key, StringComparison.OrdinalIgnoreCase)).Value;
+                var empty = cell.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null
+                            || (cell.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(cell.GetString()));
+                if (empty)
+                {
+                    if (column.Required)
+                        yield return CreationIssue.Error(stepKey, $"{label}: {name} needs its {what}.");
+                    continue;
+                }
+
+                if (column.Type == "int")
+                {
+                    if (cell.ValueKind != JsonValueKind.Number || !cell.TryGetInt32(out var v))
+                        yield return CreationIssue.Error(stepKey, $"{label}: {name}'s {what} must be a whole number.");
+                    else if (column.Min is { } min && v < min)
+                        yield return CreationIssue.Error(stepKey, $"{label}: {name}'s {what} {v:+0;-0;0} is below {min}.");
+                    else if (column.Max is { } max && v > max)
+                        yield return CreationIssue.Error(stepKey, $"{label}: {name}'s {what} {v:+0;-0;0} is above {max}.");
+                }
+                else if (cell.ValueKind is not (JsonValueKind.String or JsonValueKind.Number))
+                {
+                    yield return CreationIssue.Error(stepKey, $"{label}: {name}'s {what} must be text.");
+                }
+                else if (column.Type == "dice" && !StatRowsText.IsDamage(cell.ValueKind == JsonValueKind.String ? cell.GetString() : cell.ToString()))
+                {
+                    yield return CreationIssue.Error(stepKey, $"{label}: {name}'s {what} must start with dice or a number, like 1d6+2 piercing.");
+                }
+            }
+        }
+    }
+}
+
+/// <summary>
+/// Warns, never blocks, when a companion's level is more than one away from the party's (set as <c>draft.partyLevel</c>).
+/// Too strong steals the fights; too weak dies in the first one.
+/// </summary>
+public sealed class CompanionPowerValidator : IRecipeValidator
+{
+    public const int Band = 1;
+
+    public string Name => RecipeValidatorNames.CompanionPower;
+
+    public IEnumerable<CreationIssue> Validate(CharacterDraft draft, CreationStep step, CreationContext ctx)
+    {
+        if (draft.PartyLevel is not { } party)
+            yield break;
+
+        if (draft.Level > party + Band)
+            yield return CreationIssue.Warning(step.Key, $"Level {draft.Level} is above the party (level {party}); a companion is meant to stay within {Band} of it.");
+        else if (draft.Level < party - Band)
+            yield return CreationIssue.Warning(step.Key, $"Level {draft.Level} is well below the party (level {party}); it will not last a fight.");
+    }
 }

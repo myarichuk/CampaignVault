@@ -4,6 +4,9 @@
 name: into_the_fray
 system: pf2e
 prerequisite: Viking Dedication
+prerequisites:
+  - { feat: viking_dedication }
 mechanicalSummary: You charge into battle with shield-splintering fury.
 extraPools: []
+category: archetype
 level: 8

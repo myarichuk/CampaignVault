@@ -5,4 +5,6 @@ name: vicious_incisors
 system: pf2e
 mechanicalSummary: Your jaws unarmed attack deals 1d6 piercing damage instead of 1d4, and gains the backstabber trait.
 extraPools: []
+category: ancestry
+ancestries: [ratfolk]
 level: 1

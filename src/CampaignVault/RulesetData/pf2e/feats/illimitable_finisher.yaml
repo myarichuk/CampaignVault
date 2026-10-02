@@ -5,5 +5,6 @@ name: illimitable_finisher
 system: pf2e
 mechanicalSummary: Your strikes flow endlessly.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 20

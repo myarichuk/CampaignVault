@@ -5,5 +5,6 @@ name: mirror_shield
 system: pf2e
 mechanicalSummary: You reflect the spell back against its caster.
 extraPools: []
+category: class
 classes: [fighter]
 level: 10

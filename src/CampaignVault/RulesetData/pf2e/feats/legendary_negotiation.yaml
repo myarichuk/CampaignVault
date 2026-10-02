@@ -4,6 +4,10 @@
 name: legendary_negotiation
 system: pf2e
 prerequisite: Legendary in Diplomacy
+prerequisites:
+  - { skill: Diplomacy, rank: legendary }
 mechanicalSummary: Quickly parley with foes
 extraPools: []
+category: skill
+skills: [Diplomacy]
 level: 15

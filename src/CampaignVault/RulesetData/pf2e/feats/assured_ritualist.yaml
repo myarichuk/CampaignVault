@@ -4,6 +4,9 @@
 name: assured_ritualist
 system: pf2e
 prerequisite: Flexible Ritualist
+prerequisites:
+  - { feat: flexible_ritualist }
 mechanicalSummary: "You can cover for a secondary caster's error."
 extraPools: []
+category: archetype
 level: 10

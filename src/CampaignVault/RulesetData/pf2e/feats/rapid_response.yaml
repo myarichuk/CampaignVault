@@ -5,5 +5,6 @@ name: rapid_response
 system: pf2e
 mechanicalSummary: You work quickly in emergencies.
 extraPools: []
+category: class
 classes: [cleric]
 level: 2

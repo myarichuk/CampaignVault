@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: harmful font or healing font; deity that allows clerics to have both fonts
 mechanicalSummary: As you explore your deity’s aspects, you move beyond restrictions on healing or harming.
 extraPools: []
+category: class
 classes: [cleric]
 level: 2

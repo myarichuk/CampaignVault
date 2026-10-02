@@ -5,4 +5,6 @@ name: primal_dragonblood
 system: pf2e
 mechanicalSummary: A dragon with a deep connection to the natural world, such as an adamantine dragon or a horned dragon, resides somewhere on your family tree.
 extraPools: []
+category: ancestry
+ancestries: [dragonblood]
 level: 1

@@ -4,7 +4,10 @@
 name: sympathetic_strike
 system: pf2e
 prerequisite: "Witch's Armaments"
+prerequisites:
+  - { feat: witch_s_armaments }
 mechanicalSummary: You collect your patron’s magic into one of your witch armaments, causing them to shine with runes, light, or another signifier of your patron.
 extraPools: []
+category: class
 classes: [witch]
 level: 4

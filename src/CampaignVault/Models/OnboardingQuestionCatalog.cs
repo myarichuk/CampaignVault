@@ -99,7 +99,7 @@ public static class OnboardingQuestionCatalog
             {
                 Key = WorldSetting,
                 Text =
-                    "Are you running a campaign with: (1) a solo player, (2) a party in an existing world (like Forgotten Realms), or (3) a party in a homebrew world?",
+                    "Are you running a campaign with: (1) a solo player, (2) a party in a published setting you already know, or (3) a party in a homebrew world?",
                 AnswerType = OnboardingAnswerType.Enum,
                 EnumOptions = ["solo", "party-existing", "party-homebrew"],
                 HelpText = "This determines party composition questions and world-building depth.",
@@ -135,7 +135,7 @@ public static class OnboardingQuestionCatalog
             {
                 Key = HomebrewWorldDetails,
                 Text =
-                    "Describe the world. For an existing setting, name it and the region you start in (e.g. 'Forgotten Realms — the Sword Coast'); for a homebrew world, give its climate, geography and history (e.g. 'Temperate forests with mountain kingdoms, 2000 years of history'). The plot is the next question.",
+                    "Describe the world. For an existing setting, name it and the region you start in (e.g. the setting of a campaign book you own, and the coast or city where play begins); for a homebrew world, give its climate, geography and history (e.g. 'Temperate forests with mountain kingdoms, 2000 years of history'). The plot is the next question.",
                 AnswerType = OnboardingAnswerType.Text,
                 HelpText = "Grounds the world-building in your vision."
             },

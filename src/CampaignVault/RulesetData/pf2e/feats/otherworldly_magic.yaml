@@ -5,4 +5,6 @@ name: otherworldly_magic
 system: pf2e
 mechanicalSummary: "Your elven magic manifests as a simple arcane spell, even if you aren't formally trained in magic."
 extraPools: []
+category: ancestry
+ancestries: [elf]
 level: 1

@@ -16,6 +16,12 @@
                     <ui:DataBinding property="text" data-source-path="Label" binding-mode="ToTarget" />
                 </Bindings>
             </ui:Label>
+            <ui:VisualElement picking-mode="Ignore" class="cv-chip cv-chip--gold">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Homebrew" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:Label picking-mode="Ignore" text="HOMEBREW" />
+            </ui:VisualElement>
             <ui:VisualElement picking-mode="Ignore" class="cv-chip cv-chip--arcane">
                 <Bindings>
                     <cv:ClassBinding property="cls-hidden" data-source-path="Suggested" class-name="cv-hidden" invert="true" />

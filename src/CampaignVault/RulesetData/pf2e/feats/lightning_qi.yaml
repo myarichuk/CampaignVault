@@ -4,7 +4,10 @@
 name: lightning_qi
 system: pf2e
 prerequisite: Qi Spells
+prerequisites:
+  - { feat: qi_spells }
 mechanicalSummary: Qi flows freely from within you.
 extraPools: []
+category: class
 classes: [monk]
 level: 20

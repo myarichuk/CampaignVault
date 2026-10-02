@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: "[Bard] enigma muse"
 mechanicalSummary: When you Recall Knowledge, you gain additional information or context.
 extraPools: []
+category: class
 classes: [bard, thaumaturge]
 level: 8

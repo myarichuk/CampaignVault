@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: arcane bond
 mechanicalSummary: Your connection to your bonded item increases your focus pool.
 extraPools: []
+category: class
 classes: [wizard]
 level: 14

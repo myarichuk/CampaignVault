@@ -5,4 +5,6 @@ name: earned_glory
 system: pf2e
 mechanicalSummary: Elves often struggle with underestimating aiuvarins, and you are experienced at telling stories of your accomplishments to gain their respect.
 extraPools: []
+category: ancestry
+ancestries: [aiuvarin]
 level: 1

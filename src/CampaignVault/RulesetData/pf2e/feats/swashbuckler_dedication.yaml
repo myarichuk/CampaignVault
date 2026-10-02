@@ -4,6 +4,10 @@
 name: swashbuckler_dedication
 system: pf2e
 prerequisite: Charisma +2; Dexterity +2
+prerequisites:
+  - { ability: Charisma, min: 2 }
+  - { ability: Dexterity, min: 2 }
 mechanicalSummary: Choose a swashbuckler’s style.
 extraPools: []
+category: archetype
 level: 2

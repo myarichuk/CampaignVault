@@ -4,7 +4,10 @@
 name: cobra_envenom
 system: pf2e
 prerequisite: Cobra Stance; expert in unarmed strikes
+prerequisites:
+  - { feat: cobra_stance }
 mechanicalSummary: You slightly dislocate your joints to lash out with devious intent and the power to envenom your foe.
 extraPools: []
+category: class
 classes: [monk]
 level: 10

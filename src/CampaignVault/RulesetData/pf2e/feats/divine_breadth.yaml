@@ -4,6 +4,9 @@
 name: divine_breadth
 system: pf2e
 prerequisite: Basic Cleric Spellcasting
+prerequisites:
+  - { feat: basic_cleric_spellcasting }
 mechanicalSummary: As your understanding increases, your god grants you more divine spells each day.
 extraPools: []
+category: archetype
 level: 8

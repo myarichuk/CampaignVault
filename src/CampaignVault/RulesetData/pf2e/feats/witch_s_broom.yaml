@@ -5,5 +5,6 @@ name: witch_s_broom
 system: pf2e
 mechanicalSummary: A broom is the only steed you need to fly through the night sky.
 extraPools: []
+category: class
 classes: [witch]
 level: 12

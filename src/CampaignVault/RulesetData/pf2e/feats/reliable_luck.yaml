@@ -4,6 +4,10 @@
 name: reliable_luck
 system: pf2e
 prerequisite: "Cat's Luck"
+prerequisites:
+  - { feat: cat_s_luck }
 mechanicalSummary: You survive danger with surprising regularity.
 extraPools: []
+category: ancestry
+ancestries: [catfolk]
 level: 17

@@ -4,7 +4,10 @@
 name: shadow_hunter
 system: pf2e
 prerequisite: Camouflage
+prerequisites:
+  - { feat: camouflage }
 mechanicalSummary: You blend in to your surroundings so well that others have trouble telling you apart from the terrain.
 extraPools: []
+category: class
 classes: [ranger]
 level: 18

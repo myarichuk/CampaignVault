@@ -4,6 +4,9 @@
 name: basic_trickery
 system: pf2e
 prerequisite: Rogue Dedication
+prerequisites:
+  - { feat: rogue_dedication }
 mechanicalSummary: You gain a 1st- or 2nd-level rogue feat.
 extraPools: []
+category: archetype
 level: 4

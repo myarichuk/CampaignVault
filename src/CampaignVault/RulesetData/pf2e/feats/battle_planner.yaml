@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Expert in Warfare Lore
 mechanicalSummary: You are constantly drawing up plans and battle scenarios, assembling strategies and gathered intelligence for later use.
 extraPools: []
+category: skill
+skills: [Lore]
 level: 2

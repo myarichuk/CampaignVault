@@ -5,4 +5,5 @@ name: untrained_improvisation
 system: pf2e
 mechanicalSummary: Become more adept at using untrained skills
 extraPools: []
+category: general
 level: 3

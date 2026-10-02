@@ -4,6 +4,9 @@
 name: disengaging_twist
 system: pf2e
 prerequisite: Wrestler Dedication
+prerequisites:
+  - { feat: wrestler_dedication }
 mechanicalSummary: Your ability to twist your opponents’ bodies into painful locks and holds makes you particularly adept at escaping such predicaments.
 extraPools: []
+category: archetype
 level: 4

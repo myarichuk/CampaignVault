@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: champion’s reaction that grants extra damage with your Strikes (including the desecration, iniquity, and obedience causes)
 mechanicalSummary: Your blessed armament thirsts for the blood of your foes.
 extraPools: []
+category: class
 classes: [champion]
 level: 16

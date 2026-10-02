@@ -4,6 +4,9 @@
 name: armor_specialist
 system: pf2e
 prerequisite: Sentinel Dedication
+prerequisites:
+  - { feat: sentinel_dedication }
 mechanicalSummary: "You have trained hard to optimize your armor's unique protective qualities to maximize the materials used in its creation."
 extraPools: []
+category: archetype
 level: 6

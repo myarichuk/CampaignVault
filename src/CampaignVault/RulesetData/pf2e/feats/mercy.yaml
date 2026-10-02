@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: lay on hands
 mechanicalSummary: Your touch soothes the body or mind.
 extraPools: []
+category: class
 classes: [champion]
 level: 4

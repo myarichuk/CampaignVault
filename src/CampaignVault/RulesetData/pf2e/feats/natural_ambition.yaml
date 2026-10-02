@@ -5,4 +5,6 @@ name: natural_ambition
 system: pf2e
 mechanicalSummary: You were raised to be ambitious and always reach for the stars, leading you to progress quickly in your chosen field.
 extraPools: []
+category: ancestry
+ancestries: [human]
 level: 1

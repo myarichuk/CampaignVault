@@ -4,6 +4,9 @@
 name: sorcerer_dedication
 system: pf2e
 prerequisite: Charisma +2
+prerequisites:
+  - { ability: Charisma, min: 2 }
 mechanicalSummary: Choose a bloodline.
 extraPools: []
+category: archetype
 level: 2

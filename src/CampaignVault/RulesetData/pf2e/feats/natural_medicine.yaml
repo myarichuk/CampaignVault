@@ -4,6 +4,10 @@
 name: natural_medicine
 system: pf2e
 prerequisite: Trained in Nature
+prerequisites:
+  - { skill: Nature, rank: trained }
 mechanicalSummary: Use Nature to Treat Wounds
 extraPools: []
+category: skill
+skills: [Nature]
 level: 1

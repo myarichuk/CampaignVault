@@ -5,4 +5,6 @@ name: terrain_advantage
 system: pf2e
 mechanicalSummary: Non-lizardfolk creatures in difficult terrain are off-guard to you.
 extraPools: []
+category: ancestry
+ancestries: [lizardfolk]
 level: 9

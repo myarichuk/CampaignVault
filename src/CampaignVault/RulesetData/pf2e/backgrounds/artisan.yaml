@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: artisan
+system: pf2e
+description: "As an apprentice, you practiced a particular form of building or crafting, developing specialized skill. You might have been a blacksmith’s apprentice toiling over the forge for countless hours, a young tailor sewing garments of all kinds, or a shipwright shaping the hulls of ships."
+boosts: [Strength, Intelligence]
+skillProficiencies: [Crafting]
+lore: Guild Lore
+skillFeat: specialty_crafting
+feature: Specialty Crafting

@@ -5,4 +5,6 @@ name: cat_nap
 system: pf2e
 mechanicalSummary: You can regain your energy quickly with a brief nap.
 extraPools: []
+category: ancestry
+ancestries: [catfolk]
 level: 1

@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: expert in your deity’s favored weapon
 mechanicalSummary: Striking out against your enemies draws praise and protection from your deity.
 extraPools: []
+category: class
 classes: [cleric]
 level: 10

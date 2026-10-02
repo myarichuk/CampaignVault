@@ -4,6 +4,10 @@
 name: disturbing_knowledge
 system: pf2e
 prerequisite: Master in Occultism
+prerequisites:
+  - { skill: Occultism, rank: master }
 mechanicalSummary: You utter a litany of dreadful names, prophecies, and descriptions of realms beyond mortal comprehension, drawn from your study of forbidden tomes and scrolls.
 extraPools: []
+category: skill
+skills: [Occultism]
 level: 7

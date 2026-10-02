@@ -4,6 +4,10 @@
 name: no_cause_for_alarm
 system: pf2e
 prerequisite: Trained in Diplomacy
+prerequisites:
+  - { skill: Diplomacy, rank: trained }
 mechanicalSummary: Reduce creatures’ frightened condition values
 extraPools: []
+category: skill
+skills: [Diplomacy]
 level: 1

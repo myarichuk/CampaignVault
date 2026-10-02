@@ -4,6 +4,9 @@
 name: order_spell
 system: pf2e
 prerequisite: Druid Dedication
+prerequisites:
+  - { feat: druid_dedication }
 mechanicalSummary: You gain the initial order spell from your order.
 extraPools: []
+category: archetype
 level: 4

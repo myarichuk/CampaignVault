@@ -4,6 +4,9 @@
 name: snap_out_of_it
 system: pf2e
 prerequisite: Marshal Dedication
+prerequisites:
+  - { feat: marshal_dedication }
 mechanicalSummary: You give a quick shout, hoping to shake the fog clouding your ally’s thoughts.
 extraPools: []
+category: archetype
 level: 4

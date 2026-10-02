@@ -5,5 +5,6 @@ name: monster_hunter
 system: pf2e
 mechanicalSummary: You quickly assess your prey and apply what you know.
 extraPools: []
+category: class
 classes: [ranger]
 level: 1

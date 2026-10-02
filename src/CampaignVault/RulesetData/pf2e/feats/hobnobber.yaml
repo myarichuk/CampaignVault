@@ -4,6 +4,10 @@
 name: hobnobber
 system: pf2e
 prerequisite: Trained in Diplomacy
+prerequisites:
+  - { skill: Diplomacy, rank: trained }
 mechanicalSummary: Gather Information rapidly
 extraPools: []
+category: skill
+skills: [Diplomacy]
 level: 1

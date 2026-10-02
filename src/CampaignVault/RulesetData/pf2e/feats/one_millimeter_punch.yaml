@@ -4,7 +4,10 @@
 name: one_millimeter_punch
 system: pf2e
 prerequisite: One-inch Punch
+prerequisites:
+  - { feat: one_inch_punch }
 mechanicalSummary: Your punches have incredible force and control.
 extraPools: []
+category: class
 classes: [monk]
 level: 16

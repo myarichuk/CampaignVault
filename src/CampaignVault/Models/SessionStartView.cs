@@ -97,7 +97,9 @@ public record PartySessionView(
     List<string>? Carried,
     Dictionary<string, int>? HighNeeds,
     int MemoryCount,
-    List<string>? KeyMemories)
+    List<string>? KeyMemories,
+    /// <summary>The campaign's XP rule says this player character has earned the next level (the client offers its level-up menu).</summary>
+    bool LevelUpReady = false)
 {
     /// <summary>Needs at or above this value are surfaced; lower ones are ambient and left to take_turn.</summary>
     public const float HighNeedThreshold = 60f;

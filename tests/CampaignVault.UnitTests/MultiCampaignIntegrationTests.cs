@@ -465,9 +465,13 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
 
         // build-now arrives with built characters; dm-drafts with drafts the player already committed.
         var lyra = mode == OnboardingPartyAnswer.ModeBuildAtTable ? null : await StorePcAsync(slug, "Lyra");
+        // build-now also brings a companion the player built (or reviewed from the DM's drafts).
+        var brann = mode == OnboardingPartyAnswer.ModeBuildNow ? await StorePcAsync(slug, "Brann", isPc: false) : null;
         var party = lyra == null
             ? $"{{\"mode\":\"{mode}\",\"level\":3}}"
-            : $"{{\"mode\":\"{mode}\",\"level\":3,\"characterIds\":[\"{lyra}\"]}}";
+            : brann != null
+                ? $"{{\"mode\":\"{mode}\",\"level\":3,\"characterIds\":[\"{lyra}\"],\"companionIds\":[\"{brann}\"]}}"
+                : $"{{\"mode\":\"{mode}\",\"level\":3,\"characterIds\":[\"{lyra}\"]}}";
 
         var start = await onboarding.StartCampaignOnboarding(slug);
         Assert.True(start.Success);
@@ -521,6 +525,16 @@ public class MultiCampaignIntegrationTests : IClassFixture<RavenDBFixture>
             Assert.Contains("already built", brief);
             Assert.Contains("Do NOT world_build", brief);
             Assert.DoesNotContain("isPc=true", brief);
+            if (brann != null)
+            {
+                // Built companions are listed and must not be world_built again either.
+                Assert.Contains(brann, brief);
+                Assert.Contains("The companions are already built too", brief);
+            }
+            else
+            {
+                Assert.DoesNotContain("companions are already built", brief);
+            }
         }
         else
         {

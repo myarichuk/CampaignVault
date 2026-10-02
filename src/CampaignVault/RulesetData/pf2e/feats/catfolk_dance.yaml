@@ -5,4 +5,6 @@ name: catfolk_dance
 system: pf2e
 mechanicalSummary: You have a habit of always being in the way when other creatures attempt to move.
 extraPools: []
+category: ancestry
+ancestries: [catfolk]
 level: 1

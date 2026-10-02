@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: low-light vision
 mechanicalSummary: Your orc blood grants you the keen vision of your forebears.
 extraPools: []
+category: ancestry
+ancestries: [dromaar]
 level: 1

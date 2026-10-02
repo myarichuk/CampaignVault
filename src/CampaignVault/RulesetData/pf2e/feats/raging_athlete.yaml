@@ -4,7 +4,11 @@
 name: raging_athlete
 system: pf2e
 prerequisite: Expert in Athletics
+prerequisites:
+  - { skill: Athletics, rank: expert }
 mechanicalSummary: "Physical obstacles can't hold back your fury."
 extraPools: []
+category: class
 classes: [barbarian]
+skills: [Athletics]
 level: 4

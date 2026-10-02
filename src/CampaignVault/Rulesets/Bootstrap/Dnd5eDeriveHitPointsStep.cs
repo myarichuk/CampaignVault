@@ -1,9 +1,14 @@
 using CampaignVault.Data;
 using CampaignVault.Models;
+using CampaignVault.Services;
 
 namespace CampaignVault.Rulesets.Bootstrap;
 
-public sealed class Dnd5eDeriveHitPointsStep(IRollService rollService) : IBootstrapStep, ILevelGainStep
+/// <summary>
+/// Max hit points from the hit dice and Constitution, plus what class features give per level (Draconic Resilience, from
+/// the progression data when <paramref name="progressions"/> is given).
+/// </summary>
+public sealed class Dnd5eDeriveHitPointsStep(IRollService rollService, ProgressionDefinitionProvider? progressions = null) : IBootstrapStep, ILevelGainStep
 {
     public string Name => "dnd5e.derive_hit_points";
 
@@ -22,6 +27,12 @@ public sealed class Dnd5eDeriveHitPointsStep(IRollService rollService) : IBootst
         var (maxHp, detail) = classLevels.Count > 1
             ? await ComputeMulticlassMaxHpAsync(classLevels, conMod, mode, ct)
             : await ComputeMaxHpAsync(level, dieSides, conMod, mode, ct);
+        var featureHp = CharacterClassFeatures.HpBonus(context.Character, RulesetSystem.Dnd5e, progressions, level);
+        if (featureHp > 0)
+        {
+            maxHp += featureHp;
+            detail = $"{detail} Class features +{featureHp}.";
+        }
 
         context.Character.MaxHp = maxHp;
         context.Character.CurrentHp = context.ExplicitCurrentHp ?? maxHp;
@@ -68,7 +79,9 @@ public sealed class Dnd5eDeriveHitPointsStep(IRollService rollService) : IBootst
                 : dieSides;
         }
 
-        var gain = await ComputeLevelGainAsync(dieSides, conMod, mode, ct);
+        var gain = await ComputeLevelGainAsync(dieSides, conMod, mode, ct)
+            + CharacterClassFeatures.HpBonus(context.Character, RulesetSystem.Dnd5e, progressions, level + context.LevelsGained)
+            - CharacterClassFeatures.HpBonus(context.Character, RulesetSystem.Dnd5e, progressions, level);
         var previousMax = context.Character.MaxHp;
         context.Character.MaxHp = Math.Max(0, previousMax) + gain;
         stats.Level = level + context.LevelsGained;

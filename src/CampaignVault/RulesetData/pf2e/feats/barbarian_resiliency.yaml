@@ -4,6 +4,9 @@
 name: barbarian_resiliency
 system: pf2e
 prerequisite: Barbarian Dedication; class granting no more Hit Points per level than 10 + your Constitution modifier
+prerequisites:
+  - { feat: barbarian_dedication }
 mechanicalSummary: You gain 3 additional Hit Points for each barbarian archetype class feat you have.
 extraPools: []
+category: archetype
 level: 4

@@ -4,7 +4,11 @@
 name: watch_your_back
 system: pf2e
 prerequisite: Trained in Intimidation
+prerequisites:
+  - { skill: Intimidation, rank: trained }
 mechanicalSummary: You menace the target, stoking their fears and drawing their attention.
 extraPools: []
+category: class
 classes: [rogue]
+skills: [Intimidation]
 level: 6

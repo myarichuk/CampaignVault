@@ -5,4 +5,6 @@ name: stone_bones
 system: pf2e
 mechanicalSummary: Your intractable nature can help you shrug off even the most grievous injuries.
 extraPools: []
+category: ancestry
+ancestries: [dwarf]
 level: 9

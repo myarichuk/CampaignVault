@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: You are not immune to diseases or poisons
 mechanicalSummary: Your skin readily absorbs poison and can consciously draw toxins into your body to spare others.
 extraPools: []
+category: ancestry
+ancestries: [tripkee]
 level: 9

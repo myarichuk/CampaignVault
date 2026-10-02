@@ -5,4 +5,6 @@ name: lawbringer
 system: pf2e
 mechanicalSummary: You trace your lineage to archons, guardians of the seventiered mountain of Heaven and nurturers of law and virtue within mortals.
 extraPools: []
+category: ancestry
+ancestries: [nephilim]
 level: 1

@@ -4,6 +4,11 @@
 name: master_bard_spellcasting
 system: pf2e
 prerequisite: Expert Bard Spellcasting; Legendary in Occultism
+prerequisites:
+  - { feat: expert_bard_spellcasting }
+  - { skill: Occultism, rank: legendary }
 mechanicalSummary: You gain the master spellcasting benefits.
 extraPools: []
+category: archetype
+skills: [Occultism]
 level: 18

@@ -4,7 +4,10 @@
 name: unbalancing_blow
 system: pf2e
 prerequisite: thief racket
+prerequisites:
+  - { classFeature: thief }
 mechanicalSummary: Interweaving attacks, you unbalance your foes.
 extraPools: []
+category: class
 classes: [rogue]
 level: 2

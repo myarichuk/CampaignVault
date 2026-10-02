@@ -5,5 +5,6 @@ name: healing_bomb
 system: pf2e
 mechanicalSummary: You can add a foamy catalyst to an elixir of life to turn it into a topical projectile.
 extraPools: []
+category: class
 classes: [alchemist]
 level: 4

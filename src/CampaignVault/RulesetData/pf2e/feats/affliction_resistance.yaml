@@ -5,4 +5,6 @@ name: affliction_resistance
 system: pf2e
 mechanicalSummary: Your diet has strengthened you against diseases and poisons.
 extraPools: []
+category: ancestry
+ancestries: [kholo]
 level: 5

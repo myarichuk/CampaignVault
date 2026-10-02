@@ -5,5 +5,6 @@ name: quaking_stomp
 system: pf2e
 mechanicalSummary: You stomp the ground with such force that it creates a minor earthquake, with the effects of the  earthquake  spell.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 20

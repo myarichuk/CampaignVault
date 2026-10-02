@@ -4,6 +4,10 @@
 name: biographical_eye
 system: pf2e
 prerequisite: Master in Society
+prerequisites:
+  - { skill: Society, rank: master }
 mechanicalSummary: "In even a brief conversation or social interaction, you pick up on subtle social and visual cues to learn a great deal about a person's origin and history."
 extraPools: []
+category: skill
+skills: [Society]
 level: 7

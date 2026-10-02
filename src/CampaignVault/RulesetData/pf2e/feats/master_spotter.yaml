@@ -4,6 +4,9 @@
 name: master_spotter
 system: pf2e
 prerequisite: Investigator Dedication; expert in Perception
+prerequisites:
+  - { feat: investigator_dedication }
 mechanicalSummary: Your proficiency rank in Perception increases to master.
 extraPools: []
+category: archetype
 level: 12

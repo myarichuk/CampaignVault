@@ -4,7 +4,10 @@
 name: ebb_and_flow
 system: pf2e
 prerequisite: Versatile Font
+prerequisites:
+  - { feat: versatile_font }
 mechanicalSummary: You can pull forth both vitality and the void simultaneously to harm your enemies and heal your allies.
 extraPools: []
+category: class
 classes: [cleric]
 level: 14

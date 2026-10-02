@@ -4,6 +4,9 @@
 name: homing_shot
 system: pf2e
 prerequisite: Eldritch Archer Dedication
+prerequisites:
+  - { feat: eldritch_archer_dedication }
 mechanicalSummary: Your shots zip around corners and fly at impossible angles to reach your target.
 extraPools: []
+category: archetype
 level: 14

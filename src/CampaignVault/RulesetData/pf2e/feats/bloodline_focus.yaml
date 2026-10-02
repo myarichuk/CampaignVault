@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: bloodline spell
 mechanicalSummary: By listening to the beating of your heart, your focus recovers faster.
 extraPools: []
+category: class
 classes: [sorcerer]
 level: 12

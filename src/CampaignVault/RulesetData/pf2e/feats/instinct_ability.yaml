@@ -4,6 +4,9 @@
 name: instinct_ability
 system: pf2e
 prerequisite: Barbarian Dedication
+prerequisites:
+  - { feat: barbarian_dedication }
 mechanicalSummary: Your rage stokes the spark of your barbarian instinct into a roaring flame.
 extraPools: []
+category: archetype
 level: 6

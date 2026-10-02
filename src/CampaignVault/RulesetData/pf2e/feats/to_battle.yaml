@@ -4,6 +4,9 @@
 name: to_battle
 system: pf2e
 prerequisite: Marshal Dedication
+prerequisites:
+  - { feat: marshal_dedication }
 mechanicalSummary: With a resounding cry, you rally your ally to take the offensive.
 extraPools: []
+category: archetype
 level: 8

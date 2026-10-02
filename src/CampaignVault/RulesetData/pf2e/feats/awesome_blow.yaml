@@ -4,7 +4,10 @@
 name: awesome_blow
 system: pf2e
 prerequisite: Knockback
+prerequisites:
+  - { feat: knockback }
 mechanicalSummary: Your attacks are so powerful, they can flatten your opponents.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 14

@@ -4,6 +4,10 @@
 name: monk_dedication
 system: pf2e
 prerequisite: Dexterity +2; Strength +2
+prerequisites:
+  - { ability: Dexterity, min: 2 }
+  - { ability: Strength, min: 2 }
 mechanicalSummary: You become trained in unarmed attacks and gain the powerful fist class feature.
 extraPools: []
+category: archetype
 level: 2

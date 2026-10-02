@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: an instinct that allows you to change your additional damage from Rage to a different damage type
 mechanicalSummary: You emit a powerful surge of instinctual energy when you unleash your anger.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 6

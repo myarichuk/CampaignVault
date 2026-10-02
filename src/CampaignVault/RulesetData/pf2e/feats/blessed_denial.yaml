@@ -4,6 +4,9 @@
 name: blessed_denial
 system: pf2e
 prerequisite: Blessed One Dedication
+prerequisites:
+  - { feat: blessed_one_dedication }
 mechanicalSummary: You exude peace and protection, lessening a harmful condition as it falls upon an ally.
 extraPools: []
+category: archetype
 level: 12

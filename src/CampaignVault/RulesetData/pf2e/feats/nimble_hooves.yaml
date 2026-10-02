@@ -5,4 +5,6 @@ name: nimble_hooves
 system: pf2e
 mechanicalSummary: You possess hooves, ankle wings, or some other feature that hastens your movement.
 extraPools: []
+category: ancestry
+ancestries: [nephilim]
 level: 1

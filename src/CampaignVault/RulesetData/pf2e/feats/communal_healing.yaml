@@ -5,5 +5,6 @@ name: communal_healing
 system: pf2e
 mechanicalSummary: You’re an exceptional conduit for vitality and, as you channel it through you, you can divert some to heal yourself or another creature.
 extraPools: []
+category: class
 classes: [cleric]
 level: 2

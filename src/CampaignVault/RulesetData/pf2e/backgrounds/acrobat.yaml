@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: acrobat
+system: pf2e
+description: "In a circus or on the streets, you earned your pay by performing as an acrobat. You might have turned to adventuring when the money dried up, or simply decided to put your skills to better use."
+boosts: [Strength, Dexterity]
+skillProficiencies: [Acrobatics]
+lore: Circus Lore
+skillFeat: steady_balance
+feature: Steady Balance

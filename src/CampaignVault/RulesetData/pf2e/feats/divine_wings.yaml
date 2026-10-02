@@ -5,4 +5,6 @@ name: divine_wings
 system: pf2e
 mechanicalSummary: With effort, you can call forth magical wings from your back, similar in appearance to those of your extraplanar forebear, whether they be elegantly feathered wings or ominous bat wings.
 extraPools: []
+category: ancestry
+ancestries: [nephilim]
 level: 9

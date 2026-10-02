@@ -4,6 +4,9 @@
 name: fast_recovery
 system: pf2e
 prerequisite: Constitution +2
+prerequisites:
+  - { ability: Constitution, min: 2 }
 mechanicalSummary: Regain more HP from rest, recover faster from disease
 extraPools: []
+category: general
 level: 1

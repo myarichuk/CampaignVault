@@ -4,6 +4,9 @@
 name: mature_beastmaster_companion
 system: pf2e
 prerequisite: Beastmaster Dedication
+prerequisites:
+  - { feat: beastmaster_dedication }
 mechanicalSummary: All of your animal companions grow up, becoming mature animal companions and gaining additional capabilities.  Your animal companion has greater independence.
 extraPools: []
+category: archetype
 level: 4

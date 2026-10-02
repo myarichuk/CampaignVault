@@ -5,4 +5,6 @@ name: folksy_patter
 system: pf2e
 mechanicalSummary: You are adept at disguising coded messages as folksy idioms.
 extraPools: []
+category: ancestry
+ancestries: [halfling]
 level: 1

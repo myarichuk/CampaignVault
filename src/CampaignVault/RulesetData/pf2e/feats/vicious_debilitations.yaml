@@ -4,7 +4,10 @@
 name: vicious_debilitations
 system: pf2e
 prerequisite: ruffian racket; Debilitating Strike
+prerequisites:
+  - { classFeature: ruffian }
 mechanicalSummary: The debilitations you dish out seriously impair your foes.
 extraPools: []
+category: class
 classes: [rogue]
 level: 10

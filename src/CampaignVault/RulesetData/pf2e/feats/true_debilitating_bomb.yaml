@@ -4,7 +4,10 @@
 name: true_debilitating_bomb
 system: pf2e
 prerequisite: Greater Debilitating Bomb
+prerequisites:
+  - { feat: greater_debilitating_bomb }
 mechanicalSummary: You have discovered increasingly devastating ways for your bombs to impede your foes.
 extraPools: []
+category: class
 classes: [alchemist]
 level: 14

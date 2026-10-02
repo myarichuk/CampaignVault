@@ -5,5 +5,6 @@ name: alchemical_revivification
 system: pf2e
 mechanicalSummary: If you die while under the effect of at least one elixir, the alchemical compounds in your bloodstream bring you back to life at the start of your next turn.
 extraPools: []
+category: class
 classes: [alchemist]
 level: 20

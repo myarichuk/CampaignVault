@@ -4,6 +4,9 @@
 name: inescapable_grasp
 system: pf2e
 prerequisite: Wrestler Dedication
+prerequisites:
+  - { feat: wrestler_dedication }
 mechanicalSummary: Your grasp has a supernatural quality to it, preventing your foes from easily escaping—with or without magical assistance.
 extraPools: []
+category: archetype
 level: 12

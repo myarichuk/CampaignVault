@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: fortune_teller
+system: pf2e
+description: "The strands of fate are clear to you, as you have learned many traditional forms by which laypeople can divine the future. You might have used these skills to guide your community, or simply to make money. But even the slightest peek into these practices connects you to the occult mysteries of the universe."
+boosts: [Intelligence, Charisma]
+skillProficiencies: [Occultism]
+lore: Fortune-Telling Lore
+skillFeat: oddity_identification
+feature: Oddity Identification

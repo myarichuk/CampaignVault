@@ -4,7 +4,10 @@
 name: forest_passage
 system: pf2e
 prerequisite: leaf order
+prerequisites:
+  - { classFeature: leaf }
 mechanicalSummary: You can always find a path, almost as if foliage parted before you.
 extraPools: []
+category: class
 classes: [druid]
 level: 4

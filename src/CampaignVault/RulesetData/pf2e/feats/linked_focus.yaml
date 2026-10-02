@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: arcane bond; arcane school
 mechanicalSummary: You have linked your bonded item to the well of energy that powers your school spells.
 extraPools: []
+category: class
 classes: [wizard]
 level: 4

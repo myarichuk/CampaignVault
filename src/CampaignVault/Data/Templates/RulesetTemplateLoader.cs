@@ -179,7 +179,7 @@ public class RulesetTemplateLoader<T> where T : RulesetTemplate
     /// <see cref="RulesetTemplate.ListOps"/> (typed by deserializing them as that list), and <c>patches: &lt;name&gt;</c>
     /// marks the file as a patch. An edit naming no list property is skipped with a warning.
     /// </summary>
-    private T? Parse(string yaml, string source)
+    internal T? Parse(string yaml, string source)
     {
         if (!EditKeys.IsMatch(yaml))
             return Deserializer.Deserialize<T>(yaml);

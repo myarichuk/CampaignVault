@@ -4,6 +4,10 @@
 name: confabulator
 system: pf2e
 prerequisite: Expert in Deception
+prerequisites:
+  - { skill: Deception, rank: expert }
 mechanicalSummary: Reduce the bonuses against your repeated lies
 extraPools: []
+category: skill
+skills: [Deception]
 level: 2

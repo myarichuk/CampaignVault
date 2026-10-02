@@ -4,6 +4,9 @@
 name: master_scroll_cache
 system: pf2e
 prerequisite: Expert Scroll Cache
+prerequisites:
+  - { feat: expert_scroll_cache }
 mechanicalSummary: Your scroll collection is incredible, brimming with eldritch power, and you can prepare far more of them than an ordinary scroll trickster.
 extraPools: []
+category: archetype
 level: 18

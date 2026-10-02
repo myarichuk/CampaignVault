@@ -5,4 +5,6 @@ name: ratfolk_roll
 system: pf2e
 mechanicalSummary: You roll up into a ball and move up to four times your Speed in a straight line down an incline.
 extraPools: []
+category: ancestry
+ancestries: [ratfolk]
 level: 5

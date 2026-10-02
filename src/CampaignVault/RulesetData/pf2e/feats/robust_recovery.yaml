@@ -4,6 +4,10 @@
 name: robust_recovery
 system: pf2e
 prerequisite: Expert in Medicine
+prerequisites:
+  - { skill: Medicine, rank: expert }
 mechanicalSummary: Greater benefits from Treat Disease and Treat Poison
 extraPools: []
+category: skill
+skills: [Medicine]
 level: 2

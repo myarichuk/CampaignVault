@@ -5,4 +5,6 @@ name: elf_step
 system: pf2e
 mechanicalSummary: You move in a graceful dance, and even your steps are broad.
 extraPools: []
+category: ancestry
+ancestries: [elf]
 level: 9

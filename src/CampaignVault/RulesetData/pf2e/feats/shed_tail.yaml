@@ -4,6 +4,10 @@
 name: shed_tail
 system: pf2e
 prerequisite: Iruxi Armaments
+prerequisites:
+  - { feat: iruxi_armaments }
 mechanicalSummary: You can shed a portion of your tail to escape.
 extraPools: []
+category: ancestry
+ancestries: [lizardfolk]
 level: 5

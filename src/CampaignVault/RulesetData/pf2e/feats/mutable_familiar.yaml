@@ -4,6 +4,9 @@
 name: mutable_familiar
 system: pf2e
 prerequisite: Familiar Master Dedication
+prerequisites:
+  - { feat: familiar_master_dedication }
 mechanicalSummary: "Your familiar's supernatural spirit has outgrown its corporeal body."
 extraPools: []
+category: archetype
 level: 8

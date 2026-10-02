@@ -4,6 +4,10 @@
 name: sanctify_water
 system: pf2e
 prerequisite: Expert in Religion; you follow a deity with “holy” or “unholy” sanctification
+prerequisites:
+  - { skill: Religion, rank: expert }
 mechanicalSummary: "You imbue water with your deity's blessing."
 extraPools: []
+category: skill
+skills: [Religion]
 level: 2

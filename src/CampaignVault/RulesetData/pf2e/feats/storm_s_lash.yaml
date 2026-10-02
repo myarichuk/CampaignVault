@@ -5,4 +5,6 @@ name: storm_s_lash
 system: pf2e
 mechanicalSummary: Wind and lightning have always been friends to you.
 extraPools: []
+category: ancestry
+ancestries: [tengu]
 level: 1

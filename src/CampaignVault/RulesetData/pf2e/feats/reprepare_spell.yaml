@@ -5,5 +5,6 @@ name: reprepare_spell
 system: pf2e
 mechanicalSummary: You’ve discovered how to reuse some of your spell slots over and over.
 extraPools: []
+category: class
 classes: [wizard]
 level: 18

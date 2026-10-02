@@ -466,6 +466,26 @@ public class CustomFeatUpsertRequest
 }
 
 /// <summary>
+/// Tool-facing request for a homebrew subclass, ancestry or named power. The body is the template YAML a plugin file holds.
+/// </summary>
+public class HomebrewTemplateUpsertRequest
+{
+    [Description("classOption (a subclass, patron kind or other option of a class's choice) | ancestry (a race or ancestry) | power (a god, patron or lineage).")]
+    public string Kind { get; set; } = null!;
+
+    [Description("The ruleset it is for (dnd5e, pf2e...). Omit for the campaign's.")]
+    public string? System { get; set; }
+
+    [Description("The template as YAML, exactly as a plugin file would hold it (see the plugin docs: classOptions, races/ancestries, powers). It must have a name. Example subclass: \"name: ember_knight\\nclass: fighter\\nlabel: Ember Knight\\nfeatures:\\n  3: [{ name: Kindled Blade, description: ... }]\".")]
+    public string Yaml { get; set; } = null!;
+
+    [Description("Set true to stop offering it in the character builder (characters that have it keep it); false to offer it again. Omit to preserve.")]
+    public bool? IsArchived { get; set; }
+
+    public string? CampaignName { get; set; }
+}
+
+/// <summary>
 /// Tool-facing request for upsert_rumor. Mirrors <see cref="Rumor"/>.
 /// </summary>
 public class RumorUpsertRequest

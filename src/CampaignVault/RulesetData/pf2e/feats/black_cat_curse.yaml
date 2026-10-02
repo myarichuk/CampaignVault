@@ -5,4 +5,6 @@ name: black_cat_curse
 system: pf2e
 mechanicalSummary: You hiss a spiteful curse.
 extraPools: []
+category: ancestry
+ancestries: [catfolk]
 level: 13

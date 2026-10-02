@@ -5,5 +5,6 @@ name: brutal_finish
 system: pf2e
 mechanicalSummary: Your final blow can make an impact even if it rebounds off a foe’s defenses.
 extraPools: []
+category: class
 classes: [fighter]
 level: 12

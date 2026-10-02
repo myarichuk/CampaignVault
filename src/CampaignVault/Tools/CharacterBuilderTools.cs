@@ -19,8 +19,17 @@ public sealed record CharacterBuilderResult
     /// <summary>steps: the recipe's steps for this draft, in order.</summary>
     public IReadOnlyList<CreationStep>? Steps { get; init; }
 
+    /// <summary>
+    /// steps: for each step key, the steps its choice depends on (a heritage reads the ancestry, trained skills the
+    /// class, background and boosts). Changing one of those clears it and refetches its options.
+    /// </summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<string>>? Reads { get; init; }
+
     /// <summary>steps: the stat block schemas identity steps name.</summary>
     public IReadOnlyList<StatBlockView>? StatBlocks { get; init; }
+
+    /// <summary>steps: the highest level the recipe builds at, when it has one.</summary>
+    public int? MaxLevel { get; init; }
 
     /// <summary>options: what the step offers.</summary>
     public IReadOnlyList<CreationOption>? Options { get; init; }
@@ -31,8 +40,14 @@ public sealed record CharacterBuilderResult
     /// <summary>options for a spells step: picks per group (cantrips, known, prepared).</summary>
     public IReadOnlyDictionary<string, int>? GroupCounts { get; init; }
 
+    /// <summary>options for a level choices step: its slots in level order; each option's group is its slot's id.</summary>
+    public IReadOnlyList<LevelChoiceSlot>? Slots { get; init; }
+
     /// <summary>preview / commit: the derived sheet.</summary>
     public CharacterDetailView? Character { get; init; }
+
+    /// <summary>preview: the class features the character would have, its subclass's included.</summary>
+    public IReadOnlyList<Rulesets.ClassFeatureView>? ClassFeatures { get; init; }
 
     public IReadOnlyList<CreationIssue> Errors { get; init; } = [];
     public IReadOnlyList<CreationIssue> Warnings { get; init; } = [];
@@ -41,7 +56,7 @@ public sealed record CharacterBuilderResult
     public IReadOnlyList<string> Notes { get; init; } = [];
 }
 
-public sealed record StatBlockView(string Name, IReadOnlyList<StatBlockField> Fields);
+public sealed record StatBlockView(string Name, IReadOnlyList<StatBlockField> Fields, string? Title = null);
 
 /// <summary>
 /// The character builder: the client walks a system's recipe step by step (steps → options → preview) and commits
@@ -73,7 +88,8 @@ public partial class CharacterBuilderTools : CampaignToolBase, IMcpServerTool
                  "action=steps: the steps for draft.kind (pc|companion) and draft.level. action=options: what step offers for this draft. " +
                  "action=preview: the derived sheet plus errors/warnings; nothing is saved. action=commit: creates the character via world_build " +
                  "(errors block it); send the returned id as draft.id to update instead of duplicating. " +
-                 "draft.choices is keyed by step key: a string (pickOne), a string list (pickN), {method, scores} (abilityScores), {cantrips, known, prepared} (spells).")]
+                 "draft.choices is keyed by step key: a string (pickOne), a string list (pickN), {method, scores} (abilityScores), {cantrips, known, prepared} (spells), " +
+                 "{\"<level>.<choice>\": id or [ids]} (levelChoices; an ability score improvement is one ability for +2, two for +1 each, or one feat).")]
     public Task<ToolResult<CharacterBuilderResult>> CharacterBuilder(
         [Description("steps | options | preview | commit")]
         string action,
@@ -108,15 +124,25 @@ public partial class CharacterBuilderTools : CampaignToolBase, IMcpServerTool
     private CharacterBuilderResult StepsResult(string system, CharacterDraft draft)
     {
         var steps = _creation.Steps(system, draft);
-        var schemas = _creation.Recipe(system).AllSteps(draft.Kind)
+        var allSteps = _creation.Recipe(system).AllSteps(draft.Kind);
+        var reads = steps.ToDictionary(s => s.Key, s => RecipeCharacterCreation.Reads(s, allSteps), StringComparer.OrdinalIgnoreCase);
+        var schemas = allSteps
             .Select(s => s.Schema)
             .OfType<string>()
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Select(name => _creation.StatBlock(system, name))
             .OfType<StatBlockSchema>()
-            .Select(s => new StatBlockView(s.Name, s.Fields))
+            .Select(s => new StatBlockView(s.Name, [.. s.Fields.Select(f => f.Type is "modifiers" or "choice" ? f with { Keys = CreationSources.FieldNames(system, f.Source) } : f)], s.Title))
             .ToList();
-        return new CharacterBuilderResult { System = system, Kind = draft.Kind, Steps = steps, StatBlocks = schemas.Count > 0 ? schemas : null };
+        return new CharacterBuilderResult
+        {
+            System = system,
+            Kind = draft.Kind,
+            Steps = steps,
+            Reads = reads,
+            StatBlocks = schemas.Count > 0 ? schemas : null,
+            MaxLevel = _creation.Recipe(system).MaxLevel(draft.Kind),
+        };
     }
 
     private CharacterBuilderResult OptionsResult(string system, CharacterDraft draft, string? stepKey)
@@ -142,6 +168,7 @@ public partial class CharacterBuilderTools : CampaignToolBase, IMcpServerTool
             Options = options,
             Count = groupCounts is null ? ctx.Count(recipeStep, null) : null,
             GroupCounts = groupCounts,
+            Slots = recipeStep.Kind == CreationStepKinds.LevelChoices ? _creation.LevelSlots(system, draft, recipeStep.Key) : null,
         };
     }
 
@@ -155,6 +182,7 @@ public partial class CharacterBuilderTools : CampaignToolBase, IMcpServerTool
                 System = system,
                 Kind = draft.Kind,
                 Character = CharacterDetailView.From(preview.Character),
+                ClassFeatures = preview.ClassFeatures,
                 Errors = preview.Errors,
                 Warnings = preview.Warnings,
                 Notes = preview.Notes,
@@ -190,7 +218,8 @@ public partial class CharacterBuilderTools : CampaignToolBase, IMcpServerTool
 
             // A new character goes in raw, so world_build derives it exactly as it would any new character. Committing
             // to an existing id sends the already-derived sheet: world_build's update path doesn't re-add racial bonuses.
-            var exists = await s.LoadAsync<Character>(id) is not null;
+            var existing = await s.LoadAsync<Character>(id);
+            var exists = existing is not null;
             var character = exists ? preview.Character : _creation.ToCharacter(system, draft, id);
             request = new CharacterUpsertRequest
             {
@@ -204,6 +233,7 @@ public partial class CharacterBuilderTools : CampaignToolBase, IMcpServerTool
                 MaxHp = exists ? character.MaxHp : 0,
                 CurrentHp = exists ? character.CurrentHp : 0,
                 SystemStats = character.SystemStats,
+                Psychology = Psychology(existing, character, _creation.PsychologyFields(system, draft)),
             };
             return new ToolResult<CharacterBuilderResult>(true, result);
         }, saveChanges: false);
@@ -225,6 +255,28 @@ public partial class CharacterBuilderTools : CampaignToolBase, IMcpServerTool
             }, $"Committed {request.Name} as {request.Id}. {built.Summary}");
         }, saveChanges: false);
         return stored;
+    }
+
+    /// <summary>
+    /// The psychology to send: null (world_build keeps what's there) when the recipe has no psychology fields; else the
+    /// built lists, and on a character that exists, its own profile (memories, mood) with only those lists replaced.
+    /// </summary>
+    private static PsychologyProfile? Psychology(Character? existing, Character built, IReadOnlyCollection<string> fields)
+    {
+        if (fields.Count == 0)
+            return null;
+        if (existing is null)
+            return built.Psychology;
+
+        var profile = existing.Psychology;
+        foreach (var field in fields)
+        {
+            var list = DraftCharacterMapper.Psychology(existing, field)!;
+            list.Clear();
+            list.AddRange(DraftCharacterMapper.Psychology(built, field)!);
+        }
+
+        return profile;
     }
 
     private async Task<string> SystemAsync(Raven.Client.Documents.Session.IAsyncDocumentSession s, string campaign, CharacterDraft draft)

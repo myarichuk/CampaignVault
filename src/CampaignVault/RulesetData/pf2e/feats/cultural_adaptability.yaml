@@ -5,4 +5,6 @@ name: cultural_adaptability
 system: pf2e
 mechanicalSummary: "During your adventures, you've honed your ability to adapt to the culture of the predominant ancestry around you."
 extraPools: []
+category: ancestry
+ancestries: [halfling]
 level: 5

@@ -4,7 +4,10 @@
 name: overwhelming_breath
 system: pf2e
 prerequisite: Qi Spells
+prerequisites:
+  - { feat: qi_spells }
 mechanicalSummary: "You control your breathing and align it with your qi, exhaling with controlled force in order to overcome your opponent's resistance."
 extraPools: []
+category: class
 classes: [monk]
 level: 12

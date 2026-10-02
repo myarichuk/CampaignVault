@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: "[Fighter] Opening Stance (Fighter); [Monk] Reflexive Stance"
 mechanicalSummary: You move fluidly between stances, using your mastery of combat to always adopt the best tactics.
 extraPools: []
+category: class
 classes: [fighter, monk]
 level: 16

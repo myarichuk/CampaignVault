@@ -4,7 +4,12 @@
 name: reactive_distraction
 system: pf2e
 prerequisite: Legendary in Deception; Perfect Distraction
+prerequisites:
+  - { skill: Deception, rank: legendary }
+  - { feat: perfect_distraction }
 mechanicalSummary: You reactively switch with your decoy to foil your foe.
 extraPools: []
+category: class
 classes: [rogue]
+skills: [Deception]
 level: 20

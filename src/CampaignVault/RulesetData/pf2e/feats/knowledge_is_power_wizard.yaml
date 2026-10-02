@@ -5,5 +5,6 @@ name: knowledge_is_power_wizard
 system: pf2e
 mechanicalSummary: Your academic knowledge about a creature allows you to subtly alter your magic to defeat them.
 extraPools: []
+category: class
 classes: [wizard]
 level: 8

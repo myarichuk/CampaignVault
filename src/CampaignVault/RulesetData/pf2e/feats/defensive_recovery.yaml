@@ -5,5 +5,6 @@ name: defensive_recovery
 system: pf2e
 mechanicalSummary: Your faith provides temporary protection in addition to healing.
 extraPools: []
+category: class
 classes: [cleric]
 level: 12

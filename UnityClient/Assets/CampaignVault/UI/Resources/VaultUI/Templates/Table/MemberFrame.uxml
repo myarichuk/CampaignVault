@@ -23,6 +23,13 @@
                     <cv:ClassBinding property="cls-hidden" data-source-path="Sub" class-name="cv-hidden" invert="true" />
                 </Bindings>
             </ui:Label>
+            <ui:VisualElement name="member-levelup" picking-mode="Ignore" class="cv-chip cv-chip--gold">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="LevelUpReady" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:VisualElement picking-mode="Ignore" class="cv-icon cv-icon--spark" />
+                <ui:Label picking-mode="Ignore" text="LEVEL UP" />
+            </ui:VisualElement>
             <ui:VisualElement class="cv-member__hp">
                 <Bindings>
                     <cv:ClassBinding property="cls-hidden" data-source-path="HasHp" class-name="cv-hidden" invert="true" />

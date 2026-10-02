@@ -5,5 +5,6 @@ name: water_step
 system: pf2e
 mechanicalSummary: "You can Stride across liquid and surfaces that don't support your weight."
 extraPools: []
+category: class
 classes: [monk]
 level: 6

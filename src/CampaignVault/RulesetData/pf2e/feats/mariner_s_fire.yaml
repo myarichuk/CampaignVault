@@ -5,4 +5,6 @@ name: mariner_s_fire
 system: pf2e
 mechanicalSummary: "You conjure uncanny orbs of spiritual flame that float above or below the water's surface."
 extraPools: []
+category: ancestry
+ancestries: [tengu]
 level: 1

@@ -4,7 +4,10 @@
 name: focused_fascination
 system: pf2e
 prerequisite: Fascinating Performance
+prerequisites:
+  - { feat: fascinating_performance }
 mechanicalSummary: When you use Fascinating Performance in a combat encounter, you need only a success, rather than a critical success, to fascinate your target.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 1

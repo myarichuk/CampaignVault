@@ -5,5 +5,6 @@ name: ricochet_stance_fighter
 system: pf2e
 mechanicalSummary: You adopt a stance to rebound your thrown weapons toward you.
 extraPools: []
+category: class
 classes: [fighter]
 level: 6

@@ -5,4 +5,6 @@ name: leshy_superstition
 system: pf2e
 mechanicalSummary: You notice spirits that inhabit objects, learning which bring good fortune and which are unlucky.
 extraPools: []
+category: ancestry
+ancestries: [leshy]
 level: 1

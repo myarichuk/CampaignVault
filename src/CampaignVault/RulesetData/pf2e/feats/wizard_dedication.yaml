@@ -4,6 +4,9 @@
 name: wizard_dedication
 system: pf2e
 prerequisite: Intelligence +2
+prerequisites:
+  - { ability: Intelligence, min: 2 }
 mechanicalSummary: You cast spells like a wizard, gaining a spellbook with four common arcane cantrips of your choice.
 extraPools: []
+category: archetype
 level: 2

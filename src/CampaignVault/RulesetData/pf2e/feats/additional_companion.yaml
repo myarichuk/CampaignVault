@@ -4,6 +4,9 @@
 name: additional_companion
 system: pf2e
 prerequisite: Beastmaster Dedication
+prerequisites:
+  - { feat: beastmaster_dedication }
 mechanicalSummary: Another animal joins you in your travels.
 extraPools: []
+category: archetype
 level: 4

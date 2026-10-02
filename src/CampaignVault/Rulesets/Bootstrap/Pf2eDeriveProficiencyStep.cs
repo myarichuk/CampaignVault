@@ -26,6 +26,8 @@ public sealed class Pf2eDeriveProficiencyStep : IBootstrapStep, ILevelGainStep
 
         var level = stats.Level.Value;
         var changed = false;
+        // A stat block companion has the skills and saves its stat block lists, not every one trained.
+        var statBlock = context.Character.IsPartyCompanion && stats.StatBlockHp is > 0;
 
         // Initialize AC proficiency to Trained (standard default) if not set
         if (stats.AcProficiency == Pf2eProficiencyRank.Untrained)
@@ -35,7 +37,7 @@ public sealed class Pf2eDeriveProficiencyStep : IBootstrapStep, ILevelGainStep
         }
 
         // Initialize skill proficiencies to Trained if empty
-        if (stats.SkillProficiencies.Count == 0)
+        if (stats.SkillProficiencies.Count == 0 && !statBlock)
         {
             var defaultSkills = new[]
             {
@@ -55,7 +57,7 @@ public sealed class Pf2eDeriveProficiencyStep : IBootstrapStep, ILevelGainStep
         }
 
         // Initialize save proficiencies to Trained if empty
-        if (stats.SaveProficiencies.Count == 0)
+        if (stats.SaveProficiencies.Count == 0 && !statBlock)
         {
             var saves = new[] { "Fortitude", "Reflex", "Will" };
             foreach (var save in saves)
@@ -111,7 +113,10 @@ public sealed class Pf2eDeriveProficiencyStep : IBootstrapStep, ILevelGainStep
         var applied = new List<string>();
         foreach (var (name, rank) in ranks)
         {
-            if (modifiers.ContainsKey(name) || !keyAbilities.TryGetValue(name, out var ability))
+            // A named Lore ("Scribing Lore") is an Intelligence skill like plain Lore.
+            if (modifiers.ContainsKey(name)
+                || !(keyAbilities.TryGetValue(name, out var ability)
+                     || (Pf2eDeriveOriginStep.IsLoreName(name) && keyAbilities.TryGetValue("Lore", out ability))))
             {
                 continue;
             }

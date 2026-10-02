@@ -4,6 +4,11 @@
 name: holistic_care
 system: pf2e
 prerequisite: Treat Condition; Trained in Diplomacy
+prerequisites:
+  - { feat: treat_condition }
+  - { skill: Diplomacy, rank: trained }
 mechanicalSummary: You provide emotional and spiritual care.
 extraPools: []
+category: skill
+skills: [Diplomacy]
 level: 6

@@ -4,7 +4,10 @@
 name: shield_of_grace
 system: pf2e
 prerequisite: Shield Warden
+prerequisites:
+  - { feat: shield_warden }
 mechanicalSummary: You protect an ally with both your shield and your body.
 extraPools: []
+category: class
 classes: [champion]
 level: 16

@@ -4,7 +4,11 @@
 name: agile_maneuvers
 system: pf2e
 prerequisite: Expert in Athletics
+prerequisites:
+  - { skill: Athletics, rank: expert }
 mechanicalSummary: Your easily maneuver against your foes.
 extraPools: []
+category: class
 classes: [swashbuckler]
+skills: [Athletics]
 level: 6

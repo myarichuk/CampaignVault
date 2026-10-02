@@ -4,7 +4,10 @@
 name: in_tune
 system: pf2e
 prerequisite: maestro muse
+prerequisites:
+  - { classFeature: maestro }
 mechanicalSummary: You attune your great skill in performing to another, granting them a small measure of your skill as though anyone could do it.
 extraPools: []
+category: class
 classes: [bard]
 level: 4

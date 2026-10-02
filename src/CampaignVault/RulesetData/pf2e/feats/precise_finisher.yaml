@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: Confident Finisher
 mechanicalSummary: Even when your foe avoids your Confident Finisher, you can still hit a vital spot.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 6

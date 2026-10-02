@@ -4,6 +4,10 @@
 name: ceaseless_shadows
 system: pf2e
 prerequisite: Distracting Shadows
+prerequisites:
+  - { feat: distracting_shadows }
 mechanicalSummary: You excel at going unnoticed, especially among a crowd.
 extraPools: []
+category: ancestry
+ancestries: [halfling]
 level: 13

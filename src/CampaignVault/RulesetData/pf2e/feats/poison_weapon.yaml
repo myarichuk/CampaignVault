@@ -5,5 +5,6 @@ name: poison_weapon
 system: pf2e
 mechanicalSummary: You apply a contact poison or injury poison to the required weapon; if you have a free hand, you can Interact to draw a poison as part of this action.
 extraPools: []
+category: class
 classes: [rogue]
 level: 4

@@ -4,6 +4,10 @@
 name: hefty_hauler
 system: pf2e
 prerequisite: Trained in Athletics
+prerequisites:
+  - { skill: Athletics, rank: trained }
 mechanicalSummary: Increase your Bulk limits by 2
 extraPools: []
+category: skill
+skills: [Athletics]
 level: 1

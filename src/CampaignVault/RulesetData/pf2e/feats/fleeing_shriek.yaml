@@ -5,4 +5,6 @@ name: fleeing_shriek
 system: pf2e
 mechanicalSummary: You let out an ear-piercing screech.
 extraPools: []
+category: ancestry
+ancestries: [kobold]
 level: 9

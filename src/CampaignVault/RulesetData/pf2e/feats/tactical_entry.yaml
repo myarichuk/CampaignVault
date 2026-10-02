@@ -4,7 +4,11 @@
 name: tactical_entry
 system: pf2e
 prerequisite: Master in Stealth
+prerequisites:
+  - { skill: Stealth, rank: master }
 mechanicalSummary: You Stride.
 extraPools: []
+category: class
 classes: [rogue]
+skills: [Stealth]
 level: 8

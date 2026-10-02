@@ -163,7 +163,7 @@ public class LocationConnectivityTests : IClassFixture<RavenDBFixture>
         var parentId = "locations/region-" + System.Guid.NewGuid().ToString("N")[..8];
         var newId = "locations/hollow-" + System.Guid.NewGuid().ToString("N")[..8];
 
-        var parent = new Location { Id = parentId, Name = "Sword Coast", Type = LocationType.Region, Exits = [] };
+        var parent = new Location { Id = parentId, Name = "Amber Coast", Type = LocationType.Region, Exits = [] };
         await session.StoreAsync(parent, TestContext.Current.CancellationToken);
         await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 

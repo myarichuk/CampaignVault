@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: champion’s reaction that grants an ally resistance to an enemy’s damage (including the grandeur, justice, liberation, and redemption causes)
 mechanicalSummary: "You call upon divine power and make a weapon or unarmed Strike against the enemy who triggered your champion's reaction."
 extraPools: []
+category: class
 classes: [champion]
 level: 12

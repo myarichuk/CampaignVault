@@ -4,6 +4,9 @@
 name: doctor_s_visitation
 system: pf2e
 prerequisite: Medic Dedication
+prerequisites:
+  - { feat: medic_dedication }
 mechanicalSummary: You move to provide immediate care to those who need it.
 extraPools: []
+category: archetype
 level: 4

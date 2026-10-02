@@ -4,6 +4,10 @@
 name: glad_hand
 system: pf2e
 prerequisite: Expert in Diplomacy
+prerequisites:
+  - { skill: Diplomacy, rank: expert }
 mechanicalSummary: Make an Impression on a target you’ve just met
 extraPools: []
+category: skill
+skills: [Diplomacy]
 level: 2

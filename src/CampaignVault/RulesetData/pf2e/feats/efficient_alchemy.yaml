@@ -4,7 +4,10 @@
 name: efficient_alchemy
 system: pf2e
 prerequisite: advanced alchemy
+prerequisites:
+  - { feat: advanced_alchemy }
 mechanicalSummary: "Thanks to the time you've spent studying and experimenting, you know how to scale your formulas into larger batches that don't require any additional attention."
 extraPools: []
+category: class
 classes: [alchemist]
 level: 4

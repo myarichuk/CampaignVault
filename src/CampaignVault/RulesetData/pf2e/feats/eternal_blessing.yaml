@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: holy
 mechanicalSummary: Your deeds have brought your deity’s grace to you for all of eternity.
 extraPools: []
+category: class
 classes: [cleric]
 level: 16

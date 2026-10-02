@@ -4,7 +4,10 @@
 name: crane_flutter
 system: pf2e
 prerequisite: Crane Stance
+prerequisites:
+  - { feat: crane_stance }
 mechanicalSummary: You interpose your arm between yourself and your opponent.
 extraPools: []
+category: class
 classes: [monk]
 level: 6

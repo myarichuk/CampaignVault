@@ -4,7 +4,11 @@
 name: godbreaker
 system: pf2e
 prerequisite: Crushing Grab; Whirling Throw
+prerequisites:
+  - { feat: crushing_grab }
+  - { feat: whirling_throw }
 mechanicalSummary: You have mastered an ultimate grappling technique capable of breaking even the mightiest of foes.
 extraPools: []
+category: class
 classes: [monk]
 level: 20

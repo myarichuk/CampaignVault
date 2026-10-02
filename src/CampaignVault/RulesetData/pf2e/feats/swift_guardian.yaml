@@ -4,6 +4,9 @@
 name: swift_guardian
 system: pf2e
 prerequisite: Beastmaster Dedication; Call Companion
+prerequisites:
+  - { feat: beastmaster_dedication }
 mechanicalSummary: When danger appears, you quickly send away your active companion and call in a different animal ally.
 extraPools: []
+category: archetype
 level: 6

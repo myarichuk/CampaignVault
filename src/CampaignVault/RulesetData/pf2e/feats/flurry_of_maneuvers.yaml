@@ -4,7 +4,11 @@
 name: flurry_of_maneuvers
 system: pf2e
 prerequisite: Expert in Athletics
+prerequisites:
+  - { skill: Athletics, rank: expert }
 mechanicalSummary: Your flurry is a combination of maneuvers.
 extraPools: []
+category: class
 classes: [monk]
+skills: [Athletics]
 level: 4

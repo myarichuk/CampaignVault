@@ -5,4 +5,6 @@ name: enthralling_allure
 system: pf2e
 mechanicalSummary: The powers of domination employed by your progenitors have manifested in you as well.
 extraPools: []
+category: ancestry
+ancestries: [dhampir]
 level: 5

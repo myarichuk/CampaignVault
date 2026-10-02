@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: initial revelation spell
 mechanicalSummary: You unlock deeper revelations hidden within your mystery.
 extraPools: []
+category: class
 classes: [oracle]
 level: 12

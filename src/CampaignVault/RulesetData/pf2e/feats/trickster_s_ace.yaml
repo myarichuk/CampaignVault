@@ -5,5 +5,6 @@ name: trickster_s_ace
 system: pf2e
 mechanicalSummary: Whether from jury-rigged magic items, deduction from the study of magical interactions, or other means, you have a contingency in your back pocket for desperate situations.
 extraPools: []
+category: class
 classes: [investigator]
 level: 18

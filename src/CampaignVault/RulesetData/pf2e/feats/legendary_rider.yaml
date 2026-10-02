@@ -4,6 +4,9 @@
 name: legendary_rider
 system: pf2e
 prerequisite: Cavalier Dedication
+prerequisites:
+  - { feat: cavalier_dedication }
 mechanicalSummary: You and your mount move like one being, effortlessly reading each other’s signals and synchronizing even in the thick of battle.
 extraPools: []
+category: archetype
 level: 20

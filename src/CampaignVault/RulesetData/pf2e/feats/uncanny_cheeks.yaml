@@ -5,4 +5,6 @@ name: uncanny_cheeks
 system: pf2e
 mechanicalSummary: You gain the Prescient Consumable and Prescient Planner feats, except that you always withdraw the objects from your cheek pouches.
 extraPools: []
+category: ancestry
+ancestries: [ratfolk]
 level: 9

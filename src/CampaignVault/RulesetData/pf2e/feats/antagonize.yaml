@@ -5,5 +5,6 @@ name: antagonize
 system: pf2e
 mechanicalSummary: "Your taunts and threats earn your foes' ire."
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 2

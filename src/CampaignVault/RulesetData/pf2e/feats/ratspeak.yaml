@@ -5,4 +5,6 @@ name: ratspeak
 system: pf2e
 mechanicalSummary: You can ask questions of, receive answers from, and use the Diplomacy skill with rodents, including beavers, mice, porcupines, rats, and squirrels, but not with other mammals, such as dogs or bats.
 extraPools: []
+category: ancestry
+ancestries: [ratfolk]
 level: 1

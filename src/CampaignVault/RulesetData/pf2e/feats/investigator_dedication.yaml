@@ -4,6 +4,9 @@
 name: investigator_dedication
 system: pf2e
 prerequisite: Intelligence +2
+prerequisites:
+  - { ability: Intelligence, min: 2 }
 mechanicalSummary: You gain the on the case class feature, which grants you both the Pursue a Lead activity and Clue In reaction.
 extraPools: []
+category: archetype
 level: 2

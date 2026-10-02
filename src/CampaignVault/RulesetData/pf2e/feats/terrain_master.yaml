@@ -4,7 +4,12 @@
 name: terrain_master
 system: pf2e
 prerequisite: Master in Survival; Favored Terrain
+prerequisites:
+  - { skill: Survival, rank: master }
+  - { feat: favored_terrain }
 mechanicalSummary: You are able to adapt to your surroundings in any natural terrain.
 extraPools: []
+category: class
 classes: [ranger]
+skills: [Survival]
 level: 8

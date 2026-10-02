@@ -4,6 +4,9 @@
 name: anthemic_performance
 system: pf2e
 prerequisite: Bard Dedication
+prerequisites:
+  - { feat: bard_dedication }
 mechanicalSummary: Your music, speech, or other performance inspires your allies to dive into battle.
 extraPools: []
+category: archetype
 level: 8

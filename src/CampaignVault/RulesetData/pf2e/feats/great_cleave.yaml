@@ -4,7 +4,10 @@
 name: great_cleave
 system: pf2e
 prerequisite: Cleave
+prerequisites:
+  - { feat: cleave }
 mechanicalSummary: Your fury carries your weapon through multiple foes.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 10

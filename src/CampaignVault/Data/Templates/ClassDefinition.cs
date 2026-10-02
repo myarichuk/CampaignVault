@@ -41,4 +41,10 @@ public record SkillChoiceDefinition
 {
     public int Count { get; init; }
     public List<string> From { get; init; } = [];
+
+    /// <summary>PF2e: skills the class always trains (a wizard's Arcana); not picks.</summary>
+    public List<string> Trained { get; init; } = [];
+
+    /// <summary>PF2e: one of the picks must be one of these (a fighter's Acrobatics or Athletics).</summary>
+    public List<string> OneOf { get; init; } = [];
 }

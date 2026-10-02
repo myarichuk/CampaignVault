@@ -4,6 +4,9 @@
 name: quick_fix
 system: pf2e
 prerequisite: Talisman Dabbler Dedication
+prerequisites:
+  - { feat: talisman_dabbler_dedication }
 mechanicalSummary: You can attach a talisman using only a bit of glue and some string.
 extraPools: []
+category: archetype
 level: 4

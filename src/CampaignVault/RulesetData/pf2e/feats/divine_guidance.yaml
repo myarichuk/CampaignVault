@@ -4,6 +4,10 @@
 name: divine_guidance
 system: pf2e
 prerequisite: Legendary in Religion
+prerequisites:
+  - { skill: Religion, rank: legendary }
 mechanicalSummary: Find guidance in the writings of your faith
 extraPools: []
+category: skill
+skills: [Religion]
 level: 15

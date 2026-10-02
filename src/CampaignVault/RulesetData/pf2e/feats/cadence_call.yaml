@@ -4,6 +4,9 @@
 name: cadence_call
 system: pf2e
 prerequisite: Marshal Dedication
+prerequisites:
+  - { feat: marshal_dedication }
 mechanicalSummary: You call out a quick cadence, guiding your allies into a more efficient rhythm.
 extraPools: []
+category: archetype
 level: 6

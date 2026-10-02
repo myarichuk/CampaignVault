@@ -5,4 +5,6 @@ name: hold_mark
 system: pf2e
 mechanicalSummary: You bear scars or tattoos enhanced by the mark of your community’s prowess.
 extraPools: []
+category: ancestry
+ancestries: [orc]
 level: 1

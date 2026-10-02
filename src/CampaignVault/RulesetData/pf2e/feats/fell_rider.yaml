@@ -4,6 +4,10 @@
 name: fell_rider
 system: pf2e
 prerequisite: animal companion
+prerequisites:
+  - { feat: animal_companion }
 mechanicalSummary: You have trained with your animal companion to become a terrifying juggernaut on the battlefield.
 extraPools: []
+category: ancestry
+ancestries: [hobgoblin]
 level: 9

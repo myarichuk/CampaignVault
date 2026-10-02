@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: bloodline that grants primal spells
 mechanicalSummary: You can call upon the creatures of the wild for aid.
 extraPools: []
+category: class
 classes: [sorcerer]
 level: 4

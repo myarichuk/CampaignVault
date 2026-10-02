@@ -5,4 +5,6 @@ name: scavenger_s_search
 system: pf2e
 mechanicalSummary: "You're always on the lookout for supplies and valuables."
 extraPools: []
+category: ancestry
+ancestries: [tengu]
 level: 1

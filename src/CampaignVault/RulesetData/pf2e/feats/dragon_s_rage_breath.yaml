@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: dragon instinct
 mechanicalSummary: You breathe deeply and exhale powerful energy in a 30-foot cone, dealing 1d6 damage per level to each creature in the area with a basic Reflex save against your class DC.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 6

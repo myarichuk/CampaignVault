@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: devotion spells
 mechanicalSummary: Your devotion is strong enough to increase your focus to incredible heights.
 extraPools: []
+category: class
 classes: [champion]
 level: 12

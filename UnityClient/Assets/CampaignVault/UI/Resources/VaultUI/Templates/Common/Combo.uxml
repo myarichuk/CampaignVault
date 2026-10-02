@@ -1,0 +1,39 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- ComboViewModel: a button showing the current pick; open, a search box and the options matching it, in place. -->
+    <ui:VisualElement class="cv-combo">
+        <Bindings>
+            <cv:ClassBinding property="cls-open" data-source-path="Open" class-name="cv-combo--open" />
+            <cv:ClassBinding property="cls-empty" data-source-path="HasValue" class-name="cv-combo--empty" invert="true" />
+        </Bindings>
+        <cv:VaultButton icon="search" class="cv-combo__toggle">
+            <Bindings>
+                <ui:DataBinding property="name" data-source-path="ToggleName" binding-mode="ToTarget" />
+                <ui:DataBinding property="label" data-source-path="Label" binding-mode="ToTarget" />
+                <ui:DataBinding property="command" data-source-path="Toggle" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:VaultButton>
+        <ui:VisualElement class="cv-combo__panel">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="Open" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <cv:VaultField placeholder="search" class="cv-combo__search">
+                <Bindings>
+                    <ui:DataBinding property="name" data-source-path="SearchName" binding-mode="ToTarget" />
+                    <ui:DataBinding property="value" data-source-path="Query" binding-mode="TwoWay" />
+                    <ui:DataBinding property="focusRequest" data-source-path="FocusRequest" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultField>
+            <cv:Repeater item-template="Common/Choice" class="cv-templates">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Matches" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+            <ui:Label class="cv-body cv-muted cv-italic">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="MoreText" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="MoreText" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

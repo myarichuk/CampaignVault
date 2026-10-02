@@ -4,6 +4,10 @@
 name: unified_theory
 system: pf2e
 prerequisite: Legendary in Arcana
+prerequisites:
+  - { skill: Arcana, rank: legendary }
 mechanicalSummary: Use Arcana for checks for all magical traditions
 extraPools: []
+category: skill
+skills: [Arcana]
 level: 15

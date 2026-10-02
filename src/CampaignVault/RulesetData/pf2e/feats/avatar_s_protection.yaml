@@ -5,5 +5,6 @@ name: avatar_s_protection
 system: pf2e
 mechanicalSummary: In moments of danger, you can call upon your god’s form in an instant.
 extraPools: []
+category: class
 classes: [cleric]
 level: 20

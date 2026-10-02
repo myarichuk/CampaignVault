@@ -5,4 +5,6 @@ name: incredible_improvisation
 system: pf2e
 mechanicalSummary: A stroke of brilliance gives you a major advantage with a skill despite your inexperience.
 extraPools: []
+category: ancestry
+ancestries: [human]
 level: 9

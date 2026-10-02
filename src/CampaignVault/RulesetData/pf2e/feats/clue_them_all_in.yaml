@@ -5,5 +5,6 @@ name: clue_them_all_in
 system: pf2e
 mechanicalSummary: You can clue in all your allies at once.
 extraPools: []
+category: class
 classes: [investigator]
 level: 8

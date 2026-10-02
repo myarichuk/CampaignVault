@@ -4,7 +4,10 @@
 name: emblazon_energy
 system: pf2e
 prerequisite: Emblazon Armament
+prerequisites:
+  - { feat: emblazon_armament }
 mechanicalSummary: With elemental forces, you make your emblazoned symbols more potent.
 extraPools: []
+category: class
 classes: [cleric]
 level: 8

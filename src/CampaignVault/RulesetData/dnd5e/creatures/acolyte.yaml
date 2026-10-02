@@ -1,0 +1,23 @@
+# Source: SRD 5.1 (CC-BY-4.0), adapted as a party companion template. Edit freely in the builder.
+name: Acolyte
+system: dnd5e
+description: A temple healer and student of the divine.
+challengeRating: "1/4"
+hp: 9
+defense: 10
+companion: true
+statBlock:
+  creatureType: Humanoid
+  challengeRating: "1/4"
+  statBlockHp: "9"
+  armorClass: "10"
+  movement: "30"
+  strength: "10"
+  dexterity: "10"
+  constitution: "10"
+  intelligence: "10"
+  wisdom: "14"
+  charisma: "11"
+  attacks: "Club +2, 1d4 bludgeoning, reach 5 ft."
+  skillModifiers: "Medicine +4, Religion +2"
+  traits: "Spellcasting (wisdom, DC 12): sacred flame, light; bless, cure wounds, sanctuary."

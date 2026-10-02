@@ -4,6 +4,9 @@
 name: dodge_away
 system: pf2e
 prerequisite: Acrobat Dedication
+prerequisites:
+  - { feat: acrobat_dedication }
 mechanicalSummary: You use your acrobatic prowess to evade an attack, using momentum to keep yourself moving if you choose.
 extraPools: []
+category: archetype
 level: 6

@@ -5,5 +5,6 @@ name: swipe_souvenir
 system: pf2e
 mechanicalSummary: When you wriggle free from an enemy’s grasp, you take something of theirs with you.
 extraPools: []
+category: class
 classes: [rogue]
 level: 8

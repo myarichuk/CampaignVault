@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: champion’s aura, holy
 mechanicalSummary: You stand strong in the face of danger and inspire your allies to do the same.
 extraPools: []
+category: class
 classes: [champion]
 level: 4

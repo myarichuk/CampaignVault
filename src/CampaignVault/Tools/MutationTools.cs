@@ -143,6 +143,7 @@ public partial class MutationTools : CampaignToolBase, IMcpServerTool
     }
 
     private readonly FeatDefinitionProvider? _featProvider;
+    private readonly ProgressionDefinitionProvider? _progressionProvider;
 
     public MutationTools(
         CampaignRepository repository,
@@ -153,10 +154,12 @@ public partial class MutationTools : CampaignToolBase, IMcpServerTool
         INpcBehaviorSynthesizer behaviorSynthesizer,
         IContextOrchestrator contextOrchestrator,
         ILogger<MutationTools>? logger = null,
-        FeatDefinitionProvider? featProvider = null)
+        FeatDefinitionProvider? featProvider = null,
+        ProgressionDefinitionProvider? progressionProvider = null)
         : base(repository, keys, logger)
     {
         _featProvider = featProvider;
+        _progressionProvider = progressionProvider;
         _contextOrchestrator = contextOrchestrator;
         _pressureManager = pressureManager;
         _pressureOrchestrator = pressureOrchestrator;

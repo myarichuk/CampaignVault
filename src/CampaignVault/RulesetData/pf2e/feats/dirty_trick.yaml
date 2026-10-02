@@ -4,6 +4,10 @@
 name: dirty_trick
 system: pf2e
 prerequisite: Trained in Thievery
+prerequisites:
+  - { skill: Thievery, rank: trained }
 mechanicalSummary: "You hook a foe's bootlaces together, pull their hat over their eyes, loosen their belt, or otherwise confound their mobility through an underhanded tactic."
 extraPools: []
+category: skill
+skills: [Thievery]
 level: 1

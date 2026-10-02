@@ -4,6 +4,10 @@
 name: recognize_spell
 system: pf2e
 prerequisite: Trained in Arcana, Trained in Nature, Trained in Occultism, or Trained in Religion
+prerequisites:
+  - { anyOf: [{ skill: Arcana, rank: trained }, { skill: Nature, rank: trained }, { skill: Occultism, rank: trained }, { skill: Religion, rank: trained }] }
 mechanicalSummary: Identify a spell as a reaction as it’s being cast
 extraPools: []
+category: skill
+skills: [Arcana, Nature, Occultism, Religion]
 level: 1

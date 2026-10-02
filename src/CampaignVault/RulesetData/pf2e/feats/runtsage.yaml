@@ -5,4 +5,6 @@ name: runtsage
 system: pf2e
 mechanicalSummary: Unlike most of your kind, who dismiss goblins as embarrassments or expendable annoyances, you have studied the methodology behind their irresponsible and incomprehensible actions.
 extraPools: []
+category: ancestry
+ancestries: [hobgoblin]
 level: 5

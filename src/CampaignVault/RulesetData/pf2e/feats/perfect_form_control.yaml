@@ -4,7 +4,11 @@
 name: perfect_form_control
 system: pf2e
 prerequisite: Form Control; Strength +4
+prerequisites:
+  - { feat: form_control }
+  - { ability: Strength, min: 4 }
 mechanicalSummary: Thanks to magic and muscle memory, you can stay in your alternate shapes indefinitely.
 extraPools: []
+category: class
 classes: [druid]
 level: 18

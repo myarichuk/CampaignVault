@@ -4,6 +4,9 @@
 name: first_revelation
 system: pf2e
 prerequisite: Oracle Dedication
+prerequisites:
+  - { feat: oracle_dedication }
 mechanicalSummary: You gain your mystery’s initial revelation spell.
 extraPools: []
+category: archetype
 level: 4

@@ -5,5 +5,6 @@ name: sticky_poison
 system: pf2e
 mechanicalSummary: A combination of additional viscosity and careful application keeps your weapons poisoned even when suffering significant wear and tear.
 extraPools: []
+category: class
 classes: [alchemist]
 level: 6

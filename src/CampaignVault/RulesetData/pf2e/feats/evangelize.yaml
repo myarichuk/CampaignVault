@@ -4,6 +4,10 @@
 name: evangelize
 system: pf2e
 prerequisite: Master in Diplomacy; follower of a specific religion or philosophy
+prerequisites:
+  - { skill: Diplomacy, rank: master }
 mechanicalSummary: "You point out a detail that incontrovertibly supports your faith, causing a listener's mind to whirl."
 extraPools: []
+category: skill
+skills: [Diplomacy]
 level: 7

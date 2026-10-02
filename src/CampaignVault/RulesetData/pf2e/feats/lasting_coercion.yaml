@@ -4,6 +4,10 @@
 name: lasting_coercion
 system: pf2e
 prerequisite: Expert in Intimidation
+prerequisites:
+  - { skill: Intimidation, rank: expert }
 mechanicalSummary: Coerce a target into helping you longer
 extraPools: []
+category: skill
+skills: [Intimidation]
 level: 2

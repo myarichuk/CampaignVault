@@ -5,5 +5,6 @@ name: underworld_investigator
 system: pf2e
 mechanicalSummary: Your work as an investigator makes you familiar with the criminal element.
 extraPools: []
+category: class
 classes: [investigator]
 level: 1

@@ -1,0 +1,6 @@
+# Character builder recipe: a PF2e party companion, edited as a simplified stat block (statblocks/companion.yaml).
+# No PF2e companion templates ship yet (creatures marked companion: true would be offered to start from).
+name: companion
+system: pf2e
+steps:
+  - { key: statblock, kind: identity, schema: companion, source: companions, prompt: Stat block, validators: [companion.power] }

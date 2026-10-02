@@ -5,4 +5,6 @@ name: general_training
 system: pf2e
 mechanicalSummary: Your adaptability manifests in your mastery of a range of useful abilities.
 extraPools: []
+category: ancestry
+ancestries: [human]
 level: 1

@@ -6,4 +6,5 @@ system: pf2e
 prerequisite: master in Perception
 mechanicalSummary: Search areas in half the time
 extraPools: []
+category: general
 level: 7

@@ -4,6 +4,10 @@
 name: spell_devourer
 system: pf2e
 prerequisite: Pervasive Superstition
+prerequisites:
+  - { feat: pervasive_superstition }
 mechanicalSummary: You don’t just resist magic; you devour it.
 extraPools: []
+category: ancestry
+ancestries: [orc]
 level: 13

@@ -30,13 +30,52 @@ levels:
             options:
               - id: land
                 label: "Circle of the Land"
-                description: "Bonus cantrip, natural recovery, land's stride, nature's ward, nature's sanctuary."
-              - id: moon
-                label: "Circle of the Moon"
-                description: "Combat wild shape, circle forms, primal strike, elemental wild shape, thousand forms."
-              - id: dreams
-                label: "Circle of Dreams"
-                description: "Balm of the summer court, hearth of moonlight, hidden paths, walker in dreams."
+                description: "Bonus cantrip, natural recovery, circle spells, land's stride, nature's ward, nature's sanctuary."
+                features:
+                  2:
+                    - name: "Bonus Cantrip"
+                      description: "Learn one more druid cantrip."
+                    - name: "Natural Recovery"
+                      description: "Once a day, during a short rest, recover expended spell slots with a combined level up to half your druid level (rounded up), none of 6th level or higher."
+                  3:
+                    - name: "Circle Spells"
+                      description: "Spells tied to the land where you became a druid. They're always prepared and don't count against the spells you prepare."
+                      choices:
+                        land:
+                          type: "Enum"
+                          required: true
+                          prompt: "Circle Spells"
+                          options:
+                            - id: "arctic"
+                              label: "Arctic"
+                              description: "Circle spells: hold person, spike growth (3rd); sleet storm, slow (5th); freedom of movement, ice storm (7th); commune with nature, cone of cold (9th)."
+                            - id: "coast"
+                              label: "Coast"
+                              description: "Circle spells: mirror image, misty step (3rd); water breathing, water walk (5th); control water, freedom of movement (7th); conjure elemental, scrying (9th)."
+                            - id: "desert"
+                              label: "Desert"
+                              description: "Circle spells: blur, silence (3rd); create food and water, protection from energy (5th); blight, hallucinatory terrain (7th); insect plague, wall of stone (9th)."
+                            - id: "forest"
+                              label: "Forest"
+                              description: "Circle spells: barkskin, spider climb (3rd); call lightning, plant growth (5th); divination, freedom of movement (7th); commune with nature, tree stride (9th)."
+                            - id: "grassland"
+                              label: "Grassland"
+                              description: "Circle spells: invisibility, pass without trace (3rd); daylight, haste (5th); divination, freedom of movement (7th); dream, insect plague (9th)."
+                            - id: "mountain"
+                              label: "Mountain"
+                              description: "Circle spells: spider climb, spike growth (3rd); lightning bolt, meld into stone (5th); stone shape, stoneskin (7th); passwall, wall of stone (9th)."
+                            - id: "swamp"
+                              label: "Swamp"
+                              description: "Circle spells: acid arrow, darkness (3rd); water walk, stinking cloud (5th); freedom of movement, locate creature (7th); insect plague, scrying (9th)."
+                  6:
+                    - name: "Land's Stride"
+                      description: "Nonmagical difficult terrain costs no extra movement, and nonmagical plants don't slow or hurt you. Advantage on saves against plants created or manipulated by magic to impede movement."
+                  10:
+                    - name: "Nature's Ward"
+                      description: "You can't be charmed or frightened by elementals or fey, and you're immune to poison and disease."
+                  14:
+                    - name: "Nature's Sanctuary"
+                      description: "A beast or plant creature that attacks you makes a Wisdom save against your spell save DC first; on a failure it picks another target or its attack misses, and on a success it's immune for 24 hours."
     spellSlots: {1: 3}
   3:
     proficiencyBonus: 2

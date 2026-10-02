@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: nomad
+system: pf2e
+description: "Traveling far and wide, you picked up basic tactics for surviving on the road and in unknown lands, getting by with few supplies and even fewer comforts. As an adventurer, you travel still, often into even more dangerous places."
+boosts: [Constitution, Wisdom]
+skillProficiencies: [Survival]
+lore: Lore related to one terrain you traveled in (such as Desert Lore or Swamp Lore)
+skillFeat: assurance
+feature: Assurance

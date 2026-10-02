@@ -4,6 +4,9 @@
 name: bastion_dedication
 system: pf2e
 prerequisite: Shield Block
+prerequisites:
+  - { feat: shield_block }
 mechanicalSummary: You are particularly skilled at using a shield to protect yourself in combat.
 extraPools: []
+category: archetype
 level: 2

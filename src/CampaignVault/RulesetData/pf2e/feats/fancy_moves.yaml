@@ -4,6 +4,11 @@
 name: fancy_moves
 system: pf2e
 prerequisite: Gladiator Dedication; Expert in Performance
+prerequisites:
+  - { feat: gladiator_dedication }
+  - { skill: Performance, rank: expert }
 mechanicalSummary: You show off your fighting style to discourage your foes.
 extraPools: []
+category: skill
+skills: [Performance]
 level: 4

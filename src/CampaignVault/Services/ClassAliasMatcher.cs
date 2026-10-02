@@ -7,7 +7,7 @@ namespace CampaignVault.Services;
 /// Paladin', 'wizard (evocation)'), which <see cref="ClassDefinition"/> does it mean?".
 ///
 /// Matching is longest-alias-wins so a subclass alias beats the base-class alias it contains
-/// ("Eldritch Knight" over "Fighter"), and ties are broken by alias then class key so the result is
+/// ("Ember Knight" over "Knight", a homebrew subclass alias), and ties are broken by alias then class key so the result is
 /// deterministic regardless of dictionary enumeration order — otherwise two identical campaigns could
 /// resolve the same class string to different caster types.
 ///

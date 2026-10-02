@@ -4,6 +4,10 @@
 name: expert_longevity
 system: pf2e
 prerequisite: Ancestral Longevity
+prerequisites:
+  - { feat: ancestral_longevity }
 mechanicalSummary: "You've continued to refine the knowledge and skills you've gained through your life."
 extraPools: []
+category: ancestry
+ancestries: [elf]
 level: 9

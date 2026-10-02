@@ -4,7 +4,10 @@
 name: flamboyant_leap
 system: pf2e
 prerequisite: Flamboyant Athlete
+prerequisites:
+  - { feat: flamboyant_athlete }
 mechanicalSummary: You stylishly leap and deliver a powerful finisher.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 14

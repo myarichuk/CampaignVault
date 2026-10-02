@@ -5,4 +5,5 @@ name: weapon_proficiency
 system: pf2e
 mechanicalSummary: Become trained in a weapon type
 extraPools: []
+category: general
 level: 1

@@ -4,6 +4,9 @@
 name: basic_sorcerer_spellcasting
 system: pf2e
 prerequisite: Sorcerer Dedication
+prerequisites:
+  - { feat: sorcerer_dedication }
 mechanicalSummary: You gain the basic spellcasting benefits.
 extraPools: []
+category: archetype
 level: 4

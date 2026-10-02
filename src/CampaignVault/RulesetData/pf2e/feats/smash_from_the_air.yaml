@@ -4,7 +4,10 @@
 name: smash_from_the_air
 system: pf2e
 prerequisite: Cut from the Air
+prerequisites:
+  - { feat: cut_from_the_air }
 mechanicalSummary: Your expertise enables you to knock away spells.
 extraPools: []
+category: class
 classes: [fighter]
 level: 18

@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: bloodline spell
 mechanicalSummary: You draw more power from your bloodline.
 extraPools: []
+category: class
 classes: [sorcerer]
 level: 6

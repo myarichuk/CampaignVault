@@ -4,6 +4,9 @@
 name: hurling_charge
 system: pf2e
 prerequisite: Viking Dedication
+prerequisites:
+  - { feat: viking_dedication }
 mechanicalSummary: You make a ranged Strike with your thrown weapon, Stride, and then Interact to draw another weapon.
 extraPools: []
+category: archetype
 level: 4

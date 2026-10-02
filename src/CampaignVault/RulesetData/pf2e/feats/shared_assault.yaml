@@ -4,7 +4,10 @@
 name: shared_assault
 system: pf2e
 prerequisite: Courageous Assault
+prerequisites:
+  - { feat: courageous_assault }
 mechanicalSummary: In the triumph of battle, you can share the glory with another ally.
 extraPools: []
+category: class
 classes: [bard]
 level: 12

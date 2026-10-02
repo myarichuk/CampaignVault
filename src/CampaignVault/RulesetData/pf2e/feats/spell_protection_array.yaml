@@ -5,5 +5,6 @@ name: spell_protection_array
 system: pf2e
 mechanicalSummary: You inscribe a circle of arcane runes that dampen enemies’ magic.
 extraPools: []
+category: class
 classes: [wizard]
 level: 4

@@ -28,6 +28,19 @@
                 <cv:ClassBinding property="cls-hidden" data-source-path="IsYours" class-name="cv-hidden" invert="true" />
             </Bindings>
         </ui:Label>
+        <ui:Label name="sheet-levelup-hint" class="cv-caption cv-grow">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="LevelUpHint" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="CanLevelUp" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
+        <cv:VaultButton name="sheet-level-up" label="LEVEL UP" icon="spark">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="LevelUp" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="CanLevelUp" class-name="cv-hidden" invert="true" />
+                <cv:ClassBinding property="cls-primary" data-source-path="LevelUpReady" class-name="cv-btn--primary" />
+            </Bindings>
+        </cv:VaultButton>
         <cv:VaultButton name="sheet-play-as" label="PLAY AS THIS CHARACTER" icon="character">
             <Bindings>
                 <ui:DataBinding property="command" data-source-path="PlayAs" binding-mode="ToTarget" />

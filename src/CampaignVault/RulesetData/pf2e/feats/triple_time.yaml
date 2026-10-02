@@ -5,5 +5,6 @@ name: triple_time
 system: pf2e
 mechanicalSummary: You learn the triple time composition cantrip, which speeds up you and your allies for a round.
 extraPools: []
+category: class
 classes: [bard]
 level: 4

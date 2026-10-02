@@ -4,7 +4,10 @@
 name: plant_shape
 system: pf2e
 prerequisite: leaf order or Untamed Form
+prerequisites:
+  - { anyOf: [{ classFeature: leaf }, { feat: untamed_form }] }
 mechanicalSummary: You can take the shape of a plant creature.
 extraPools: []
+category: class
 classes: [druid]
 level: 10

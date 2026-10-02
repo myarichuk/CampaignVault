@@ -6,4 +6,5 @@ system: pf2e
 prerequisite: expert in at least one weapon from the or bow or crossbow weapon group
 mechanicalSummary: You channel powerful magic with your archery, allowing you to deliver potent spells through the tip of an arrow rather than the more mundane flick of the wrist or whatever other gestures are usually used.
 extraPools: []
+category: archetype
 level: 6

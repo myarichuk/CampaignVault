@@ -5,5 +5,6 @@ name: unbalancing_sweep
 system: pf2e
 mechanicalSummary: You make a great sweep with your weapon or fists about yourself, knocking creatures off their feet and away from you.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 12

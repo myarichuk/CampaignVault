@@ -5,5 +5,6 @@ name: sacred_defender
 system: pf2e
 mechanicalSummary: You are a great warrior that can stand strong against the fiercest opponents to your cause.
 extraPools: []
+category: class
 classes: [champion]
 level: 20

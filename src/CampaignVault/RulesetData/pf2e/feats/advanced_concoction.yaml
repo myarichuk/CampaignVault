@@ -4,6 +4,9 @@
 name: advanced_concoction
 system: pf2e
 prerequisite: Basic Concoction
+prerequisites:
+  - { feat: basic_concoction }
 mechanicalSummary: You gain one alchemist feat.
 extraPools: []
+category: archetype
 level: 6

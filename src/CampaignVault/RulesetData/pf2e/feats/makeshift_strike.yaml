@@ -4,6 +4,9 @@
 name: makeshift_strike
 system: pf2e
 prerequisite: Weapon Improviser Dedication
+prerequisites:
+  - { feat: weapon_improviser_dedication }
 mechanicalSummary: You quickly snatch up whatever is nearby and then attack with it as an improvised weapon.
 extraPools: []
+category: archetype
 level: 8

@@ -5,4 +5,6 @@ name: eyes_of_night
 system: pf2e
 mechanicalSummary: You can see in the darkness as easily as a true vampire.
 extraPools: []
+category: ancestry
+ancestries: [dhampir]
 level: 1

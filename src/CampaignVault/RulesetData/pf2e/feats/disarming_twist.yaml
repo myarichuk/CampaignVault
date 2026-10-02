@@ -4,7 +4,11 @@
 name: disarming_twist
 system: pf2e
 prerequisite: Trained in Athletics
+prerequisites:
+  - { skill: Athletics, rank: trained }
 mechanicalSummary: After your initial attack redirects your foe’s defenses, your follow-up wrests their weapon from their grasp.
 extraPools: []
+category: class
 classes: [fighter]
+skills: [Athletics]
 level: 10

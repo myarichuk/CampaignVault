@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: "champion's aura, holy"
 mechanicalSummary: "Your righteous aura dampens evil's might and prevents the unholy from escaping you."
 extraPools: []
+category: class
 classes: [champion]
 level: 14

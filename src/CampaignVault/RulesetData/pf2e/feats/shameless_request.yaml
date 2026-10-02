@@ -4,6 +4,10 @@
 name: shameless_request
 system: pf2e
 prerequisite: Master in Diplomacy
+prerequisites:
+  - { skill: Diplomacy, rank: master }
 mechanicalSummary: Make Requests of others with lesser consequences
 extraPools: []
+category: skill
+skills: [Diplomacy]
 level: 7

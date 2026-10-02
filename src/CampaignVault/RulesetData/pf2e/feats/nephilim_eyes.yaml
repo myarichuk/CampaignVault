@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: low-light vision
 mechanicalSummary: Your eyes can see through darkness with visual acuity akin to that possessed by most extraplanar beings.
 extraPools: []
+category: ancestry
+ancestries: [nephilim]
 level: 1

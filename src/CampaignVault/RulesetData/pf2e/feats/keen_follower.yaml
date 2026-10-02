@@ -5,4 +5,5 @@ name: keen_follower
 system: pf2e
 mechanicalSummary: Your keen observation of your allies has made you better at following their lead.
 extraPools: []
+category: general
 level: 3

@@ -5,4 +5,6 @@ name: briar_battler
 system: pf2e
 mechanicalSummary: "When you're in difficult terrain from an environmental feature, you can Take Cover, even if the feature wouldn't ordinarily be large enough for you to Take Cover."
 extraPools: []
+category: ancestry
+ancestries: [kobold]
 level: 9

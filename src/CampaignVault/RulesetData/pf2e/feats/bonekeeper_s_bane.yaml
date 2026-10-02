@@ -5,4 +5,6 @@ name: bonekeeper_s_bane
 system: pf2e
 mechanicalSummary: Whenever an enemy starts its turn adjacent to you, it must attempt a Will saving throw against your class DC or spell DC, whichever is highest.
 extraPools: []
+category: ancestry
+ancestries: [kholo]
 level: 13

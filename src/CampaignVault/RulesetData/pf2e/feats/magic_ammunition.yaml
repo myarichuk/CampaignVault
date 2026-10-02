@@ -4,6 +4,9 @@
 name: magic_ammunition
 system: pf2e
 prerequisite: Eldritch Archer Dedication
+prerequisites:
+  - { feat: eldritch_archer_dedication }
 mechanicalSummary: You imbue your ammunition with raw and potent magic, transforming it to suit your needs in any situation.
 extraPools: []
+category: archetype
 level: 8

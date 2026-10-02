@@ -5,4 +5,6 @@ name: blessed_blood_nephilim
 system: pf2e
 mechanicalSummary: Your spilled blood is sanctified, with effects similar to those of holy water.
 extraPools: []
+category: ancestry
+ancestries: [nephilim]
 level: 5

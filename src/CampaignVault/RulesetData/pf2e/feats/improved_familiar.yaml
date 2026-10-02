@@ -4,6 +4,9 @@
 name: improved_familiar
 system: pf2e
 prerequisite: Familiar Master Dedication
+prerequisites:
+  - { feat: familiar_master_dedication }
 mechanicalSummary: You find it easy to attract a powerful and unusual familiar to your side.
 extraPools: []
+category: archetype
 level: 6

@@ -4,7 +4,10 @@
 name: sunder_enchantment
 system: pf2e
 prerequisite: Sunder Spell
+prerequisites:
+  - { feat: sunder_spell }
 mechanicalSummary: You can focus your superstition to break the magic of an item, in addition to destroying freestanding spells and those active on creatures.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 14

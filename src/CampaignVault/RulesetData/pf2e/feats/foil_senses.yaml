@@ -4,6 +4,10 @@
 name: foil_senses
 system: pf2e
 prerequisite: Master in Stealth
+prerequisites:
+  - { skill: Stealth, rank: master }
 mechanicalSummary: Take precautions against special senses
 extraPools: []
+category: skill
+skills: [Stealth]
 level: 7

@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Grimspawn, Pitborn, or Hellspawn, or another lineage feat associated with fiends
 mechanicalSummary: You possess fiendish magic.
 extraPools: []
+category: ancestry
+ancestries: [nephilim]
 level: 9

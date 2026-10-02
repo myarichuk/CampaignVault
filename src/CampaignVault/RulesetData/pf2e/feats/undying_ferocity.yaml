@@ -4,6 +4,10 @@
 name: undying_ferocity
 system: pf2e
 prerequisite: Orc Ferocity
+prerequisites:
+  - { feat: orc_ferocity }
 mechanicalSummary: You resist death’s clutches with supernatural vigor, daring death to claim you while promising that any such attempt will surely fail.
 extraPools: []
+category: ancestry
+ancestries: [orc]
 level: 9

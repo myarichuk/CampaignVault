@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: spellcasting class feature
 mechanicalSummary: Through study of multiple magical traditions, you’ve altered a spell to suit your spellcasting style.
 extraPools: []
+category: ancestry
+ancestries: [human]
 level: 1

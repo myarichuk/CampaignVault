@@ -5,4 +5,6 @@ name: scamper
 system: pf2e
 mechanicalSummary: You Stride up to your Speed, with a +5-foot status bonus to your Speed, and you gain a +2 circumstance bonus to AC against reactions triggered by this movement.
 extraPools: []
+category: ancestry
+ancestries: [kobold]
 level: 1

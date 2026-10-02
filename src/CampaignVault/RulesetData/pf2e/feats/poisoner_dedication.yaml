@@ -4,6 +4,10 @@
 name: poisoner_dedication
 system: pf2e
 prerequisite: Trained in Crafting
+prerequisites:
+  - { skill: Crafting, rank: trained }
 mechanicalSummary: You make a point of always having a few toxins near at hand—you never know when some arsenic or the like might prove useful.
 extraPools: []
+category: archetype
+skills: [Crafting]
 level: 2

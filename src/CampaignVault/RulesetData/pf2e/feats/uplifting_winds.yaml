@@ -4,7 +4,10 @@
 name: uplifting_winds
 system: pf2e
 prerequisite: storm order
+prerequisites:
+  - { classFeature: storm }
 mechanicalSummary: The winds are eager to keep you aloft.
 extraPools: []
+category: class
 classes: [druid]
 level: 16

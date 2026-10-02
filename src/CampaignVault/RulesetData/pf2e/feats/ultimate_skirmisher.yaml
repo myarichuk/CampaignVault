@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: unimpeded journey
 mechanicalSummary: You are so skilled at navigating the wild, your movement is completely unaffected by terrain.
 extraPools: []
+category: class
 classes: [ranger]
 level: 20

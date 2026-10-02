@@ -4,7 +4,11 @@
 name: lunging_stance
 system: pf2e
 prerequisite: Reactive Strike; Lunge
+prerequisites:
+  - { feat: reactive_strike }
+  - { feat: lunge }
 mechanicalSummary: Your body coiled to strike, you can lash out at distant enemies.
 extraPools: []
+category: class
 classes: [fighter]
 level: 12

@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: arcane bond
 mechanicalSummary: When you draw upon your bonded item, you can leave a bit of energy within it for later use.
 extraPools: []
+category: class
 classes: [wizard]
 level: 14

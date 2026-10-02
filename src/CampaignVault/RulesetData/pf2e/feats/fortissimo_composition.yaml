@@ -4,7 +4,10 @@
 name: fortissimo_composition
 system: pf2e
 prerequisite: maestro muse
+prerequisites:
+  - { classFeature: maestro }
 mechanicalSummary: Your anthems grow louder and more potent, bolstered by your muse’s power.
 extraPools: []
+category: class
 classes: [bard]
 level: 8

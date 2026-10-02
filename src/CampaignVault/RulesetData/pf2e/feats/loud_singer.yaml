@@ -4,6 +4,10 @@
 name: loud_singer
 system: pf2e
 prerequisite: Goblin Song
+prerequisites:
+  - { feat: goblin_song }
 mechanicalSummary: "Staying on pitch, proper breath control, and remembering the words are all less important than the real measure of a good singer: volume!"
 extraPools: []
+category: ancestry
+ancestries: [goblin]
 level: 5

@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Trained in Alcohol Lore, Trained in Cooking Lore, or Trained in Crafting
 mechanicalSummary: +1 to Craft food and drink, including elixirs and potions
 extraPools: []
+category: skill
+skills: [Crafting, Lore]
 level: 1

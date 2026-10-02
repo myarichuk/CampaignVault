@@ -4,6 +4,10 @@
 name: improvise_tool
 system: pf2e
 prerequisite: Trained in Crafting
+prerequisites:
+  - { skill: Crafting, rank: trained }
 mechanicalSummary: "You can jury-rig solutions when you don't have the proper tools on hand."
 extraPools: []
+category: skill
+skills: [Crafting]
 level: 1

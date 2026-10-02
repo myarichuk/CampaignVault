@@ -4,7 +4,10 @@
 name: order_magic
 system: pf2e
 prerequisite: Order Explorer
+prerequisites:
+  - { feat: order_explorer }
 mechanicalSummary: You have delved deeper into the teaching of a new order, gaining access to a coveted order spell.
 extraPools: []
+category: class
 classes: [druid]
 level: 4

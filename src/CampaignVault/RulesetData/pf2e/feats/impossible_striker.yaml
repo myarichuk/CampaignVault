@@ -4,7 +4,10 @@
 name: impossible_striker
 system: pf2e
 prerequisite: Sly Striker
+prerequisites:
+  - { feat: sly_striker }
 mechanicalSummary: Nothing can prevent you from making a sneak attack, even if your opponent can see every blow coming.
 extraPools: []
+category: class
 classes: [rogue]
 level: 20

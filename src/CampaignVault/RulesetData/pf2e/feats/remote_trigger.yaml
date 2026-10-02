@@ -4,6 +4,9 @@
 name: remote_trigger
 system: pf2e
 prerequisite: Snarecrafter Dedication
+prerequisites:
+  - { feat: snarecrafter_dedication }
 mechanicalSummary: "You've learned how to trigger snares from afar, creating ranged hazards to assail your opponents and allowing you to disarm enemies' snares harmlessly."
 extraPools: []
+category: archetype
 level: 6

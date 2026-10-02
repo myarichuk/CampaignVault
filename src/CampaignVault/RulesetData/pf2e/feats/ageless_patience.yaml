@@ -5,4 +5,6 @@ name: ageless_patience
 system: pf2e
 mechanicalSummary: You work at a pace born from longevity that enhances your thoroughness.
 extraPools: []
+category: ancestry
+ancestries: [elf]
 level: 5

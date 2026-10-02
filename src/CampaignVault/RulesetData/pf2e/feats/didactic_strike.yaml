@@ -4,7 +4,10 @@
 name: didactic_strike
 system: pf2e
 prerequisite: Shared Stratagem
+prerequisites:
+  - { feat: shared_stratagem }
 mechanicalSummary: When you find a glaring weakness, you can set your allies up to annihilate your foe.
 extraPools: []
+category: class
 classes: [investigator]
 level: 16

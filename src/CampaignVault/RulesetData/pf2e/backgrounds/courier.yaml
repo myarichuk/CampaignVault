@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: courier
+system: pf2e
+description: "In your youth, you earned coin running messages for persons of wealth and influence, darting through crowded city streets. Your dogged commitment to deliver your message was good training for the life of an adventurer."
+boosts: [Dexterity, Intelligence]
+skillProficiencies: [Society]
+lore: Lore for your city of origin
+skillFeat: glean_contents
+feature: Glean Contents

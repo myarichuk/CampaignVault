@@ -4,7 +4,11 @@
 name: mixed_maneuver
 system: pf2e
 prerequisite: Master in Athletics
+prerequisites:
+  - { skill: Athletics, rank: master }
 mechanicalSummary: You leverage your knowledge of martial arts to mix different maneuvers together into a single flowing combination.
 extraPools: []
+category: class
 classes: [monk]
+skills: [Athletics]
 level: 8

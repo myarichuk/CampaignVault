@@ -4,6 +4,10 @@
 name: viking_dedication
 system: pf2e
 prerequisite: Trained in Athletics
+prerequisites:
+  - { skill: Athletics, rank: trained }
 mechanicalSummary: "Vikings spend long periods of time at sea, only to leap from their boats at a moment's notice, charge through the surf, and take their enemies by storm."
 extraPools: []
+category: archetype
+skills: [Athletics]
 level: 2

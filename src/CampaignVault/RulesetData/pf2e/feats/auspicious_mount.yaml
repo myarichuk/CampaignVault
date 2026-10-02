@@ -4,7 +4,10 @@
 name: auspicious_mount
 system: pf2e
 prerequisite: Imposing Destrier
+prerequisites:
+  - { feat: imposing_destrier }
 mechanicalSummary: Guided by your ongoing care, your steed has developed incredible intelligence and skill.
 extraPools: []
+category: class
 classes: [champion]
 level: 16

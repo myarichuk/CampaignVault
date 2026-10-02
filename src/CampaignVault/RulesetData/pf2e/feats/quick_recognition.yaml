@@ -4,6 +4,11 @@
 name: quick_recognition
 system: pf2e
 prerequisite: Master in Arcana, Master in Nature, Master in Occultism, or Master in Religion; Recognize Spell
+prerequisites:
+  - { anyOf: [{ skill: Arcana, rank: master }, { skill: Nature, rank: master }, { skill: Occultism, rank: master }, { skill: Religion, rank: master }] }
+  - { feat: recognize_spell }
 mechanicalSummary: Identify spells as a free action
 extraPools: []
+category: skill
+skills: [Arcana, Nature, Occultism, Religion]
 level: 7

@@ -4,6 +4,9 @@
 name: duelist_s_challenge
 system: pf2e
 prerequisite: Duelist Dedication
+prerequisites:
+  - { feat: duelist_dedication }
 mechanicalSummary: Select one enemy you can see and proclaim a challenge against it.
 extraPools: []
+category: archetype
 level: 4

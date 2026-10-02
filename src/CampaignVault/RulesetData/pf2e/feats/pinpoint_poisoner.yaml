@@ -5,5 +5,6 @@ name: pinpoint_poisoner
 system: pf2e
 mechanicalSummary: Unsuspecting targets are especially vulnerable to your poisons.
 extraPools: []
+category: class
 classes: [alchemist]
 level: 8

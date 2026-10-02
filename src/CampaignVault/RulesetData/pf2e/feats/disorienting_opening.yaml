@@ -4,7 +4,10 @@
 name: disorienting_opening
 system: pf2e
 prerequisite: Reactive Strike
+prerequisites:
+  - { feat: reactive_strike }
 mechanicalSummary: You use your foes’ openings to expose even greater weaknesses.
 extraPools: []
+category: class
 classes: [fighter]
 level: 8

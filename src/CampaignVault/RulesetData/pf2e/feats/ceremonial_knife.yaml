@@ -5,5 +5,6 @@ name: ceremonial_knife
 system: pf2e
 mechanicalSummary: You have prepared a special knife to direct energies when spellcasting.
 extraPools: []
+category: class
 classes: [witch]
 level: 6

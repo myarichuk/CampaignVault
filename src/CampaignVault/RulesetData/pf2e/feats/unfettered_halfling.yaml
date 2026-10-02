@@ -5,4 +5,6 @@ name: unfettered_halfling
 system: pf2e
 mechanicalSummary: "You were either pressed into indentured servitude or shackled in a prison, but you've since escaped and have trained to ensure you'll never be caught again."
 extraPools: []
+category: ancestry
+ancestries: [halfling]
 level: 1

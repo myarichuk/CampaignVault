@@ -4,6 +4,9 @@
 name: assassinate
 system: pf2e
 prerequisite: Assassin Dedication
+prerequisites:
+  - { feat: assassin_dedication }
 mechanicalSummary: You strike with one swift movement, trying to instantly slay your mark.
 extraPools: []
+category: archetype
 level: 12

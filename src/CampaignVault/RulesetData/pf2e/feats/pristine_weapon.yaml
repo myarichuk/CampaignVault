@@ -4,7 +4,10 @@
 name: pristine_weapon
 system: pf2e
 prerequisite: Verdant Weapon
+prerequisites:
+  - { feat: verdant_weapon }
 mechanicalSummary: Your verdant weapon can cut through the resistances of magical creatures.
 extraPools: []
+category: class
 classes: [druid]
 level: 10

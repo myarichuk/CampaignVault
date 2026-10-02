@@ -5,5 +5,6 @@ name: strategic_bypass
 system: pf2e
 mechanicalSummary: "Your plans account for your foes' resistances, enabling you to strike a telling blow."
 extraPools: []
+category: class
 classes: [investigator]
 level: 14

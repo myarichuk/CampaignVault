@@ -4,6 +4,10 @@
 name: lucky_keepsake
 system: pf2e
 prerequisite: Leshy Superstition
+prerequisites:
+  - { feat: leshy_superstition }
 mechanicalSummary: You have a keepsake that grants you luck.
 extraPools: []
+category: ancestry
+ancestries: [leshy]
 level: 9

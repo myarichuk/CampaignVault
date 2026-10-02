@@ -4,7 +4,10 @@
 name: greater_physical_evolution
 system: pf2e
 prerequisite: Primal Evolution or Arcane Evolution
+prerequisites:
+  - { anyOf: [{ feat: primal_evolution }, { feat: arcane_evolution }] }
 mechanicalSummary: You change form readily.
 extraPools: []
+category: class
 classes: [sorcerer]
 level: 12

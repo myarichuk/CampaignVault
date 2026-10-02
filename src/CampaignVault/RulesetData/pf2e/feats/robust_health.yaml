@@ -5,4 +5,5 @@ name: robust_health
 system: pf2e
 mechanicalSummary: Your physiology responds well to first aid.
 extraPools: []
+category: general
 level: 3

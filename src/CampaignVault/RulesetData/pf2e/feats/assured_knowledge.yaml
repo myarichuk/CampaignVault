@@ -4,7 +4,10 @@
 name: assured_knowledge
 system: pf2e
 prerequisite: enigma muse
+prerequisites:
+  - { classFeature: enigma }
 mechanicalSummary: You can procure information with confidence.
 extraPools: []
+category: class
 classes: [bard]
 level: 6

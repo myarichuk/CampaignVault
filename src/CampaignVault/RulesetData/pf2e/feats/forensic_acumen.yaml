@@ -4,6 +4,10 @@
 name: forensic_acumen
 system: pf2e
 prerequisite: Trained in Medicine
+prerequisites:
+  - { skill: Medicine, rank: trained }
 mechanicalSummary: You understand principles of forensic medicine, making you better at examining a body to determine the cause of death or injury.
 extraPools: []
+category: skill
+skills: [Medicine]
 level: 1

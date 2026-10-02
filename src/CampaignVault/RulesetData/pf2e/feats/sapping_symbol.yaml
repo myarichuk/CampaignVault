@@ -4,7 +4,10 @@
 name: sapping_symbol
 system: pf2e
 prerequisite: Raise Symbol
+prerequisites:
+  - { feat: raise_symbol }
 mechanicalSummary: Your religious symbol glows with sacred energy, turning the attacker’s strength to weakness.
 extraPools: []
+category: class
 classes: [cleric]
 level: 12

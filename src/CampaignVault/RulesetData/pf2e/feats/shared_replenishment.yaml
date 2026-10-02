@@ -4,7 +4,10 @@
 name: shared_replenishment
 system: pf2e
 prerequisite: Replenishment of War
+prerequisites:
+  - { feat: replenishment_of_war }
 mechanicalSummary: When your deity blesses your warlike acts, you can extend that favor to your allies.
 extraPools: []
+category: class
 classes: [cleric]
 level: 12

@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: Opportune Riposte
 mechanicalSummary: You can riposte almost without a thought.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 10

@@ -4,6 +4,10 @@
 name: forager
 system: pf2e
 prerequisite: Trained in Survival
+prerequisites:
+  - { skill: Survival, rank: trained }
 mechanicalSummary: Forage for supplies to provide for multiple creatures
 extraPools: []
+category: skill
+skills: [Survival]
 level: 1

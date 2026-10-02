@@ -302,7 +302,7 @@ public partial class MutationTools
             var characters = (await ctx.Session.LoadAsync<Character>(ids)).Values.Where(c => c is not null).ToList();
             var activeModes = (await LoadActiveModeParticipantsAsync(ctx)).Where(kv => kv.Value.Count > 0).Select(kv => kv.Key).ToList();
             var live = await FeatEffectRules.ResolveAsync(
-                ctx.Session, _featProvider, ctx.Config.ActiveSystem, characters, ctx.Campaign, activeModes);
+                ctx.Session, _featProvider, ctx.Config.ActiveSystem, characters, ctx.Campaign, activeModes, _progressionProvider);
 
             var lines = characters
                 .Where(c => live.ContainsKey(c.Id))

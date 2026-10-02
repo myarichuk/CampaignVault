@@ -4,7 +4,11 @@
 name: alchemical_assessment
 system: pf2e
 prerequisite: Trained in Crafting
+prerequisites:
+  - { skill: Crafting, rank: trained }
 mechanicalSummary: You can identify alchemical items quickly.
 extraPools: []
+category: class
 classes: [alchemist]
+skills: [Crafting]
 level: 1

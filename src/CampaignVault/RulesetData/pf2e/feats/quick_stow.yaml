@@ -4,6 +4,10 @@
 name: quick_stow
 system: pf2e
 prerequisite: Cheek Pouches
+prerequisites:
+  - { feat: cheek_pouches }
 mechanicalSummary: "You Interact to store one item you're holding in your cheek pouches (provided it fits)."
 extraPools: []
+category: ancestry
+ancestries: [ratfolk]
 level: 5

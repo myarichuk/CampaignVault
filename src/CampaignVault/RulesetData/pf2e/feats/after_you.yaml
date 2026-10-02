@@ -5,5 +5,6 @@ name: after_you
 system: pf2e
 mechanicalSummary: You allow your foes to make the first move in a show of incredible confidence.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 2

@@ -4,7 +4,10 @@
 name: castigating_weapon
 system: pf2e
 prerequisite: Divine Castigation
+prerequisites:
+  - { feat: divine_castigation }
 mechanicalSummary: The force of your deity’s castigation strengthens your body so you can strike down the enemy and its allies.
 extraPools: []
+category: class
 classes: [cleric]
 level: 10

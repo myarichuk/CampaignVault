@@ -5,4 +5,6 @@ name: grasping_reach
 system: pf2e
 mechanicalSummary: You can extend a tangle of vines or tendrils to support your arms and extend your reach.
 extraPools: []
+category: ancestry
+ancestries: [leshy]
 level: 1

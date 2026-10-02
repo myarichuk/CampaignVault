@@ -4,6 +4,10 @@
 name: legendary_guide
 system: pf2e
 prerequisite: Legendary in Survival
+prerequisites:
+  - { skill: Survival, rank: legendary }
 mechanicalSummary: You know the wilderness so well that you can help your party travel through it with ease.
 extraPools: []
+category: skill
+skills: [Survival]
 level: 15

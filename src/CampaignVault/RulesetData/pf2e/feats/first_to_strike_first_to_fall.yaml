@@ -5,4 +5,6 @@ name: first_to_strike_first_to_fall
 system: pf2e
 mechanicalSummary: Whenever you successfully Strike a creature that has not acted in the first round of combat, that creature is off-guard until the end of your next turn.
 extraPools: []
+category: ancestry
+ancestries: [kholo]
 level: 17

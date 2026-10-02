@@ -4,6 +4,10 @@
 name: scroll_trickster_dedication
 system: pf2e
 prerequisite: Trained in Nature, Trained in Arcana, Trained in Occultism, or Trained in Religion
+prerequisites:
+  - { anyOf: [{ skill: Nature, rank: trained }, { skill: Arcana, rank: trained }, { skill: Occultism, rank: trained }, { skill: Religion, rank: trained }] }
 mechanicalSummary: "You've studied scrolls in depth."
 extraPools: []
+category: archetype
+skills: [Arcana, Nature, Occultism, Religion]
 level: 2

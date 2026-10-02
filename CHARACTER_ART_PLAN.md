@@ -13,9 +13,9 @@ The art shows up in three places:
 Written 2026-10-01 against `master` @ `925f0b6` plus the uncommitted work from the same day.
 `~` marks approximate line numbers; re-check them before starting a phase.
 
-Related: `CHARACTER_CREATION_PLAN.md`. The builder's identity step gains the appearance
-field this plan draws from. Neither plan blocks the other: until the builder ships, art is
-drawn from `Character.CurrentAppearance` and the class line.
+Related: the character builder (PLUGINS.md, creation recipes). Its identity step has the
+appearance field this plan draws from; art is drawn from `Character.CurrentAppearance` and
+the class line.
 
 ---
 

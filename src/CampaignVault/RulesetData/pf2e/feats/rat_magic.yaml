@@ -5,4 +5,6 @@ name: rat_magic
 system: pf2e
 mechanicalSummary: There always seems to be a little rat around to carry messages for you.
 extraPools: []
+category: ancestry
+ancestries: [ratfolk]
 level: 5

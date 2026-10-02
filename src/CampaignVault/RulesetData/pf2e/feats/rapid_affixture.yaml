@@ -4,6 +4,10 @@
 name: rapid_affixture
 system: pf2e
 prerequisite: Master in Crafting
+prerequisites:
+  - { skill: Crafting, rank: master }
 mechanicalSummary: You take only 1 minute to Affix a Talisman.
 extraPools: []
+category: skill
+skills: [Crafting]
 level: 7

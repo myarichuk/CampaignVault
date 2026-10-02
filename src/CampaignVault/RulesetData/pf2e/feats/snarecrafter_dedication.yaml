@@ -4,6 +4,10 @@
 name: snarecrafter_dedication
 system: pf2e
 prerequisite: Trained in Crafting
+prerequisites:
+  - { skill: Crafting, rank: trained }
 mechanicalSummary: You have studied the art of crafting snares and laying traps, and few have shown more talent in these arts than you.
 extraPools: []
+category: archetype
+skills: [Crafting]
 level: 2

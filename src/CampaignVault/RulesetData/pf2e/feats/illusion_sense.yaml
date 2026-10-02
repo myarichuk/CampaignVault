@@ -5,4 +5,6 @@ name: illusion_sense
 system: pf2e
 mechanicalSummary: Your ancestors spent their days cloaked and cradled in illusions, and as a result, sensing illusion magic is second nature to you.
 extraPools: []
+category: ancestry
+ancestries: [gnome]
 level: 1

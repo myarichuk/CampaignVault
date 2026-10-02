@@ -5,5 +5,6 @@ name: hunter_s_aim
 system: pf2e
 mechanicalSummary: When you focus on aiming, your attack becomes particularly accurate.
 extraPools: []
+category: class
 classes: [ranger]
 level: 2

@@ -4,6 +4,11 @@
 name: master_cleric_spellcasting
 system: pf2e
 prerequisite: Expert Cleric Spellcasting; Legendary in Religion
+prerequisites:
+  - { feat: expert_cleric_spellcasting }
+  - { skill: Religion, rank: legendary }
 mechanicalSummary: You gain the master spellcasting benefits.
 extraPools: []
+category: archetype
+skills: [Religion]
 level: 18

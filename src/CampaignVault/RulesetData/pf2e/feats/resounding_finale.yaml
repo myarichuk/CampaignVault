@@ -4,7 +4,10 @@
 name: resounding_finale
 system: pf2e
 prerequisite: maestro muse
+prerequisites:
+  - { classFeature: maestro }
 mechanicalSummary: You bring your performance to a sudden, dramatic finish, drowning out other sounds.
 extraPools: []
+category: class
 classes: [bard]
 level: 16

@@ -5,4 +5,6 @@ name: gnome_weapon_familiarity
 system: pf2e
 mechanicalSummary: You favor unusual weapons tied to your people, such as blades with curved and peculiar shapes.
 extraPools: []
+category: ancestry
+ancestries: [gnome]
 level: 1

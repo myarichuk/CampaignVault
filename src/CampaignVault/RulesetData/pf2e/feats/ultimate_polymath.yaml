@@ -4,7 +4,10 @@
 name: ultimate_polymath
 system: pf2e
 prerequisite: polymath muse
+prerequisites:
+  - { classFeature: polymath }
 mechanicalSummary: You can flexibly cast all of your spells, granting a dizzying array of possible options.
 extraPools: []
+category: class
 classes: [bard]
 level: 20

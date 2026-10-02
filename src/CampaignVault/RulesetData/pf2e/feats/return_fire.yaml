@@ -4,7 +4,11 @@
 name: return_fire
 system: pf2e
 prerequisite: Deflect Projectile; Monastic Archer Stance
+prerequisites:
+  - { feat: deflect_projectile }
+  - { feat: monastic_archer_stance }
 mechanicalSummary: Snatching an arrow out of the air, you instantly put it to your bow and return fire.
 extraPools: []
+category: class
 classes: [monk]
 level: 6

@@ -5,5 +5,6 @@ name: sow_spell
 system: pf2e
 mechanicalSummary: You fold your spell into a seed.
 extraPools: []
+category: class
 classes: [druid]
 level: 14

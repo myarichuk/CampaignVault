@@ -4,6 +4,9 @@
 name: destructive_block
 system: pf2e
 prerequisite: Bastion Dedication
+prerequisites:
+  - { feat: bastion_dedication }
 mechanicalSummary: You can protect yourself more effectively, at the expense of your shield.
 extraPools: []
+category: archetype
 level: 10

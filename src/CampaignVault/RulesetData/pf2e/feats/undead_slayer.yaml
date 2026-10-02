@@ -5,4 +5,6 @@ name: undead_slayer
 system: pf2e
 mechanicalSummary: Your knowledge of your own not-quite-living anatomy, combined with your experience in combat, helps you take down undead foes with ease.
 extraPools: []
+category: ancestry
+ancestries: [dhampir]
 level: 5

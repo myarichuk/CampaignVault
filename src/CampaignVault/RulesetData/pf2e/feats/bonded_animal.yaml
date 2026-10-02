@@ -4,6 +4,10 @@
 name: bonded_animal
 system: pf2e
 prerequisite: Expert in Nature
+prerequisites:
+  - { skill: Nature, rank: expert }
 mechanicalSummary: An animal becomes permanently easier to command
 extraPools: []
+category: skill
+skills: [Nature]
 level: 2

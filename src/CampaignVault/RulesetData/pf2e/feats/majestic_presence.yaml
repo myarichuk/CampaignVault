@@ -5,4 +5,6 @@ name: majestic_presence
 system: pf2e
 mechanicalSummary: By taking an impressive stance, the full force of your personality cows lesser beings.
 extraPools: []
+category: ancestry
+ancestries: [dragonblood]
 level: 13

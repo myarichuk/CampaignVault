@@ -4,6 +4,9 @@
 name: strangle
 system: pf2e
 prerequisite: Wrestler Dedication
+prerequisites:
+  - { feat: wrestler_dedication }
 mechanicalSummary: You squeeze the breath out of your foe.
 extraPools: []
+category: archetype
 level: 8

@@ -4,6 +4,9 @@
 name: contortionist
 system: pf2e
 prerequisite: Acrobat Dedication
+prerequisites:
+  - { feat: acrobat_dedication }
 mechanicalSummary: You can squeeze out of tight situations by twisting and bending your body into unnatural positions, gaining an advantage against foes that try to pin you down.
 extraPools: []
+category: archetype
 level: 4

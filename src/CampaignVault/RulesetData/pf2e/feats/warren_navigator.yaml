@@ -5,4 +5,6 @@ name: warren_navigator
 system: pf2e
 mechanicalSummary: You gain the trained proficiency rank in Survival.
 extraPools: []
+category: ancestry
+ancestries: [ratfolk]
 level: 1

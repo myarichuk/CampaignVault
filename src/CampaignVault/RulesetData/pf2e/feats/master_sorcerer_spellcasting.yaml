@@ -4,6 +4,9 @@
 name: master_sorcerer_spellcasting
 system: pf2e
 prerequisite: Expert Sorcerer Spellcasting; legendary in Arcana, Nature, Occultism, or Religion, depending on bloodline
+prerequisites:
+  - { feat: expert_sorcerer_spellcasting }
 mechanicalSummary: You gain the master spellcasting benefits.
 extraPools: []
+category: archetype
 level: 18

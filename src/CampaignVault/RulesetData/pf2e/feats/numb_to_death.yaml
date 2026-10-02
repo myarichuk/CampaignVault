@@ -4,6 +4,9 @@
 name: numb_to_death
 system: pf2e
 prerequisite: Diehard; you have died at least once
+prerequisites:
+  - { feat: diehard }
 mechanicalSummary: "Your past has left you numb to death's call."
 extraPools: []
+category: general
 level: 7

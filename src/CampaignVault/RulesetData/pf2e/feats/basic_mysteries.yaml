@@ -4,6 +4,9 @@
 name: basic_mysteries
 system: pf2e
 prerequisite: Oracle Dedication
+prerequisites:
+  - { feat: oracle_dedication }
 mechanicalSummary: You gain a 1st- or 2nd-level oracle feat of your choice.
 extraPools: []
+category: archetype
 level: 4

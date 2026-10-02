@@ -4,7 +4,10 @@
 name: mature_animal_companion_druid
 system: pf2e
 prerequisite: Animal Companion
+prerequisites:
+  - { feat: animal_companion }
 mechanicalSummary: Your animal companion has grown up over the course of your adventures, becoming a mature animal companion and gaining additional capabilities (page 211).
 extraPools: []
+category: class
 classes: [druid]
 level: 4

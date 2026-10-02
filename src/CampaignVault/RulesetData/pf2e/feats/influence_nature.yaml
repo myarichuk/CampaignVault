@@ -4,6 +4,10 @@
 name: influence_nature
 system: pf2e
 prerequisite: Master in Nature
+prerequisites:
+  - { skill: Nature, rank: master }
 mechanicalSummary: With patience and time, you can make bird calls, leave game trails, and ultimately influence the behavior of a certain type of animals in the region to favor and even aid you in the days to come.
 extraPools: []
+category: skill
+skills: [Nature]
 level: 7

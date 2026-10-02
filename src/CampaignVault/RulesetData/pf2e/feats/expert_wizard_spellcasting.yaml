@@ -4,6 +4,11 @@
 name: expert_wizard_spellcasting
 system: pf2e
 prerequisite: Basic Wizard Spellcasting; Master in Arcana
+prerequisites:
+  - { feat: basic_wizard_spellcasting }
+  - { skill: Arcana, rank: master }
 mechanicalSummary: You gain the expert spellcasting benefits.
 extraPools: []
+category: archetype
+skills: [Arcana]
 level: 12

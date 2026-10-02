@@ -26,6 +26,9 @@ public class WorldBuildBatch
     [Description("Homebrew feats/perks to create or update.")]
     public List<CustomFeatUpsertRequest>? Feats { get; set; }
 
+    [Description("Homebrew subclasses, ancestries and named powers to create or update, each as the kind plus the template YAML a plugin file holds. Offered, tagged homebrew, in this campaign's character builder.")]
+    public List<HomebrewTemplateUpsertRequest>? Homebrew { get; set; }
+
     [Description("Characters/NPCs to create or update. Dispatched after locations/factions (currentLocationId may reference them). Bootstrap (HP/defense derivation) runs per element.")]
     public List<CharacterUpsertRequest>? Characters { get; set; }
 

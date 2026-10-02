@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: driver
+system: pf2e
+description: "You live behind the controls of a vehicle, and can handle anything the road or waves and sky can throw at you. You adventure to test your skills with new and interesting vehicles."
+boosts: [Strength, Dexterity]
+skillProficiencies: [Acrobatics]
+lore: Driving Lore or Piloting Lore
+skillFeat: assurance
+feature: Assurance

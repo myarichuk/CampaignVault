@@ -5,5 +5,6 @@ name: embrace_the_pain
 system: pf2e
 mechanicalSummary: Ignoring your pain, you reach out and grab the creature or weapon that caused you harm.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 12

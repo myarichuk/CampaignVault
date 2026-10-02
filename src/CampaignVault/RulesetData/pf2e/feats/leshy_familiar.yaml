@@ -4,7 +4,10 @@
 name: leshy_familiar
 system: pf2e
 prerequisite: leaf order
+prerequisites:
+  - { classFeature: leaf }
 mechanicalSummary: You call a minor spirit of nature into a plant body, creating a leshy companion to aid you in your spellcasting.
 extraPools: []
+category: class
 classes: [druid]
 level: 1

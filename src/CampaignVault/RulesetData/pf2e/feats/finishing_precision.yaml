@@ -4,6 +4,9 @@
 name: finishing_precision
 system: pf2e
 prerequisite: Swashbuckler Dedication
+prerequisites:
+  - { feat: swashbuckler_dedication }
 mechanicalSummary: You’ve learned how to land daring blows when you have panache.
 extraPools: []
+category: archetype
 level: 4

@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: insurgent
+system: pf2e
+description: "You were more than a rebel; you were a revolutionary, fighting for the promise of a new or better country. You may or may not still believe in the cause, or perhaps victory or exile has led you on this new journey to trumpet your glory... or to escape the consequences of your defeat."
+boosts: [Strength, Wisdom]
+skillProficiencies: [Deception]
+lore: Warfare Lore
+skillFeat: lengthy_diversion
+feature: Lengthy Diversion

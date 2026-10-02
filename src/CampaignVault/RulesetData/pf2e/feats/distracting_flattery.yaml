@@ -4,6 +4,11 @@
 name: distracting_flattery
 system: pf2e
 prerequisite: Dandy Dedication; Expert in Deception
+prerequisites:
+  - { feat: dandy_dedication }
+  - { skill: Deception, rank: expert }
 mechanicalSummary: You know how to maintain a good impression and manage your image, even while keeping uncouth company.
 extraPools: []
+category: skill
+skills: [Deception]
 level: 4

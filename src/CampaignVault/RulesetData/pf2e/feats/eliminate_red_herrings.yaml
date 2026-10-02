@@ -5,5 +5,6 @@ name: eliminate_red_herrings
 system: pf2e
 mechanicalSummary: You have a keen sense for avoiding spurious lines of inquiry.
 extraPools: []
+category: class
 classes: [investigator]
 level: 1

@@ -4,7 +4,10 @@
 name: mountain_quake
 system: pf2e
 prerequisite: Mountain Stronghold
+prerequisites:
+  - { feat: mountain_stronghold }
 mechanicalSummary: You stomp, shaking the earth beneath you.
 extraPools: []
+category: class
 classes: [monk]
 level: 14

@@ -4,6 +4,10 @@
 name: subtle_theft
 system: pf2e
 prerequisite: Trained in Thievery
+prerequisites:
+  - { skill: Thievery, rank: trained }
 mechanicalSummary: Your thefts are harder to notice
 extraPools: []
+category: skill
+skills: [Thievery]
 level: 1

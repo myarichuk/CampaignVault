@@ -5,5 +5,6 @@ name: order_explorer
 system: pf2e
 mechanicalSummary: You have learned the secrets of another druidic order, passing whatever rites of initiation that order requires and gaining access to its secrets.
 extraPools: []
+category: class
 classes: [druid]
 level: 2

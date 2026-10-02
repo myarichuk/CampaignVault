@@ -4,6 +4,9 @@
 name: caravan_leader
 system: pf2e
 prerequisite: Pick Up the Pace
+prerequisites:
+  - { feat: pick_up_the_pace }
 mechanicalSummary: You know how to get the most effort out of your allies on the road.
 extraPools: []
+category: general
 level: 11

@@ -4,6 +4,12 @@
 name: vicious_snares
 system: pf2e
 prerequisite: Snare Crafting; Expert in Crafting
+prerequisites:
+  - { feat: snare_crafting }
+  - { skill: Crafting, rank: expert }
 mechanicalSummary: You deal an additional 1d6 precision damage with damage snares you craft.
 extraPools: []
+category: ancestry
+ancestries: [kobold]
+skills: [Crafting]
 level: 13

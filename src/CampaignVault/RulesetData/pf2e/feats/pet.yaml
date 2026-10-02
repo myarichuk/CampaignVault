@@ -5,4 +5,5 @@ name: pet
 system: pf2e
 mechanicalSummary: You have a loyal pet
 extraPools: []
+category: general
 level: 1

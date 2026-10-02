@@ -1,0 +1,23 @@
+# Source: SRD 5.1 (CC-BY-4.0), adapted as a party companion template. Edit freely in the builder.
+name: Scout
+system: dnd5e
+description: A wilderness guide and archer, at home away from roads.
+challengeRating: "1/2"
+hp: 16
+defense: 13
+companion: true
+statBlock:
+  creatureType: Humanoid
+  challengeRating: "1/2"
+  statBlockHp: "16"
+  armorClass: "13"
+  movement: "30"
+  strength: "11"
+  dexterity: "14"
+  constitution: "12"
+  intelligence: "11"
+  wisdom: "13"
+  charisma: "11"
+  attacks: "Shortsword +4, 1d6+2 piercing, reach 5 ft.; Longbow +4, 1d8+2 piercing, range 150/600 ft."
+  skillModifiers: "Nature +4, Perception +5, Stealth +6, Survival +5"
+  traits: "Multiattack: two melee or two ranged attacks. Keen Hearing and Sight: advantage on Wisdom (Perception) checks that rely on hearing or sight."

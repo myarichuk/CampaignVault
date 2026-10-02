@@ -4,6 +4,9 @@
 name: impressive_mount
 system: pf2e
 prerequisite: Cavalier Dedication
+prerequisites:
+  - { feat: cavalier_dedication }
 mechanicalSummary: You’ve trained your mount to become a powerful force on the battlefield.
 extraPools: []
+category: archetype
 level: 4

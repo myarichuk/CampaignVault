@@ -5,4 +5,6 @@ name: crunch
 system: pf2e
 mechanicalSummary: Your jaws can crush bone and bite through armor.
 extraPools: []
+category: ancestry
+ancestries: [kholo]
 level: 1

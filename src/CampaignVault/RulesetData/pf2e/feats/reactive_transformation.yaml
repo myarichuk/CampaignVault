@@ -4,7 +4,11 @@
 name: reactive_transformation
 system: pf2e
 prerequisite: Untamed Form; Dragon Shape, Elemental Shape, Plant Shape, or Soaring Shape
+prerequisites:
+  - { feat: untamed_form }
+  - { anyOf: [{ feat: dragon_shape }, { feat: elemental_shape }, { feat: plant_shape }, { feat: soaring_shape }] }
 mechanicalSummary: You transform reflexively when in danger.
 extraPools: []
+category: class
 classes: [druid]
 level: 14

@@ -4,7 +4,10 @@
 name: snowdrift_spell
 system: pf2e
 prerequisite: storm order
+prerequisites:
+  - { classFeature: storm }
 mechanicalSummary: The howling wind and precipitation of your magic turn to thick snow.
 extraPools: []
+category: class
 classes: [druid]
 level: 4

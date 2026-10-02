@@ -69,6 +69,7 @@
 .cv-card--warning { border-color: var(--gold); }
 
 .cv-row { flex-direction: row; align-items: center; }
+.cv-templates { flex-direction: row; flex-wrap: wrap; }
 .cv-col { flex-direction: column; }
 .cv-grow { flex-grow: 1; flex-shrink: 1; }
 /* Bound visibility (ClassBinding invert="true" on "has something to show"): never style.display from code. */
@@ -412,6 +413,7 @@
 .cv-onboarding__answer { margin-top: 16px; }
 .cv-onboarding__choices > .cv-btn { margin-bottom: 8px; }
 .cv-onboarding__levels > .cv-btn { margin-right: 8px; margin-top: 6px; }
+.cv-templates > .cv-btn { margin-right: 8px; margin-top: 6px; }
 .cv-onboarding__member { margin-top: 8px; }
 .cv-onboarding__party-actions > .cv-btn { margin-bottom: 8px; }
 .cv-onboarding__yesno > .cv-btn { margin-right: 8px; }
@@ -429,3 +431,26 @@
 .cv-chat__divider { margin-top: 20px; white-space: normal; }
 .cv-chat__warning { margin-top: 12px; }
 .cv-chat__thinking { margin-top: 12px; }
+
+/* Entry rows (Common/EntryRow): an editable list, a row of cells then a remove button; a header row of captions
+   keeps the button's place unseen so its columns line up with the rows below. */
+.cv-entry { padding: var(--sp-1) 0; border-bottom-width: 1px; border-color: var(--line-faint); align-items: center; }
+.cv-entry--header { border-bottom-width: 0; padding-bottom: 0; }
+.cv-entry--header .cv-entry__remove { visibility: hidden; }
+.cv-entry__cells { flex-direction: row; flex-shrink: 1; align-items: center; }
+.cv-entry--stretch .cv-entry__cells { flex-grow: 1; }
+.cv-entry__cell { width: 160px; flex-grow: 0; flex-shrink: 0; margin: 0 var(--sp-2) 0 0; }
+.cv-entry__cell--name { width: 180px; }
+.cv-entry__cell--narrow { width: 90px; }
+.cv-entry__cell--wide { width: auto; flex-grow: 1; flex-shrink: 1; min-width: 100px; }
+/* In a narrow window an attack row gives up width before it overflows: every cell shrinks, to a floor. */
+.cv-entry--stretch .cv-entry__cell { flex-shrink: 1; min-width: 96px; }
+.cv-entry--stretch .cv-entry__cell--narrow { min-width: 64px; }
+.cv-entry__label { -unity-text-align: middle-left; }
+
+/* Combo (Common/Combo): a pick shown as a button; open, a search box and the matching options below it, in place. */
+.cv-combo { align-items: flex-start; }
+.cv-combo__toggle { min-width: 200px; -unity-text-align: middle-left; }
+.cv-combo--empty .cv-combo__toggle { -unity-font-style: italic; }
+.cv-combo__panel { align-self: stretch; padding: var(--sp-2) 0 0 0; }
+.cv-combo__search { max-width: 320px; margin: 0 0 var(--sp-2) 0; }

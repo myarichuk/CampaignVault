@@ -13,6 +13,7 @@ levels:
         description: "Bonus action: advantage on Str checks/saves, +2 damage, resistance to bludgeoning/piercing/slashing. 1 min, 2/day."
       - name: "Unarmored Defense"
         description: "AC = 10 + Dex mod + Con mod when not wearing armor."
+        unarmoredArmorClass: { base: 10, abilities: [Dexterity, Constitution] }
   2:
     proficiencyBonus: 2
     features:
@@ -32,16 +33,20 @@ levels:
             options:
               - id: berserker
                 label: "Path of the Berserker"
-                description: "Frenzy, mindless rage, intimidating presence."
-              - id: totemWarrior
-                label: "Path of the Totem Warrior"
-                description: "Spirit animal features, beast sense, spirit walker."
-              - id: ancestralGuardian
-                label: "Path of the Ancestral Guardian"
-                description: "Ancestral protectors, spirit shield, consult the spirits."
-              - id: stormHerald
-                label: "Path of the Storm Herald"
-                description: "Storm aura, storm soul, shield of the storm."
+                description: "Frenzy, mindless rage, intimidating presence, retaliation."
+                features:
+                  3:
+                    - name: "Frenzy"
+                      description: "While raging you can frenzy: until the rage ends, you can make one melee weapon attack as a bonus action on each of your turns after this one. When the rage ends you suffer one level of exhaustion."
+                  6:
+                    - name: "Mindless Rage"
+                      description: "You can't be charmed or frightened while raging; such an effect already on you is suspended for the rage."
+                  10:
+                    - name: "Intimidating Presence"
+                      description: "Action: one creature within 30 ft. that can see or hear you makes a Wisdom save (DC 8 + proficiency bonus + Charisma modifier) or is frightened until the end of your next turn; your action extends it each turn. Once it succeeds, it's immune for 24 hours."
+                  14:
+                    - name: "Retaliation"
+                      description: "When a creature within 5 ft. damages you, you can use your reaction to make one melee weapon attack against it."
   4:
     proficiencyBonus: 2
     features:

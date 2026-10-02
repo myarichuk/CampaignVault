@@ -5,5 +5,6 @@ name: sidestep
 system: pf2e
 mechanicalSummary: You deftly step out of the way of an attack, letting the blow continue.
 extraPools: []
+category: class
 classes: [rogue]
 level: 8

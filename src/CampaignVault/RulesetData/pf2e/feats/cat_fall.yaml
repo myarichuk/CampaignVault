@@ -4,6 +4,10 @@
 name: cat_fall
 system: pf2e
 prerequisite: Trained in Acrobatics
+prerequisites:
+  - { skill: Acrobatics, rank: trained }
 mechanicalSummary: Treat falls as shorter than they are
 extraPools: []
+category: skill
+skills: [Acrobatics]
 level: 1

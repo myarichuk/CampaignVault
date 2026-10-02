@@ -4,6 +4,10 @@
 name: bizarre_magic
 system: pf2e
 prerequisite: Master in Occultism
+prerequisites:
+  - { skill: Occultism, rank: master }
 mechanicalSummary: Your magic becomes more difficult to identify
 extraPools: []
+category: skill
+skills: [Occultism]
 level: 7

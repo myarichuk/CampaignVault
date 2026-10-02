@@ -4,7 +4,10 @@
 name: advanced_warden
 system: pf2e
 prerequisite: Initiate Warden
+prerequisites:
+  - { feat: initiate_warden }
 mechanicalSummary: You unlock more powerful primal spells.
 extraPools: []
+category: class
 classes: [ranger]
 level: 4

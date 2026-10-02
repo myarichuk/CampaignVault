@@ -5,5 +5,6 @@ name: patron_s_claim
 system: pf2e
 mechanicalSummary: Your patron partially manifests itself through your familiar to claim a foe’s power for its own.
 extraPools: []
+category: class
 classes: [witch]
 level: 18

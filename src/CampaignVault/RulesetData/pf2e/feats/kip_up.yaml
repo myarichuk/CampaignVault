@@ -4,6 +4,10 @@
 name: kip_up
 system: pf2e
 prerequisite: Master in Acrobatics
+prerequisites:
+  - { skill: Acrobatics, rank: master }
 mechanicalSummary: Stand up for free without triggering reactions
 extraPools: []
+category: skill
+skills: [Acrobatics]
 level: 7

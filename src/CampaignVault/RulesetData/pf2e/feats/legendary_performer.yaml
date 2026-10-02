@@ -4,6 +4,11 @@
 name: legendary_performer
 system: pf2e
 prerequisite: Legendary in Performance; Virtuosic Performer
+prerequisites:
+  - { skill: Performance, rank: legendary }
+  - { feat: virtuosic_performer }
 mechanicalSummary: Gain renown for your Performance
 extraPools: []
+category: skill
+skills: [Performance]
 level: 15

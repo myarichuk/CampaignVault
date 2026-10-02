@@ -5,5 +5,6 @@ name: alter_admixture
 system: pf2e
 mechanicalSummary: Sometimes, you need to adapt your alchemical mixtures to new situations.
 extraPools: []
+category: class
 classes: [alchemist]
 level: 8

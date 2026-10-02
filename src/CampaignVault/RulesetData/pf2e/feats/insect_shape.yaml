@@ -4,7 +4,10 @@
 name: insect_shape
 system: pf2e
 prerequisite: Untamed Form
+prerequisites:
+  - { feat: untamed_form }
 mechanicalSummary: Your understanding of life expands, allowing you to mimic a wider range of creatures.
 extraPools: []
+category: class
 classes: [druid]
 level: 6

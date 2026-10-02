@@ -5,4 +5,6 @@ name: hardy_traveler
 system: pf2e
 mechanicalSummary: There’s no journey too far or burden too heavy when you have friends at your side or hope within your heart.
 extraPools: []
+category: ancestry
+ancestries: [human]
 level: 9

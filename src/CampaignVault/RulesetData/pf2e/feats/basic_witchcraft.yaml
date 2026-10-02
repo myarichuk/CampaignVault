@@ -4,6 +4,9 @@
 name: basic_witchcraft
 system: pf2e
 prerequisite: Witch Dedication
+prerequisites:
+  - { feat: witch_dedication }
 mechanicalSummary: You gain a 1st- or 2nd-level witch feat of your choice.
 extraPools: []
+category: archetype
 level: 4

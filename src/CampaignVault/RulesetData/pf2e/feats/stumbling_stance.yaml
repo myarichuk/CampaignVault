@@ -4,7 +4,11 @@
 name: stumbling_stance
 system: pf2e
 prerequisite: Trained in Deception
+prerequisites:
+  - { skill: Deception, rank: trained }
 mechanicalSummary: You enter a seemingly unfocused stance that mimics the movements of the inebriated—bobbing, weaving, leaving false openings, and distracting your enemies from your true movements.
 extraPools: []
+category: class
 classes: [monk]
+skills: [Deception]
 level: 1

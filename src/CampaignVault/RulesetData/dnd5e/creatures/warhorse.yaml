@@ -1,0 +1,22 @@
+# Source: SRD 5.1 (CC-BY-4.0), adapted as a party companion template. Edit freely in the builder.
+name: Warhorse
+system: dnd5e
+description: A trained, battle-hardened mount.
+challengeRating: "1/2"
+hp: 19
+defense: 11
+companion: true
+statBlock:
+  creatureType: Beast
+  challengeRating: "1/2"
+  statBlockHp: "19"
+  armorClass: "11"
+  movement: "60"
+  strength: "18"
+  dexterity: "12"
+  constitution: "13"
+  intelligence: "2"
+  wisdom: "12"
+  charisma: "7"
+  attacks: "Hooves +6, 2d6+4 bludgeoning, reach 5 ft."
+  traits: "Trampling Charge: after moving 20 ft. straight at a creature and hitting with hooves, the target makes a DC 14 Strength save or is knocked prone; then it may hoof again as a bonus action."

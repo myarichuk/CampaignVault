@@ -4,7 +4,10 @@
 name: twin_distraction
 system: pf2e
 prerequisite: Twin Feint
+prerequisites:
+  - { feat: twin_feint }
 mechanicalSummary: Your movements with two weapons are so swift and disorienting that they befuddle your opponent.
 extraPools: []
+category: class
 classes: [rogue]
 level: 4

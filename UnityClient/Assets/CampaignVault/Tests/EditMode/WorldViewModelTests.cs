@@ -5,6 +5,7 @@ using NUnit.Framework;
 using UnityEngine;
 using CampaignVault.UnityClient.AI;
 using CampaignVault.UnityClient.App;
+using CampaignVault.UnityClient.Model;
 using CampaignVault.UnityClient.UI.Dialogs;
 using CampaignVault.UnityClient.UI.Mvvm;
 using CampaignVault.UnityClient.UI.World;
@@ -145,14 +146,19 @@ namespace CampaignVault.UnityClient.Tests
             Ask(Question(AnswerType.Party, "party", "Who is in the party?"));
             var page = (PartyPageViewModel)vm.Page;
             Assert.IsEmpty(vm.Actions, "the page carries its own buttons");
-            CollectionAssert.AreEqual(new[] { "party-add", "party-dm", "party-table" }, page.Actions.Select(a => a.Name).ToArray());
+            CollectionAssert.AreEqual(new[] { "party-add", "party-add-companion", "party-dm", "party-table" }, page.Actions.Select(a => a.Name).ToArray());
             Assert.IsTrue(page.Empty);
             Assert.IsTrue(page.ShowLevel);
+            Assert.IsFalse(page.Actions.First(a => a.Name == "party-dm").Enabled, "companions are drafted around the player's characters");
 
             string asked = null;
-            _s.PartyBuilderRequested += delegate (string id) { asked = id; };
+            string askedKind = null;
+            _s.PartyBuilderRequested += delegate (string id, string kind) { asked = id; askedKind = kind; };
             page.Actions[0].Run();
             Assert.AreEqual(string.Empty, asked, "ADD opens the builder for a new character");
+            Assert.AreEqual("pc", askedKind);
+            page.Actions[1].Run();
+            Assert.AreEqual("companion", askedKind, "ADD A COMPANION opens it for a stat block");
 
             _s.Onboarding.Party.Add(new PartyMember { Id = "chars/lyra-1", Name = "Lyra", ClassLine = "Ranger 1", Level = 1 });
             _s.Notify(StateArea.Onboarding);
@@ -161,8 +167,9 @@ namespace CampaignVault.UnityClient.Tests
             Assert.AreEqual("Lyra", page.Members[0].Title);
             Assert.AreEqual("Ranger 1", page.Members[0].Line);
             Assert.AreEqual("party-edit-lyra", page.Members[0].EditName);
-            CollectionAssert.AreEqual(new[] { "party-add", "party-use", "party-dm", "party-table" }, page.Actions.Select(a => a.Name).ToArray());
-            Assert.IsFalse(page.Actions.First(a => a.Name == "party-dm").Enabled, "drafting or skipping would leave the built characters behind");
+            CollectionAssert.AreEqual(new[] { "party-add", "party-add-companion", "party-use", "party-dm", "party-table" }, page.Actions.Select(a => a.Name).ToArray());
+            Assert.IsTrue(page.Actions.First(a => a.Name == "party-dm").Enabled, "with a character built, the DM can draft companions around it");
+            Assert.IsFalse(page.Actions.First(a => a.Name == "party-table").Enabled, "skipping would leave the built characters behind");
             page.Members[0].Edit();
             Assert.AreEqual("chars/lyra-1", asked, "EDIT opens the builder on that character");
 
@@ -175,14 +182,57 @@ namespace CampaignVault.UnityClient.Tests
         }
 
         [Test]
-        public void PartyStep_Narrative_HasNoLevelAndNoBuilder()
+        public void PartyStep_DmDrafts_AreReviewCards_AndUseWaitsUntilTheyAreReviewedOrDiscarded()
+        {
+            var vm = Onboarding();
+            _s.Onboarding.System = "Dnd5e";
+            Ask(Question(AnswerType.Party, "party"));
+            var page = (PartyPageViewModel)vm.Page;
+            _s.Onboarding.Party.Add(new PartyMember { Id = "chars/lyra-1", Name = "Lyra", ClassLine = "Ranger 1", Level = 1 });
+            var draft = new PartyMember { Id = "draft-1", Name = "Brann", Kind = "companion", Level = 1, Pending = true };
+            draft.Issues.Add("Drafted at level 4, set to 2.");
+            _s.Onboarding.Party.Add(draft);
+            _s.Notify(StateArea.Onboarding);
+
+            var card = page.Members[1];
+            Assert.AreEqual("party-review-brann", card.EditName);
+            Assert.AreEqual("REVIEW", card.EditLabel);
+            StringAssert.Contains("DM draft", card.Line);
+            Assert.AreEqual("Drafted at level 4, set to 2.", card.Issues);
+            Assert.AreEqual(string.Empty, page.Members[0].Issues);
+            CollectionAssert.AreEqual(new[] { "party-add", "party-add-companion", "party-use", "party-dm", "party-discard", "party-table" }, page.Actions.Select(a => a.Name).ToArray());
+            Assert.IsFalse(page.Actions.First(a => a.Name == "party-use").Enabled, "drafts aren't saved: nothing to use yet");
+            Assert.AreEqual("DRAFT AGAIN", page.Actions.First(a => a.Name == "party-dm").Label);
+
+            string asked = null;
+            _s.PartyBuilderRequested += delegate (string id, string kind) { asked = id; };
+            card.Edit();
+            Assert.AreEqual("draft-1", asked, "REVIEW opens the draft in the builder");
+
+            _c.SubmitParty(OnboardingState.PartyBuildNow);
+            Assert.AreEqual("Review or discard the DM's drafts first.", page.DraftError, "the answer isn't sent around the drafts");
+
+            page.Actions.First(a => a.Name == "party-discard").Run();
+            Assert.AreEqual(1, page.Members.Count);
+            Assert.AreEqual(string.Empty, page.DraftError);
+            Assert.IsTrue(page.Actions.First(a => a.Name == "party-use").Enabled);
+            CollectionAssert.DoesNotContain(page.Actions.Select(a => a.Name).ToArray(), "party-discard");
+            vm.Dispose();
+        }
+
+        [Test]
+        public void PartyStep_Narrative_HasNoLevel_BuildsWhoTheyAre_AndTheDmDraftsNoStatBlocks()
         {
             var vm = Onboarding();
             _s.Onboarding.System = "Narrative";
+            _s.Onboarding.Party.Add(new PartyMember { Id = "chars/wren", Name = "Wren", Draft = new CharacterDraft { Concept = "A ferry pilot looking for her brother." } });
             Ask(Question(AnswerType.Party, "party"));
             var page = (PartyPageViewModel)vm.Page;
             Assert.IsFalse(page.ShowLevel);
-            Assert.IsFalse(page.Actions.First(a => a.Name == "party-add").Enabled);
+            Assert.IsTrue(page.Actions.First(a => a.Name == "party-add").Enabled);
+            Assert.IsTrue(page.Actions.First(a => a.Name == "party-add-companion").Enabled);
+            Assert.IsFalse(page.Actions.First(a => a.Name == "party-dm").Enabled);
+            Assert.AreEqual("A ferry pilot looking for her brother.", page.Members[0].Line, "no class or level: the concept");
             vm.Dispose();
         }
 
@@ -193,13 +243,20 @@ namespace CampaignVault.UnityClient.Tests
             _s.Onboarding.System = "Dnd5e";
             Ask(Question(AnswerType.Party, "party"));
             var page = (PartyPageViewModel)vm.Page;
-            Assert.AreEqual(VaultController.MaxBuilderLevel, page.Levels.Count);
-            page.Levels[2].Pick();
-            Assert.AreEqual(3, _s.Onboarding.PartyLevel);
-            Assert.IsTrue(page.Levels[2].Selected);
+            Assert.AreEqual(20, page.Levels.Count, "5e builds every level");
+            page.Levels[4].Pick();
+            Assert.AreEqual(5, _s.Onboarding.PartyLevel);
+            Assert.IsTrue(page.Levels[4].Selected);
             Assert.IsFalse(page.Levels[0].Selected);
             _c.SetPartyLevel(99);
-            Assert.AreEqual(VaultController.MaxBuilderLevel, _s.Onboarding.PartyLevel);
+            Assert.AreEqual(20, _s.Onboarding.PartyLevel);
+
+            // PF2e stops at 3 until its later level-ups are steps.
+            _s.Onboarding.System = "Pathfinder2e";
+            _c.SetPartyLevel(99);
+            Assert.AreEqual(3, _s.Onboarding.PartyLevel);
+            Assert.AreEqual(3, page.Levels.Count);
+            Assert.IsTrue(page.Levels[2].Selected);
             vm.Dispose();
         }
 

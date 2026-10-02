@@ -4,6 +4,9 @@
 name: mauler_dedication
 system: pf2e
 prerequisite: Strength +2
+prerequisites:
+  - { ability: Strength, min: 2 }
 mechanicalSummary: You specialize in melee weapons that require two hands.
 extraPools: []
+category: archetype
 level: 2

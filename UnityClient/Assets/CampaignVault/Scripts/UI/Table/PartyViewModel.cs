@@ -16,6 +16,7 @@ namespace CampaignVault.UnityClient.UI.Table
         private string _sub = string.Empty;
         private bool _isPc;
         private bool _hasHp;
+        private bool _levelUpReady;
         private float _hpFraction = 1f;
         private string _hpText = string.Empty;
         private List<BadgeViewModel> _conditions = new List<BadgeViewModel>();
@@ -36,6 +37,8 @@ namespace CampaignVault.UnityClient.UI.Table
         [CreateProperty] public string Sub { get { return _sub; } private set { Set(ref _sub, value); } }
         [CreateProperty] public bool IsPc { get { return _isPc; } private set { Set(ref _isPc, value); } }
         /// <summary>Unknown HP (a narrative ruleset, or not bootstrapped yet): no bar at all rather than a bare dash.</summary>
+        /// <summary>The XP rule says this character has earned a level: the frame carries a LEVEL UP chip (the click opens the sheet, where the menu is).</summary>
+        [CreateProperty] public bool LevelUpReady { get { return _levelUpReady; } private set { Set(ref _levelUpReady, value); } }
         [CreateProperty] public bool HasHp { get { return _hasHp; } private set { Set(ref _hasHp, value); } }
         [CreateProperty] public float HpFraction { get { return _hpFraction; } private set { Set(ref _hpFraction, value); } }
         [CreateProperty] public string HpText { get { return _hpText; } private set { Set(ref _hpText, value); } }
@@ -49,6 +52,7 @@ namespace CampaignVault.UnityClient.UI.Table
             if (!m.IsPc) { sub = (sub.Length > 0 ? sub + " · " : string.Empty) + "ally"; }
             Sub = DisplayText.Plain(sub);
             IsPc = m.IsPc;
+            LevelUpReady = m.LevelUpReady;
             HasHp = m.MaxHp > 0;
             HpFraction = (float)m.HpFraction;
             HpText = m.HpText;

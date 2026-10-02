@@ -5,5 +5,6 @@ name: earworm
 system: pf2e
 mechanicalSummary: By endlessly repeating a motif, you implant a memorable song that repeats over and over again in your allies’ heads, preparing them to respond to it later.
 extraPools: []
+category: class
 classes: [bard]
 level: 14

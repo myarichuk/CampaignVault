@@ -5,4 +5,6 @@ name: multitalented
 system: pf2e
 mechanicalSummary: You’ve learned to split your focus between multiple classes with ease.
 extraPools: []
+category: ancestry
+ancestries: [human]
 level: 9

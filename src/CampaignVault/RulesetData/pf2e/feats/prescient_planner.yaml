@@ -5,4 +5,5 @@ name: prescient_planner
 system: pf2e
 mechanicalSummary: Procure a piece of adventuring gear
 extraPools: []
+category: general
 level: 3

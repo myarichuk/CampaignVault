@@ -4,6 +4,11 @@
 name: legendary_linguist
 system: pf2e
 prerequisite: Legendary in Society; Multilingual
+prerequisites:
+  - { skill: Society, rank: legendary }
+  - { feat: multilingual }
 mechanicalSummary: Create pidgin languages to communicate with anyone
 extraPools: []
+category: skill
+skills: [Society]
 level: 15

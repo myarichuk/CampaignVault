@@ -4,6 +4,10 @@
 name: courtly_graces
 system: pf2e
 prerequisite: Trained in Society
+prerequisites:
+  - { skill: Society, rank: trained }
 mechanicalSummary: Get along in noble society
 extraPools: []
+category: skill
+skills: [Society]
 level: 1

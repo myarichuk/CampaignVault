@@ -4,7 +4,10 @@
 name: masterful_companion
 system: pf2e
 prerequisite: masterful hunter; Animal Companion
+prerequisites:
+  - { feat: animal_companion }
 mechanicalSummary: Your animal companion shares your incredible hunting skills, allowing it to take down your shared prey with ease.
 extraPools: []
+category: class
 classes: [ranger]
 level: 18

@@ -4,6 +4,11 @@
 name: master_wizard_spellcasting
 system: pf2e
 prerequisite: Expert Wizard Spellcasting; Legendary in Arcana
+prerequisites:
+  - { feat: expert_wizard_spellcasting }
+  - { skill: Arcana, rank: legendary }
 mechanicalSummary: You gain the master spellcasting benefits.
 extraPools: []
+category: archetype
+skills: [Arcana]
 level: 18

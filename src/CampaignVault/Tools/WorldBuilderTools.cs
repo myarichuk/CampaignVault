@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using CampaignVault.Data;
+using CampaignVault.Data.Templates;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using CampaignVault.Rulesets.Bootstrap;
@@ -29,7 +30,7 @@ public class WorldBuilderTools : CampaignToolBase, IMcpServerTool
 
     [ToolCategory("World builder")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("Batch-create/update entities (locations, factions, characters, items, quests, plotThreads, worldEvents, lore, rumors, creatures, spells, feats) in one atomic call, dispatched in dependency order; one failure rolls back the batch. Max 100 entries. Seed any person or place before naming it in narration.\n\nHARD CONSTRAINTS: (1) combat-capable NPCs need systemStats for the campaign's ruleset. (2) characters[] has no gear fields: equipment is a separate items[] entry in the SAME batch with holderId set.\n\nFull example and per-ruleset systemStats: lookup kind=help topic=world-building.")]
+    [Description("Batch-create/update entities (locations, factions, characters, items, quests, plotThreads, worldEvents, lore, rumors, creatures, spells, feats, homebrew subclasses/ancestries/powers) in one atomic call, dispatched in dependency order; one failure rolls back the batch. Max 100 entries. Seed any person or place before naming it in narration.\n\nHARD CONSTRAINTS: (1) combat-capable NPCs need systemStats for the campaign's ruleset. (2) characters[] has no gear fields: equipment is a separate items[] entry in the SAME batch with holderId set.\n\nFull example and per-ruleset systemStats: lookup kind=help topic=world-building.")]
     public Task<ToolResult<WorldBuildResult>> WorldBuild(
         [Description("Entities to create/update, grouped by kind. Every array is optional.")]
         WorldBuildBatch batch,
@@ -39,13 +40,13 @@ public class WorldBuilderTools : CampaignToolBase, IMcpServerTool
         return ExecuteForCampaignAsync(campaignName, async (effective, s) =>
         {
             var totalEntries = (batch.Locations?.Count ?? 0) + (batch.Factions?.Count ?? 0) + (batch.Creatures?.Count ?? 0)
-                + (batch.Spells?.Count ?? 0) + (batch.Feats?.Count ?? 0) + (batch.Characters?.Count ?? 0)
+                + (batch.Spells?.Count ?? 0) + (batch.Feats?.Count ?? 0) + (batch.Homebrew?.Count ?? 0) + (batch.Characters?.Count ?? 0)
                 + (batch.Items?.Count ?? 0) + (batch.Quests?.Count ?? 0) + (batch.PlotThreads?.Count ?? 0)
                 + (batch.WorldEvents?.Count ?? 0) + (batch.Lore?.Count ?? 0) + (batch.Rumors?.Count ?? 0) + (batch.NeedDescriptors?.Count ?? 0);
 
             if (totalEntries == 0)
             {
-                throw new ArgumentException("world_build requires at least one entry across its arrays (locations, factions, creatures, spells, feats, characters, items, quests, plotThreads, worldEvents, lore, rumors, needDescriptors).");
+                throw new ArgumentException("world_build requires at least one entry across its arrays (locations, factions, creatures, spells, feats, homebrew, characters, items, quests, plotThreads, worldEvents, lore, rumors, needDescriptors).");
             }
 
             if (totalEntries > 100)
@@ -61,6 +62,7 @@ public class WorldBuilderTools : CampaignToolBase, IMcpServerTool
             await ProcessKindAsync(batch.Creatures, "creatures", CanonicalId.Creatures, r => r.Id, ApplyCreatureUpsertAsync, s, effective, result, warnings);
             await ProcessKindAsync(batch.Spells, "spells", CanonicalId.Spells, r => r.Id, ApplySpellUpsertAsync, s, effective, result, warnings);
             await ProcessKindAsync(batch.Feats, "feats", CanonicalId.Feats, r => r.Id, ApplyFeatUpsertAsync, s, effective, result, warnings);
+            await ApplyHomebrewAsync(batch.Homebrew, s, effective, result);
             await ProcessKindAsync(batch.Characters, "characters", CanonicalId.Characters, r => r.Id, ApplyCharacterUpsertAsync, s, effective, result, warnings);
             await ProcessKindAsync(batch.Items, "items", CanonicalId.Items, r => r.Id, ApplyItemUpsertAsync, s, effective, result, warnings);
             await ApplyArmorFromBatchItemsAsync(batch, s);
@@ -94,6 +96,58 @@ public class WorldBuilderTools : CampaignToolBase, IMcpServerTool
 
             return new ToolResult<WorldBuildResult>(true, result, summary);
         });
+    }
+
+    /// <summary>
+    /// Saves the batch's homebrew subclasses, ancestries and named powers. They have no ids of their own (the repository builds
+    /// one from kind, system and name), so they don't go through <see cref="ProcessKindAsync{TReq,TEntity}"/>.
+    /// </summary>
+    private async Task ApplyHomebrewAsync(
+        List<HomebrewTemplateUpsertRequest>? items, IAsyncDocumentSession s, string effective, WorldBuildResult result)
+    {
+        if (items == null)
+        {
+            return;
+        }
+
+        var campaignSystem = (await s.LoadAsync<CampaignConfig>(_keys.Config(effective)))?.ActiveSystem;
+        for (var i = 0; i < items.Count; i++)
+        {
+            var system = items[i].System ?? campaignSystem;
+            if (string.IsNullOrWhiteSpace(system))
+            {
+                throw new ArgumentException($"homebrew[{i}]: system is required (the campaign has no active ruleset yet).");
+            }
+
+            HomebrewTemplate saved;
+            var existedBefore = false;
+            try
+            {
+                var id = HomebrewTemplates.Id(effective, items[i].Kind, system, HomebrewTemplates.Check(items[i].Kind, items[i].Yaml).Name ?? string.Empty);
+                existedBefore = await s.Advanced.ExistsAsync(id);
+                saved = await _repository.UpsertHomebrewTemplateAsync(s, items[i], system, effective);
+            }
+            catch (ArgumentException ex)
+            {
+                throw new ArgumentException($"homebrew[{i}]: {ex.Message}", ex);
+            }
+
+            if (!result.Kinds.TryGetValue("homebrew", out var kindResult))
+            {
+                kindResult = new WorldBuildKindResult();
+                result.Kinds["homebrew"] = kindResult;
+            }
+
+            if (existedBefore)
+            {
+                kindResult.Updated++;
+            }
+            else
+            {
+                kindResult.Created++;
+                kindResult.CreatedIds.Add(saved.Id);
+            }
+        }
     }
 
     /// <summary>
@@ -561,7 +615,7 @@ This is the only tool that creates a new location. During play, use commit's loc
     }
 
     [Description(
-        "WORLD BUILDER TOOL: Create or update a homebrew feat/perk. Overrides SRD feats by name when queried via lookup (kind:'handbook'). If this feat passively waives a spell-component requirement (like War Caster), set castingWaivers. To make a feat mechanical, give it effects (closed set: attackBonus, damageBonus, skillBonus, saveBonus, armorClassBonus; fixed values; optional weapon/toggle/assert conditions and, for PF2e, bonusType). Gate it on a plugin or interaction mode with requires. Feats whose rules do not fit effects (reactions, triggers) get adjudicated=true; a feat with none of these is flagged in the wiring audit.")]
+        "WORLD BUILDER TOOL: Create or update a homebrew feat/perk. Overrides SRD feats by name when queried via lookup (kind:'handbook'). If this feat passively waives a spell-component requirement (one that lets a caster work with full hands), set castingWaivers. To make a feat mechanical, give it effects (closed set: attackBonus, damageBonus, skillBonus, saveBonus, armorClassBonus; fixed values; optional weapon/toggle/assert conditions and, for PF2e, bonusType). Gate it on a plugin or interaction mode with requires. Feats whose rules do not fit effects (reactions, triggers) get adjudicated=true; a feat with none of these is flagged in the wiring audit.")]
     internal Task<ToolResult<CustomFeat>> UpsertFeat(
         [Description("The feat to create or update. Strongly typed.")]
         CustomFeatUpsertRequest feat,

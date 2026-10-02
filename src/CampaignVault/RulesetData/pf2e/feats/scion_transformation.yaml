@@ -5,4 +5,6 @@ name: scion_transformation
 system: pf2e
 mechanicalSummary: You go into hibernation for twenty-four hours and perform a ritual dedicated to your ancestors, undergoing a one-time metamorphosis.
 extraPools: []
+category: ancestry
+ancestries: [lizardfolk]
 level: 17

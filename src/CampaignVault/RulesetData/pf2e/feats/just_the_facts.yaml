@@ -4,7 +4,10 @@
 name: just_the_facts
 system: pf2e
 prerequisite: Thorough Research
+prerequisites:
+  - { feat: thorough_research }
 mechanicalSummary: "You fundamentally understand everything to the point where your research can't possibly be wrong."
 extraPools: []
+category: class
 classes: [investigator]
 level: 20

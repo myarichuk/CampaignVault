@@ -5,5 +5,6 @@ name: inspired_stratagem
 system: pf2e
 mechanicalSummary: During your daily preparations, you can review stratagems for the day’s adventures with up to five allies.
 extraPools: []
+category: class
 classes: [rogue]
 level: 8

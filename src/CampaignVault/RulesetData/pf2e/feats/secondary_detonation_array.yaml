@@ -5,5 +5,6 @@ name: secondary_detonation_array
 system: pf2e
 mechanicalSummary: You divert some of your spell’s energy into an unstable runic array.
 extraPools: []
+category: class
 classes: [wizard]
 level: 14

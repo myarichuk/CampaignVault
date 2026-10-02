@@ -4,7 +4,10 @@
 name: improved_reflexive_shield
 system: pf2e
 prerequisite: Reflexive Shield
+prerequisites:
+  - { feat: reflexive_shield }
 mechanicalSummary: Your shield can help save nearby allies.
 extraPools: []
+category: class
 classes: [fighter]
 level: 16

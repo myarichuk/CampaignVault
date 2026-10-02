@@ -4,6 +4,9 @@
 name: mysterious_breadth
 system: pf2e
 prerequisite: Basic Oracle Spellcasting
+prerequisites:
+  - { feat: basic_oracle_spellcasting }
 mechanicalSummary: Increase the spell slots you gain from oracle archetype feats
 extraPools: []
+category: archetype
 level: 8

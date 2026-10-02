@@ -5,4 +5,6 @@ name: envenomed_edge
 system: pf2e
 mechanicalSummary: "With a combination of your poison glands and herbal concoctions, you can consistently deliver venomous attacks when you hit an enemy's weak points."
 extraPools: []
+category: ancestry
+ancestries: [tripkee]
 level: 13

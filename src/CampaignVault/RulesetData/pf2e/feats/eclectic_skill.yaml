@@ -4,7 +4,12 @@
 name: eclectic_skill
 system: pf2e
 prerequisite: polymath muse; Master in Occultism
+prerequisites:
+  - { classFeature: polymath }
+  - { skill: Occultism, rank: master }
 mechanicalSummary: Your broad experiences translate to a range of skills.
 extraPools: []
+category: class
 classes: [bard]
+skills: [Occultism]
 level: 8

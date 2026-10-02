@@ -5,5 +5,6 @@ name: advanced_weapon_training
 system: pf2e
 mechanicalSummary: You’ve studied the art of wielding an advanced weapon.
 extraPools: []
+category: class
 classes: [fighter]
 level: 6

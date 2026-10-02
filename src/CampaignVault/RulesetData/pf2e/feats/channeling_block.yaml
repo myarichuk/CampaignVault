@@ -4,7 +4,10 @@
 name: channeling_block
 system: pf2e
 prerequisite: Shield Block
+prerequisites:
+  - { feat: shield_block }
 mechanicalSummary: You pour divine energy into a desperate block.
 extraPools: []
+category: class
 classes: [cleric]
 level: 14

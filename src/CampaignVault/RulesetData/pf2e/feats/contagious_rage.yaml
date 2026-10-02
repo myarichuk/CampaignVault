@@ -4,7 +4,10 @@
 name: contagious_rage
 system: pf2e
 prerequisite: Share Rage
+prerequisites:
+  - { feat: share_rage }
 mechanicalSummary: You can drive your allies into a frenzy, granting them incredible benefits.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 20

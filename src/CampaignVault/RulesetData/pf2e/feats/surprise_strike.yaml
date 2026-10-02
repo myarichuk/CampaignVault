@@ -4,6 +4,9 @@
 name: surprise_strike
 system: pf2e
 prerequisite: Weapon Improviser Dedication
+prerequisites:
+  - { feat: weapon_improviser_dedication }
 mechanicalSummary: "Whenever you make a Strike with an improvised weapon against a creature that hasn't observed you making a Strike using an improvised weapon or that is otherwise ignorant of your skill with improvised weapons, the creature is off-guard against you for that Strike."
 extraPools: []
+category: archetype
 level: 6

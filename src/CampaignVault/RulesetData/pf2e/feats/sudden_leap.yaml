@@ -5,5 +5,6 @@ name: sudden_leap
 system: pf2e
 mechanicalSummary: You make an impressive leap and swing while you soar.
 extraPools: []
+category: class
 classes: [barbarian, fighter]
 level: 8

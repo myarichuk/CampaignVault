@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: laborer
+system: pf2e
+description: "You’ve spent years performing arduous physical labor. It was a difficult life, but you somehow survived. You may have embraced adventuring as an easier method to make your way in the world, or you might adventure under someone else’s command."
+boosts: [Strength, Constitution]
+skillProficiencies: [Athletics]
+lore: Labor Lore
+skillFeat: hefty_hauler
+feature: Hefty Hauler

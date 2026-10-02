@@ -4,7 +4,10 @@
 name: instinctive_support
 system: pf2e
 prerequisite: Animal Companion
+prerequisites:
+  - { feat: animal_companion }
 mechanicalSummary: When you support your animal companion, your companion supports you in turn.
 extraPools: []
+category: class
 classes: [druid]
 level: 6

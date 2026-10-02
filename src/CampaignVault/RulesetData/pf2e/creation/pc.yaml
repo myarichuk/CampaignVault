@@ -1,0 +1,43 @@
+# Character builder recipe: a Pathfinder 2e (Remaster) player character. Steps run in this order; each step's choice
+# is stored in the draft under its key. The pf2e.* validators read the steps keyed ancestry, background and class.
+# Step kinds, sources and validators: PLUGINS.md.
+#
+# Attribute boosts are one allocate step per source (so no source boosts an attribute twice); each pick is +1 to that
+# modifier. The ancestry's fixed boosts and flaw aren't picks: the bootstrap applies them. Feat counts come from the
+# class's progression for the draft's level; a feats step with none to pick at that level isn't shown.
+#
+# The class's progression also says what each level asks: its level-1 class features (a racket, a muse, an arcane
+# school; the classFeatures step, before the skills, since a racket trains one) and, above level 1, skill increases and
+# attribute boosts (the levels step, after the skills, since an increase raises a trained skill).
+name: pc
+system: pf2e
+maxLevel: 20
+steps:
+  - { key: ancestry, kind: pickOne, source: races, prompt: Ancestry }
+  - { key: heritage, kind: pickOne, source: heritages, prompt: Heritage }
+  - { key: background, kind: pickOne, source: backgrounds, prompt: Background }
+  - { key: backgroundSkill, kind: pickOne, source: backgroundSkills, when: background.skillOptions, prompt: Background skill }
+  - { key: class, kind: pickOne, source: classes, prompt: Class }
+  # Named powers (gods, patrons, bloodlines) are plugin or homebrew content, so these steps show only when one fits the class.
+  - { key: deity, kind: pickOne, source: deities, optional: true, prompt: Deity }
+  - { key: patron, kind: pickOne, source: patrons, optional: true, prompt: Patron }
+  - { key: lineage, kind: pickOne, source: lineages, optional: true, prompt: Lineage }
+  - { key: classFeatures, kind: levelChoices, choiceTypes: [Enum, FeatSelection], prompt: Class features }
+  - { key: ancestryBoosts, kind: allocate, source: ancestryBoosts, countFrom: ancestry.freeBoosts, prompt: Ancestry boosts, validators: [pf2e.boosts] }
+  - { key: backgroundBoosts, kind: allocate, source: backgroundBoosts, count: 2, prompt: Background boosts, validators: [pf2e.boosts] }
+  - { key: keyAbility, kind: allocate, source: keyAbilities, count: 1, prompt: Key attribute }
+  - { key: boosts, kind: allocate, source: abilities, count: 4, prompt: Free boosts }
+  - key: skills
+    kind: pickN
+    source: untrainedSkills
+    countFrom: class.skillChoices.count
+    countPlus: modifier.intelligence + classFeatures.extraSkills
+    prompt: Trained skills
+    validators: [pf2e.classSkills]
+  - { key: levels, kind: levelChoices, choiceTypes: [SkillIncrease, AttributeBoosts], prompt: Level ups }
+  - { key: ancestryFeats, kind: feats, source: ancestryFeats, prompt: Ancestry feat, validators: [pf2e.featEligibility] }
+  - { key: classFeats, kind: feats, source: classFeats, prompt: Class feat, validators: [pf2e.featEligibility] }
+  - { key: skillFeats, kind: feats, source: skillFeats, prompt: Skill feat, validators: [pf2e.featEligibility] }
+  - { key: generalFeats, kind: feats, source: generalFeats, prompt: General feat, validators: [pf2e.featEligibility] }
+  - { key: spells, kind: spells, source: spells, when: "class.casterType != None", prompt: Spells }
+  - { key: identity, kind: identity, prompt: Who they are }

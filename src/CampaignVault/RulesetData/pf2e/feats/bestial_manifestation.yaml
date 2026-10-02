@@ -5,4 +5,6 @@ name: bestial_manifestation
 system: pf2e
 mechanicalSummary: Part of your body has an animalistic influence from a planar creature.
 extraPools: []
+category: ancestry
+ancestries: [nephilim]
 level: 1

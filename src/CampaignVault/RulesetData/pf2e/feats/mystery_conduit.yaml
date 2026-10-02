@@ -5,5 +5,6 @@ name: mystery_conduit
 system: pf2e
 mechanicalSummary: The power of your mystery enables you access to myriad magic.
 extraPools: []
+category: class
 classes: [oracle]
 level: 20

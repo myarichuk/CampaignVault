@@ -4,6 +4,9 @@
 name: basic_kata
 system: pf2e
 prerequisite: Monk Dedication
+prerequisites:
+  - { feat: monk_dedication }
 mechanicalSummary: You gain a 1st- or 2nd-level monk feat.
 extraPools: []
+category: archetype
 level: 4

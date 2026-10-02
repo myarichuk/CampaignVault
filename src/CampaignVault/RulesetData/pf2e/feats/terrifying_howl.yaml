@@ -5,5 +5,6 @@ name: terrifying_howl
 system: pf2e
 mechanicalSummary: You unleash a terrifying howl.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 10

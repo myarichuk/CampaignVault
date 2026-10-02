@@ -5,4 +5,6 @@ name: pride_hunter
 system: pf2e
 mechanicalSummary: You avoid the attention of creatures focused on your allies.
 extraPools: []
+category: ancestry
+ancestries: [catfolk]
 level: 5

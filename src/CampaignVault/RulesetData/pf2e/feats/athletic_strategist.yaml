@@ -4,7 +4,11 @@
 name: athletic_strategist
 system: pf2e
 prerequisite: Trained in Athletics
+prerequisites:
+  - { skill: Athletics, rank: trained }
 mechanicalSummary: You know how to calculatedly manipulate joints and body weight.
 extraPools: []
+category: class
 classes: [investigator]
+skills: [Athletics]
 level: 2

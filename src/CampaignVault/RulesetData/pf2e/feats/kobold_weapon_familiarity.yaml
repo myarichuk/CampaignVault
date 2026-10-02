@@ -5,4 +5,6 @@ name: kobold_weapon_familiarity
 system: pf2e
 mechanicalSummary: You gain access to all uncommon weapons with the kobold trait.
 extraPools: []
+category: ancestry
+ancestries: [kobold]
 level: 1

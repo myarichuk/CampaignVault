@@ -5,5 +5,6 @@ name: crushing_grab
 system: pf2e
 mechanicalSummary: Like a powerful constrictor, you crush targets in your unyielding grasp.
 extraPools: []
+category: class
 classes: [monk]
 level: 2

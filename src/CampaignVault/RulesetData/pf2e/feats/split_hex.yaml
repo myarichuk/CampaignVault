@@ -5,5 +5,6 @@ name: split_hex
 system: pf2e
 mechanicalSummary: You siphon some of the power from an offensive hex you cast to direct it at a second target as well.
 extraPools: []
+category: class
 classes: [witch]
 level: 18

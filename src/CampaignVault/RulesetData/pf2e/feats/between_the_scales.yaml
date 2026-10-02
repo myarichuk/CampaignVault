@@ -5,4 +5,6 @@ name: between_the_scales
 system: pf2e
 mechanicalSummary: "You've learned to take advantage of slips in your foes' defenses."
 extraPools: []
+category: ancestry
+ancestries: [kobold]
 level: 9

@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: squire
+system: pf2e
+description: "You trained at the feet of a knight, maintaining their gear and supporting them at tourneys and in battle. Now you search for a challenge that will prove you worthy of full knighthood, or you've spurned pomp and ceremony to test yourself in honest, albeit less formal, combat."
+boosts: [Strength, Constitution]
+skillProficiencies: [Athletics]
+lore: Heraldry Lore or Warfare Lore skill
+skillFeat: armor_assist
+feature: Armor Assist

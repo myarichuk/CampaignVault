@@ -4,6 +4,9 @@
 name: basic_hunter_s_trick
 system: pf2e
 prerequisite: Ranger Dedication
+prerequisites:
+  - { feat: ranger_dedication }
 mechanicalSummary: You gain a 1st- or 2nd-level ranger feat.
 extraPools: []
+category: archetype
 level: 4

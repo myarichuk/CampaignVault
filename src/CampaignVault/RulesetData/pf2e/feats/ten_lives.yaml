@@ -4,6 +4,10 @@
 name: ten_lives
 system: pf2e
 prerequisite: Evade Doom
+prerequisites:
+  - { feat: evade_doom }
 mechanicalSummary: When your character would die, you can attempt a DC 17 flat check.
 extraPools: []
+category: ancestry
+ancestries: [catfolk]
 level: 17

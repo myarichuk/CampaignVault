@@ -4,6 +4,11 @@
 name: scout_dedication
 system: pf2e
 prerequisite: Trained in Stealth; Trained in Survival
+prerequisites:
+  - { skill: Stealth, rank: trained }
+  - { skill: Survival, rank: trained }
 mechanicalSummary: You are a highly skilled scout, capable of guiding your allies, detecting imminent threats, and avoiding the attention of dangerous enemies.
 extraPools: []
+category: archetype
+skills: [Stealth, Survival]
 level: 2

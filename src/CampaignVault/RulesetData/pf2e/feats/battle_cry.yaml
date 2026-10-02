@@ -4,6 +4,10 @@
 name: battle_cry
 system: pf2e
 prerequisite: Master in Intimidation
+prerequisites:
+  - { skill: Intimidation, rank: master }
 mechanicalSummary: Demoralizes foes when you roll for initiative
 extraPools: []
+category: skill
+skills: [Intimidation]
 level: 7

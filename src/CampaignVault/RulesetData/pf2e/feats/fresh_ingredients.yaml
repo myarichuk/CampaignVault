@@ -4,6 +4,9 @@
 name: fresh_ingredients
 system: pf2e
 prerequisite: Herbalist Dedication
+prerequisites:
+  - { feat: herbalist_dedication }
 mechanicalSummary: It is amazing the difference fresh herbs can make.
 extraPools: []
+category: skill
 level: 2

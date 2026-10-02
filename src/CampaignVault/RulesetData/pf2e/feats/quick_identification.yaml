@@ -4,6 +4,10 @@
 name: quick_identification
 system: pf2e
 prerequisite: trained in Arcana, Nature, Occultism, or Religion
+prerequisites:
+  - { anyOf: [{ skill: Arcana, rank: trained }, { skill: Nature, rank: trained }, { skill: Occultism, rank: trained }, { skill: Religion, rank: trained }] }
 mechanicalSummary: Identify Magic in 1 minute or less
 extraPools: []
+category: skill
+skills: [Arcana, Nature, Occultism, Religion]
 level: 1

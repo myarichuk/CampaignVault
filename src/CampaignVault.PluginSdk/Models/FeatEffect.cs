@@ -12,8 +12,24 @@ public static class FeatEffectKinds
     public const string SaveBonus = "saveBonus";
     public const string ArmorClassBonus = "armorClassBonus";
 
+    /// <summary>Advantage / disadvantage on the rolls named by <c>on</c> (attack, check or save). Carries no value.</summary>
+    public const string Advantage = "advantage";
+    public const string Disadvantage = "disadvantage";
+
+    /// <summary>Extra damage dice (<c>dice</c>, <c>damageType</c>) on a hit; rolled again on a critical hit. 5e.</summary>
+    public const string ExtraDamage = "extraDamage";
+
+    /// <summary>The lowest natural d20 that is a critical hit (19 widens the range to 19-20). 5e.</summary>
+    public const string CritRange = "critRange";
+
+    /// <summary>Resistance to the damage type (<c>damageType</c>): damage of that type to the character is halved. 5e.</summary>
+    public const string Resistance = "resistance";
+
     public static readonly IReadOnlyList<string> All =
-        [AttackBonus, DamageBonus, SkillBonus, SaveBonus, ArmorClassBonus];
+        [AttackBonus, DamageBonus, SkillBonus, SaveBonus, ArmorClassBonus, Advantage, Disadvantage, ExtraDamage, CritRange, Resistance];
+
+    /// <summary>Kinds that carry no number: their weight is in <c>dice</c>, <c>damageType</c> or nothing at all.</summary>
+    public static readonly IReadOnlyList<string> Valueless = [Advantage, Disadvantage, ExtraDamage, Resistance];
 }
 
 /// <summary>PF2e bonus types. Among a feat's effects only the highest bonus and the worst penalty of each typed kind count.</summary>
@@ -49,7 +65,7 @@ public sealed class FeatRequirement
 /// </summary>
 public sealed class FeatEffect
 {
-    [Description("attackBonus, damageBonus, skillBonus, saveBonus or armorClassBonus.")]
+    [Description("attackBonus, damageBonus, skillBonus, saveBonus, armorClassBonus, advantage, disadvantage, extraDamage, critRange or resistance.")]
     [JsonPropertyName("kind")]
     public string Kind { get; set; } = "";
 
@@ -64,6 +80,18 @@ public sealed class FeatEffect
     [Description("Skill (skillBonus), save (saveBonus) or ability the effect is limited to, e.g. 'stealth'. Omit for all.")]
     [JsonPropertyName("subject")]
     public string? Subject { get; set; }
+
+    [Description("advantage / disadvantage: which rolls it applies to - attack, check or save ('subject' narrows a check or save to one skill or ability).")]
+    [JsonPropertyName("on")]
+    public string? On { get; set; }
+
+    [Description("extraDamage: the dice added on a hit, e.g. '1d8' (rolled again on a critical hit).")]
+    [JsonPropertyName("dice")]
+    public string? Dice { get; set; }
+
+    [Description("extraDamage / resistance: the damage type, e.g. 'radiant' (extraDamage may omit it).")]
+    [JsonPropertyName("damageType")]
+    public string? DamageType { get; set; }
 
     [Description("Engine-checked weapon conditions, all required: ranged, melee, finesse, twoHanded, heavy. Read from the weapon's tags or the action category.")]
     [JsonPropertyName("weapon")]

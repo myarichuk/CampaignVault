@@ -5,4 +5,5 @@ name: shield_block
 system: pf2e
 mechanicalSummary: Ward off a blow with your shield
 extraPools: []
+category: general
 level: 1

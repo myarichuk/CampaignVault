@@ -4,6 +4,11 @@
 name: expert_druid_spellcasting
 system: pf2e
 prerequisite: Basic Druid Spellcasting; Master in Nature
+prerequisites:
+  - { feat: basic_druid_spellcasting }
+  - { skill: Nature, rank: master }
 mechanicalSummary: You gain the expert spellcasting benefits.
 extraPools: []
+category: archetype
+skills: [Nature]
 level: 12

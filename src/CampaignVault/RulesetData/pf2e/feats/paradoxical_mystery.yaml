@@ -4,7 +4,10 @@
 name: paradoxical_mystery
 system: pf2e
 prerequisite: Greater Revelation
+prerequisites:
+  - { feat: greater_revelation }
 mechanicalSummary: The truest depths of your divine mystery are fathomless and contradictory, granting you changing powers that even you can barely begin to fathom.
 extraPools: []
+category: class
 classes: [oracle]
 level: 20

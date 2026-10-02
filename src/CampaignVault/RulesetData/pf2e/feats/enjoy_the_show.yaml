@@ -5,5 +5,6 @@ name: enjoy_the_show
 system: pf2e
 mechanicalSummary: You address an ally or any onlookers to your combat, flaunting to your foes how little attention they require.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 2

@@ -5,5 +5,6 @@ name: blowgun_poisoner
 system: pf2e
 mechanicalSummary: You can capably deliver toxins with a blowgun.
 extraPools: []
+category: class
 classes: [alchemist]
 level: 1

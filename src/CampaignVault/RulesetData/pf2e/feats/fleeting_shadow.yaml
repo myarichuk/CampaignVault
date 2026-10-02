@@ -4,6 +4,9 @@
 name: fleeting_shadow
 system: pf2e
 prerequisite: Scout Dedication
+prerequisites:
+  - { feat: scout_dedication }
 mechanicalSummary: "You're able to quickly disappear and then move about without drawing the attention of your enemies."
 extraPools: []
+category: archetype
 level: 6

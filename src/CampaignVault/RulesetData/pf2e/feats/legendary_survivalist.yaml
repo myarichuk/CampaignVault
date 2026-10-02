@@ -4,6 +4,10 @@
 name: legendary_survivalist
 system: pf2e
 prerequisite: Legendary in Survival
+prerequisites:
+  - { skill: Survival, rank: legendary }
 mechanicalSummary: Survive extreme conditions
 extraPools: []
+category: skill
+skills: [Survival]
 level: 15

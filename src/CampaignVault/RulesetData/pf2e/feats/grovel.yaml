@@ -4,6 +4,11 @@
 name: grovel
 system: pf2e
 prerequisite: Trained in Deception
+prerequisites:
+  - { skill: Deception, rank: trained }
 mechanicalSummary: "You convince your foe you're less of a threat."
 extraPools: []
+category: ancestry
+ancestries: [kobold]
+skills: [Deception]
 level: 5

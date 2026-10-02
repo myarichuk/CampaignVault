@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: bravery
 mechanicalSummary: Even your fears serve as fuel for your fighting spirit.
 extraPools: []
+category: class
 classes: [fighter]
 level: 8

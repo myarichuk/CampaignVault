@@ -4,6 +4,10 @@
 name: armored_stealth
 system: pf2e
 prerequisite: Expert in Stealth
+prerequisites:
+  - { skill: Stealth, rank: expert }
 mechanicalSummary: You have learned techniques to adjust and modify your armor and movements to reduce the noise you make.
 extraPools: []
+category: skill
+skills: [Stealth]
 level: 2

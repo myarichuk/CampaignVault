@@ -4,6 +4,9 @@
 name: juggernaut_s_fortitude
 system: pf2e
 prerequisite: Barbarian Dedication; expert in Fortitude saves
+prerequisites:
+  - { feat: barbarian_dedication }
 mechanicalSummary: Your proficiency rank in Fortitude saves increases to master.
 extraPools: []
+category: archetype
 level: 12

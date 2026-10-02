@@ -4,7 +4,10 @@
 name: wind_jump
 system: pf2e
 prerequisite: Qi Spells
+prerequisites:
+  - { feat: qi_spells }
 mechanicalSummary: You gather the wind beneath you, allowing you to soar as you jump.
 extraPools: []
+category: class
 classes: [monk]
 level: 10

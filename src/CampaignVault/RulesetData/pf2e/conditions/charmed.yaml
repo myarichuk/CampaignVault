@@ -1,4 +1,4 @@
-# Source: Pathfinder 2e Core Rulebook, ORC License
+# CampaignVault's own condition: Player Core has no "charmed"; its nearest are controlled and fascinated.
 name: charmed
 system: pf2e
 durationType: Timed

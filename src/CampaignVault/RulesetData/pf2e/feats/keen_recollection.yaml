@@ -4,6 +4,9 @@
 name: keen_recollection
 system: pf2e
 prerequisite: Investigator Dedication
+prerequisites:
+  - { feat: investigator_dedication }
 mechanicalSummary: You can recall all sorts of information.
 extraPools: []
+category: archetype
 level: 6

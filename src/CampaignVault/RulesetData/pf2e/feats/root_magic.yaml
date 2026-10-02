@@ -4,6 +4,10 @@
 name: root_magic
 system: pf2e
 prerequisite: Trained in Occultism
+prerequisites:
+  - { skill: Occultism, rank: trained }
 mechanicalSummary: Your talismans ward against foul magic.
 extraPools: []
+category: skill
+skills: [Occultism]
 level: 1

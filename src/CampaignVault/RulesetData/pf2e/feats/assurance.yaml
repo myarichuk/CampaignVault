@@ -6,4 +6,5 @@ system: pf2e
 prerequisite: trained in at least one skill
 mechanicalSummary: Receive a fixed result on a skill check
 extraPools: []
+category: skill
 level: 1

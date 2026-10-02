@@ -5,5 +5,6 @@ name: hex_master
 system: pf2e
 mechanicalSummary: You embody the link to your patron so completely that you can cast your hexes in rapid succession.
 extraPools: []
+category: class
 classes: [witch]
 level: 20

@@ -5,5 +5,6 @@ name: impossible_volley
 system: pf2e
 mechanicalSummary: You fire a volley at all foes in an area.
 extraPools: []
+category: class
 classes: [fighter, ranger]
 level: 18

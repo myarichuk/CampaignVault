@@ -4,6 +4,10 @@
 name: winglet_flight
 system: pf2e
 prerequisite: Winglets
+prerequisites:
+  - { feat: winglets }
 mechanicalSummary: Intense use and exercise have made your winglets more powerful.
 extraPools: []
+category: ancestry
+ancestries: [kobold]
 level: 9

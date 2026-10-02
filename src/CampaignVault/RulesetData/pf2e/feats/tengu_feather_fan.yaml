@@ -5,4 +5,6 @@ name: tengu_feather_fan
 system: pf2e
 mechanicalSummary: "You've learned to bind some of your feathers together into a fan to focus your ancestral magic."
 extraPools: []
+category: ancestry
+ancestries: [tengu]
 level: 5

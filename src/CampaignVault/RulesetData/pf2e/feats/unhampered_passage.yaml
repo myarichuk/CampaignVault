@@ -5,4 +5,6 @@ name: unhampered_passage
 system: pf2e
 mechanicalSummary: "You won't allow others to restrain you."
 extraPools: []
+category: ancestry
+ancestries: [halfling]
 level: 9

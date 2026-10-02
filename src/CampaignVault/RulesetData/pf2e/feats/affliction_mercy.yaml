@@ -4,7 +4,10 @@
 name: affliction_mercy
 system: pf2e
 prerequisite: Mercy
+prerequisites:
+  - { feat: mercy }
 mechanicalSummary: The divine grace that flows through you grants reprieve from an affliction.
 extraPools: []
+category: class
 classes: [champion]
 level: 12

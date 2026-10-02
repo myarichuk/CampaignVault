@@ -4,6 +4,11 @@
 name: snare_setter
 system: pf2e
 prerequisite: Trained in Crafting
+prerequisites:
+  - { skill: Crafting, rank: trained }
 mechanicalSummary: You are adept at the time-honored kobold art of making traps.
 extraPools: []
+category: ancestry
+ancestries: [kobold]
+skills: [Crafting]
 level: 1

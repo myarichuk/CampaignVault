@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: "patron's gift"
 mechanicalSummary: You have mastered the greatest secrets of your patron’s magic and learned a fundamental truth about your patron, even if their identity still remains a mystery.
 extraPools: []
+category: class
 classes: [witch]
 level: 20

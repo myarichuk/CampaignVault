@@ -5,5 +5,6 @@ name: incredible_aim
 system: pf2e
 mechanicalSummary: By spending a moment to focus, you can ensure your attack strikes true.
 extraPools: []
+category: class
 classes: [fighter]
 level: 8

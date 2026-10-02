@@ -5,4 +5,6 @@ name: echoes_in_stone
 system: pf2e
 mechanicalSummary: You pause a moment to attune your senses to the stone around you.
 extraPools: []
+category: ancestry
+ancestries: [dwarf]
 level: 9

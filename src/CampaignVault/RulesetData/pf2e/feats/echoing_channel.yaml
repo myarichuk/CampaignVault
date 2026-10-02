@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: "[Animist] Embodiment Of The Balance"
 mechanicalSummary: When you pull forth vitality or void energy, you also create a smaller pocket of that energy.
 extraPools: []
+category: class
 classes: [animist, cleric]
 level: 18

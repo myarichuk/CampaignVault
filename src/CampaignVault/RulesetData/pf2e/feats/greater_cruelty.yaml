@@ -4,7 +4,10 @@
 name: greater_cruelty
 system: pf2e
 prerequisite: Cruelty
+prerequisites:
+  - { feat: cruelty }
 mechanicalSummary: "The extent of your corruption devastates your foes' minds and reflexes."
 extraPools: []
+category: class
 classes: [champion]
 level: 8

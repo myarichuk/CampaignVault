@@ -5,4 +5,6 @@ name: project_persona
 system: pf2e
 mechanicalSummary: Where others etch their armor to serve as a conduit for their imaginations, your vivid mind and bold personality allow you to project a more fitting persona over your lackluster armor.
 extraPools: []
+category: ancestry
+ancestries: [gnome]
 level: 5

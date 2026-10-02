@@ -4,6 +4,9 @@
 name: trampling_charge
 system: pf2e
 prerequisite: Cavalier Dedication
+prerequisites:
+  - { feat: cavalier_dedication }
 mechanicalSummary: You urge your mount to charge into the fray, trampling all enemies who stand in your path.
 extraPools: []
+category: archetype
 level: 10

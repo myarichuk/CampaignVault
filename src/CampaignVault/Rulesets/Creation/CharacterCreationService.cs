@@ -1,3 +1,4 @@
+using CampaignVault.Data.Templates;
 using CampaignVault.Models;
 using CampaignVault.Rulesets.Bootstrap;
 using CampaignVault.Services;
@@ -9,7 +10,11 @@ public sealed record CreationPreview(
     Character Character,
     IReadOnlyList<CreationIssue> Errors,
     IReadOnlyList<CreationIssue> Warnings,
-    IReadOnlyList<string> Notes);
+    IReadOnlyList<string> Notes)
+{
+    /// <summary>The class features the character would have, its subclass's included (the sheet lists them).</summary>
+    public IReadOnlyList<ClassFeatureView> ClassFeatures { get; init; } = [];
+}
 
 /// <summary>
 /// The character builder behind the <c>character_builder</c> tool. Steps, options and validation come from the
@@ -77,7 +82,30 @@ public sealed class CharacterCreationService
 
     /// <summary>The draft as an un-bootstrapped character (what world_build receives on a first commit).</summary>
     public Character ToCharacter(string system, CharacterDraft draft, string id) =>
-        DraftCharacterMapper.ToCharacter(draft, system, id, Steps(system, draft), _sources);
+        DraftCharacterMapper.ToCharacter(draft, system, id, Steps(system, draft), _sources, _recipes.GetStatBlocksForSystem(system),
+            new LevelChoicesApplied(
+                Recipe(system).LevelSlots(draft.Kind, draft),
+                Recipe(system).LevelPicks(draft.Kind, draft),
+                Recipe(system).Increases(draft.Kind, draft)));
+
+    /// <summary>The level choices the draft's class has at its level: every levelChoices step's slots, or one step's.</summary>
+    public IReadOnlyList<LevelChoiceSlot> LevelSlots(string system, CharacterDraft draft, string? stepKey = null) =>
+        Recipe(system).LevelSlots(draft.Kind, draft, stepKey);
+
+    /// <summary>The psychology fields (<see cref="DraftCharacterMapper.PsychologyFields"/>) the draft's identity schemas edit, so committing owns those lists.</summary>
+    public IReadOnlyCollection<string> PsychologyFields(string system, CharacterDraft draft)
+    {
+        var schemas = _recipes.GetStatBlocksForSystem(system);
+        return
+        [
+            .. Steps(system, draft)
+                .Where(s => s.Kind == CreationStepKinds.Identity && s.Schema is { } name && schemas.ContainsKey(name))
+                .SelectMany(s => schemas[s.Schema!].Fields)
+                .Select(f => f.Key)
+                .Where(DraftCharacterMapper.IsPsychologyField)
+                .Distinct(StringComparer.OrdinalIgnoreCase),
+        ];
+    }
 
     /// <summary>
     /// Builds the character in memory and runs the system's creation bootstrap (HP, proficiency, saves, spellcasting,
@@ -98,6 +126,10 @@ public sealed class CharacterCreationService
                 Trigger = BootstrapTrigger.Create,
             }, ct);
             notes.AddRange(report.Messages);
+
+            // HP mode: the builder never rolls, so what it saves is what it previewed (level_up can still roll later).
+            if (character.SystemStats is Dnd5eExtension { HpMode: null } && draft.Level > 1 && !character.IsPartyCompanion)
+                notes.Add($"Hit points: the hit die's maximum at level 1, then its average (rounded up) plus Constitution for each of the other {draft.Level - 1} levels. The builder doesn't roll, so the character is saved with these hit points.");
         }
         else
         {
@@ -108,7 +140,10 @@ public sealed class CharacterCreationService
             character,
             [.. issues.Where(i => !i.IsWarning)],
             [.. issues.Where(i => i.IsWarning)],
-            notes);
+            notes)
+        {
+            ClassFeatures = CharacterClassFeatures.Views(character, system, _sources.ProgressionProvider),
+        };
     }
 
     /// <summary>
@@ -139,8 +174,39 @@ public sealed class CharacterCreationService
                     if (!string.IsNullOrWhiteSpace(step.Schema) && !schemas.ContainsKey(step.Schema))
                         problems.Add($"{at}: no stat block schema '{step.Schema}' in {system}/statblocks.");
 
+                    foreach (var type in step.ChoiceTypes.Where(t => !Enum.TryParse<ChoiceType>(t, ignoreCase: true, out _)))
+                        problems.Add($"{at}: unknown choice type '{type}' (use {string.Join(", ", Enum.GetNames<ChoiceType>())}).");
+                    if (step.ChoiceTypes.Count > 0 && step.Kind != CreationStepKinds.LevelChoices)
+                        problems.Add($"{at}: choiceTypes is for levelChoices steps.");
+
                     foreach (var name in step.Validators.Where(n => !_validators.ContainsKey(n)))
                         problems.Add($"{at}: no validator named '{name}' is loaded (known: {string.Join(", ", _validators.Keys.Order(StringComparer.Ordinal))}).");
+                }
+            }
+        }
+
+        foreach (var system in _recipes.Systems)
+        {
+            // Every stat block field has to land somewhere: a stats field of that name, the notes, or the psychology. A field that lands
+            // nowhere would be dropped on commit.
+            var stats = SystemStatsMerger.CreateDefault(system);
+            foreach (var (name, schema) in _recipes.GetStatBlocksForSystem(system))
+            {
+                foreach (var field in schema.Fields.Where(f => !DraftCharacterMapper.IsNotesField(f.Key) && !DraftCharacterMapper.IsPsychologyField(f.Key) && !DraftCharacterMapper.HasStatsField(stats, f.Key)))
+                    problems.Add($"{system} stat block '{name}': field '{field.Key}' has no stats field to write to (the {stats.GetType().Name}).");
+                foreach (var field in schema.Fields.Where(f => !StatBlockField.Types.Contains(f.Type)))
+                    problems.Add($"{system} stat block '{name}': field '{field.Key}' has unknown type '{field.Type}' (use {string.Join(", ", StatBlockField.Types)}).");
+                foreach (var field in schema.Fields.Where(f => f.Type is "modifiers" or "choice" && CreationSources.FieldNames(system, f.Source).Count == 0))
+                    problems.Add($"{system} stat block '{name}': {field.Type} field '{field.Key}' needs a source with names in {system} (skills, abilities, saves, creatureTypes).");
+                foreach (var field in schema.Fields.Where(f => f.Type == "rows"))
+                {
+                    if (field.Columns is not { Count: > 0 })
+                        problems.Add($"{system} stat block '{name}': rows field '{field.Key}' needs columns.");
+                    foreach (var column in field.Columns ?? [])
+                    {
+                        if (!StatBlockColumn.Types.Contains(column.Type))
+                            problems.Add($"{system} stat block '{name}': column '{field.Key}.{column.Key}' has unknown type '{column.Type}' ({string.Join(", ", StatBlockColumn.Types)}).");
+                    }
                 }
             }
         }

@@ -5,4 +5,6 @@ name: extraplanar_supplication
 system: pf2e
 mechanicalSummary: You call upon divine power to place a benediction upon your allies or a malediction upon your foes.
 extraPools: []
+category: ancestry
+ancestries: [nephilim]
 level: 5

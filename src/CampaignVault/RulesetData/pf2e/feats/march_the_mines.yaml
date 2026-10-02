@@ -5,4 +5,6 @@ name: march_the_mines
 system: pf2e
 mechanicalSummary: You march through the earth and lead an ally along.
 extraPools: []
+category: ancestry
+ancestries: [dwarf]
 level: 13

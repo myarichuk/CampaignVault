@@ -4,6 +4,10 @@
 name: hone_claws
 system: pf2e
 prerequisite: Iruxi Armaments
+prerequisites:
+  - { feat: iruxi_armaments }
 mechanicalSummary: You grind or gnaw a particularly wicked edge onto your claws.
 extraPools: []
+category: ancestry
+ancestries: [lizardfolk]
 level: 9

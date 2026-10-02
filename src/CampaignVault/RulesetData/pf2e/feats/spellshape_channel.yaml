@@ -5,5 +5,6 @@ name: spellshape_channel
 system: pf2e
 mechanicalSummary: Deep understanding of divine revelations into the nature of vital essence allows you to freely manipulate the energy of life and death.
 extraPools: []
+category: class
 classes: [cleric]
 level: 20

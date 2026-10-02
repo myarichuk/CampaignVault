@@ -4,7 +4,10 @@
 name: ironblood_surge
 system: pf2e
 prerequisite: Ironblood Stance
+prerequisites:
+  - { feat: ironblood_stance }
 mechanicalSummary: You steel yourself, preparing to resist oncoming attacks and using your muscles to absorb the impact.
 extraPools: []
+category: class
 classes: [monk]
 level: 14

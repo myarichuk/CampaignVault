@@ -5,5 +5,6 @@ name: whirling_throw
 system: pf2e
 mechanicalSummary: You propel your enemy away.
 extraPools: []
+category: class
 classes: [monk]
 level: 6

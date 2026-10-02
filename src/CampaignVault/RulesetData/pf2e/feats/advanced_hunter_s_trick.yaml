@@ -4,6 +4,9 @@
 name: advanced_hunter_s_trick
 system: pf2e
 prerequisite: "Basic Hunter's Trick"
+prerequisites:
+  - { feat: basic_hunter_s_trick }
 mechanicalSummary: You gain one ranger feat.
 extraPools: []
+category: archetype
 level: 6

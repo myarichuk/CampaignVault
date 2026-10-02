@@ -5,4 +5,6 @@ name: orc_ferocity
 system: pf2e
 mechanicalSummary: Fierceness in battle runs through your blood, and you refuse to fall from your injuries no matter how terrible they may be.
 extraPools: []
+category: ancestry
+ancestries: [orc]
 level: 1

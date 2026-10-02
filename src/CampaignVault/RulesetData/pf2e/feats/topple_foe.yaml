@@ -4,6 +4,11 @@
 name: topple_foe
 system: pf2e
 prerequisite: Marshal Dedication; Trained in Athletics
+prerequisites:
+  - { feat: marshal_dedication }
+  - { skill: Athletics, rank: trained }
 mechanicalSummary: You take advantage of the opening created by your ally to tip your foe off their feet.
 extraPools: []
+category: archetype
+skills: [Athletics]
 level: 10

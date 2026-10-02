@@ -4,7 +4,10 @@
 name: greater_debilitating_bomb
 system: pf2e
 prerequisite: Debilitating Bomb
+prerequisites:
+  - { feat: debilitating_bomb }
 mechanicalSummary: You have learned enhanced techniques and alchemical secrets that allow you to expand the range of effects you can impose with your bombs.
 extraPools: []
+category: class
 classes: [alchemist]
 level: 10

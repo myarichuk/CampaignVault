@@ -4,6 +4,9 @@
 name: basic_flair
 system: pf2e
 prerequisite: Swashbuckler Dedication
+prerequisites:
+  - { feat: swashbuckler_dedication }
 mechanicalSummary: You gain a 1st- or 2nd-level swashbuckler feat of your choice.
 extraPools: []
+category: archetype
 level: 4

@@ -5,5 +5,6 @@ name: skirmish_strike
 system: pf2e
 mechanicalSummary: Your feet and weapon move in tandem.
 extraPools: []
+category: class
 classes: [ranger, rogue]
 level: 6

@@ -4,7 +4,10 @@
 name: double_double
 system: pf2e
 prerequisite: Cauldron
+prerequisites:
+  - { feat: cauldron }
 mechanicalSummary: For each temporary oil or potion you brew during your daily preparations, you brew two copies of it.
 extraPools: []
+category: class
 classes: [witch]
 level: 10

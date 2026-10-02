@@ -14,6 +14,7 @@ public class FeatDefinitionProvider : IRulesetYamlProvider
     private readonly RulesetContentLayers<FeatDefinition> _layers;
     private readonly Dictionary<string, IReadOnlyDictionary<string, FeatDefinition>?> _cache =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<(string, string), IReadOnlyDictionary<string, FeatDefinition>> _campaignCache = [];
     private readonly object _lock = new();
     private readonly ILogger? _logger;
 
@@ -27,21 +28,39 @@ public class FeatDefinitionProvider : IRulesetYamlProvider
     {
         lock (_lock)
         {
-            if (_cache.TryGetValue(system, out var cached) && cached != null)
-                return cached;
-
-            var resolved = _layers.Resolve(system);
-
-            // A typo'd effect kind in shipped or plugin YAML would silently do nothing; say so once, at load.
-            foreach (var (name, def) in resolved)
+            if (!_cache.TryGetValue(system, out var cached) || cached == null)
             {
-                var problems = CampaignVault.Rulesets.FeatEffectRules.Validate(def.Effects);
-                if (problems.Count > 0)
-                    _logger?.LogWarning("Feat '{Feat}' ({System}) has invalid effects: {Problems}", name, system, string.Join(" ", problems));
+                var resolved = _layers.Resolve(system);
+
+                // A typo'd effect kind in shipped or plugin YAML would silently do nothing; say so once, at load.
+                foreach (var (name, def) in resolved)
+                {
+                    var problems = CampaignVault.Rulesets.FeatEffectRules.Validate(def.Effects);
+                    if (problems.Count > 0)
+                        _logger?.LogWarning("Feat '{Feat}' ({System}) has invalid effects: {Problems}", name, system, string.Join(" ", problems));
+                }
+
+                _cache[system] = cached = resolved;
             }
 
-            _cache[system] = resolved;
-            return resolved;
+            // The campaign's own feats, when it has any (HomebrewScope), are laid over the shipped ones for that call only.
+            var homebrew = HomebrewScope.Current;
+            var own = homebrew?.FeatsFor(system) ?? [];
+            if (homebrew is null || own.Count == 0)
+                return cached;
+
+            if (_campaignCache.Count > 16)
+                _campaignCache.Clear();
+            var key = (homebrew.Stamp, system);
+            if (!_campaignCache.TryGetValue(key, out var withHomebrew))
+            {
+                var merged = new Dictionary<string, FeatDefinition>(cached, StringComparer.OrdinalIgnoreCase);
+                foreach (var feat in own)
+                    merged[feat.Name] = feat;
+                _campaignCache[key] = withHomebrew = merged;
+            }
+
+            return withHomebrew;
         }
     }
 
@@ -54,6 +73,9 @@ public class FeatDefinitionProvider : IRulesetYamlProvider
     public void Reload()
     {
         lock (_lock)
+        {
             _cache.Clear();
+            _campaignCache.Clear();
+        }
     }
 }

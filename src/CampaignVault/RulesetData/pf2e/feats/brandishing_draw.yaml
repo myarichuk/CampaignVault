@@ -5,5 +5,6 @@ name: brandishing_draw
 system: pf2e
 mechanicalSummary: You draw and attack with the same motion.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 2

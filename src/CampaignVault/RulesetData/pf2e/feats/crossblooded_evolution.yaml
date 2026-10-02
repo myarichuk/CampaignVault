@@ -5,5 +5,6 @@ name: crossblooded_evolution
 system: pf2e
 mechanicalSummary: Odd interactions in your bloodline provide you with unexpected effects.
 extraPools: []
+category: class
 classes: [sorcerer]
 level: 8

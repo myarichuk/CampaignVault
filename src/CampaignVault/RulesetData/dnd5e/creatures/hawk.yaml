@@ -1,0 +1,23 @@
+# Source: SRD 5.1 (CC-BY-4.0), adapted as a party companion template. Edit freely in the builder.
+name: Hawk
+system: dnd5e
+description: A trained bird of prey that scouts and strikes small targets.
+challengeRating: "0"
+hp: 1
+defense: 13
+companion: true
+statBlock:
+  creatureType: Beast
+  challengeRating: "0"
+  statBlockHp: "1"
+  armorClass: "13"
+  movement: "10"
+  strength: "5"
+  dexterity: "16"
+  constitution: "8"
+  intelligence: "2"
+  wisdom: "14"
+  charisma: "6"
+  attacks: "Talons +5, 1 slashing, reach 5 ft."
+  skillModifiers: "Perception +4"
+  traits: "Flies 60 ft. Keen Sight: advantage on Wisdom (Perception) checks that rely on sight."

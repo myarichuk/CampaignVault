@@ -5,5 +5,6 @@ name: split_slot
 system: pf2e
 mechanicalSummary: You can prepare two spells in one slot, giving you the freedom to choose the spell when you cast it.
 extraPools: []
+category: class
 classes: [wizard]
 level: 6

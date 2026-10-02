@@ -4,6 +4,10 @@
 name: shinstabber
 system: pf2e
 prerequisite: Overcrowd
+prerequisites:
+  - { feat: overcrowd }
 mechanicalSummary: "As long as you're Small or smaller, you can end your movement in the same square as an ally of any size."
 extraPools: []
+category: ancestry
+ancestries: [ratfolk]
 level: 13

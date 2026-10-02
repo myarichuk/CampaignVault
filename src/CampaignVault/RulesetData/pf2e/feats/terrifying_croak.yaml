@@ -4,6 +4,11 @@
 name: terrifying_croak
 system: pf2e
 prerequisite: Trained in Intimidation
+prerequisites:
+  - { skill: Intimidation, rank: trained }
 mechanicalSummary: You release a haunting croak that reminds those around you of their fears.
 extraPools: []
+category: ancestry
+ancestries: [tripkee]
+skills: [Intimidation]
 level: 1

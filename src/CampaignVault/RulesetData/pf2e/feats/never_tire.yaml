@@ -4,6 +4,9 @@
 name: never_tire
 system: pf2e
 prerequisite: Celebrity Dedication
+prerequisites:
+  - { feat: celebrity_dedication }
 mechanicalSummary: As long as you have an audience, you can continue to perform even when you are on the brink of collapse.
 extraPools: []
+category: archetype
 level: 4

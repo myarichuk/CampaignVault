@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: precise strike 6d6
 mechanicalSummary: You stab your foe in a vital organ, possibly killing them outright.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 18

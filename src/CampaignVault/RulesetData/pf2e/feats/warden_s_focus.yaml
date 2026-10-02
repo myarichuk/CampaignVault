@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: warden spells
 mechanicalSummary: Your connection with your surroundings deepens and expands, allowing you to draw in more of nature’s primal power as you focus.
 extraPools: []
+category: class
 classes: [ranger]
 level: 12

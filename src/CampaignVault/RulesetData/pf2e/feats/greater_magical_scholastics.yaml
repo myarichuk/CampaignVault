@@ -4,6 +4,9 @@
 name: greater_magical_scholastics
 system: pf2e
 prerequisite: Magical Scholastics
+prerequisites:
+  - { feat: magical_scholastics }
 mechanicalSummary: You broaden the scope of your magical understanding, allowing you to find the right path, detect hidden objects, and conceal those objects from unscrupulous rivals.
 extraPools: []
+category: archetype
 level: 10

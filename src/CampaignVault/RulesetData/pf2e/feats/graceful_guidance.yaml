@@ -5,4 +5,6 @@ name: graceful_guidance
 system: pf2e
 mechanicalSummary: You can demonstrate how to quickly twist out of the way of dangerous effects.
 extraPools: []
+category: ancestry
+ancestries: [catfolk]
 level: 5

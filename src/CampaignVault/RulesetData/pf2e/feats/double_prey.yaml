@@ -5,5 +5,6 @@ name: double_prey
 system: pf2e
 mechanicalSummary: You can focus on two foes at once, hunting both of them down.
 extraPools: []
+category: class
 classes: [ranger]
 level: 12

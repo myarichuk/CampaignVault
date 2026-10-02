@@ -4,7 +4,10 @@
 name: loremaster_s_etude
 system: pf2e
 prerequisite: enigma muse
+prerequisites:
+  - { classFeature: enigma }
 mechanicalSummary: You magically unlock memories, making them easier to recall.
 extraPools: []
+category: class
 classes: [bard]
 level: 2

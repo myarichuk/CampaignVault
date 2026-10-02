@@ -4,6 +4,9 @@
 name: basic_eldritch_archer_spellcasting
 system: pf2e
 prerequisite: Eldritch Archer Dedication
+prerequisites:
+  - { feat: eldritch_archer_dedication }
 mechanicalSummary: You gain the basic spellcasting benefits.
 extraPools: []
+category: archetype
 level: 8

@@ -5,4 +5,6 @@ name: night_magic
 system: pf2e
 mechanicalSummary: You can tap into the magic that runs through your blood.
 extraPools: []
+category: ancestry
+ancestries: [dhampir]
 level: 9

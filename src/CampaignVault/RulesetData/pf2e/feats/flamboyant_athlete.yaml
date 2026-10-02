@@ -4,7 +4,11 @@
 name: flamboyant_athlete
 system: pf2e
 prerequisite: Expert in Athletics
+prerequisites:
+  - { skill: Athletics, rank: expert }
 mechanicalSummary: "Your panache allows you to perform incredible feats: climbing, swimming, and leaping far beyond your normal capacity."
 extraPools: []
+category: class
 classes: [swashbuckler]
+skills: [Athletics]
 level: 4

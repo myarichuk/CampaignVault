@@ -4,7 +4,10 @@
 name: dueling_riposte
 system: pf2e
 prerequisite: Dueling Parry (Fighter)
+prerequisites:
+  - { feat: dueling_parry_fighter }
 mechanicalSummary: You elegantly counterattack against your flailing enemy.
 extraPools: []
+category: class
 classes: [fighter]
 level: 8

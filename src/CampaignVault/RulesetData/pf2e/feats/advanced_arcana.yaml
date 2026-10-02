@@ -4,6 +4,9 @@
 name: advanced_arcana
 system: pf2e
 prerequisite: Basic Arcana
+prerequisites:
+  - { feat: basic_arcana }
 mechanicalSummary: You gain one wizard feat.
 extraPools: []
+category: archetype
 level: 6

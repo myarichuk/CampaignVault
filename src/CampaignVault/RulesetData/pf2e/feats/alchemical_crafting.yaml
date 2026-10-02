@@ -4,6 +4,10 @@
 name: alchemical_crafting
 system: pf2e
 prerequisite: Trained in Crafting
+prerequisites:
+  - { skill: Crafting, rank: trained }
 mechanicalSummary: Craft alchemical items
 extraPools: []
+category: skill
+skills: [Crafting]
 level: 1

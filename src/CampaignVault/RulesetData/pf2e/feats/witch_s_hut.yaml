@@ -5,5 +5,6 @@ name: witch_s_hut
 system: pf2e
 mechanicalSummary: Your home is an animated structure that obeys your commands.
 extraPools: []
+category: class
 classes: [witch]
 level: 20

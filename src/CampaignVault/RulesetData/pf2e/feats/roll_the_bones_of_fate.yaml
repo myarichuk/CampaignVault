@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: bones mystery or lore mystery
 mechanicalSummary: You roll a handful of bones to learn (or perhaps influence) the future course of events.
 extraPools: []
+category: class
 classes: [oracle]
 level: 10

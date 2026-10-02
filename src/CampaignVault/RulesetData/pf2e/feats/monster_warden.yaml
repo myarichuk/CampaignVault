@@ -4,7 +4,10 @@
 name: monster_warden
 system: pf2e
 prerequisite: Monster Hunter
+prerequisites:
+  - { feat: monster_hunter }
 mechanicalSummary: You understand how to defend yourself and others against your prey.
 extraPools: []
+category: class
 classes: [ranger]
 level: 2

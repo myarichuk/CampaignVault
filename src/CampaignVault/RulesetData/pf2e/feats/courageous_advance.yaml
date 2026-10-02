@@ -4,7 +4,10 @@
 name: courageous_advance
 system: pf2e
 prerequisite: warrior muse
+prerequisites:
+  - { classFeature: warrior }
 mechanicalSummary: With a rousing call, you exhort an ally to advance.
 extraPools: []
+category: class
 classes: [bard]
 level: 4

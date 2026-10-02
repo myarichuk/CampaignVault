@@ -4,6 +4,10 @@
 name: aerobatics_mastery
 system: pf2e
 prerequisite: Master in Acrobatics
+prerequisites:
+  - { skill: Acrobatics, rank: master }
 mechanicalSummary: You move with grace in flight and can perform amazing aerial stunts.
 extraPools: []
+category: skill
+skills: [Acrobatics]
 level: 7

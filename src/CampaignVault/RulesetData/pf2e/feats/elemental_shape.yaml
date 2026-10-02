@@ -4,7 +4,10 @@
 name: elemental_shape
 system: pf2e
 prerequisite: Untamed Form
+prerequisites:
+  - { feat: untamed_form }
 mechanicalSummary: You understand the fundamental elements of nature such that you can imbue them into your body and manifest as a living embodiment of those elements.
 extraPools: []
+category: class
 classes: [druid]
 level: 10

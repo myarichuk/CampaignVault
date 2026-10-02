@@ -5,4 +5,6 @@ name: divine_dragonblood
 system: pf2e
 mechanicalSummary: You can trace your lineage to a dragon with almost deific powers, such as a diabolic dragon or empyreal dragon.
 extraPools: []
+category: ancestry
+ancestries: [dragonblood]
 level: 1

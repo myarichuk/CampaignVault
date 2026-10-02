@@ -4,6 +4,9 @@
 name: swashbuckler_s_riposte
 system: pf2e
 prerequisite: Swashbuckler Dedication
+prerequisites:
+  - { feat: swashbuckler_dedication }
 mechanicalSummary: You’ve learned to riposte against ill-conceived attacks.
 extraPools: []
+category: archetype
 level: 6

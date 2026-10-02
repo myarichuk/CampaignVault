@@ -1,5 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
-    <!-- PartyPageViewModel: the starting level, the characters built so far, and the ways to fill the party. -->
+    <!-- PartyPageViewModel: the starting level, the characters built so far (and DM drafts to review), and the ways to fill the party. -->
     <ui:Template name="Header" src="QuestionHeader.uxml" />
     <ui:VisualElement>
         <ui:Instance template="Header" />
@@ -24,6 +24,12 @@
                 <ui:DataBinding property="itemsSource" data-source-path="Members" binding-mode="ToTarget" />
             </Bindings>
         </cv:Repeater>
+        <ui:Label name="party-draft-error" class="cv-body cv-text-blood cv-onboarding__answer">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="DraftError" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="DraftError" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
         <cv:Repeater name="party-actions" item-template="Common/ActionButton" class="cv-onboarding__answer cv-onboarding__party-actions">
             <Bindings>
                 <ui:DataBinding property="itemsSource" data-source-path="Actions" binding-mode="ToTarget" />

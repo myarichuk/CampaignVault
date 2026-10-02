@@ -3,6 +3,8 @@
 # official Archives of Nethys database (elasticsearch.aonprd.com).
 name: quietus_strikes
 system: pf2e
-mechanicalSummary: Your connection to the Boneyard empowers you to bring death to all forms of life and unlife, exploiting their weaknesses.
+mechanicalSummary: Your connection to the realm of the dead empowers you to bring death to all forms of life and unlife, exploiting their weaknesses.
 extraPools: []
+category: ancestry
+ancestries: [duskwalker]
 level: 9

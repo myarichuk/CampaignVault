@@ -4,6 +4,9 @@
 name: chemical_contagion
 system: pf2e
 prerequisite: Poisoner Dedication
+prerequisites:
+  - { feat: poisoner_dedication }
 mechanicalSummary: Your injury poisons can spray onto creatures.
 extraPools: []
+category: archetype
 level: 18

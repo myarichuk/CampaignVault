@@ -5,5 +5,6 @@ name: soothing_ballad
 system: pf2e
 mechanicalSummary: You soothe your allies’ wounds with the power of performance.
 extraPools: []
+category: class
 classes: [bard]
 level: 14

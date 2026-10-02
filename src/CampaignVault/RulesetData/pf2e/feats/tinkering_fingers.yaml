@@ -5,4 +5,6 @@ name: tinkering_fingers
 system: pf2e
 mechanicalSummary: "You're trained in Crafting."
 extraPools: []
+category: ancestry
+ancestries: [ratfolk]
 level: 1

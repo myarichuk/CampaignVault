@@ -5,4 +5,6 @@ name: flourish_and_ruin
 system: pf2e
 mechanicalSummary: You can call upon the vital essence of your spirit to restore life to your allies and call forth vines to ensnare and bludgeon your foes.
 extraPools: []
+category: ancestry
+ancestries: [leshy]
 level: 17

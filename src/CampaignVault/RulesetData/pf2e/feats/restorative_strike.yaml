@@ -5,5 +5,6 @@ name: restorative_strike
 system: pf2e
 mechanicalSummary: You balance both sides of the scales, restoring yourself while striking a foe.
 extraPools: []
+category: class
 classes: [cleric]
 level: 4

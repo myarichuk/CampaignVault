@@ -1,6 +1,11 @@
-# Source: Pathfinder 2e material released under the Open RPG Creative (ORC) License by Paizo Inc.
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
 name: acolyte
 system: pf2e
-description: You served at a temple, monastery, or shrine
-skillProficiencies: [Religion, one other Lore]
-feature: Deity's Domain
+description: "You spent your early days in a religious monastery or cloister. You may have traveled out into the world to spread the message of your religion or because you cast away the teachings of your faith, but deep down you’ll always carry within you the lessons you learned."
+boosts: [Intelligence, Wisdom]
+skillProficiencies: [Religion]
+lore: Scribing Lore
+skillFeat: student_of_the_canon
+feature: Student of the Canon

@@ -5,5 +5,6 @@ name: tap_into_blood
 system: pf2e
 mechanicalSummary: The power in your blood allows you to perform minor feats of magic.
 extraPools: []
+category: class
 classes: [sorcerer]
 level: 1

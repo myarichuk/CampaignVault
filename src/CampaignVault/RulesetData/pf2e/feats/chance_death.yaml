@@ -5,4 +5,6 @@ name: chance_death
 system: pf2e
 mechanicalSummary: Your previous life ended due to sheer poor luck, struck by lightning or choking on a fish bone.
 extraPools: []
+category: ancestry
+ancestries: [duskwalker]
 level: 1

@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Legendary in Lore
 mechanicalSummary: Gain renown for your Lore
 extraPools: []
+category: skill
+skills: [Lore]
 level: 15

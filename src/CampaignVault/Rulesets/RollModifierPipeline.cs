@@ -31,11 +31,11 @@ public sealed class RollModifierPipeline
     /// <summary>Core's providers only: what a resolver built without the container uses.</summary>
     public static RollModifierPipeline BuiltIn { get; } = new([]);
 
-    public RollResolution Resolve(RollQuery query, int baseBonus, AdvantageEffect explicitAdvantage = AdvantageEffect.None)
+    public RollResolution Resolve(RollQuery query, int baseBonus, AdvantageEffect explicitAdvantage = AdvantageEffect.None, bool alsoAdvantage = false, bool alsoDisadvantage = false)
     {
         var bonus = baseBonus;
-        var advantage = explicitAdvantage == AdvantageEffect.Advantage;
-        var disadvantage = explicitAdvantage == AdvantageEffect.Disadvantage;
+        var advantage = explicitAdvantage == AdvantageEffect.Advantage || alsoAdvantage;
+        var disadvantage = explicitAdvantage == AdvantageEffect.Disadvantage || alsoDisadvantage;
         var notes = new List<string>();
 
         foreach (var provider in _providers)

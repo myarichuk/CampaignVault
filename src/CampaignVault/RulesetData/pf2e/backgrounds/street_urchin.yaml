@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: street_urchin
+system: pf2e
+description: "You eked out a living by picking pockets on the streets of a major city, never knowing where you’d find your next meal. While some folk adventure for the glory, you do so to survive."
+boosts: [Dexterity, Constitution]
+skillProficiencies: [Thievery]
+lore: Lore for the city you lived in as a street urchin
+skillFeat: pickpocket
+feature: Pickpocket

@@ -4,7 +4,10 @@
 name: overpowering_charge
 system: pf2e
 prerequisite: Barreling Charge
+prerequisites:
+  - { feat: barreling_charge }
 mechanicalSummary: You trample foes as you charge past.
 extraPools: []
+category: class
 classes: [barbarian, fighter]
 level: 10

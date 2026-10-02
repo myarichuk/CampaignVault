@@ -4,7 +4,10 @@
 name: storm_retribution
 system: pf2e
 prerequisite: storm order; tempest surge order spell
+prerequisites:
+  - { classFeature: storm }
 mechanicalSummary: You lash out, directing a burst of storming fury toward a creature that has harmed you.
 extraPools: []
+category: class
 classes: [druid]
 level: 6

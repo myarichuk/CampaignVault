@@ -4,6 +4,10 @@
 name: hidden_magic
 system: pf2e
 prerequisite: Vigilante Dedication; Expert in Arcana, Expert in Nature, Expert in Occultism, or Expert in Religion
+prerequisites:
+  - { anyOf: [{ skill: Arcana, rank: expert }, { skill: Nature, rank: expert }, { skill: Occultism, rank: expert }, { skill: Religion, rank: expert }] }
 mechanicalSummary: "You've learned to hide the magical auras of your gear."
 extraPools: []
+category: skill
+skills: [Arcana, Nature, Occultism, Religion]
 level: 4

@@ -4,7 +4,10 @@
 name: immortal_techniques
 system: pf2e
 prerequisite: Master of Many Styles
+prerequisites:
+  - { feat: master_of_many_styles }
 mechanicalSummary: You flow from technique to technique, renewing yourself as you embrace each style you have mastered.
 extraPools: []
+category: class
 classes: [monk]
 level: 20

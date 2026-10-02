@@ -4,6 +4,10 @@
 name: powerful_leap
 system: pf2e
 prerequisite: Expert in Athletics
+prerequisites:
+  - { skill: Athletics, rank: expert }
 mechanicalSummary: Jump farther and higher
 extraPools: []
+category: skill
+skills: [Athletics]
 level: 2

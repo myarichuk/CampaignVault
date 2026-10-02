@@ -5,5 +5,6 @@ name: mobile_finisher
 system: pf2e
 mechanicalSummary: You attack in motion.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 12

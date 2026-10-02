@@ -4,7 +4,10 @@
 name: song_of_strength
 system: pf2e
 prerequisite: warrior muse
+prerequisites:
+  - { classFeature: warrior }
 mechanicalSummary: Your performances inspire strength in your allies to aid them at physical tasks.
 extraPools: []
+category: class
 classes: [bard]
 level: 2

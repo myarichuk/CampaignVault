@@ -4,6 +4,10 @@
 name: very_very_sneaky
 system: pf2e
 prerequisite: Very Sneaky
+prerequisites:
+  - { feat: very_sneaky }
 mechanicalSummary: You can move up to your Speed when you use the Sneak action, and you no longer need to have cover or greater cover or be concealed to Hide or Sneak.
 extraPools: []
+category: ancestry
+ancestries: [goblin]
 level: 13

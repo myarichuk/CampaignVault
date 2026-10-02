@@ -4,7 +4,11 @@
 name: dodging_roll
 system: pf2e
 prerequisite: Master in Acrobatics
+prerequisites:
+  - { skill: Acrobatics, rank: master }
 mechanicalSummary: You dodge a blow at the last possible moment.
 extraPools: []
+category: class
 classes: [monk]
+skills: [Acrobatics]
 level: 12

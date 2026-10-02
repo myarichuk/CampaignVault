@@ -4,6 +4,9 @@
 name: beastmaster_bond
 system: pf2e
 prerequisite: Beastmaster Dedication
+prerequisites:
+  - { feat: beastmaster_dedication }
 mechanicalSummary: You can communicate telepathically with your animal companions within 100 feet.
 extraPools: []
+category: archetype
 level: 10

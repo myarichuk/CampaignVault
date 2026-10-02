@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: entertainer
+system: pf2e
+description: "Through an education in the arts or sheer dogged practice, you learned to entertain crowds. You might have been an actor, a dancer, a musician, a street magician, or any other sort of performer."
+boosts: [Dexterity, Charisma]
+skillProficiencies: [Performance]
+lore: Theater Lore
+skillFeat: fascinating_performance
+feature: Fascinating Performance

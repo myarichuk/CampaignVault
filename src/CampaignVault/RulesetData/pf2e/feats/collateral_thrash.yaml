@@ -4,7 +4,10 @@
 name: collateral_thrash
 system: pf2e
 prerequisite: Thrash
+prerequisites:
+  - { feat: thrash }
 mechanicalSummary: "You smack the foe you're thrashing into someone else."
 extraPools: []
+category: class
 classes: [barbarian]
 level: 16

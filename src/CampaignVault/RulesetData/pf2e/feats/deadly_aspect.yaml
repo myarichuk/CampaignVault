@@ -4,6 +4,10 @@
 name: deadly_aspect
 system: pf2e
 prerequisite: Draconic Aspect
+prerequisites:
+  - { feat: draconic_aspect }
 mechanicalSummary: You have honed the unarmed attack your draconic heritage has granted you to a lethal degree.
 extraPools: []
+category: ancestry
+ancestries: [dragonblood]
 level: 5

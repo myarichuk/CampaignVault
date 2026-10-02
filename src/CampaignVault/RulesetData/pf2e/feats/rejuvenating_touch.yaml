@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: lay on hands
 mechanicalSummary: Your healing energies linger after you cast, providing continual benefits.
 extraPools: []
+category: class
 classes: [champion]
 level: 18

@@ -4,6 +4,9 @@
 name: expert_scroll_cache
 system: pf2e
 prerequisite: Basic Scroll Cache
+prerequisites:
+  - { feat: basic_scroll_cache }
 mechanicalSummary: Your scroll collection has vastly grown, both in size and potency.
 extraPools: []
+category: archetype
 level: 12

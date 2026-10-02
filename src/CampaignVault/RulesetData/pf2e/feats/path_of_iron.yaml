@@ -4,6 +4,9 @@
 name: path_of_iron
 system: pf2e
 prerequisite: Martial Artist Dedication
+prerequisites:
+  - { feat: martial_artist_dedication }
 mechanicalSummary: With a burst of effort and speed, you weave a nimble path through your many enemies, striking each in turn as you move past them.
 extraPools: []
+category: archetype
 level: 14

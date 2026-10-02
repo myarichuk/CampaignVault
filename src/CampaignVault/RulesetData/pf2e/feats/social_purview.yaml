@@ -6,4 +6,5 @@ system: pf2e
 prerequisite: Vigilante Dedication
 mechanicalSummary: You have built a reputation for yourself in your social identity.
 extraPools: []
+category: skill
 level: 4

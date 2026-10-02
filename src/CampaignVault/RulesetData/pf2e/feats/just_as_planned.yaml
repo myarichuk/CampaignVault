@@ -5,5 +5,6 @@ name: just_as_planned
 system: pf2e
 mechanicalSummary: "In the blink of an eye, you calculate your enemy's movements and know exactly where to aim your next blow."
 extraPools: []
+category: class
 classes: [investigator]
 level: 12

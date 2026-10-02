@@ -4,6 +4,10 @@
 name: snare_crafting
 system: pf2e
 prerequisite: Trained in Crafting
+prerequisites:
+  - { skill: Crafting, rank: trained }
 mechanicalSummary: You can use the Craft activity to create snares.
 extraPools: []
+category: skill
+skills: [Crafting]
 level: 1

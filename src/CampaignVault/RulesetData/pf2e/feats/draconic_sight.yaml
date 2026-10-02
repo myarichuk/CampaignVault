@@ -5,4 +5,6 @@ name: draconic_sight
 system: pf2e
 mechanicalSummary: You have a fraction of the senses of your draconic forebear.
 extraPools: []
+category: ancestry
+ancestries: [dragonblood]
 level: 1

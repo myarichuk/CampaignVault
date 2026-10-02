@@ -5,4 +5,6 @@ name: undaunted
 system: pf2e
 mechanicalSummary: Your spirit has endured many challenges over its long existence.
 extraPools: []
+category: ancestry
+ancestries: [leshy]
 level: 1

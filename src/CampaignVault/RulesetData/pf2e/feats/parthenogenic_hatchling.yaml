@@ -5,4 +5,6 @@ name: parthenogenic_hatchling
 system: pf2e
 mechanicalSummary: You were hatched from an unfertilized egg during hard times for your people, and are a biological copy of your mother.
 extraPools: []
+category: ancestry
+ancestries: [lizardfolk]
 level: 1

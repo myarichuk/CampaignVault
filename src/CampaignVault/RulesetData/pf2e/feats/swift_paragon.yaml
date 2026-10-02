@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: blessed swiftness
 mechanicalSummary: The movement of you and your allies is swift and decisive as the judgment of your deity.
 extraPools: []
+category: class
 classes: [champion]
 level: 20

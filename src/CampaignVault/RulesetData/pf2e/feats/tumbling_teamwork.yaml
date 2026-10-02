@@ -4,6 +4,10 @@
 name: tumbling_teamwork
 system: pf2e
 prerequisite: Expert in Acrobatics
+prerequisites:
+  - { skill: Acrobatics, rank: expert }
 mechanicalSummary: Your tumbling distracts a foe enough to create an advantage for one of your allies.
 extraPools: []
+category: skill
+skills: [Acrobatics]
 level: 2

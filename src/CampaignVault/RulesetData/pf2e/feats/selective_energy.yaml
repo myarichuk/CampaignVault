@@ -5,5 +5,6 @@ name: selective_energy
 system: pf2e
 mechanicalSummary: As you call down divine power, you can prevent some enemies from benefiting or some allies from being hurt.
 extraPools: []
+category: class
 classes: [cleric]
 level: 6

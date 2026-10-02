@@ -6,4 +6,5 @@ system: pf2e
 prerequisite: Expert in Perception
 mechanicalSummary: You take your time searching to ensure you find everything.
 extraPools: []
+category: general
 level: 3

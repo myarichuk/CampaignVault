@@ -4,6 +4,12 @@
 name: tumbling_diversion
 system: pf2e
 prerequisite: Expert in Acrobatics; Expert in Deception
+prerequisites:
+  - { skill: Acrobatics, rank: expert }
+  - { skill: Deception, rank: expert }
 mechanicalSummary: "Attempt to Tumble Through an opponent's space."
 extraPools: []
+category: ancestry
+ancestries: [kobold]
+skills: [Acrobatics, Deception]
 level: 13

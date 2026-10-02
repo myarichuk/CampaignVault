@@ -5,4 +5,6 @@ name: iron_fists
 system: pf2e
 mechanicalSummary: Your fists have been forged by battle, your naturally tough skin and dense bone further hardened by conflict.
 extraPools: []
+category: ancestry
+ancestries: [orc]
 level: 1

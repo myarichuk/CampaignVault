@@ -4,6 +4,9 @@
 name: archer_s_aim
 system: pf2e
 prerequisite: Archer Dedication
+prerequisites:
+  - { feat: archer_dedication }
 mechanicalSummary: You slow down, focus, and take a careful shot.
 extraPools: []
+category: archetype
 level: 8

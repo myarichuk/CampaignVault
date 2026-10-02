@@ -5,5 +5,6 @@ name: divine_rebuttal
 system: pf2e
 mechanicalSummary: You strive against magical threats physically and spiritually.
 extraPools: []
+category: class
 classes: [cleric]
 level: 6

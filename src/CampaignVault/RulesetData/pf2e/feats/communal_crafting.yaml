@@ -4,6 +4,10 @@
 name: communal_crafting
 system: pf2e
 prerequisite: Expert in Crafting
+prerequisites:
+  - { skill: Crafting, rank: expert }
 mechanicalSummary: Other PCs can help you Craft
 extraPools: []
+category: skill
+skills: [Crafting]
 level: 2

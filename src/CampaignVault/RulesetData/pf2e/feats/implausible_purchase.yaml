@@ -4,7 +4,10 @@
 name: implausible_purchase
 system: pf2e
 prerequisite: Predictive Purchase
+prerequisites:
+  - { feat: predictive_purchase }
 mechanicalSummary: "It seems impossible, but you've analyzed every angle and are able to just keep pulling out exactly the item you need, even in far-flung locations."
 extraPools: []
+category: class
 classes: [investigator]
 level: 16

@@ -4,6 +4,9 @@
 name: student_of_the_dueling_arts
 system: pf2e
 prerequisite: Duelist Dedication
+prerequisites:
+  - { feat: duelist_dedication }
 mechanicalSummary: Dueling is your art, and your weapon is your instrument.
 extraPools: []
+category: archetype
 level: 12

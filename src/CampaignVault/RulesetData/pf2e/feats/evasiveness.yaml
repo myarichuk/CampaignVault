@@ -4,6 +4,9 @@
 name: evasiveness
 system: pf2e
 prerequisite: Swashbuckler Dedication; expert in Reflex Saves
+prerequisites:
+  - { feat: swashbuckler_dedication }
 mechanicalSummary: Your proficiency rank for Reflex saves increases to master.
 extraPools: []
+category: archetype
 level: 12

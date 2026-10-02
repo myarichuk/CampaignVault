@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: holy or unholy trait
 mechanicalSummary: You touch a weapon and bring it into concordance with your deity.
 extraPools: []
+category: class
 classes: [cleric]
 level: 8

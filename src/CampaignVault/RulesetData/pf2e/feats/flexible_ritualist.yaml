@@ -6,4 +6,5 @@ system: pf2e
 prerequisite: Ritualist Dedication
 mechanicalSummary: You can perform two aspects of a ritual yourself.
 extraPools: []
+category: archetype
 level: 6

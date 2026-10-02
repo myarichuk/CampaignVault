@@ -4,6 +4,9 @@
 name: basic_blood_potency
 system: pf2e
 prerequisite: Sorcerer Dedication
+prerequisites:
+  - { feat: sorcerer_dedication }
 mechanicalSummary: You gain a 1st- or 2nd-level sorcerer feat.
 extraPools: []
+category: archetype
 level: 4

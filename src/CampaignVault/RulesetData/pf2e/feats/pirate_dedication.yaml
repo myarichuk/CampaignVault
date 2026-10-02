@@ -4,6 +4,10 @@
 name: pirate_dedication
 system: pf2e
 prerequisite: Trained in Intimidation
+prerequisites:
+  - { skill: Intimidation, rank: trained }
 mechanicalSummary: As a pirate, you sail the seas in search of enemy ships to plunder and great adventures to embark on.
 extraPools: []
+category: archetype
+skills: [Intimidation]
 level: 2

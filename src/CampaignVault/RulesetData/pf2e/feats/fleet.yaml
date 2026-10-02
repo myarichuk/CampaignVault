@@ -5,4 +5,5 @@ name: fleet
 system: pf2e
 mechanicalSummary: Increase your Speed by 5 feet
 extraPools: []
+category: general
 level: 1

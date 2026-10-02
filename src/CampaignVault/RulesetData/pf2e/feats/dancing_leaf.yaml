@@ -5,5 +5,6 @@ name: dancing_leaf
 system: pf2e
 mechanicalSummary: You are as light as a leaf on the breeze.
 extraPools: []
+category: class
 classes: [monk]
 level: 2

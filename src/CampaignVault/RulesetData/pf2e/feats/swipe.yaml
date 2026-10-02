@@ -5,5 +5,6 @@ name: swipe
 system: pf2e
 mechanicalSummary: You make a wide, arcing swing.
 extraPools: []
+category: class
 classes: [barbarian, fighter]
 level: 4

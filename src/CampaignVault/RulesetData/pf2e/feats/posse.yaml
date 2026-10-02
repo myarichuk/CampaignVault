@@ -4,6 +4,9 @@
 name: posse
 system: pf2e
 prerequisite: Bounty Hunter Dedication
+prerequisites:
+  - { feat: bounty_hunter_dedication }
 mechanicalSummary: By spending 1 minute giving guidance to help hunt down your prey, you instruct up to five willing creatures to assist you.
 extraPools: []
+category: archetype
 level: 4

@@ -4,7 +4,12 @@
 name: legendary_monster_hunter
 system: pf2e
 prerequisite: Legendary in Nature; Master Monster Hunter
+prerequisites:
+  - { skill: Nature, rank: legendary }
+  - { feat: master_monster_hunter }
 mechanicalSummary: Your knowledge of monsters is so incredible that it reveals glaring flaws in your prey.
 extraPools: []
+category: class
 classes: [ranger]
+skills: [Nature]
 level: 16

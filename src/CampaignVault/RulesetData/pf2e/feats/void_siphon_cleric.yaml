@@ -5,5 +5,6 @@ name: void_siphon_cleric
 system: pf2e
 mechanicalSummary: The raw energy of the Void saps the essence of the living.
 extraPools: []
+category: class
 classes: [cleric]
 level: 8

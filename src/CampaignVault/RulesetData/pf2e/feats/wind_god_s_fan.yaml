@@ -4,6 +4,10 @@
 name: wind_god_s_fan
 system: pf2e
 prerequisite: Tengu Feather Fan
+prerequisites:
+  - { feat: tengu_feather_fan }
 mechanicalSummary: Your fan can stir up even more powerful winds.
 extraPools: []
+category: ancestry
+ancestries: [tengu]
 level: 9

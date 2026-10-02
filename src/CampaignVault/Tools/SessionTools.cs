@@ -163,13 +163,15 @@ public class SessionTools : CampaignToolBase, IMcpServerTool
                 .ToListAsync();
             var itemsByHolder = heldItems.ToLookup(i => i.HolderId, StringComparer.OrdinalIgnoreCase);
 
+            var rules = await session.LoadAsync<CampaignConfig>(_keys.Config(effective));
             view.Party =
             [
                 .. party
                     .OrderByDescending(m => m.IsPc)
                     .ThenBy(m => m.Name, StringComparer.OrdinalIgnoreCase)
                     .Select(m => PartySessionView.From(m,
-                        [.. itemsByHolder[m.Id].OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase)]))
+                        [.. itemsByHolder[m.Id].OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase)])
+                        with { LevelUpReady = rules is not null && LevelUpStatusReader.For(m, rules, null)?.Ready == true })
             ];
 
             view.PartyFingerprint = PartyFingerprint.Compute(party);

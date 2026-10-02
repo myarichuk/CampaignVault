@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Expert in Lore
 mechanicalSummary: Recall Knowledge about your Lore more effectively
 extraPools: []
+category: skill
+skills: [Lore]
 level: 2

@@ -4,6 +4,10 @@
 name: ricocheting_leap
 system: pf2e
 prerequisite: Wall Jump
+prerequisites:
+  - { feat: wall_jump }
 mechanicalSummary: You quickly use your momentum to topple and spring off of foes.
 extraPools: []
+category: ancestry
+ancestries: [tripkee]
 level: 9

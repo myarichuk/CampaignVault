@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: an animal companion
 mechanicalSummary: You and your animal companion fight in tandem.
 extraPools: []
+category: class
 classes: [ranger]
 level: 12

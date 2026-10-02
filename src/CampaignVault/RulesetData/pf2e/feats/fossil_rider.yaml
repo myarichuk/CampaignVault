@@ -4,6 +4,10 @@
 name: fossil_rider
 system: pf2e
 prerequisite: Bone Magic
+prerequisites:
+  - { feat: bone_magic }
 mechanicalSummary: "Using your ancestors' bones, you manifest their spirits around you in a fossilized form."
 extraPools: []
+category: ancestry
+ancestries: [lizardfolk]
 level: 17

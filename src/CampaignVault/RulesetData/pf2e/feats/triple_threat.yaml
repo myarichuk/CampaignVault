@@ -4,7 +4,10 @@
 name: triple_threat
 system: pf2e
 prerequisite: Shared Prey
+prerequisites:
+  - { feat: shared_prey }
 mechanicalSummary: You can divide your attention three ways when hunting.
 extraPools: []
+category: class
 classes: [ranger]
 level: 20

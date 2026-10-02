@@ -4,7 +4,10 @@
 name: improved_twin_riposte_ranger
 system: pf2e
 prerequisite: Twin Riposte
+prerequisites:
+  - { feat: twin_riposte }
 mechanicalSummary: At the start of each of your turns, you gain an additional reaction that you can use only to perform a Twin Riposte.
 extraPools: []
+category: class
 classes: [ranger]
 level: 16

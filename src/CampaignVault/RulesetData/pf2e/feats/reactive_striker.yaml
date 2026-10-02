@@ -6,4 +6,5 @@ system: pf2e
 prerequisite: Fighter Dedication or Blackjacket Dedication
 mechanicalSummary: You gain the Reactive Strike reaction.
 extraPools: []
+category: archetype
 level: 4

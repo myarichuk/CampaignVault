@@ -4,7 +4,10 @@
 name: master_qi_spells
 system: pf2e
 prerequisite: Qi Spells
+prerequisites:
+  - { feat: qi_spells }
 mechanicalSummary: You have achieved near-total mastery of your qi.
 extraPools: []
+category: class
 classes: [monk]
 level: 16

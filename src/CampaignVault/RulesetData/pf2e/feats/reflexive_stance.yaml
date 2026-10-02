@@ -5,5 +5,6 @@ name: reflexive_stance
 system: pf2e
 mechanicalSummary: You enter a stance without a thought.
 extraPools: []
+category: class
 classes: [monk]
 level: 12

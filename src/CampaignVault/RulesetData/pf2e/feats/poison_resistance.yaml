@@ -5,5 +5,6 @@ name: poison_resistance
 system: pf2e
 mechanicalSummary: Your affinity for the natural world grants you protection against some of its dangers.
 extraPools: []
+category: class
 classes: [alchemist, druid]
 level: 2

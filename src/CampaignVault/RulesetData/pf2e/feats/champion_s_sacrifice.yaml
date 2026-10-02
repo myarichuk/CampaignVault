@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: "you aren't unholy"
 mechanicalSummary: You can suffer so that others might live.
 extraPools: []
+category: class
 classes: [champion]
 level: 12

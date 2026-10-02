@@ -5,5 +5,6 @@ name: desperate_finisher
 system: pf2e
 mechanicalSummary: You throw everything you have into one last, reckless press.
 extraPools: []
+category: class
 classes: [fighter]
 level: 14

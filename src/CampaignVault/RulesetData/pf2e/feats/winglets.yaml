@@ -5,4 +5,6 @@ name: winglets
 system: pf2e
 mechanicalSummary: "Through the lingering influence of your warren's patron, you've sprouted a small set of wings."
 extraPools: []
+category: ancestry
+ancestries: [kobold]
 level: 5

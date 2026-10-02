@@ -5,4 +5,6 @@ name: shadow_of_the_wilds
 system: pf2e
 mechanicalSummary: It’s difficult to notice your passage through wild areas.
 extraPools: []
+category: ancestry
+ancestries: [leshy]
 level: 1

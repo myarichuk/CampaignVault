@@ -5,4 +5,6 @@ name: scaly_hide
 system: pf2e
 mechanicalSummary: You were born with a layer of scales across your entire body that resemble those of your draconic progenitor.
 extraPools: []
+category: ancestry
+ancestries: [dragonblood]
 level: 1

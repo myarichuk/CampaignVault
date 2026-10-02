@@ -4,7 +4,11 @@
 name: furious_bully
 system: pf2e
 prerequisite: Master in Athletics
+prerequisites:
+  - { skill: Athletics, rank: master }
 mechanicalSummary: You bully foes across the battlefield.
 extraPools: []
+category: class
 classes: [barbarian]
+skills: [Athletics]
 level: 8

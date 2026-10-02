@@ -5,5 +5,6 @@ name: fearsome_brute
 system: pf2e
 mechanicalSummary: Fear makes your foes weak and more vulnerable to your attacks.
 extraPools: []
+category: class
 classes: [fighter]
 level: 10

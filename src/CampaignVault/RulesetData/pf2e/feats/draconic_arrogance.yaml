@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: dragon instinct
 mechanicalSummary: Few can sway you from your goals while the fury of combat fills you.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 1

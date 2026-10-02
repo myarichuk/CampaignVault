@@ -4,7 +4,11 @@
 name: barreling_charge
 system: pf2e
 prerequisite: Trained in Athletics
+prerequisites:
+  - { skill: Athletics, rank: trained }
 mechanicalSummary: You rush forward, moving enemies aside to reach your foe.
 extraPools: []
+category: class
 classes: [barbarian, fighter]
+skills: [Athletics]
 level: 4

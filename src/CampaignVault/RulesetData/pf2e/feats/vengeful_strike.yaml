@@ -4,7 +4,10 @@
 name: vengeful_strike
 system: pf2e
 prerequisite: Come and Get Me
+prerequisites:
+  - { feat: come_and_get_me }
 mechanicalSummary: When struck by an enemy, you respond in turn.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 14

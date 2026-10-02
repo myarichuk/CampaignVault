@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: dragon instinct
 mechanicalSummary: You sprout dragon wings from your back of the same color as your chosen dragon.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 12

@@ -5,4 +5,6 @@ name: deliberate_death
 system: pf2e
 mechanicalSummary: Once, you died because someone—murderer, monster, or soldier— chose to strike you down.
 extraPools: []
+category: ancestry
+ancestries: [duskwalker]
 level: 1

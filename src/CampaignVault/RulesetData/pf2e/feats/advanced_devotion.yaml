@@ -4,6 +4,9 @@
 name: advanced_devotion
 system: pf2e
 prerequisite: Basic Devotion
+prerequisites:
+  - { feat: basic_devotion }
 mechanicalSummary: You gain one champion feat.
 extraPools: []
+category: archetype
 level: 6

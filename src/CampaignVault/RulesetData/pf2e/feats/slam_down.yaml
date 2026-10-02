@@ -4,7 +4,11 @@
 name: slam_down
 system: pf2e
 prerequisite: Trained in Athletics
+prerequisites:
+  - { skill: Athletics, rank: trained }
 mechanicalSummary: You make an attack to knock a foe off balance, then follow up immediately with a sweep to topple them.
 extraPools: []
+category: class
 classes: [fighter]
+skills: [Athletics]
 level: 4

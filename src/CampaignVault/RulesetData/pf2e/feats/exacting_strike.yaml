@@ -5,5 +5,6 @@ name: exacting_strike
 system: pf2e
 mechanicalSummary: You make a controlled follow-up attack, fully accounting for your momentum.
 extraPools: []
+category: class
 classes: [fighter]
 level: 1

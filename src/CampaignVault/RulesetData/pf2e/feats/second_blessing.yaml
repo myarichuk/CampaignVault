@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: blessing of the devoted
 mechanicalSummary: Your continued service grants you another boon.
 extraPools: []
+category: class
 classes: [champion]
 level: 8

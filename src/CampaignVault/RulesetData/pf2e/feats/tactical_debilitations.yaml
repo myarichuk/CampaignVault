@@ -4,7 +4,10 @@
 name: tactical_debilitations
 system: pf2e
 prerequisite: scoundrel racket; Debilitating Strike
+prerequisites:
+  - { classFeature: scoundrel }
 mechanicalSummary: You learn new debilitations that grant you tactical advantages against your foes.
 extraPools: []
+category: class
 classes: [rogue]
 level: 10

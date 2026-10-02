@@ -4,6 +4,10 @@
 name: lie_to_me
 system: pf2e
 prerequisite: Trained in Deception
+prerequisites:
+  - { skill: Deception, rank: trained }
 mechanicalSummary: Use Deception to detect lies
 extraPools: []
+category: skill
+skills: [Deception]
 level: 1

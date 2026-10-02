@@ -4,7 +4,10 @@
 name: imposing_destrier
 system: pf2e
 prerequisite: Loyal Warhorse
+prerequisites:
+  - { feat: loyal_warhorse }
 mechanicalSummary: Under your care, your mount has realized its innate potential.
 extraPools: []
+category: class
 classes: [champion]
 level: 10

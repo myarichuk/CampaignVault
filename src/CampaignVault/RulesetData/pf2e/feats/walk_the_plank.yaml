@@ -4,6 +4,9 @@
 name: walk_the_plank
 system: pf2e
 prerequisite: Pirate Dedication
+prerequisites:
+  - { feat: pirate_dedication }
 mechanicalSummary: You frighten  a foe into moving where you want them, traditionally demanding they walk the plank.
 extraPools: []
+category: archetype
 level: 8

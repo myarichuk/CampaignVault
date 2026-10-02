@@ -4,6 +4,9 @@
 name: magical_scrounger
 system: pf2e
 prerequisite: Magical Crafting; Scrounger Dedication
+prerequisites:
+  - { feat: magical_crafting }
 mechanicalSummary: You can craft a temporary wondrous item using the magic scrounged from all around.
 extraPools: []
+category: archetype
 level: 6

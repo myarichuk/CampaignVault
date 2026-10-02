@@ -5,4 +5,6 @@ name: hag_s_sight
 system: pf2e
 mechanicalSummary: You’ve nurtured the supernatural abilities gifted by your hag mother, particularly your sight.
 extraPools: []
+category: ancestry
+ancestries: [changeling]
 level: 1

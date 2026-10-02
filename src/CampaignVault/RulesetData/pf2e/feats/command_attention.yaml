@@ -4,6 +4,9 @@
 name: command_attention
 system: pf2e
 prerequisite: Celebrity Dedication
+prerequisites:
+  - { feat: celebrity_dedication }
 mechanicalSummary: You command the attention of all around you with style, ensuring their gaze falls only upon you until the end of your next turn.
 extraPools: []
+category: archetype
 level: 10

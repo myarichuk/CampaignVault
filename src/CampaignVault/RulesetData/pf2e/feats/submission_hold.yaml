@@ -4,6 +4,9 @@
 name: submission_hold
 system: pf2e
 prerequisite: Wrestler Dedication
+prerequisites:
+  - { feat: wrestler_dedication }
 mechanicalSummary: Your iron grip saps your opponent’s strength.
 extraPools: []
+category: archetype
 level: 8

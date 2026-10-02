@@ -4,6 +4,9 @@
 name: second_shield
 system: pf2e
 prerequisite: Viking Dedication
+prerequisites:
+  - { feat: viking_dedication }
 mechanicalSummary: "You're used to your shield breaking in the middle of battle, and you're prepared to use a backup or any convenient nearby object to defend yourself."
 extraPools: []
+category: archetype
 level: 6

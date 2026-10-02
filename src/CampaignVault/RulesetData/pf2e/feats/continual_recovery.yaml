@@ -4,6 +4,10 @@
 name: continual_recovery
 system: pf2e
 prerequisite: Expert in Medicine
+prerequisites:
+  - { skill: Medicine, rank: expert }
 mechanicalSummary: Treat Wounds on a patient more often
 extraPools: []
+category: skill
+skills: [Medicine]
 level: 2

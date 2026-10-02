@@ -4,7 +4,12 @@
 name: studious_capacity
 system: pf2e
 prerequisite: enigma muse; Legendary in Occultism
+prerequisites:
+  - { classFeature: enigma }
+  - { skill: Occultism, rank: legendary }
 mechanicalSummary: Your continued study of occult magic has increased your magical capacity, allowing you to cast spells even when it seems impossible.
 extraPools: []
+category: class
 classes: [bard]
+skills: [Occultism]
 level: 16

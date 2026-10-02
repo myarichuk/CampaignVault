@@ -4,6 +4,10 @@
 name: skittering_scuttle
 system: pf2e
 prerequisite: Goblin Scuttle
+prerequisites:
+  - { feat: goblin_scuttle }
 mechanicalSummary: You can scuttle farther and faster when maneuvering alongside allies.
 extraPools: []
+category: ancestry
+ancestries: [goblin]
 level: 9

@@ -4,6 +4,10 @@
 name: tactical_cadence
 system: pf2e
 prerequisite: Cadence Call; Marshal Dedication
+prerequisites:
+  - { feat: cadence_call }
+  - { feat: marshal_dedication }
 mechanicalSummary: Your remarkable breath control and concise instructions allow you to coordinate your allies more effectively, even in desperate situations.
 extraPools: []
+category: archetype
 level: 14

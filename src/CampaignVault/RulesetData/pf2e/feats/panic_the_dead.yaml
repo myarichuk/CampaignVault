@@ -5,5 +5,6 @@ name: panic_the_dead
 system: pf2e
 mechanicalSummary: Vitality strikes terror in the undead.
 extraPools: []
+category: class
 classes: [cleric]
 level: 2

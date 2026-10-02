@@ -4,6 +4,9 @@
 name: advanced_poisoncraft
 system: pf2e
 prerequisite: Poisoner Dedication
+prerequisites:
+  - { feat: poisoner_dedication }
 mechanicalSummary: You can create up to 6 poisons per day with advanced alchemy.
 extraPools: []
+category: archetype
 level: 6

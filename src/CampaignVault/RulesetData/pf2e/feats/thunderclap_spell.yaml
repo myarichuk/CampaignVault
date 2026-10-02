@@ -4,7 +4,10 @@
 name: thunderclap_spell
 system: pf2e
 prerequisite: storm order
+prerequisites:
+  - { classFeature: storm }
 mechanicalSummary: Your lightning splits the air, generating a booming shock wave.
 extraPools: []
+category: class
 classes: [druid]
 level: 10

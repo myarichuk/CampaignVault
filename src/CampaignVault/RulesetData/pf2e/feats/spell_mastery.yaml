@@ -5,5 +5,6 @@ name: spell_mastery
 system: pf2e
 mechanicalSummary: You have mastered a handful of spells to such a degree that you can cast them even if you haven’t prepared them in advance.
 extraPools: []
+category: class
 classes: [wizard]
 level: 20

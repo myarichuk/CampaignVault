@@ -5,4 +5,5 @@ name: adopted_ancestry
 system: pf2e
 mechanicalSummary: Gain access to ancestry feats from another ancestry
 extraPools: []
+category: general
 level: 1

@@ -4,6 +4,10 @@
 name: craft_anything
 system: pf2e
 prerequisite: Legendary in Crafting
+prerequisites:
+  - { skill: Crafting, rank: legendary }
 mechanicalSummary: Ignore most requirements for crafting items
 extraPools: []
+category: skill
+skills: [Crafting]
 level: 15

@@ -5,4 +5,6 @@ name: divine_declaration
 system: pf2e
 mechanicalSummary: You can call forth a holy or unholy word from the realms beyond to punish your foes.
 extraPools: []
+category: ancestry
+ancestries: [nephilim]
 level: 17

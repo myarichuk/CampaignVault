@@ -5,4 +5,6 @@ name: prairie_rider
 system: pf2e
 mechanicalSummary: "You grew up riding your clan's shaggy ponies and riding dogs."
 extraPools: []
+category: ancestry
+ancestries: [halfling]
 level: 1

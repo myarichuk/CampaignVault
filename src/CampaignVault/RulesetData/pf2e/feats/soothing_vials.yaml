@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: chirurgeon research field
 mechanicalSummary: "The healing chemicals in your versatile vials also help calm a patient's mind."
 extraPools: []
+category: class
 classes: [alchemist]
 level: 1

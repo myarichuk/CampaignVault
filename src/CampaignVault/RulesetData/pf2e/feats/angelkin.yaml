@@ -5,4 +5,6 @@ name: angelkin
 system: pf2e
 mechanicalSummary: You descend from an angel, a winged messenger from Nirvana or one of the other celestial realms.
 extraPools: []
+category: ancestry
+ancestries: [nephilim]
 level: 1

@@ -4,6 +4,10 @@
 name: express_rider
 system: pf2e
 prerequisite: Trained in Nature
+prerequisites:
+  - { skill: Nature, rank: trained }
 mechanicalSummary: You can encourage your mount to cover ground quickly.
 extraPools: []
+category: skill
+skills: [Nature]
 level: 1

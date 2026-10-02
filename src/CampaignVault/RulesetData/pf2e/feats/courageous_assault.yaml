@@ -4,7 +4,10 @@
 name: courageous_assault
 system: pf2e
 prerequisite: warrior muse
+prerequisites:
+  - { classFeature: warrior }
 mechanicalSummary: With a mighty shout, you can stir an ally to attack.
 extraPools: []
+category: class
 classes: [bard]
 level: 10

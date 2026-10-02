@@ -4,6 +4,10 @@
 name: pervasive_superstition
 system: pf2e
 prerequisite: Orc Superstition
+prerequisites:
+  - { feat: orc_superstition }
 mechanicalSummary: You steep yourself in superstition and practice ancient orc mental exercises for shrugging off the effects of magic.
 extraPools: []
+category: ancestry
+ancestries: [orc]
 level: 9

@@ -5,5 +5,6 @@ name: tactical_reflexes
 system: pf2e
 mechanicalSummary: You are particularly swift at punishing foes who leave you openings.
 extraPools: []
+category: class
 classes: [fighter]
 level: 10

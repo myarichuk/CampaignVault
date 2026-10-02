@@ -4,6 +4,10 @@
 name: great_tengu_form
 system: pf2e
 prerequisite: Long-Nosed Form
+prerequisites:
+  - { feat: long_nosed_form }
 mechanicalSummary: You take on the imposing form of a large, winged spirit.
 extraPools: []
+category: ancestry
+ancestries: [tengu]
 level: 17

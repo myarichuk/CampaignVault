@@ -5,4 +5,6 @@ name: lifesense
 system: pf2e
 mechanicalSummary: You have a limited ability to sense life force, like your psychopomp forebears.
 extraPools: []
+category: ancestry
+ancestries: [duskwalker]
 level: 5

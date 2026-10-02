@@ -4,7 +4,10 @@
 name: plant_evidence
 system: pf2e
 prerequisite: Pickpocket
+prerequisites:
+  - { feat: pickpocket }
 mechanicalSummary: You can put a single item you’re holding of light or negligible Bulk onto a person without them noticing by succeeding at a Thievery check against their Perception DC.
 extraPools: []
+category: class
 classes: [rogue]
 level: 1

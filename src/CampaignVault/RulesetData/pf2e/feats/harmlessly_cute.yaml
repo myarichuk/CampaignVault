@@ -5,4 +5,6 @@ name: harmlessly_cute
 system: pf2e
 mechanicalSummary: Your size and demeanor make it easy for you to convince others that you mean no harm.
 extraPools: []
+category: ancestry
+ancestries: [leshy]
 level: 1

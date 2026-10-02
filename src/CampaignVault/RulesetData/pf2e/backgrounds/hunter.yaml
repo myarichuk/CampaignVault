@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: hunter
+system: pf2e
+description: "You stalked and took down animals and other creatures of the wild. Skinning animals, harvesting their flesh, and cooking them were also part of your training, all of which can give you useful resources while you adventure."
+boosts: [Dexterity, Wisdom]
+skillProficiencies: [Survival]
+lore: Tanning Lore
+skillFeat: survey_wildlife
+feature: Survey Wildlife

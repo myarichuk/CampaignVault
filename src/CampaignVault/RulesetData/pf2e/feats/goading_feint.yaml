@@ -4,7 +4,11 @@
 name: goading_feint
 system: pf2e
 prerequisite: Trained in Deception
+prerequisites:
+  - { skill: Deception, rank: trained }
 mechanicalSummary: Your tricks make foes overextend their attacks.
 extraPools: []
+category: class
 classes: [swashbuckler]
+skills: [Deception]
 level: 1

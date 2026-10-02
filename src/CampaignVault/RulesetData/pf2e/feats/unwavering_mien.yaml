@@ -5,4 +5,6 @@ name: unwavering_mien
 system: pf2e
 mechanicalSummary: Your mystic control and meditations allow you to resist external influences upon your consciousness.
 extraPools: []
+category: ancestry
+ancestries: [elf]
 level: 1

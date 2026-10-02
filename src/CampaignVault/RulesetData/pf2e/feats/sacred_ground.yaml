@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: harmful font or healing font
 mechanicalSummary: You pray continuously for 1 minute to call a subtle shadow of your deity’s realm over a 30-foot burst centered on you.
 extraPools: []
+category: class
 classes: [cleric]
 level: 4

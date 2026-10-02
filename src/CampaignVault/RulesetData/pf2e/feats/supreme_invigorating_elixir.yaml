@@ -4,7 +4,10 @@
 name: supreme_invigorating_elixir
 system: pf2e
 prerequisite: Invigorating Elixir
+prerequisites:
+  - { feat: invigorating_elixir }
 mechanicalSummary: For the purposes of counteracting effects with invigorating elixirs, treat your level as though it were 2 higher.
 extraPools: []
+category: class
 classes: [alchemist]
 level: 12

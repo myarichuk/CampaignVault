@@ -28,14 +28,20 @@ namespace CampaignVault.UnityClient.UI.Sheet
         private ViewModel _content;
         private bool _isYours;
         private bool _canPlayAs;
+        private bool _canLevelUp;
+        private bool _levelUpReady;
+        private string _levelUpHint = string.Empty;
+        private bool _gainedLevel;
 
-        public SheetPageViewModel(VaultAppState state, VaultController controller, string id)
+        public SheetPageViewModel(VaultAppState state, VaultController controller, string id, Action<string> openLevelUp = null)
         {
             _s = state;
             _c = controller;
             _id = id ?? string.Empty;
             PlayAs = delegate { _c.SetPcId(_id); };
-            Watch(state, StateArea.Pc);
+            LevelUp = delegate { if (openLevelUp != null) { openLevelUp(_id); } };
+            // The menu closed with a level gained: read the sheet again for the new level, scores and features.
+            Watch(state, StateArea.Pc | StateArea.LevelUp);
         }
 
         [CreateProperty] public string Notice { get { return _notice; } private set { Set(ref _notice, value); } }
@@ -45,6 +51,12 @@ namespace CampaignVault.UnityClient.UI.Sheet
         [CreateProperty] public bool IsYours { get { return _isYours; } private set { Set(ref _isYours, value); } }
         [CreateProperty] public bool CanPlayAs { get { return _canPlayAs; } private set { Set(ref _canPlayAs, value); } }
         [CreateProperty] public Action PlayAs { get; private set; }
+        /// <summary>A player character that can gain a level (the XP rule, or the story, says so).</summary>
+        [CreateProperty] public bool CanLevelUp { get { return _canLevelUp; } private set { Set(ref _canLevelUp, value); } }
+        /// <summary>The XP rule says the level is earned: the button is the primary action and the foot says so.</summary>
+        [CreateProperty] public bool LevelUpReady { get { return _levelUpReady; } private set { Set(ref _levelUpReady, value); } }
+        [CreateProperty] public string LevelUpHint { get { return _levelUpHint; } private set { Set(ref _levelUpHint, value); } }
+        [CreateProperty] public Action LevelUp { get; private set; }
 
         public bool Loaded { get { return _loaded; } }
         public bool IsStatBlock { get { return _content is StatBlockViewModel; } }
@@ -77,6 +89,9 @@ namespace CampaignVault.UnityClient.UI.Sheet
 
         public override void Refresh()
         {
+            // The level-up menu finished: fetch the sheet again once.
+            if (_s.LevelUp.Done && _s.LevelUp.CharacterId == _id && !_gainedLevel) { _gainedLevel = true; _c.Run(Load()); }
+            else if (!_s.LevelUp.Done) { _gainedLevel = false; }
             if (_sheet == null)
             {
                 Notice = _loaded ? DisplayText.Plain("Could not load " + _id + ": " + _error) : "Reading the sheet…";
@@ -84,6 +99,9 @@ namespace CampaignVault.UnityClient.UI.Sheet
                 Content = null;
                 IsYours = false;
                 CanPlayAs = false;
+                CanLevelUp = false;
+                LevelUpReady = false;
+                LevelUpHint = string.Empty;
                 return;
             }
             Notice = string.Empty;
@@ -94,6 +112,10 @@ namespace CampaignVault.UnityClient.UI.Sheet
             if (!same) { Content = SheetViewModels.For(_sheet, statBlock); }
             IsYours = yours;
             CanPlayAs = !yours && _sheet.Id.Length > 0;
+            var up = _sheet.LevelUp;
+            CanLevelUp = up != null && up.Possible && (yours || _sheet.IsPc || _sheet.IsCompanion);
+            LevelUpReady = CanLevelUp && up.Ready;
+            LevelUpHint = !CanLevelUp ? string.Empty : up.Ready ? "Earned: " + up.XpLine : up.XpLine;
         }
     }
 }

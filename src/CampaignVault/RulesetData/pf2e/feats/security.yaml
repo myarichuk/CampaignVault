@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: shields of the spirit
 mechanicalSummary: Those you shield can benefit from your lasting protection.
 extraPools: []
+category: class
 classes: [champion]
 level: 4

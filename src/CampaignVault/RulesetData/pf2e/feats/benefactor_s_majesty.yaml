@@ -5,4 +5,6 @@ name: benefactor_s_majesty
 system: pf2e
 mechanicalSummary: "You tap into the grandeur of your warren's benefactor."
 extraPools: []
+category: ancestry
+ancestries: [kobold]
 level: 17

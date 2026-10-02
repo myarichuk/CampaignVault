@@ -4,6 +4,9 @@
 name: a_home_in_every_port
 system: pf2e
 prerequisite: Charisma +3
+prerequisites:
+  - { ability: Charisma, min: 3 }
 mechanicalSummary: "You have a reputation in towns and villages you've visited, and residents are always willing to open their doors to you."
 extraPools: []
+category: general
 level: 11

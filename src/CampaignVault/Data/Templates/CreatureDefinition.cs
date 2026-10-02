@@ -15,6 +15,12 @@ public record CreatureDefinition : RulesetTemplate
     public List<string> Skills { get; init; } = [];
     public List<string> Abilities { get; init; } = [];
 
+    /// <summary>Offered as a party companion template in the character builder.</summary>
+    public bool Companion { get; init; }
+
+    /// <summary>Companions only: the stat block fields (<c>statblocks/companion.yaml</c> keys) the builder copies into a draft.</summary>
+    public Dictionary<string, string> StatBlock { get; init; } = [];
+
     public static CreatureDefinition Merge(CreatureDefinition child, CreatureDefinition parent) =>
         child with
         {
@@ -26,5 +32,7 @@ public record CreatureDefinition : RulesetTemplate
             Defense = child.Defense ?? parent.Defense,
             Skills = child.Skills.Count > 0 ? child.Skills : parent.Skills,
             Abilities = child.Abilities.Count > 0 ? child.Abilities : parent.Abilities,
+            Companion = child.Companion || parent.Companion,
+            StatBlock = child.StatBlock.Count > 0 ? child.StatBlock : parent.StatBlock,
         };
 }

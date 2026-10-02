@@ -4,6 +4,9 @@
 name: clinch_strike
 system: pf2e
 prerequisite: Wrestler Dedication
+prerequisites:
+  - { feat: wrestler_dedication }
 mechanicalSummary: Your opponents can’t slip your grasp without punishment.
 extraPools: []
+category: archetype
 level: 6

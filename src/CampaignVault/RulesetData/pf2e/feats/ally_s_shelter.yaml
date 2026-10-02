@@ -5,4 +5,6 @@ name: ally_s_shelter
 system: pf2e
 mechanicalSummary: "You follow your allies' example."
 extraPools: []
+category: ancestry
+ancestries: [kobold]
 level: 5

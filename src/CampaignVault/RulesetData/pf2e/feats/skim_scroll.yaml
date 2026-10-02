@@ -4,6 +4,9 @@
 name: skim_scroll
 system: pf2e
 prerequisite: Scroll Trickster Dedication
+prerequisites:
+  - { feat: scroll_trickster_dedication }
 mechanicalSummary: You can activate the magic of a scroll with a cursory read as you draw it from your belt.
 extraPools: []
+category: archetype
 level: 8

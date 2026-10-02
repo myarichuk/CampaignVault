@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Dragonscaled Kobold heritage
 mechanicalSummary: As kin to dragonkind, you project unflappable confidence (that collapses catastrophically against the deadliest foes).
 extraPools: []
+category: ancestry
+ancestries: [kobold]
 level: 1

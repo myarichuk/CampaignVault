@@ -4,7 +4,10 @@
 name: shooting_stars_stance
 system: pf2e
 prerequisite: Monastic Weaponry
+prerequisites:
+  - { feat: monastic_weaponry }
 mechanicalSummary: You enter a stance that lets you throw shuriken with lightning speed.
 extraPools: []
+category: class
 classes: [monk]
 level: 2

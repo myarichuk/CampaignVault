@@ -4,7 +4,10 @@
 name: methodical_debilitations
 system: pf2e
 prerequisite: mastermind racket; Debilitating Strike
+prerequisites:
+  - { classFeature: mastermind }
 mechanicalSummary: You strategically craft your debilitations to lessen or negate an enemy’s tactical advantages.
 extraPools: []
+category: class
 classes: [rogue]
 level: 10

@@ -4,6 +4,10 @@
 name: selfless_parry
 system: pf2e
 prerequisite: Dueling Parry (Fighter); Duelist Dedication
+prerequisites:
+  - { feat: dueling_parry_fighter }
+  - { feat: duelist_dedication }
 mechanicalSummary: You protect those near to you with a flash of steel and a stroke of good luck.
 extraPools: []
+category: archetype
 level: 8

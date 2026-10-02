@@ -5,5 +5,6 @@ name: no_escape
 system: pf2e
 mechanicalSummary: You keep pace with a retreating foe.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 2

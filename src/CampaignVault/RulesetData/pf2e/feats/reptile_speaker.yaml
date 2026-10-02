@@ -5,4 +5,6 @@ name: reptile_speaker
 system: pf2e
 mechanicalSummary: You hear the sounds of reptiles as language.
 extraPools: []
+category: ancestry
+ancestries: [lizardfolk]
 level: 1

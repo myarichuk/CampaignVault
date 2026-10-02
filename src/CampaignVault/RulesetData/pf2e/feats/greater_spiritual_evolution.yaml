@@ -4,7 +4,10 @@
 name: greater_spiritual_evolution
 system: pf2e
 prerequisite: Divine Evolution or Occult Evolution
+prerequisites:
+  - { anyOf: [{ feat: divine_evolution }, { feat: occult_evolution }] }
 mechanicalSummary: Your magical blood allows your spells to be fully effective against incorporeal creatures.
 extraPools: []
+category: class
 classes: [sorcerer]
 level: 12

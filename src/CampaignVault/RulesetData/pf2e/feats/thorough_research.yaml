@@ -5,5 +5,6 @@ name: thorough_research
 system: pf2e
 mechanicalSummary: You have comprehensive knowledge in your fields of interest.
 extraPools: []
+category: class
 classes: [investigator]
 level: 6

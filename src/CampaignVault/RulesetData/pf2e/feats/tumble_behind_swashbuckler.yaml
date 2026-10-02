@@ -5,5 +5,6 @@ name: tumble_behind_swashbuckler
 system: pf2e
 mechanicalSummary: Your tumbling puts your foes on the back foot.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 2

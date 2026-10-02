@@ -4,7 +4,10 @@
 name: enigma_s_knowledge
 system: pf2e
 prerequisite: Assured Knowledge
+prerequisites:
+  - { feat: assured_knowledge }
 mechanicalSummary: Your muse whispers knowledge to you at all the right times.
 extraPools: []
+category: class
 classes: [bard]
 level: 12

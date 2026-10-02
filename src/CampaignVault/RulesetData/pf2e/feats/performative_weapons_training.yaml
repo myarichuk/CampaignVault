@@ -4,6 +4,9 @@
 name: performative_weapons_training
 system: pf2e
 prerequisite: Gladiator Dedication
+prerequisites:
+  - { feat: gladiator_dedication }
 mechanicalSummary: "You're skilled with flashy weapons and can use them to great effect."
 extraPools: []
+category: archetype
 level: 6

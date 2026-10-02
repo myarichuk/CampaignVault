@@ -4,7 +4,10 @@
 name: advanced_efficient_alchemy
 system: pf2e
 prerequisite: Efficient Alchemy
+prerequisites:
+  - { feat: efficient_alchemy }
 mechanicalSummary: You make an even-larger batch of alchemical items each morning.
 extraPools: []
+category: class
 classes: [alchemist]
 level: 10

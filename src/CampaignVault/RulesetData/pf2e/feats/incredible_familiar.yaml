@@ -4,7 +4,10 @@
 name: incredible_familiar
 system: pf2e
 prerequisite: Enhanced Familiar
+prerequisites:
+  - { feat: enhanced_familiar }
 mechanicalSummary: Your familiar is imbued with even more magic than other familiars.
 extraPools: []
+category: class
 classes: [thaumaturge, witch]
 level: 8

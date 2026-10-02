@@ -4,6 +4,9 @@
 name: acquired_tolerance
 system: pf2e
 prerequisite: Poisoner Dedication
+prerequisites:
+  - { feat: poisoner_dedication }
 mechanicalSummary: A small amount of poison taken at nonlethal doses, can help the body build up resistance against a more deadly dosage.
 extraPools: []
+category: archetype
 level: 8

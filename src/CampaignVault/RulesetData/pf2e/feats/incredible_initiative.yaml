@@ -5,4 +5,5 @@ name: incredible_initiative
 system: pf2e
 mechanicalSummary: +2 to initiative rolls
 extraPools: []
+category: general
 level: 1

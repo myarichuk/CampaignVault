@@ -4,7 +4,10 @@
 name: greater_security
 system: pf2e
 prerequisite: Security
+prerequisites:
+  - { feat: security }
 mechanicalSummary: Shield in hand, you offer your ally its full protection you do yourself.
 extraPools: []
+category: class
 classes: [champion]
 level: 8

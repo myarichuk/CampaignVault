@@ -4,7 +4,11 @@
 name: underhanded_assault
 system: pf2e
 prerequisite: Trained in Stealth
+prerequisites:
+  - { skill: Stealth, rank: trained }
 mechanicalSummary: You capitalize on the distraction provided by an ally.
 extraPools: []
+category: class
 classes: [rogue]
+skills: [Stealth]
 level: 2

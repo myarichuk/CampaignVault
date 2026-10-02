@@ -4,6 +4,9 @@
 name: incredible_beastmaster_companion
 system: pf2e
 prerequisite: Mature Beastmaster Companion
+prerequisites:
+  - { feat: mature_beastmaster_companion }
 mechanicalSummary: Your mature animal companions continue to grow and develop.
 extraPools: []
+category: archetype
 level: 8

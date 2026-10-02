@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: Opportune Riposte
 mechanicalSummary: Your parries and finishers allow you to riposte with the slightest provocation.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 18

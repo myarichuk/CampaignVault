@@ -4,6 +4,10 @@
 name: trick_magic_item
 system: pf2e
 prerequisite: Trained in Arcana, Trained in Nature, Trained in Occultism, or Trained in Religion
+prerequisites:
+  - { anyOf: [{ skill: Arcana, rank: trained }, { skill: Nature, rank: trained }, { skill: Occultism, rank: trained }, { skill: Religion, rank: trained }] }
 mechanicalSummary: Activate a magic item you normally can’t activate
 extraPools: []
+category: skill
+skills: [Arcana, Nature, Occultism, Religion]
 level: 1

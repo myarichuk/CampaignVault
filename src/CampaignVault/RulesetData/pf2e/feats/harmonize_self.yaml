@@ -4,7 +4,10 @@
 name: harmonize_self
 system: pf2e
 prerequisite: Qi Spells
+prerequisites:
+  - { feat: qi_spells }
 mechanicalSummary: You can restore your health by tapping into your qi.
 extraPools: []
+category: class
 classes: [monk]
 level: 4

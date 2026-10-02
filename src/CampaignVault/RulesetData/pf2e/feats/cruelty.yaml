@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: touch of the void
 mechanicalSummary: "The harm you deal with your corrupting touch saps the strength from your enemy's body."
 extraPools: []
+category: class
 classes: [champion]
 level: 4

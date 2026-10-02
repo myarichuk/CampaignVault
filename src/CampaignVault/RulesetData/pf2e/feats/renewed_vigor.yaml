@@ -5,5 +5,6 @@ name: renewed_vigor
 system: pf2e
 mechanicalSummary: Through the haze of battle, you quickly recover your raging vigor.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 8

@@ -4,6 +4,10 @@
 name: terrifying_resistance
 system: pf2e
 prerequisite: Expert in Intimidation
+prerequisites:
+  - { skill: Intimidation, rank: expert }
 mechanicalSummary: The spells of those you have Demoralized are less effective on you.
 extraPools: []
+category: skill
+skills: [Intimidation]
 level: 2

@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: oracular clarity
 mechanicalSummary: Your mystery grants you access to deep reserves of truly miraculous divine power.
 extraPools: []
+category: class
 classes: [oracle]
 level: 20

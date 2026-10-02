@@ -5,4 +5,6 @@ name: alchemical_scholar
 system: pf2e
 mechanicalSummary: You gain the Alchemical Crafting feat.
 extraPools: []
+category: ancestry
+ancestries: [hobgoblin]
 level: 1

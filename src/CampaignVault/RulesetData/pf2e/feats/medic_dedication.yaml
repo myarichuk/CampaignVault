@@ -4,6 +4,11 @@
 name: medic_dedication
 system: pf2e
 prerequisite: Battle Medicine; Trained in Medicine
+prerequisites:
+  - { feat: battle_medicine }
+  - { skill: Medicine, rank: trained }
 mechanicalSummary: You become an expert in Medicine.
 extraPools: []
+category: archetype
+skills: [Medicine]
 level: 2

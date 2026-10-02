@@ -4,6 +4,10 @@
 name: reverse_engineering
 system: pf2e
 prerequisite: Scrounger Dedication; Expert in Crafting
+prerequisites:
+  - { skill: Crafting, rank: expert }
 mechanicalSummary: Your nigh-constant tinkering and fiddling with objects means you are able to reverse engineer items into formulas more effectively than most.
 extraPools: []
+category: skill
+skills: [Crafting]
 level: 4

@@ -4,7 +4,11 @@
 name: cloud_step
 system: pf2e
 prerequisite: Legendary in Acrobatics
+prerequisites:
+  - { skill: Acrobatics, rank: legendary }
 mechanicalSummary: Using fantastic acrobatic skill, you can walk for brief stretches across insubstantial surfaces.
 extraPools: []
+category: class
 classes: [rogue]
+skills: [Acrobatics]
 level: 16

@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Grimspawn, Pitborn, or Hellspawn, or another lineage feat associated with fiends or the Maelstrom
 mechanicalSummary: Like many fiends, you have the supernatural ability to teleport yourself to safety.
 extraPools: []
+category: ancestry
+ancestries: [nephilim]
 level: 13

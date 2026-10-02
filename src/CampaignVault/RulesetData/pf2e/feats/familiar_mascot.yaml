@@ -4,6 +4,9 @@
 name: familiar_mascot
 system: pf2e
 prerequisite: Familiar Master Dedication
+prerequisites:
+  - { feat: familiar_master_dedication }
 mechanicalSummary: When selecting master abilities, you can choose an ally to benefit from any specific master ability.
 extraPools: []
+category: archetype
 level: 4

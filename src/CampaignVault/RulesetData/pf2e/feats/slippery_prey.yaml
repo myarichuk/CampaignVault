@@ -4,6 +4,10 @@
 name: slippery_prey
 system: pf2e
 prerequisite: Trained in Athletics or Trained in Acrobatics
+prerequisites:
+  - { anyOf: [{ skill: Athletics, rank: trained }, { skill: Acrobatics, rank: trained }] }
 mechanicalSummary: "You're able to escape bonds more easily than others."
 extraPools: []
+category: skill
+skills: [Acrobatics, Athletics]
 level: 2

@@ -6,4 +6,5 @@ system: pf2e
 prerequisite: trained in a skill with the Recall Knowledge action
 mechanicalSummary: Learn true and erroneous knowledge on failed check
 extraPools: []
+category: skill
 level: 1

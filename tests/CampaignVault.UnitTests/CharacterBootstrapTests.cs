@@ -442,6 +442,55 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task LevelUpChangeHandler_AppliesPicks_BeforeHitPoints_AndRefusesBadOnesWhole()
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var keys = new CampaignDocumentKeys();
+        await session.StoreAsync(new CampaignConfig { Id = keys.Config("level-up-picks"), ActiveSystem = RulesetSystem.Dnd5e }, TestContext.Current.CancellationToken);
+        var hild = new Character
+        {
+            Id = "chars/level-up-picks",
+            Name = "Hild",
+            IsPc = true,
+            CampaignName = "level-up-picks",
+            MaxHp = 28,
+            CurrentHp = 28,
+            ClassLevel = "Human Fighter 3",
+            SystemStats = new Dnd5eExtension { Constitution = 15, Strength = 16, HitDie = "d10", Level = 3 },
+        };
+        await session.StoreAsync(hild, TestContext.Current.CancellationToken);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var planner = CampaignVault.UnitTests.LevelUpPlannerTests.Create(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "cv-lvl-" + Guid.NewGuid().ToString("N")));
+        var (_, _, _, _, initializer) = RulesetDataTestHelper.CreateServices();
+        var handler = new LevelUpChangeHandler(keys, BootstrapTestHelper.CreateOrchestrator(), initializer, planner);
+
+        var refused = CreateContext(session, "level-up-picks", []);
+        refused.RegisterNewCharacter(hild);
+        var bad = await handler.ApplyAsync(
+            new LevelUpChange { CharacterId = hild.Id, Picks = new() { ["4.asiOrFeat"] = ["Strength", "Strength", "Strength"] } },
+            refused, TestContext.Current.CancellationToken);
+        Assert.False(bad.Success);
+        Assert.Equal(28, hild.MaxHp);
+        Assert.Equal(3, ((Dnd5eExtension)hild.SystemStats!).Level);
+        Assert.Equal(15, ((Dnd5eExtension)hild.SystemStats!).Constitution);
+
+        var ctx = CreateContext(session, "level-up-picks", []);
+        ctx.RegisterNewCharacter(hild);
+        var ok = await handler.ApplyAsync(
+            new LevelUpChange { CharacterId = hild.Id, Picks = new() { ["4.asiOrFeat"] = ["Constitution", "Strength"] } },
+            ctx, TestContext.Current.CancellationToken);
+
+        Assert.True(ok.Success);
+        var stats = (Dnd5eExtension)hild.SystemStats!;
+        Assert.Equal(4, stats.Level);
+        Assert.Equal(16, stats.Constitution);
+        Assert.Equal(17, stats.Strength);
+        // Average d10 (6) + the new Constitution modifier (+3): the improvement counted for this level's hit points.
+        Assert.Equal(28 + 6 + 3, hild.MaxHp);
+    }
+
+    [Fact]
     public async Task LevelUpChangeHandler_Warns_WhenNoRulesetStepsApply()
     {
         using var session = _fixture.Store.OpenAsyncSession();

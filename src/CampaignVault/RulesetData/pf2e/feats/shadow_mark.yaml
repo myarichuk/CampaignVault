@@ -4,6 +4,10 @@
 name: shadow_mark
 system: pf2e
 prerequisite: Expert in Stealth
+prerequisites:
+  - { skill: Stealth, rank: expert }
 mechanicalSummary: You have learned special tricks that help you follow individuals without them noticing you.
 extraPools: []
+category: skill
+skills: [Stealth]
 level: 2

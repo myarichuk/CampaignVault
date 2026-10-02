@@ -4,6 +4,9 @@
 name: target_of_opportunity
 system: pf2e
 prerequisite: Marshal Dedication
+prerequisites:
+  - { feat: marshal_dedication }
 mechanicalSummary: You capitalize on your ally’s attack and use the opportunity to secure a blow of your own, adding to the oncoming barrage.
 extraPools: []
+category: archetype
 level: 14

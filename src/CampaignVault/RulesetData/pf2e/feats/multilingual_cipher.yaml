@@ -4,6 +4,11 @@
 name: multilingual_cipher
 system: pf2e
 prerequisite: Linguist Dedication; Expert in Society
+prerequisites:
+  - { feat: linguist_dedication }
+  - { skill: Society, rank: expert }
 mechanicalSummary: You use multiple languages to create and break codes.
 extraPools: []
+category: skill
+skills: [Society]
 level: 4

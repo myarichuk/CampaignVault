@@ -5,4 +5,6 @@ name: iruxi_armaments
 system: pf2e
 mechanicalSummary: Your weapons are those you were born with.
 extraPools: []
+category: ancestry
+ancestries: [lizardfolk]
 level: 1

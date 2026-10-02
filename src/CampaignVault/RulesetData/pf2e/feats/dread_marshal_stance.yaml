@@ -4,6 +4,11 @@
 name: dread_marshal_stance
 system: pf2e
 prerequisite: Marshal Dedication; Trained in Intimidation
+prerequisites:
+  - { feat: marshal_dedication }
+  - { skill: Intimidation, rank: trained }
 mechanicalSummary: Putting on a grim face for the battle ahead, you encourage your allies to strike fear into their foes with vicious attacks.
 extraPools: []
+category: archetype
+skills: [Intimidation]
 level: 4

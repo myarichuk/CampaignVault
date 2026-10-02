@@ -4,6 +4,9 @@
 name: running_tackle
 system: pf2e
 prerequisite: Wrestler Dedication
+prerequisites:
+  - { feat: wrestler_dedication }
 mechanicalSummary: You charge, throwing your body at your foe in a vicious tackle.
 extraPools: []
+category: archetype
 level: 8

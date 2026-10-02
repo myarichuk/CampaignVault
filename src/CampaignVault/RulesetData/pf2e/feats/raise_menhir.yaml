@@ -5,5 +5,6 @@ name: raise_menhir
 system: pf2e
 mechanicalSummary: You raise a druidic monument, such as a standing stone or warding tree, from the ground, creating a powerful primal ward that blocks other types of magic.
 extraPools: []
+category: class
 classes: [druid]
 level: 8

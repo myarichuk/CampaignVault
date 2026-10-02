@@ -64,11 +64,6 @@ internal sealed record DerivedAttack(int ToHit, int Damage, string Note)
                 hitParts.Add($"weapon {Signed(itemBonus)}");
             }
 
-            if (weapon.Ranged && CombatFeatureRules.HasFightingStyle(stats, "archery"))
-            {
-                toHit += 2;
-                hitParts.Add("Archery +2");
-            }
         }
 
         if (!explicitDamageBonus)
@@ -80,11 +75,6 @@ internal sealed record DerivedAttack(int ToHit, int Damage, string Note)
             dmgParts.Add(damageMod != mod ? $"{label} not added (off-hand)" : $"{label} {Signed(mod)}");
             if (offHand && weapon.Known && !weapon.Light)
                 notes.Add("off-hand attacks need a light melee weapon in each hand");
-            if (!weapon.Ranged && !weapon.TwoHanded && weapon.Known && CombatFeatureRules.HasFightingStyle(stats, "dueling"))
-            {
-                damage += 2;
-                dmgParts.Add("Dueling +2");
-            }
         }
 
         return new DerivedAttack(toHit, damage, Describe(explicitBonus, explicitDamageBonus, hitParts, toHit, dmgParts, damage, notes));

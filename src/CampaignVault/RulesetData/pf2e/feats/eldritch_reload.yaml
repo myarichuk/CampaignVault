@@ -4,6 +4,9 @@
 name: eldritch_reload
 system: pf2e
 prerequisite: Eldritch Archer Dedication
+prerequisites:
+  - { feat: eldritch_archer_dedication }
 mechanicalSummary: You integrate your talent for magic into your use of reloading weapons.
 extraPools: []
+category: archetype
 level: 10

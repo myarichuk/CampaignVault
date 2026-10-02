@@ -5,5 +5,6 @@ name: swift_river
 system: pf2e
 mechanicalSummary: You flow like water, avoiding all restraints.
 extraPools: []
+category: class
 classes: [monk]
 level: 18

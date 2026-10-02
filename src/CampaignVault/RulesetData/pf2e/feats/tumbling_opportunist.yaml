@@ -4,6 +4,9 @@
 name: tumbling_opportunist
 system: pf2e
 prerequisite: Acrobat Dedication
+prerequisites:
+  - { feat: acrobat_dedication }
 mechanicalSummary: "You use a burst of stamina to perform a breathtaking feat of Acrobatics as you speed through a foe's space, leaving your foe lying flat on their back."
 extraPools: []
+category: archetype
 level: 10

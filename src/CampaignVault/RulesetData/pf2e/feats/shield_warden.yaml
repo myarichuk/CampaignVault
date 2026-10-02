@@ -4,7 +4,10 @@
 name: shield_warden
 system: pf2e
 prerequisite: Shield Block
+prerequisites:
+  - { feat: shield_block }
 mechanicalSummary: When you have a shield raised, you can use your Shield Block reaction when an attack is made against an ally adjacent to you.
 extraPools: []
+category: class
 classes: [champion, commander, fighter]
 level: 6

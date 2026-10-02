@@ -4,7 +4,10 @@
 name: anthropomorphic_shape
 system: pf2e
 prerequisite: Untamed Form
+prerequisites:
+  - { feat: untamed_form }
 mechanicalSummary: Humanoids’ supposed place apart from animals is folly—taking on their forms just requires some extra practice.
 extraPools: []
+category: class
 classes: [druid]
 level: 4

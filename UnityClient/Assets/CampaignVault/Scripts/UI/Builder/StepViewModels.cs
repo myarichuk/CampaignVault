@@ -46,6 +46,7 @@ namespace CampaignVault.UnityClient.UI.Builder
                 case StepKinds.AbilityScores: return new AbilityStepViewModel(step, controller);
                 case StepKinds.Spells: return new SpellsStepViewModel(step, controller);
                 case StepKinds.Identity: return new IdentityStepViewModel(step, controller);
+                case StepKinds.LevelChoices: return new LevelChoicesStepViewModel(step, controller);
                 default: return new UnsupportedStepViewModel(step);
             }
         }
@@ -87,6 +88,7 @@ namespace CampaignVault.UnityClient.UI.Builder
         private string _description = string.Empty;
         private bool _selected;
         private bool _suggested;
+        private bool _homebrew;
         private bool _full;
         private string _fullHint = string.Empty;
         private bool _visible = true;
@@ -107,6 +109,8 @@ namespace CampaignVault.UnityClient.UI.Builder
         [CreateProperty] public string Description { get { return _description; } private set { Set(ref _description, value); } }
         [CreateProperty] public bool Selected { get { return _selected; } private set { Set(ref _selected, value); } }
         [CreateProperty] public bool Suggested { get { return _suggested; } private set { Set(ref _suggested, value); } }
+        /// <summary>From a plugin or the campaign, not the shipped rules.</summary>
+        [CreateProperty] public bool Homebrew { get { return _homebrew; } private set { Set(ref _homebrew, value); } }
         /// <summary>The step's count is reached and this one isn't picked.</summary>
         [CreateProperty] public bool Full { get { return _full; } private set { Set(ref _full, value); } }
         [CreateProperty] public string FullHint { get { return _fullHint; } private set { Set(ref _fullHint, value); } }
@@ -121,6 +125,7 @@ namespace CampaignVault.UnityClient.UI.Builder
             Description = DisplayText.Plain(option.Description);
             Selected = selected;
             Suggested = suggested;
+            Homebrew = option.Homebrew;
             Full = full;
             FullHint = full ? fullHint : string.Empty;
         }
@@ -264,7 +269,10 @@ namespace CampaignVault.UnityClient.UI.Builder
         }
     }
 
-    /// <summary>One spell list (cantrips, known, prepared) with its count for the class and level.</summary>
+    /// <summary>
+    /// A section of option cards with a count line and a hint (Builder/SpellSection): one spell list (cantrips, known,
+    /// prepared) with its count for the class and level, or one level choice (a subclass, an ability score improvement).
+    /// </summary>
     public sealed class SpellSectionViewModel : ViewModel, IKeyed
     {
         private string _countText = string.Empty;
@@ -359,6 +367,81 @@ namespace CampaignVault.UnityClient.UI.Builder
                         {
                             bool selected = picked.Contains(o.Id);
                             vm.Update(o, selected, b.Suggested.Contains(o.Id), !selected && picked.Count >= count, "You've chosen " + count + ". Drop one to pick this instead.");
+                        });
+                });
+            ShowFilter = total > FilterFrom;
+            ApplyFilter();
+        }
+    }
+
+    /// <summary>
+    /// levelChoices: the class's choices up to the draft's level, one section per slot ("Level 2 · Arcane Tradition"),
+    /// each a set of option cards named "slot-&lt;slot&gt;-&lt;id&gt;". One tap picks (a slot that takes several, like two
+    /// metamagic options, toggles up to its count); an ability score improvement takes one
+    /// ability (+2), two (+1 each) or a feat instead. Like a web form's fieldsets: the same card partial in each.
+    /// </summary>
+    public sealed class LevelChoicesStepViewModel : OptionsStepViewModel
+    {
+        public const string AsiHint = "One ability for +2, two for +1 each, or a feat instead.";
+        public const string FullHint = "You've raised two. Drop one to raise this instead.";
+
+        /// <summary>"Choose two." for a slot that takes several (metamagic, invocations).</summary>
+        public static string PicksHint(int picks) { return "Choose " + CountWord(picks) + "."; }
+
+        /// <summary>"You've chosen two. Drop one to choose this instead."</summary>
+        public static string PicksFullHint(int picks) { return "You've chosen " + CountWord(picks) + ". Drop one to choose this instead."; }
+
+        private static string CountWord(int n)
+        {
+            string[] words = { "one", "two", "three", "four", "five", "six" };
+            return n >= 1 && n <= words.Length ? words[n - 1] : n.ToString();
+        }
+
+        private List<SpellSectionViewModel> _sections = new List<SpellSectionViewModel>();
+
+        public LevelChoicesStepViewModel(BuilderStep step, VaultController controller) : base(step, controller) { }
+
+        public override string Template { get { return "Builder/SpellsStep"; } }
+
+        [CreateProperty] public List<SpellSectionViewModel> Sections { get { return _sections; } private set { SetList(ref _sections, value); } }
+
+        protected override IEnumerable<OptionViewModel> AllOptions()
+        {
+            foreach (var s in _sections) { foreach (var o in s.Options) { yield return o; } }
+        }
+
+        public override void Update(BuilderStep step, BuilderState b)
+        {
+            var opts = Loaded(b);
+            if (opts != null && opts.Slots.Count == 0) { opts = Fail("Nothing to choose at this level.", false); }
+            if (opts == null)
+            {
+                Sections = new List<SpellSectionViewModel>();
+                return;
+            }
+            var picks = LevelChoices.Picks(b.Draft.Get(step.Key));
+            int total = 0;
+            Sections = ItemList.Sync(_sections, opts.Slots, delegate (LevelSlot slot) { return slot.Id; },
+                delegate (LevelSlot slot) { return new SpellSectionViewModel(slot.Id, slot.Title); },
+                delegate (SpellSectionViewModel section, LevelSlot slot)
+                {
+                    List<string> picked;
+                    if (!picks.TryGetValue(slot.Id, out picked)) { picked = new List<string>(); }
+                    var candidates = opts.Options.FindAll(delegate (BuilderOption o) { return o.Group == slot.Id; });
+                    int abilities = picked.FindAll(slot.IsAbility).Count;
+                    section.CountText = LevelChoices.Summary(slot, picked, opts.Options);
+                    bool several = !slot.IsAsi && slot.Picks > 1;
+                    section.Complete = several ? picked.Count >= slot.Picks : picked.Count > 0;
+                    section.Over = false;
+                    section.Hint = slot.IsAsi ? AsiHint : several ? PicksHint(slot.Picks) + (slot.Required ? string.Empty : " Optional.") : slot.Required ? string.Empty : "Optional.";
+                    total += candidates.Count;
+                    section.Options = ItemList.Sync(section.Options, candidates, delegate (BuilderOption o) { return "slot-" + slot.Id + "-" + o.Id; },
+                        delegate (BuilderOption o) { return new OptionViewModel("slot-" + slot.Id + "-" + o.Id, o, delegate (OptionViewModel vm) { Run(Controller.BuilderLevelPick(Step.Key, slot, vm.Option.Id)); }); },
+                        delegate (OptionViewModel vm, BuilderOption o)
+                        {
+                            bool selected = Contains(picked, o.Id);
+                            bool full = !selected && (slot.IsAsi ? slot.IsAbility(o.Id) && abilities >= 2 : several && picked.Count >= slot.Picks);
+                            vm.Update(o, selected, b.Suggested.Contains(o.Id), full, slot.IsAsi ? FullHint : PicksFullHint(slot.Picks));
                         });
                 });
             ShowFilter = total > FilterFrom;
@@ -573,22 +656,53 @@ namespace CampaignVault.UnityClient.UI.Builder
         }
     }
 
-    /// <summary>One stat-block field of a companion's identity step, named "stat-&lt;key&gt;".</summary>
+    /// <summary>
+    /// The edits a rows field (a companion's attacks) sends: one cell, a new row, a row taken off. Rows are by position.
+    /// </summary>
+    public sealed class StatRowEdits
+    {
+        public Action<StatFieldViewModel, int, StatBlockColumn, string> Cell;
+        public Action<StatFieldViewModel> Add;
+        public Action<StatFieldViewModel, int> Remove;
+    }
+
+    /// <summary>
+    /// One stat block field: a text box (numbers in a narrow one), or for a list field, a row per entry
+    /// (<see cref="EntryRowViewModel"/>) and the buttons that add one: a skill per name left ("skill-add-&lt;name&gt;"),
+    /// an attack ("attack-add").
+    /// </summary>
     public sealed class StatFieldViewModel : ViewModel, IKeyed
     {
+        /// <summary>The bonus a newly added skill starts at: a low-level proficiency bonus, edited in place.</summary>
+        public const int NewModifier = 2;
+
         private readonly Action<StatFieldViewModel, string> _changed;
+        private readonly Action<StatFieldViewModel, string, string> _entryChanged;
+        private readonly StatRowEdits _rowEdits;
         private string _value = string.Empty;
         private string _seen;
-        private string _groupTitle = string.Empty;
+        private List<EntryRowViewModel> _rows = new List<EntryRowViewModel>();
+        private List<EntryRowViewModel> _header = new List<EntryRowViewModel>();
+        private List<ChoiceViewModel> _addable = new List<ChoiceViewModel>();
 
-        public StatFieldViewModel(StatBlockField field, Action<StatFieldViewModel, string> changed)
+        public StatFieldViewModel(StatBlockField field, Action<StatFieldViewModel, string> changed, Action<StatFieldViewModel, string, string> entryChanged = null, StatRowEdits rowEdits = null)
         {
             Field = field;
             Key = field.Key;
             Name = "stat-" + field.Key;
             Caption = DisplayText.Plain(field.Label.ToUpperInvariant());
-            Hint = field.Type == "int" ? Range(field) : field.Type;
+            IsModifiers = field.Type == StatModifiers.Type;
+            IsRows = field.Type == StatRows.Type;
+            IsCompact = field.Compact;
+            if (field.Type == StatBlockField.ChoiceType)
+            {
+                Combo = new ComboViewModel(Name, "Choose " + DisplayText.Plain(field.Label.ToLowerInvariant()), delegate (string key) { _changed(this, key); });
+            }
+            Hint = field.Hint.Length > 0 ? DisplayText.Plain(field.Hint)
+                : field.Type == "int" ? Range(field.Min, field.Max) : IsModifiers ? "bonus, " + Range(field.Min, field.Max) : field.Type;
             _changed = changed;
+            _entryChanged = entryChanged;
+            _rowEdits = rowEdits;
         }
 
         public string Key { get; private set; }
@@ -596,8 +710,22 @@ namespace CampaignVault.UnityClient.UI.Builder
         [CreateProperty] public string Name { get; private set; }
         [CreateProperty] public string Caption { get; private set; }
         [CreateProperty] public string Hint { get; private set; }
-        /// <summary>The group's caption on the first field of each group.</summary>
-        [CreateProperty] public string GroupTitle { get { return _groupTitle; } set { Set(ref _groupTitle, value); } }
+        [CreateProperty] public bool IsModifiers { get; private set; }
+        [CreateProperty] public bool IsRows { get; private set; }
+        /// <summary>Drawn as rows of entries (skills, attacks) instead of one text box.</summary>
+        [CreateProperty] public bool IsList { get { return IsModifiers || IsRows; } }
+        /// <summary>A choice field's searchable list ("stat-&lt;key&gt;-open", "stat-&lt;key&gt;-&lt;name&gt;"); null for any other field.</summary>
+        [CreateProperty] public ComboViewModel Combo { get; private set; }
+        /// <summary>A plain text box: not a list, not a choice.</summary>
+        [CreateProperty] public bool IsBox { get { return !IsList && Combo == null; } }
+        /// <summary>A narrow box that sits beside its neighbours (numbers, a challenge rating), not a full-width row.</summary>
+        [CreateProperty] public bool IsCompact { get; private set; }
+        /// <summary>A list field's entries: a skill and its bonus, an attack's cells.</summary>
+        [CreateProperty] public List<EntryRowViewModel> Rows { get { return _rows; } private set { SetList(ref _rows, value); } }
+        /// <summary>Rows: the column captions, while there is a row to head.</summary>
+        [CreateProperty] public List<EntryRowViewModel> Header { get { return _header; } private set { SetList(ref _header, value); } }
+        /// <summary>What can be added: a button per skill not set yet, or one for another attack (while under the field's most).</summary>
+        [CreateProperty] public List<ChoiceViewModel> Addable { get { return _addable; } private set { SetList(ref _addable, value); } }
 
         [CreateProperty]
         public string Value
@@ -615,13 +743,134 @@ namespace CampaignVault.UnityClient.UI.Builder
             Set(ref _value, value, "Value");
         }
 
-        private static string Range(StatBlockField f)
+        /// <summary>A choice field from state: its list, with the current name picked.</summary>
+        public void ShowChoice(JsonValue current)
         {
-            bool min = f.Min != int.MinValue;
-            bool max = f.Max != int.MaxValue;
-            if (min && max) { return f.Min + "–" + f.Max; }
-            if (min) { return f.Min + " or more"; }
-            if (max) { return "up to " + f.Max; }
+            var options = new List<KeyValuePair<string, string>>();
+            foreach (var k in Field.Keys) { options.Add(new KeyValuePair<string, string>(k, DisplayText.Plain(k))); }
+            Combo.SetOptions(options, current.Kind == JsonKind.String ? current.StringValue : string.Empty);
+        }
+
+        /// <summary>A modifiers field from state: a row per name set (in the field's order, then any it doesn't know), a button per name left.</summary>
+        public void ShowModifiers(JsonValue current)
+        {
+            var set = new List<KeyValuePair<string, JsonValue>>();
+            if (current.Kind == JsonKind.Object) { foreach (var kv in current.ObjectValue) { set.Add(kv); } }
+            set.Sort(delegate (KeyValuePair<string, JsonValue> a, KeyValuePair<string, JsonValue> b) { return Order(a.Key).CompareTo(Order(b.Key)); });
+            Rows = ItemList.Sync(_rows, set, delegate (KeyValuePair<string, JsonValue> kv) { return kv.Key; },
+                delegate (KeyValuePair<string, JsonValue> kv)
+                {
+                    string entry = kv.Key;
+                    string slug = Slug(entry);
+                    var cells = new List<EntryCellViewModel>
+                    {
+                        EntryCellViewModel.Label("name", DisplayText.Plain(entry.ToUpperInvariant()), EntryWidth.Name),
+                        EntryCellViewModel.Input("value", "skill-" + slug, string.Empty, EntryWidth.Narrow, delegate (string text) { _entryChanged(this, entry, text); }),
+                    };
+                    return new EntryRowViewModel(entry, cells, "skill-remove-" + slug, "Take this skill off", delegate { _entryChanged(this, entry, string.Empty); });
+                },
+                delegate (EntryRowViewModel vm, KeyValuePair<string, JsonValue> kv)
+                {
+                    vm.Cell("value").Show(kv.Value.Kind == JsonKind.Number ? ((int)kv.Value.NumberValue).ToString(System.Globalization.CultureInfo.InvariantCulture)
+                        : kv.Value.Kind == JsonKind.String ? kv.Value.StringValue : string.Empty);
+                });
+            var left = Field.Keys.FindAll(delegate (string k) { return current.Kind != JsonKind.Object || current.Get(k).Kind == JsonKind.Null; });
+            Addable = ItemList.Sync(_addable, left, delegate (string k) { return k; },
+                delegate (string k)
+                {
+                    return new ChoiceViewModel(k, DisplayText.Plain(k), "add", true,
+                        delegate { _entryChanged(this, k, NewModifier.ToString(System.Globalization.CultureInfo.InvariantCulture)); }, "skill-add-" + Slug(k));
+                },
+                delegate (ChoiceViewModel vm, string k) { });
+        }
+
+        /// <summary>
+        /// A rows field from state (a list, or a template's text): a row per entry with a box per column, named
+        /// "&lt;item&gt;-&lt;n&gt;-&lt;column&gt;" from 1 ("attack-1-damage"), the column captions over them, and an add button
+        /// ("attack-add") while there are fewer than the field's most.
+        /// </summary>
+        public void ShowRows(JsonValue current)
+        {
+            var list = StatRows.From(Field, current);
+            var entries = new List<KeyValuePair<int, JsonValue>>();
+            if (list.Kind == JsonKind.Array) { for (int i = 0; i < list.ArrayValue.Count; i++) { entries.Add(new KeyValuePair<int, JsonValue>(i, list.ArrayValue[i])); } }
+            string item = Slug(Field.Item.Length > 0 ? Field.Item : Field.Key);
+            Rows = ItemList.Sync(_rows, entries, delegate (KeyValuePair<int, JsonValue> e) { return (e.Key + 1).ToString(System.Globalization.CultureInfo.InvariantCulture); },
+                delegate (KeyValuePair<int, JsonValue> e)
+                {
+                    int index = e.Key;
+                    string n = (index + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    var cells = new List<EntryCellViewModel>();
+                    for (int c = 0; c < Field.Columns.Count; c++)
+                    {
+                        var column = Field.Columns[c];
+                        cells.Add(EntryCellViewModel.Input(column.Key, item + "-" + n + "-" + Slug(column.Key), ColumnHint(column), ColumnWidth(c),
+                            delegate (string text) { if (_rowEdits != null) { _rowEdits.Cell(this, index, column, text); } }));
+                    }
+                    return new EntryRowViewModel(n, cells, item + "-remove-" + n, "Take this " + (Field.Item.Length > 0 ? Field.Item : "row") + " off",
+                        delegate { if (_rowEdits != null) { _rowEdits.Remove(this, index); } });
+                },
+                delegate (EntryRowViewModel vm, KeyValuePair<int, JsonValue> e)
+                {
+                    foreach (var column in Field.Columns) { vm.Cell(column.Key).Show(StatRows.Show(column, e.Value.Get(column.Key))); }
+                });
+            if (entries.Count == 0) { Header = new List<EntryRowViewModel>(); }
+            else if (_header.Count == 0)
+            {
+                var captions = new List<EntryCellViewModel>();
+                for (int c = 0; c < Field.Columns.Count; c++)
+                {
+                    captions.Add(EntryCellViewModel.Label(Field.Columns[c].Key, DisplayText.Plain(Field.Columns[c].Label.ToUpperInvariant()), ColumnWidth(c)));
+                }
+                Header = new List<EntryRowViewModel> { EntryRowViewModel.Header(captions) };
+            }
+            var adds = new List<string>();
+            if (entries.Count < Field.Max) { adds.Add("add"); }
+            Addable = ItemList.Sync(_addable, adds, delegate (string k) { return k; },
+                delegate (string k)
+                {
+                    return new ChoiceViewModel(k, DisplayText.Plain("Add " + (Field.Item.Length > 0 ? Field.Item : "row")), "add", true,
+                        delegate { if (_rowEdits != null) { _rowEdits.Add(this); } }, item + "-add");
+                },
+                delegate (ChoiceViewModel vm, string k) { });
+        }
+
+        /// <summary>The first column is the row's name; a number is narrow; the last text column takes the rest of the row.</summary>
+        private EntryWidth ColumnWidth(int c)
+        {
+            var column = Field.Columns[c];
+            if (column.Type == "int") { return EntryWidth.Narrow; }
+            if (c > 0 && c == Field.Columns.Count - 1 && column.Type == "text") { return EntryWidth.Wide; }
+            return EntryWidth.Medium;
+        }
+
+        private static string ColumnHint(StatBlockColumn column)
+        {
+            if (column.Type == "int") { return "+3"; }
+            if (column.Type == "dice") { return "1d6+2 piercing"; }
+            return column.Required ? column.Label.ToLowerInvariant() : "optional";
+        }
+
+        private int Order(string name)
+        {
+            int i = Field.Keys.IndexOf(name);
+            return i < 0 ? int.MaxValue : i;
+        }
+
+        public static string Slug(string name)
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (char c in name.ToLowerInvariant()) { sb.Append(char.IsLetterOrDigit(c) ? c : '-'); }
+            return sb.ToString().Trim('-');
+        }
+
+        private static string Range(int min, int max)
+        {
+            bool hasMin = min != int.MinValue;
+            bool hasMax = max != int.MaxValue;
+            if (hasMin && hasMax) { return min + "–" + max; }
+            if (hasMin) { return min + " or more"; }
+            if (hasMax) { return "up to " + max; }
             return "a number";
         }
     }
@@ -642,9 +891,23 @@ namespace CampaignVault.UnityClient.UI.Builder
         private string _seenLook;
         private string _schemaError = string.Empty;
         private bool _hasSchema;
-        private List<StatFieldViewModel> _stats = new List<StatFieldViewModel>();
+        private string _schemaTitle = string.Empty;
+        private List<StatGroupViewModel> _groups = new List<StatGroupViewModel>();
+        private readonly Dictionary<string, StatFieldViewModel> _fields = new Dictionary<string, StatFieldViewModel>(StringComparer.Ordinal);
+        private readonly ComboViewModel _templateCombo;
+        private bool _hasTemplates;
+        private string _template = string.Empty;
 
-        public IdentityStepViewModel(BuilderStep step, VaultController controller) : base(step, controller) { }
+        public IdentityStepViewModel(BuilderStep step, VaultController controller) : base(step, controller)
+        {
+            _templateCombo = new ComboViewModel("template", "Choose a creature to start from", delegate (string id)
+            {
+                _template = id;
+                foreach (var o in _offered) { if (o.Id == id) { Run(Controller.BuilderApplyTemplate(Step.Key, o)); } }
+            });
+        }
+
+        private List<BuilderOption> _offered = new List<BuilderOption>();
 
         public override string Template { get { return "Builder/IdentityStep"; } }
 
@@ -671,7 +934,13 @@ namespace CampaignVault.UnityClient.UI.Builder
 
         [CreateProperty] public string SchemaError { get { return _schemaError; } private set { Set(ref _schemaError, value); } }
         [CreateProperty] public bool HasSchema { get { return _hasSchema; } private set { Set(ref _hasSchema, value); } }
-        [CreateProperty] public List<StatFieldViewModel> Stats { get { return _stats; } private set { SetList(ref _stats, value); } }
+        /// <summary>The schema's caption over its fields: "STAT BLOCK" for a companion, "NATURE" for a Narrative character.</summary>
+        [CreateProperty] public string SchemaTitle { get { return _schemaTitle; } private set { Set(ref _schemaTitle, value ?? string.Empty); } }
+        /// <summary>The templates the step offers to start the stat block from (a companion's archetypes): a searchable list, "template-open" then "template-&lt;name&gt;".</summary>
+        [CreateProperty] public ComboViewModel TemplateCombo { get { return _templateCombo; } }
+        [CreateProperty] public bool HasTemplates { get { return _hasTemplates; } private set { Set(ref _hasTemplates, value); } }
+        /// <summary>The stat block's fields in runs of the same group, each run under its group's caption.</summary>
+        [CreateProperty] public List<StatGroupViewModel> Groups { get { return _groups; } private set { SetList(ref _groups, value); } }
 
         private void Commit(string name, string concept, string look)
         {
@@ -694,19 +963,98 @@ namespace CampaignVault.UnityClient.UI.Builder
             }
             SchemaError = step.Schema.Length > 0 && schema == null ? DisplayText.Plain("The server didn't send the '" + step.Schema + "' stat block.") : string.Empty;
             HasSchema = schema != null;
-            if (schema == null) { Stats = new List<StatFieldViewModel>(); return; }
+            SchemaTitle = schema != null ? DisplayText.Plain(schema.Title.ToUpperInvariant()) : string.Empty;
+            if (schema == null) { Groups = new List<StatGroupViewModel>(); _fields.Clear(); _offered = new List<BuilderOption>(); HasTemplates = false; return; }
+            StepOptions offered;
+            var templates = b.Options.TryGetValue(step.Key, out offered) ? offered.Options : new List<BuilderOption>();
+            _offered = templates;
+            HasTemplates = templates.Count > 0;
+            var labels = new List<KeyValuePair<string, string>>();
+            foreach (var o in templates) { labels.Add(new KeyValuePair<string, string>(o.Id, DisplayText.Plain(o.Label))); }
+            _templateCombo.SetOptions(labels, _template);
             var values = d.Get(step.Key);
-            string group = null;
-            Stats = ItemList.Sync(_stats, schema.Fields, delegate (StatBlockField f) { return f.Key; },
-                delegate (StatBlockField f) { return new StatFieldViewModel(f, delegate (StatFieldViewModel vm, string text) { Run(Controller.BuilderStatField(Step.Key, vm.Field, text)); }); },
-                delegate (StatFieldViewModel vm, StatBlockField f)
+            var runs = new List<KeyValuePair<string, List<StatBlockField>>>();
+            foreach (var f in schema.Fields)
+            {
+                if (runs.Count == 0 || runs[runs.Count - 1].Value[0].Group != f.Group)
                 {
-                    bool starts = f.Group.Length > 0 && f.Group != group;
-                    if (starts) { group = f.Group; }
-                    vm.GroupTitle = starts ? DisplayText.Plain(f.Group.ToUpperInvariant()) : string.Empty;
-                    var current = values.Get(f.Key);
-                    vm.Show(current.Kind == JsonKind.Number ? ((int)current.NumberValue).ToString() : current.Kind == JsonKind.String ? current.StringValue : string.Empty);
+                    runs.Add(new KeyValuePair<string, List<StatBlockField>>(runs.Count + ":" + f.Group, new List<StatBlockField>()));
+                }
+                runs[runs.Count - 1].Value.Add(f);
+            }
+            var live = new HashSet<string>(StringComparer.Ordinal);
+            Groups = ItemList.Sync(_groups, runs, delegate (KeyValuePair<string, List<StatBlockField>> r) { return r.Key; },
+                delegate (KeyValuePair<string, List<StatBlockField>> r) { return new StatGroupViewModel(r.Key); },
+                delegate (StatGroupViewModel g, KeyValuePair<string, List<StatBlockField>> r)
+                {
+                    string title = r.Value[0].Group;
+                    g.Title = title.Length > 0 ? DisplayText.Plain(title.ToUpperInvariant()) : string.Empty;
+                    var fields = new List<StatFieldViewModel>();
+                    foreach (var f in r.Value)
+                    {
+                        live.Add(f.Key);
+                        StatFieldViewModel vm;
+                        if (!_fields.TryGetValue(f.Key, out vm) || vm.Field.Type != f.Type || vm.IsCompact != f.Compact)
+                        {
+                            vm = new StatFieldViewModel(f,
+                                delegate (StatFieldViewModel v, string text) { Run(Controller.BuilderStatField(Step.Key, v.Field, text)); },
+                                delegate (StatFieldViewModel v, string entry, string text) { Run(Controller.BuilderStatModifier(Step.Key, v.Field, entry, text)); },
+                                new StatRowEdits
+                                {
+                                    Cell = delegate (StatFieldViewModel v, int row, StatBlockColumn column, string text) { Run(Controller.BuilderStatRowCell(Step.Key, v.Field, row, column, text)); },
+                                    Add = delegate (StatFieldViewModel v) { Run(Controller.BuilderStatRowAdd(Step.Key, v.Field)); },
+                                    Remove = delegate (StatFieldViewModel v, int row) { Run(Controller.BuilderStatRowRemove(Step.Key, v.Field, row)); },
+                                });
+                            _fields[f.Key] = vm;
+                        }
+                        var current = values.Get(f.Key);
+                        if (vm.Combo != null) { vm.ShowChoice(current); }
+                        else if (vm.IsModifiers) { vm.ShowModifiers(current); }
+                        else if (vm.IsRows) { vm.ShowRows(current); }
+                        else { vm.Show(StatBoxText.Of(current)); }
+                        fields.Add(vm);
+                    }
+                    g.SetFields(fields);
                 });
+            foreach (var key in new List<string>(_fields.Keys)) { if (!live.Contains(key)) { _fields.Remove(key); } }
+        }
+    }
+
+    /// <summary>A text box's value: a number, text, or (a list field the DM filled as a list) its entries joined by commas.</summary>
+    internal static class StatBoxText
+    {
+        public static string Of(JsonValue current)
+        {
+            if (current.Kind == JsonKind.Number) { return ((int)current.NumberValue).ToString(System.Globalization.CultureInfo.InvariantCulture); }
+            if (current.Kind == JsonKind.String) { return current.StringValue; }
+            if (current.Kind != JsonKind.Array) { return string.Empty; }
+            var parts = new List<string>();
+            foreach (var e in current.ArrayValue) { if (e.Kind == JsonKind.String && e.StringValue.Trim().Length > 0) { parts.Add(e.StringValue.Trim()); } }
+            return string.Join(", ", parts);
+        }
+    }
+
+    /// <summary>A run of stat block fields of one group: its caption, then the fields, the compact ones side by side.</summary>
+    public sealed class StatGroupViewModel : ViewModel, IKeyed
+    {
+        private string _title = string.Empty;
+        private List<StatFieldViewModel> _fields = new List<StatFieldViewModel>();
+
+        public StatGroupViewModel(string key) { Key = key; }
+
+        public string Key { get; private set; }
+        [CreateProperty] public string Title { get { return _title; } set { Set(ref _title, value ?? string.Empty); } }
+        [CreateProperty] public List<StatFieldViewModel> Fields { get { return _fields; } private set { SetList(ref _fields, value); } }
+
+        public void SetFields(List<StatFieldViewModel> fields)
+        {
+            if (fields.Count == _fields.Count)
+            {
+                bool same = true;
+                for (int i = 0; i < fields.Count && same; i++) { same = ReferenceEquals(fields[i], _fields[i]); }
+                if (same) { return; }
+            }
+            Fields = fields;
         }
     }
 }

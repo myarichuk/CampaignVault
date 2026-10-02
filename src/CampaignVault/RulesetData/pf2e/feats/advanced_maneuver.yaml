@@ -4,6 +4,9 @@
 name: advanced_maneuver
 system: pf2e
 prerequisite: Basic Maneuver
+prerequisites:
+  - { feat: basic_maneuver }
 mechanicalSummary: You gain a fighter feat.
 extraPools: []
+category: archetype
 level: 6

@@ -5,4 +5,6 @@ name: hyena_familiar
 system: pf2e
 mechanicalSummary: Hyenas serve kholo as pets and trackers.
 extraPools: []
+category: ancestry
+ancestries: [kholo]
 level: 1

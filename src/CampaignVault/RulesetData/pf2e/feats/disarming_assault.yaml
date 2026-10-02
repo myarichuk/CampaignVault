@@ -4,7 +4,11 @@
 name: disarming_assault
 system: pf2e
 prerequisite: Trained in Athletics
+prerequisites:
+  - { skill: Athletics, rank: trained }
 mechanicalSummary: "You attack with enough force to knock the weapon out of your foe's hands."
 extraPools: []
+category: class
 classes: [barbarian]
+skills: [Athletics]
 level: 8

@@ -5,4 +5,6 @@ name: squad_tactics
 system: pf2e
 mechanicalSummary: You are adept at working with your allies to surround an enemy.
 extraPools: []
+category: ancestry
+ancestries: [hobgoblin]
 level: 9

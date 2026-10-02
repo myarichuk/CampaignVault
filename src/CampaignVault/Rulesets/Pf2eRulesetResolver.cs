@@ -27,7 +27,10 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         RaceDefinitionProvider? raceProvider = null,
         SpellDefinitionProvider? spellDefinitionProvider = null,
         CreatureDefinitionProvider? creatureDefinitionProvider = null,
-        RollModifierPipeline? rollModifiers = null)
+        RollModifierPipeline? rollModifiers = null,
+        ClassDefinitionProvider? classProvider = null,
+        BackgroundDefinitionProvider? backgroundProvider = null,
+        ProgressionDefinitionProvider? progressionProvider = null)
     {
         if (rollModifiers is not null)
             Pipeline = rollModifiers;
@@ -38,6 +41,9 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         var profStep = new Pf2eDeriveProficiencyStep();
         var spellStep = new Pf2eDeriveSpellcastingStep();
         List<IBootstrapStep> steps = raceProvider != null ? [new Pf2eDeriveAncestryStep(raceProvider)] : [];
+        // Ancestry, class and background before HP and proficiency, which derive from what it sets.
+        if (raceProvider != null || classProvider != null || backgroundProvider != null)
+            steps.Add(new Pf2eDeriveOriginStep(raceProvider, classProvider, backgroundProvider, progressionProvider));
         steps.AddRange([hpStep, new Pf2eDeriveDefenseStep(), profStep, spellStep]);
         _bootstrap = new CharacterBootstrapPipeline(
             steps,

@@ -143,6 +143,13 @@
     white-space: normal; flex-shrink: 1; max-width: 100%;
 }
 
+.cv-feature-texts { flex-direction: column; }
+.cv-feature-text {
+    margin: 0 0 6px 0; padding: 0;
+    font-size: var(--fs-md); color: var(--text-1);
+    white-space: normal;
+}
+
 /* gear */
 .cv-gear { flex-direction: row; align-items: center; padding: 5px 0; border-bottom-width: 1px; border-color: var(--line-faint); }
 .cv-gear .cv-icon { width: 18px; height: 18px; margin-right: 10px; -unity-background-image-tint-color: var(--gold-dim); }

@@ -4,6 +4,9 @@
 name: surprise_attack
 system: pf2e
 prerequisite: Assassin Dedication
+prerequisites:
+  - { feat: assassin_dedication }
 mechanicalSummary: You act before foes can react.
 extraPools: []
+category: archetype
 level: 4

@@ -4,6 +4,9 @@
 name: tumbling_strike
 system: pf2e
 prerequisite: Acrobat Dedication
+prerequisites:
+  - { feat: acrobat_dedication }
 mechanicalSummary: You deftly dive through a gap left by a foe to deliver an advantageous blow.
 extraPools: []
+category: archetype
 level: 8

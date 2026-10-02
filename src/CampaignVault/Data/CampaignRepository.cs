@@ -2226,6 +2226,68 @@ public class CampaignRepository
         return result;
     }
 
+    /// <summary>
+    /// Saves a campaign's homebrew subclass, ancestry or named power. The YAML is read as the template it claims to be and
+    /// must name itself; the document id is built from kind, system and name, so saving the same name again replaces it.
+    /// </summary>
+    public async Task<HomebrewTemplate> UpsertHomebrewTemplateAsync(
+        IAsyncDocumentSession session, HomebrewTemplateUpsertRequest request, string system, string? campaignName = null)
+    {
+        var (name, problems) = HomebrewTemplates.Check(request.Kind, request.Yaml);
+        var kind = HomebrewKinds.Canonical(request.Kind)!;
+        if (problems.Count == 0 && kind == HomebrewKinds.ClassOption
+            && HomebrewTemplates.ClassOf(request.Yaml) is { } className
+            && _classProvider.GetClassesForSystem(system).Count > 0
+            && !_classProvider.TryResolveClass(system, className, out _))
+        {
+            problems = [$"No {system} class matches '{className}'. Name one the ruleset has."];
+        }
+
+        if (problems.Count > 0)
+            throw new ArgumentException("Homebrew not saved: " + string.Join(" ", problems));
+
+        var effective = ResolveCampaign(campaignName);
+        var id = HomebrewTemplates.Id(effective, kind, system, name!);
+        var existing = await session.LoadAsync<HomebrewTemplate>(id);
+        if (existing != null && !IsVisibleInCampaign(existing.CampaignName, effective))
+            throw new ArgumentException($"Homebrew '{name}' already belongs to another campaign.");
+
+        var result = existing ?? new HomebrewTemplate { Id = id };
+        result.Kind = kind;
+        result.System = system;
+        result.Name = name!;
+        result.Yaml = request.Yaml;
+        result.CampaignName = effective;
+        result.LastUpdated = DateTime.UtcNow;
+        if (request.IsArchived.HasValue)
+            result.IsArchived = request.IsArchived.Value;
+        if (existing == null)
+            await session.StoreAsync(result);
+        return result;
+    }
+
+    /// <summary>The homebrew a campaign offers (archived ones left out), as the template providers read it (<see cref="HomebrewScope"/>).</summary>
+    public async Task<HomebrewSnapshot?> GetHomebrewSnapshotAsync(IAsyncDocumentSession session, string campaignName)
+    {
+        var effective = ResolveCampaign(campaignName);
+        var documents = await session.Query<HomebrewTemplate>()
+            .Where(h => h.CampaignName == effective)
+            .Customize(x => x.WaitForNonStaleResults())
+            .Take(512)
+            .ToListAsync();
+        var entries = documents
+            .Where(h => !h.IsArchived)
+            .OrderBy(h => h.Id, StringComparer.Ordinal)
+            .Select(h => new HomebrewEntry(h.System, h.Kind, h.Yaml))
+            .ToList();
+        // The campaign's own feats and spells join them, so the builder offers them (tagged homebrew) and the rules find them.
+        var feats = (await session.Query<CustomFeat>().Where(f => f.CampaignName == effective).Customize(x => x.WaitForNonStaleResults()).Take(512).ToListAsync())
+            .Where(f => !f.IsArchived).OrderBy(f => f.Id, StringComparer.Ordinal).Select(HomebrewTemplates.AsTemplate).ToList();
+        var spells = (await session.Query<CustomSpell>().Where(sp => sp.CampaignName == effective).Customize(x => x.WaitForNonStaleResults()).Take(512).ToListAsync())
+            .Where(sp => !sp.IsArchived).OrderBy(sp => sp.Id, StringComparer.Ordinal).Select(HomebrewTemplates.AsTemplate).ToList();
+        return entries.Count + feats.Count + spells.Count == 0 ? null : new HomebrewSnapshot(effective, entries, feats, spells);
+    }
+
     public async Task<List<Location>> SuggestLocationsAsync(IAsyncDocumentSession session, string nameQuery,
         string? campaignName = null)
     {
@@ -3269,6 +3331,7 @@ public class CampaignRepository
         deleted += await DeleteWhereAsync<Lore>(session, effective, c => c.CampaignName == effective, ct);
         deleted += await DeleteWhereAsync<CustomSpell>(session, effective, c => c.CampaignName == effective, ct);
         deleted += await DeleteWhereAsync<CustomFeat>(session, effective, c => c.CampaignName == effective, ct);
+        deleted += await DeleteWhereAsync<HomebrewTemplate>(session, effective, c => c.CampaignName == effective, ct);
         deleted += await DeleteWhereAsync<CustomCreature>(session, effective, c => c.CampaignName == effective, ct);
         deleted += await DeleteWhereAsync<SessionLog>(session, effective, c => c.CampaignName == effective, ct);
         deleted += await DeleteWhereAsync<GuidanceLedger>(session, effective, c => c.CampaignName == effective, ct);

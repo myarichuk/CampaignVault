@@ -4,7 +4,10 @@
 name: versatile_performance
 system: pf2e
 prerequisite: polymath muse
+prerequisites:
+  - { classFeature: polymath }
 mechanicalSummary: You can rely on the grandeur of your performances rather than ordinary social skills.
 extraPools: []
+category: class
 classes: [bard]
 level: 1

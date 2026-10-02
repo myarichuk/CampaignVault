@@ -4,7 +4,10 @@
 name: eternal_composition
 system: pf2e
 prerequisite: maestro muse
+prerequisites:
+  - { classFeature: maestro }
 mechanicalSummary: The world is a stage upon which you are always playing.
 extraPools: []
+category: class
 classes: [bard]
 level: 18

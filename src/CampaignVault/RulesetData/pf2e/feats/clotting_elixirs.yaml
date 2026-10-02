@@ -5,5 +5,6 @@ name: clotting_elixirs
 system: pf2e
 mechanicalSummary: "Your restorative concoctions have a clotting effect on the drinker's blood."
 extraPools: []
+category: class
 classes: [alchemist]
 level: 2

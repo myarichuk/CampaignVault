@@ -5,4 +5,6 @@ name: remorseless_lash
 system: pf2e
 mechanicalSummary: "You're skilled at beating an enemy when their morale is already breaking."
 extraPools: []
+category: ancestry
+ancestries: [hobgoblin]
 level: 1

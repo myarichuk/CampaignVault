@@ -4,6 +4,10 @@
 name: cloud_jump
 system: pf2e
 prerequisite: Legendary in Athletics
+prerequisites:
+  - { skill: Athletics, rank: legendary }
 mechanicalSummary: Jump impossible distances
 extraPools: []
+category: skill
+skills: [Athletics]
 level: 15

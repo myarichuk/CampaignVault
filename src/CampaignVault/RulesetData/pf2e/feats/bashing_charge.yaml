@@ -4,7 +4,11 @@
 name: bashing_charge
 system: pf2e
 prerequisite: Trained in Athletics
+prerequisites:
+  - { skill: Athletics, rank: trained }
 mechanicalSummary: You smash, bust, and charge through solid obstacles without hesitation.
 extraPools: []
+category: class
 classes: [barbarian]
+skills: [Athletics]
 level: 2

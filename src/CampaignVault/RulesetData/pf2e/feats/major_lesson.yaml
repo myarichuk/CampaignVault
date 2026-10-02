@@ -5,5 +5,6 @@ name: major_lesson
 system: pf2e
 mechanicalSummary: Your patron grants you even greater secrets.
 extraPools: []
+category: class
 classes: [witch]
 level: 10

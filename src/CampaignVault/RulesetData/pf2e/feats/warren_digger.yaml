@@ -5,4 +5,6 @@ name: warren_digger
 system: pf2e
 mechanicalSummary: "You've learned to put your sturdy claws to work digging through the earth."
 extraPools: []
+category: ancestry
+ancestries: [ratfolk]
 level: 13

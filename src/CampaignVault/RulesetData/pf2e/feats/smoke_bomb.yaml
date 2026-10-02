@@ -5,5 +5,6 @@ name: smoke_bomb
 system: pf2e
 mechanicalSummary: You can add a tarry additive to an alchemical bomb to make it emit smoke.
 extraPools: []
+category: class
 classes: [alchemist]
 level: 2

@@ -5,4 +5,6 @@ name: form_of_the_bat
 system: pf2e
 mechanicalSummary: You can transform into a harmless bat.
 extraPools: []
+category: ancestry
+ancestries: [dhampir]
 level: 13

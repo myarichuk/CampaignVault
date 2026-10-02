@@ -4,7 +4,10 @@
 name: tiger_slash
 system: pf2e
 prerequisite: Tiger Stance
+prerequisites:
+  - { feat: tiger_stance }
 mechanicalSummary: You make a fierce swipe with both hands.
 extraPools: []
+category: class
 classes: [monk]
 level: 6

@@ -4,7 +4,10 @@
 name: advanced_domain
 system: pf2e
 prerequisite: Domain Initiate
+prerequisites:
+  - { feat: domain_initiate }
 mechanicalSummary: Your prayers have unlocked deeper secrets of your deity’s domain.
 extraPools: []
+category: class
 classes: [cleric]
 level: 8

@@ -11,6 +11,7 @@ levels:
     features:
       - name: "Unarmored Defense"
         description: "AC = 10 + Dex mod + Wis mod (unarmored, no shield)."
+        unarmoredArmorClass: { base: 10, abilities: [Dexterity, Wisdom] }
       - name: "Martial Arts"
         description: "Dex for unarmed/monk weapons. 1d4 damage (scales). Bonus action unarmed strike."
   2:
@@ -33,18 +34,19 @@ levels:
               - id: openHand
                 label: "Way of the Open Hand"
                 description: "Open hand technique, wholeness of body, tranquility, quivering palm."
-              - id: shadow
-                label: "Way of Shadow"
-                description: "Shadow arts, darkness, shadow step, cloaked in shadows, opportunist."
-              - id: fourElements
-                label: "Way of the Four Elements"
-                description: "Disciple of the elements, elemental disciplines."
-              - id: longDeath
-                label: "Way of the Long Death"
-                description: "Touch of death, hour of reaping, master of death, touch of the long death."
-              - id: sunSoul
-                label: "Way of the Sun Soul"
-                description: "Radiant sun bolt, searing sunburst, sun shield, searing arc strike."
+                features:
+                  3:
+                    - name: "Open Hand Technique"
+                      description: "When a Flurry of Blows attack hits, you can impose one of: a Dexterity save or knocked prone; a Strength save or pushed up to 15 ft. away; or no reactions until the end of your next turn."
+                  6:
+                    - name: "Wholeness of Body"
+                      description: "Once per long rest, as an action, regain hit points equal to three times your monk level."
+                  11:
+                    - name: "Tranquility"
+                      description: "At the end of a long rest you gain the effect of a sanctuary spell until your next long rest (it can end early as the spell does). Save DC 8 + Wisdom modifier + proficiency bonus."
+                  17:
+                    - name: "Quivering Palm"
+                      description: "When an unarmed strike hits, spend 3 ki to set lethal vibrations in the target for your monk level in days. Later, as an action, end them: the target makes a Constitution save, dropping to 0 hit points on a failure and taking 10d10 necrotic damage on a success."
       - name: "Deflect Missiles"
         description: "Reaction to reduce ranged damage by 1d10+Dex+lvl. Catch and throw back if 0."
   4:
@@ -141,8 +143,8 @@ levels:
   17:
     proficiencyBonus: 6
     features:
-      - name: "Quivering Palm"
-        description: "Spend 3 ki: target Con save or take 10d10 necrotic. Or 5d10 on success."
+      - name: "Monastic Tradition Feature"
+        description: "Gain a feature from your monastic tradition."
   18:
     proficiencyBonus: 6
     features:

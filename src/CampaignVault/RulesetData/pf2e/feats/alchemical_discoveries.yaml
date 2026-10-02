@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: alchemical sciences methodology
 mechanicalSummary: "You've devoted extra time in the lab to improve your knowledge of alchemy."
 extraPools: []
+category: class
 classes: [investigator]
 level: 4

@@ -4,7 +4,10 @@
 name: knowledge_of_shapes
 system: pf2e
 prerequisite: Reach Spell or Widen Spell
+prerequisites:
+  - { anyOf: [{ feat: reach_spell }, { feat: widen_spell }] }
 mechanicalSummary: "Inspiration lets you surpass your preconceptions of your spells' limits."
 extraPools: []
+category: class
 classes: [oracle]
 level: 4

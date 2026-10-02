@@ -6,4 +6,5 @@ system: pf2e
 prerequisite: Ritualist Dedication
 mechanicalSummary: You can cast difficult rituals  that might otherwise be just beyond your skill.
 extraPools: []
+category: skill
 level: 6

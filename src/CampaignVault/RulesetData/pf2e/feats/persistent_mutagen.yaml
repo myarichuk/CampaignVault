@@ -4,7 +4,10 @@
 name: persistent_mutagen
 system: pf2e
 prerequisite: Extend Elixir
+prerequisites:
+  - { feat: extend_elixir }
 mechanicalSummary: "You've trained your physical form to remain stable."
 extraPools: []
+category: class
 classes: [alchemist]
 level: 16

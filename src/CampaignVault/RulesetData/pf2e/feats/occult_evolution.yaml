@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: bloodline that grants occult spells
 mechanicalSummary: You draw power from the obscure secrets of the universe.
 extraPools: []
+category: class
 classes: [sorcerer]
 level: 4

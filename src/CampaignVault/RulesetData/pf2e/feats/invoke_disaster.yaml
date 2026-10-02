@@ -4,7 +4,10 @@
 name: invoke_disaster
 system: pf2e
 prerequisite: Wind Caller
+prerequisites:
+  - { feat: wind_caller }
 mechanicalSummary: You can invoke nature’s fury upon your foes.
 extraPools: []
+category: class
 classes: [druid]
 level: 18

@@ -4,6 +4,9 @@
 name: scout_s_speed
 system: pf2e
 prerequisite: Scout Dedication
+prerequisites:
+  - { feat: scout_dedication }
 mechanicalSummary: You move faster, especially when traveling, allowing you to scout out ahead and report back without slowing your allies.
 extraPools: []
+category: archetype
 level: 6

@@ -10,10 +10,13 @@ using Raven.Client.Documents.Session;
 namespace CampaignVault.Rulesets;
 
 /// <summary>What feat effects did to one roll: the added bonus and the reasons to print.</summary>
-internal sealed record FeatEffectFold(int Bonus, IReadOnlyList<string> Notes)
+internal sealed record FeatEffectFold(int Bonus, IReadOnlyList<string> Notes, bool Advantage = false, bool Disadvantage = false)
 {
     public static readonly FeatEffectFold None = new(0, []);
 }
+
+/// <summary>Dice a feat effect adds to a hit, with where they came from and their type.</summary>
+internal sealed record ExtraDamageRoll(string Source, string Dice, string? DamageType);
 
 /// <summary>
 /// Declarative feat effects: validation, plugin/mode gating, resolving which effects are live for a character, and folding
@@ -22,7 +25,7 @@ internal sealed record FeatEffectFold(int Bonus, IReadOnlyList<string> Notes)
 /// </summary>
 internal static class FeatEffectRules
 {
-    private static readonly string[] WeaponConditions = ["ranged", "melee", "finesse", "twohanded", "heavy"];
+    private static readonly string[] WeaponConditions = ["ranged", "melee", "onehanded", "finesse", "twohanded", "heavy"];
 
     /// <summary>Empty when the effects are well-formed; otherwise one message per problem.</summary>
     public static IReadOnlyList<string> Validate(IEnumerable<FeatEffect>? effects)
@@ -35,19 +38,28 @@ internal static class FeatEffectRules
             var at = $"effects[{index}]";
             if (!FeatEffectKinds.All.Contains(e.Kind, StringComparer.OrdinalIgnoreCase))
                 errors.Add($"{at}: unknown kind '{e.Kind}' (allowed: {string.Join(", ", FeatEffectKinds.All)}). For anything else set adjudicated=true and describe it in mechanicalSummary.");
-            if (e.Value == 0)
+            var kind = e.Kind.ToLowerInvariant();
+            var valueless = FeatEffectKinds.Valueless.Contains(e.Kind, StringComparer.OrdinalIgnoreCase);
+            if (!valueless && e.Value == 0)
                 errors.Add($"{at}: value must be non-zero.");
+            if (kind == "critrange" && e.Value is < 15 or > 20)
+                errors.Add($"{at}: critRange value is the lowest natural d20 that crits, 15 to 20.");
+            if (kind is "advantage" or "disadvantage" && e.On is not ("attack" or "check" or "save"))
+                errors.Add($"{at}: {e.Kind} needs on: attack, check or save.");
+            if (kind == "extradamage" && !System.Text.RegularExpressions.Regex.IsMatch(e.Dice ?? "", @"^\d+d\d+$"))
+                errors.Add($"{at}: extraDamage needs dice like '1d8'.");
+            if (kind == "resistance" && string.IsNullOrWhiteSpace(e.DamageType))
+                errors.Add($"{at}: resistance needs a damageType.");
             if (e.BonusType is not null && !FeatBonusTypes.All.Contains(e.BonusType, StringComparer.OrdinalIgnoreCase))
                 errors.Add($"{at}: unknown bonusType '{e.BonusType}' (allowed: {string.Join(", ", FeatBonusTypes.All)}).");
             foreach (var w in e.Weapon.Where(w => !WeaponConditions.Contains(CombatFeatureRules.Norm(w))))
-                errors.Add($"{at}: unknown weapon condition '{w}' (allowed: ranged, melee, finesse, twoHanded, heavy).");
+                errors.Add($"{at}: unknown weapon condition '{w}' (allowed: ranged, melee, oneHanded, finesse, twoHanded, heavy).");
             if (e.Assert.Any(string.IsNullOrWhiteSpace))
                 errors.Add($"{at}: assert flags must be non-empty names.");
             if (e.NeedsAssertion && string.IsNullOrWhiteSpace(e.When))
                 errors.Add($"{at}: an effect with assert flags needs a 'when' sentence so the DM knows what to judge.");
-            if (e.Subject is not null && !e.Kind.Equals(FeatEffectKinds.SkillBonus, StringComparison.OrdinalIgnoreCase)
-                && !e.Kind.Equals(FeatEffectKinds.SaveBonus, StringComparison.OrdinalIgnoreCase))
-                errors.Add($"{at}: subject only applies to skillBonus and saveBonus.");
+            if (e.Subject is not null && kind is not ("skillbonus" or "savebonus" or "advantage" or "disadvantage"))
+                errors.Add($"{at}: subject only applies to skillBonus, saveBonus, advantage and disadvantage.");
         }
 
         return errors;
@@ -89,8 +101,9 @@ internal static class FeatEffectRules
     }
 
     /// <summary>
-    /// The effects live for each character now: SRD/YAML feats overlaid by homebrew CustomFeat of the same name, filtered by
-    /// plugin/mode. Homebrew is read straight from the index (like the casting gate) to avoid a repository dependency cycle.
+    /// The effects live for each character now: SRD/YAML feats overlaid by homebrew CustomFeat of the same name, then the
+    /// class features and picked options of its progression (<paramref name="progressions"/>), filtered by plugin/mode.
+    /// Homebrew is read straight from the index (like the casting gate) to avoid a repository dependency cycle.
     /// </summary>
     public static async Task<Dictionary<string, List<ActiveFeatEffect>>> ResolveAsync(
         IAsyncDocumentSession session,
@@ -98,17 +111,20 @@ internal static class FeatEffectRules
         string system,
         IEnumerable<Character> characters,
         string? campaignName,
-        IReadOnlyCollection<string> activeModeIds)
+        IReadOnlyCollection<string> activeModeIds,
+        ProgressionDefinitionProvider? progressions = null)
     {
         var result = new Dictionary<string, List<ActiveFeatEffect>>(StringComparer.OrdinalIgnoreCase);
-        var involved = characters.Where(c => KnownFeatNames(c.SystemStats).Count > 0).ToList();
+        var involved = characters.Where(c => KnownFeatNames(c.SystemStats).Count > 0 || progressions is not null).ToList();
         if (involved.Count == 0)
             return result;
 
         var catalog = await CatalogAsync(session, featProvider, system, campaignName);
         foreach (var character in involved)
         {
-            var live = new List<ActiveFeatEffect>();
+            var live = CharacterClassFeatures.Effects(character, system, progressions)
+                .Where(a => IsAvailable(a.Effect.Requires, activeModeIds))
+                .ToList();
             foreach (var name in KnownFeatNames(character.SystemStats).Select(CombatFeatureRules.Norm).Distinct())
             {
                 if (!catalog.TryGetValue(name, out var feat) || !IsAvailable(feat.Requires, activeModeIds))
@@ -155,13 +171,20 @@ internal static class FeatEffectRules
 
     // ---- folding into a roll --------------------------------------------------------------------------------------
 
-    private static string? RollKindOf(string kind) => kind.ToLowerInvariant() switch
+    private static string? RollKindOf(FeatEffect e) => e.Kind.ToLowerInvariant() switch
     {
         "attackbonus" => RollKinds.Attack,
         "damagebonus" => RollKinds.Damage,
         "skillbonus" => RollKinds.Check,
         "savebonus" => RollKinds.Save,
         "armorclassbonus" => RollKinds.ArmorClass,
+        "advantage" or "disadvantage" => e.On?.ToLowerInvariant() switch
+        {
+            "attack" => RollKinds.Attack,
+            "check" => RollKinds.Check,
+            "save" => RollKinds.Save,
+            _ => null,
+        },
         _ => null,
     };
 
@@ -178,6 +201,7 @@ internal static class FeatEffectRules
     {
         "ranged" => weapon.Ranged,
         "melee" => weapon.Known && !weapon.Ranged,
+        "onehanded" => weapon.Known && !weapon.TwoHanded,
         "finesse" => weapon.Finesse,
         "twohanded" => weapon.TwoHanded,
         "heavy" => weapon.Heavy,
@@ -197,29 +221,33 @@ internal static class FeatEffectRules
         var applied = new List<ActiveFeatEffect>();
         var notes = new List<string>();
         var toggleUsed = false;
+        bool advantage = false, disadvantage = false;
 
         foreach (var live in effects)
         {
             var e = live.Effect;
-            if (RollKindOf(e.Kind) != rollKind)
+            if (RollKindOf(e) != rollKind)
                 continue;
             if (e.Subject is not null && StatusEffectModifierProvider.Normalize(e.Subject) != StatusEffectModifierProvider.Normalize(subject))
                 continue;
-            if (!WeaponMatches(e, weapon))
+            if (!Applies(live, action, weapon, asserted, notes))
                 continue;
-            if (e.Toggle is not null && !IsTrue(action, e.Toggle))
-                continue;
-
-            var missing = e.Assert.Where(a => !asserted.Contains(CombatFeatureRules.Norm(a))).ToList();
-            if (missing.Count > 0)
-            {
-                notes.Add($"{live.FeatName} {Signed(e.Value)} not applied: needs assert={string.Join(",", missing)}"
-                    + (string.IsNullOrWhiteSpace(e.When) ? "" : $" ({e.When})"));
-                continue;
-            }
 
             toggleUsed |= e.Toggle is not null;
-            applied.Add(live);
+            if (e.Kind.Equals(FeatEffectKinds.Advantage, StringComparison.OrdinalIgnoreCase))
+            {
+                advantage = true;
+                notes.Add($"{live.FeatName}: advantage");
+            }
+            else if (e.Kind.Equals(FeatEffectKinds.Disadvantage, StringComparison.OrdinalIgnoreCase))
+            {
+                disadvantage = true;
+                notes.Add($"{live.FeatName}: disadvantage");
+            }
+            else
+            {
+                applied.Add(live);
+            }
         }
 
         if (isActor && rollKind == RollKinds.Attack && IsTrue(action, "powerAttack") && !toggleUsed)
@@ -240,8 +268,79 @@ internal static class FeatEffectRules
             }
         }
 
-        return notes.Count == 0 && total == 0 ? FeatEffectFold.None : new FeatEffectFold(total, notes);
+        return notes.Count == 0 && total == 0 ? FeatEffectFold.None : new FeatEffectFold(total, notes, advantage, disadvantage);
     }
+
+    /// <summary>
+    /// Whether an effect's own conditions hold for this action: weapon conditions, toggle and asserted flags. An effect blocked
+    /// only by a missing assertion adds a note so the DM sees what it could have claimed.
+    /// </summary>
+    private static bool Applies(ActiveFeatEffect live, RulesetAction action, WeaponProfile weapon, HashSet<string> asserted, List<string> notes)
+    {
+        var e = live.Effect;
+        if (!WeaponMatches(e, weapon))
+            return false;
+        if (e.Toggle is not null && !IsTrue(action, e.Toggle))
+            return false;
+
+        var missing = e.Assert.Where(a => !asserted.Contains(CombatFeatureRules.Norm(a))).ToList();
+        if (missing.Count == 0)
+            return true;
+
+        notes.Add($"{live.FeatName} {Describe(e)} not applied: needs assert={string.Join(",", missing)}"
+            + (string.IsNullOrWhiteSpace(e.When) ? "" : $" ({e.When})"));
+        return false;
+    }
+
+    /// <summary>What an effect does, in a few words: "+2", "advantage", "+1d8 radiant".</summary>
+    private static string Describe(FeatEffect e) => e.Kind.ToLowerInvariant() switch
+    {
+        "advantage" or "disadvantage" => e.Kind,
+        "extradamage" => $"+{e.Dice}{(string.IsNullOrWhiteSpace(e.DamageType) ? "" : " " + e.DamageType)}",
+        "critrange" => $"crit on {e.Value}-20",
+        "resistance" => $"resist {e.DamageType}",
+        _ => Signed(e.Value),
+    };
+
+    private static string Listed(FeatEffect e) =>
+        FeatEffectKinds.Valueless.Contains(e.Kind, StringComparer.OrdinalIgnoreCase) || e.Kind.Equals(FeatEffectKinds.CritRange, StringComparison.OrdinalIgnoreCase)
+            ? Describe(e)
+            : $"{Describe(e)} {e.Kind}";
+
+    private static IEnumerable<ActiveFeatEffect> OfKind(IEnumerable<ActiveFeatEffect> effects, string kind) =>
+        effects.Where(a => a.Effect.Kind.Equals(kind, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>The dice the attacker's effects add to this hit (Divine Strike, a sneak-style rider): their conditions hold for the action.</summary>
+    public static IReadOnlyList<ExtraDamageRoll> ExtraDamage(RulesetAction action, IReadOnlyList<ActiveFeatEffect> effects, List<string> notes)
+    {
+        var weapon = WeaponProfile.Read(action);
+        var asserted = Asserted(action);
+        return
+        [
+            .. OfKind(effects, FeatEffectKinds.ExtraDamage)
+                .Where(a => !string.IsNullOrWhiteSpace(a.Effect.Dice) && Applies(a, action, weapon, asserted, notes))
+                .Select(a => new ExtraDamageRoll(a.FeatName, a.Effect.Dice!, a.Effect.DamageType)),
+        ];
+    }
+
+    /// <summary>The lowest natural d20 that is a critical hit for this attack: 20, or lower when an effect widens the range.</summary>
+    public static int CritThreshold(RulesetAction action, IReadOnlyList<ActiveFeatEffect> effects)
+    {
+        var weapon = WeaponProfile.Read(action);
+        var asserted = Asserted(action);
+        var scratch = new List<string>();
+        return OfKind(effects, FeatEffectKinds.CritRange)
+            .Where(a => Applies(a, action, weapon, asserted, scratch))
+            .Select(a => a.Effect.Value)
+            .Append(20)
+            .Min();
+    }
+
+    /// <summary>Whether the target's effects give resistance to the damage type (halves it).</summary>
+    public static bool ResistsDamage(IReadOnlyList<ActiveFeatEffect> targetEffects, string? damageType) =>
+        !string.IsNullOrWhiteSpace(damageType)
+        && OfKind(targetEffects, FeatEffectKinds.Resistance)
+            .Any(a => string.Equals(a.Effect.DamageType, damageType, StringComparison.OrdinalIgnoreCase));
 
     // ---- surfacing ------------------------------------------------------------------------------------------------
 
@@ -255,8 +354,8 @@ internal static class FeatEffectRules
             .Select(g =>
             {
                 var parts = g.Select(a => a.Effect.NeedsAssertion
-                    ? $"assert={string.Join(",", a.Effect.Assert)} when {a.Effect.When} → {Signed(a.Effect.Value)} {a.Effect.Kind}"
-                    : $"parameter {a.Effect.Toggle}=true → {Signed(a.Effect.Value)} {a.Effect.Kind}");
+                    ? $"assert={string.Join(",", a.Effect.Assert)} when {a.Effect.When} → {Listed(a.Effect)}"
+                    : $"parameter {a.Effect.Toggle}=true → {Listed(a.Effect)}");
                 return $"{g.Key} ({characterName}): {string.Join("; ", parts)}";
             });
 

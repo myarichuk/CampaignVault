@@ -4,7 +4,10 @@
 name: untamed_form
 system: pf2e
 prerequisite: untamed order
+prerequisites:
+  - { classFeature: untamed }
 mechanicalSummary: You are one with the wild, always changing and adapting to meet any challenge.
 extraPools: []
+category: class
 classes: [druid]
 level: 1

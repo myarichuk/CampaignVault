@@ -4,6 +4,9 @@
 name: arcane_school_spell
 system: pf2e
 prerequisite: Wizard Dedication
+prerequisites:
+  - { feat: wizard_dedication }
 mechanicalSummary: You gain your school’s initial school spell.
 extraPools: []
+category: archetype
 level: 4

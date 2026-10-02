@@ -4,7 +4,10 @@
 name: dragon_transformation
 system: pf2e
 prerequisite: "Dragon's Rage Wings"
+prerequisites:
+  - { feat: dragon_s_rage_wings }
 mechanicalSummary: You transform into a ferocious Large dragon, gaining the effects of 6th-rank  dragon form  except that you use your own AC and attack modifier, you apply your extra damage from Rage, and the Dragon Breath action uses your class DC.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 16

@@ -6,4 +6,5 @@ system: pf2e
 prerequisite: Ritualist Dedication
 mechanicalSummary: Elegant and expensive components are no replacement for your skill and practice atritual casting.
 extraPools: []
+category: archetype
 level: 14

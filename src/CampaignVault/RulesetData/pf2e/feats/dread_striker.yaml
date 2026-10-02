@@ -5,5 +5,6 @@ name: dread_striker
 system: pf2e
 mechanicalSummary: You capitalize on your enemies’ fear to slip past their defenses.
 extraPools: []
+category: class
 classes: [rogue]
 level: 4

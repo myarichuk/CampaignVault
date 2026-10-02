@@ -4,6 +4,9 @@
 name: play_to_the_crowd
 system: pf2e
 prerequisite: Gladiator Dedication
+prerequisites:
+  - { feat: gladiator_dedication }
 mechanicalSummary: You show off for the crowd.
 extraPools: []
+category: archetype
 level: 4

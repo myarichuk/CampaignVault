@@ -4,6 +4,10 @@
 name: deceptive_worship
 system: pf2e
 prerequisite: Trained in Occultism
+prerequisites:
+  - { skill: Occultism, rank: trained }
 mechanicalSummary: Members of your cult frequently pass themselves off as worshippers of other religions.
 extraPools: []
+category: skill
+skills: [Occultism]
 level: 1

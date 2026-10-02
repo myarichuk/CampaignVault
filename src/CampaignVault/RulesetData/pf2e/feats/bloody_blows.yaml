@@ -5,4 +5,6 @@ name: bloody_blows
 system: pf2e
 mechanicalSummary: Your lethal unarmed attacks leave bloody gouges or cause severe internal bleeding.
 extraPools: []
+category: ancestry
+ancestries: [orc]
 level: 5

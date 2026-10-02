@@ -4,6 +4,11 @@
 name: archaeologist_dedication
 system: pf2e
 prerequisite: Trained in Society; Trained in Thievery
+prerequisites:
+  - { skill: Society, rank: trained }
+  - { skill: Thievery, rank: trained }
 mechanicalSummary: You are a student of peoples and their histories, and are in constant pursuit of knowledge and artifacts from the past.
 extraPools: []
+category: archetype
+skills: [Society, Thievery]
 level: 2

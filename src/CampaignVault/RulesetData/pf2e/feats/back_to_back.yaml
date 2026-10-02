@@ -4,6 +4,9 @@
 name: back_to_back
 system: pf2e
 prerequisite: Marshal Dedication
+prerequisites:
+  - { feat: marshal_dedication }
 mechanicalSummary: You excel at watching your allies’ backs and helping them watch yours.
 extraPools: []
+category: archetype
 level: 8

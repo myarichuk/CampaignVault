@@ -5,5 +5,6 @@ name: warden_s_boon
 system: pf2e
 mechanicalSummary: You point out vulnerabilities present in your hunted prey, granting the benefits listed in Hunt Prey and your hunter’s edge to an ally until the end of their next turn.
 extraPools: []
+category: class
 classes: [ranger]
 level: 8

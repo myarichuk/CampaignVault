@@ -4,7 +4,10 @@
 name: tangled_forest_rake
 system: pf2e
 prerequisite: Tangled Forest Stance
+prerequisites:
+  - { feat: tangled_forest_stance }
 mechanicalSummary: You reposition foes with raking attacks.
 extraPools: []
+category: class
 classes: [monk]
 level: 14

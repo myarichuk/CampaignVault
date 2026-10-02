@@ -4,6 +4,11 @@
 name: scholastic_identification
 system: pf2e
 prerequisite: Archaeologist Dedication; Master in Society
+prerequisites:
+  - { feat: archaeologist_dedication }
+  - { skill: Society, rank: master }
 mechanicalSummary: You have the knowledge needed to understand ancient texts and cultural artifacts.
 extraPools: []
+category: skill
+skills: [Society]
 level: 7

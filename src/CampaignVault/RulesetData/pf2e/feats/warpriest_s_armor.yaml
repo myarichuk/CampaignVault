@@ -4,7 +4,10 @@
 name: warpriest_s_armor
 system: pf2e
 prerequisite: warpriest doctrine
+prerequisites:
+  - { classFeature: warpriest }
 mechanicalSummary: Your training has helped you adapt to ever-heavier armor.
 extraPools: []
+category: class
 classes: [cleric]
 level: 2

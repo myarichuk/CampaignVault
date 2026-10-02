@@ -4,7 +4,10 @@
 name: masterful_warden
 system: pf2e
 prerequisite: Initiate Warden
+prerequisites:
+  - { feat: initiate_warden }
 mechanicalSummary: Your mastery of warden magic increases.
 extraPools: []
+category: class
 classes: [ranger]
 level: 6

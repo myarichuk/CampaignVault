@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: fangs unarmed attack
 mechanicalSummary: "You emulate your vampiric parent's techniques for drawing blood from a victim."
 extraPools: []
+category: ancestry
+ancestries: [dhampir]
 level: 9

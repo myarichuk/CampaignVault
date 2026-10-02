@@ -5,4 +5,6 @@ name: leech_clip
 system: pf2e
 mechanicalSummary: You are trained to capture deserters, or “leeches.” Make a melee Strike with weapon from the flail group.
 extraPools: []
+category: ancestry
+ancestries: [hobgoblin]
 level: 1

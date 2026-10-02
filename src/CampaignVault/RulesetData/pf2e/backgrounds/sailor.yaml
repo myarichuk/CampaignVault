@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: sailor
+system: pf2e
+description: "You heard the call of the sea from a young age. Perhaps you signed onto a merchant’s vessel, joined the navy, or even fell in with a crew of pirates and scalawags."
+boosts: [Strength, Dexterity]
+skillProficiencies: [Athletics]
+lore: Sailing Lore
+skillFeat: underwater_marauder
+feature: Underwater Marauder

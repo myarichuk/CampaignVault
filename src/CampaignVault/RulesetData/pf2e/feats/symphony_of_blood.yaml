@@ -5,4 +5,6 @@ name: symphony_of_blood
 system: pf2e
 mechanicalSummary: You call forth the blood of your foes to grant you vigor.
 extraPools: []
+category: ancestry
+ancestries: [dhampir]
 level: 17

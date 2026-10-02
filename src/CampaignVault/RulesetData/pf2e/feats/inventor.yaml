@@ -4,6 +4,10 @@
 name: inventor
 system: pf2e
 prerequisite: Expert in Crafting
+prerequisites:
+  - { skill: Crafting, rank: expert }
 mechanicalSummary: Use Crafting to create item formulas
 extraPools: []
+category: skill
+skills: [Crafting]
 level: 2

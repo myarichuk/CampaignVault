@@ -4,7 +4,12 @@
 name: swift_tracker
 system: pf2e
 prerequisite: Expert in Survival; Experienced Tracker
+prerequisites:
+  - { skill: Survival, rank: expert }
+  - { feat: experienced_tracker }
 mechanicalSummary: Your keen eyes catch signs of passage even when you’re moving.
 extraPools: []
+category: class
 classes: [ranger]
+skills: [Survival]
 level: 6

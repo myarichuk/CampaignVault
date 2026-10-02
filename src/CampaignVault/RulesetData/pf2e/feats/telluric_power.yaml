@@ -5,4 +5,6 @@ name: telluric_power
 system: pf2e
 mechanicalSummary: You channel strength from the earth beneath your feet to pummel your enemies.
 extraPools: []
+category: ancestry
+ancestries: [dwarf]
 level: 13

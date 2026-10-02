@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: bounty_hunter
+system: pf2e
+description: "Bringing in lawbreakers lined your pockets. Maybe you had an altruistic motive and sought to bring in criminals to make the streets safer, or maybe the coin was motivation enough. Your techniques for hunting down criminals transfer easily to the life of an adventurer."
+boosts: [Strength, Wisdom]
+skillProficiencies: [Survival]
+lore: Legal Lore
+skillFeat: experienced_tracker
+feature: Experienced Tracker

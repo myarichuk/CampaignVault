@@ -17,8 +17,26 @@ namespace CampaignVault.UnityClient.App
     {
         public const string BuilderTool = "character_builder";
 
-        /// <summary>Levels above this need the level-up choices step (phase 8); the stepper stops here until then.</summary>
-        public const int MaxBuilderLevel = 3;
+        /// <summary>
+        /// The highest level the builder builds at for a ruleset, before its recipe has loaded (the party step asks for a
+        /// level first). The server's recipe says the same (maxLevel) and rejects a draft above it. D&amp;D 5e walks every
+        /// level's choices; PF2e stops at 3 until its skill increases and later boosts are steps; Narrative has no levels.
+        /// </summary>
+        public static int MaxBuilderLevelFor(string ruleset)
+        {
+            switch ((ruleset ?? string.Empty).ToLowerInvariant())
+            {
+                case "dnd5e": return 20;
+                case "narrative": return 1;
+                default: return 3;
+            }
+        }
+
+        /// <summary>The builder's level cap: the recipe's once its steps have loaded, else the ruleset's.</summary>
+        public int BuilderMaxLevel
+        {
+            get { return _s.Builder.MaxLevel > 0 ? _s.Builder.MaxLevel : MaxBuilderLevelFor(_s.Builder.System); }
+        }
 
         private readonly Random _dice = new Random();
 
@@ -44,12 +62,15 @@ namespace CampaignVault.UnityClient.App
                 var member = ob.Party.Find(delegate (PartyMember m) { return m.Id == editId; });
                 if (member != null)
                 {
-                    // The draft that built the character, so the builder shows its choices and saves over it.
+                    // The draft that built the character, so the builder shows its choices and saves over it. A DM draft
+                    // under review isn't saved yet: its id is a placeholder, and the commit replaces its card.
                     b.Reset(slug, system, member.Kind);
                     b.ForOnboarding = true;
                     b.Draft = CharacterDraft.FromJson(member.Draft.ToJson());
-                    b.Draft.Id = member.Id;
-                    b.CommittedId = member.Id;
+                    if (member.Pending) { b.Draft.Id = string.Empty; b.PendingKey = member.Id; }
+                    else { b.Draft.Id = member.Id; b.CommittedId = member.Id; }
+                    // The power check compares against the party as it is now, not as it was when this was drafted or built.
+                    if (member.Kind == "companion") { b.Draft.PartyLevel = ob.PartyLevel; }
                     yield return LoadDraftSteps();
                     yield break;
                 }
@@ -74,7 +95,12 @@ namespace CampaignVault.UnityClient.App
             var b = _s.Builder;
             b.Reset(slug, system, string.IsNullOrEmpty(kind) ? "pc" : kind);
             b.ForOnboarding = forOnboarding;
-            if (forOnboarding) { b.Draft.Level = _s.Onboarding.PartyLevel; }
+            if (forOnboarding)
+            {
+                b.Draft.Level = Math.Max(1, Math.Min(_s.Onboarding.PartyLevel, MaxBuilderLevelFor(system)));
+                // A companion starts at the party's level; the server warns when it strays more than one from it.
+                if (b.Draft.Kind == "companion") { b.Draft.PartyLevel = _s.Onboarding.PartyLevel; }
+            }
             yield return LoadDraftSteps();
         }
 
@@ -144,11 +170,34 @@ namespace CampaignVault.UnityClient.App
             b.PreviewCurrent = false;
             var cleared = BuilderDependencies.ClearDependents(b.Draft, step.Key, b.Steps);
             foreach (string dependent in BuilderDependencies.Dependents(step.Key, b.Steps)) { b.Options.Remove(dependent); }
+            DropSpellCounts(b, step.Key);
             if (cleared.Count > 0) { b.ClearedNote = BuilderDependencies.ClearedNote(step, cleared); }
             _s.Notify(StateArea.Builder);
             yield return BuilderSteps();
             yield return BuilderOptions(b.Current);
             yield return BuilderPreview();
+        }
+
+        /// <summary>A levelChoices step: one option of one slot (see <see cref="LevelChoices.Toggle"/>).</summary>
+        public IEnumerator BuilderLevelPick(string key, LevelSlot slot, string optionId)
+        {
+            var b = _s.Builder;
+            var before = b.Draft.Get(key);
+            var after = LevelChoices.Toggle(before, slot, optionId);
+            if (after == before) { yield break; }
+            yield return BuilderChoose(key, after);
+        }
+
+        /// <summary>
+        /// Forgets a spells step's cached options (unless it is the step that changed): its prepared count follows the
+        /// casting ability, which the ability scores and an ability score improvement change without the step reading them.
+        /// </summary>
+        private static void DropSpellCounts(BuilderState b, string changed)
+        {
+            foreach (var step in b.Steps)
+            {
+                if (step.Kind == StepKinds.Spells && !string.Equals(step.Key, changed, StringComparison.OrdinalIgnoreCase)) { b.Options.Remove(step.Key); }
+            }
         }
 
         /// <summary>pickN, feats, allocate: adds or removes one option, never past the step's count.</summary>
@@ -313,13 +362,115 @@ namespace CampaignVault.UnityClient.App
             yield return BuilderChoose(key, value.ObjectValue.Count == 0 ? null : value);
         }
 
-        /// <summary>1 to MaxBuilderLevel. Counts (spells, skills) follow the level, so every step's options reload.</summary>
+        /// <summary>
+        /// One entry of a modifiers field (a companion's skill): set to the text's number (kept as text when it isn't one,
+        /// for the preview to flag), or removed when the text is empty.
+        /// </summary>
+        public IEnumerator BuilderStatModifier(string key, StatBlockField field, string name, string text)
+        {
+            var current = _s.Builder.Draft.Get(key);
+            var value = JsonValue.NewObject();
+            if (current.Kind == JsonKind.Object) { foreach (var kv in current.ObjectValue) { value.ObjectValue[kv.Key] = kv.Value; } }
+            var entries = JsonValue.NewObject();
+            var had = value.Get(field.Key);
+            if (had.Kind == JsonKind.Object) { foreach (var kv in had.ObjectValue) { entries.ObjectValue[kv.Key] = kv.Value; } }
+            name = StatModifiers.Canonical(field, name);
+            text = (text ?? string.Empty).Trim();
+            int n;
+            if (text.Length == 0) { entries.ObjectValue.Remove(name); }
+            else if (int.TryParse(text, System.Globalization.NumberStyles.AllowLeadingSign, System.Globalization.CultureInfo.InvariantCulture, out n)) { entries.ObjectValue[name] = JsonValue.FromNumber(n); }
+            else { entries.ObjectValue[name] = JsonValue.FromString(text); }
+            if (entries.ObjectValue.Count == 0) { value.ObjectValue.Remove(field.Key); } else { value.ObjectValue[field.Key] = entries; }
+            yield return BuilderChoose(key, value.ObjectValue.Count == 0 ? null : value);
+        }
+
+        /// <summary>One cell of a rows field (a companion's attack): set to the text (a whole-number column as a number), or cleared when empty.</summary>
+        public IEnumerator BuilderStatRowCell(string key, StatBlockField field, int index, StatBlockColumn column, string text)
+        {
+            return EditStatRows(key, field, delegate (List<JsonValue> rows)
+            {
+                if (index < 0 || index >= rows.Count || rows[index].Kind != JsonKind.Object) { return; }
+                text = (text ?? string.Empty).Trim();
+                if (text.Length == 0) { rows[index].ObjectValue.Remove(column.Key); }
+                else { rows[index].ObjectValue[column.Key] = StatRows.Cell(column, text); }
+            });
+        }
+
+        /// <summary>A new, empty row at the end (its name is asked for by the preview until it has one).</summary>
+        public IEnumerator BuilderStatRowAdd(string key, StatBlockField field)
+        {
+            return EditStatRows(key, field, delegate (List<JsonValue> rows) { rows.Add(JsonValue.NewObject()); });
+        }
+
+        public IEnumerator BuilderStatRowRemove(string key, StatBlockField field, int index)
+        {
+            return EditStatRows(key, field, delegate (List<JsonValue> rows) { if (index >= 0 && index < rows.Count) { rows.RemoveAt(index); } });
+        }
+
+        /// <summary>A copy of the stat block with the field's rows (read from text if need be) edited; no rows left removes the field.</summary>
+        private IEnumerator EditStatRows(string key, StatBlockField field, Action<List<JsonValue>> edit)
+        {
+            var current = _s.Builder.Draft.Get(key);
+            var value = JsonValue.NewObject();
+            if (current.Kind == JsonKind.Object) { foreach (var kv in current.ObjectValue) { value.ObjectValue[kv.Key] = kv.Value; } }
+            var had = StatRows.From(field, value.Get(field.Key));
+            var rows = new List<JsonValue>();
+            if (had.Kind == JsonKind.Array)
+            {
+                foreach (var r in had.ArrayValue) { rows.Add(r.Kind == JsonKind.Object ? JsonValue.Parse(r.ToJson()) : r); }
+            }
+            edit(rows);
+            if (rows.Count == 0) { value.ObjectValue.Remove(field.Key); }
+            else
+            {
+                var list = JsonValue.NewArray();
+                list.ArrayValue.AddRange(rows);
+                value.ObjectValue[field.Key] = list;
+            }
+            yield return BuilderChoose(key, value.ObjectValue.Count == 0 ? null : value);
+        }
+
+        /// <summary>
+        /// Picking a template on a stat block step: its values become the stat block (numbers where the field is a
+        /// number), and the name comes along when the draft has none. Everything stays editable.
+        /// </summary>
+        public IEnumerator BuilderApplyTemplate(string key, BuilderOption template)
+        {
+            var step = _s.Builder.Step(key);
+            StatBlockSchema schema = null;
+            if (step != null) { foreach (var s in _s.Builder.StatBlocks) { if (string.Equals(s.Name, step.Schema, StringComparison.OrdinalIgnoreCase)) { schema = s; } } }
+            var value = JsonValue.NewObject();
+            foreach (var kv in template.Values)
+            {
+                StatBlockField field = null;
+                if (schema != null) { foreach (var f in schema.Fields) { if (f.Key == kv.Key) { field = f; } } }
+                int n;
+                if (field != null && field.Type == "int" && int.TryParse(kv.Value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out n))
+                {
+                    value.ObjectValue[kv.Key] = JsonValue.FromNumber(n);
+                }
+                else if (field != null && field.Type == StatModifiers.Type) { value.ObjectValue[kv.Key] = StatModifiers.FromText(field, kv.Value); }
+                else if (field != null && field.Type == StatRows.Type) { value.ObjectValue[kv.Key] = StatRows.FromText(field, kv.Value); }
+                else { value.ObjectValue[kv.Key] = JsonValue.FromString(kv.Value); }
+            }
+            if (_s.Builder.Draft.Name.Length == 0) { _s.Builder.Draft.Name = template.Label; }
+            yield return BuilderChoose(key, value);
+        }
+
+        /// <summary>
+        /// 1 to the cap. Counts (spells, skills) and level choices follow the level, so every step's options reload; picks
+        /// for levels the character no longer reaches are dropped.
+        /// </summary>
         public IEnumerator SetBuilderLevel(int level)
         {
             var b = _s.Builder;
-            level = Math.Max(1, Math.Min(MaxBuilderLevel, level));
+            level = Math.Max(1, Math.Min(BuilderMaxLevel, level));
             if (b.Draft.Level == level) { yield break; }
             b.Draft.Level = level;
+            foreach (var step in b.Steps)
+            {
+                if (step.Kind == StepKinds.LevelChoices) { b.Draft.Set(step.Key, LevelChoices.Prune(b.Draft.Get(step.Key), level)); }
+            }
             b.Revision++;
             b.PreviewCurrent = false;
             b.Options.Clear();
@@ -342,11 +493,16 @@ namespace CampaignVault.UnityClient.App
 
         private IEnumerator CallBuilder(string action, string step, Action<McpOutcome<ToolPayload>> done)
         {
-            var b = _s.Builder;
+            yield return CallBuilder(_s.Builder.Slug, _s.Builder.Draft, action, step, done);
+        }
+
+        /// <summary>character_builder for a draft that isn't the builder's (the party step's DM drafts), leaving the builder alone.</summary>
+        private IEnumerator CallBuilder(string slug, CharacterDraft draft, string action, string step, Action<McpOutcome<ToolPayload>> done)
+        {
             var args = JsonValue.NewObject();
             args.ObjectValue["action"] = JsonValue.FromString(action);
-            args.ObjectValue["draft"] = b.Draft.ToJson();
-            args.ObjectValue["campaignName"] = JsonValue.FromString(b.Slug);
+            args.ObjectValue["draft"] = draft.ToJson();
+            args.ObjectValue["campaignName"] = JsonValue.FromString(slug);
             if (!string.IsNullOrEmpty(step)) { args.ObjectValue["step"] = JsonValue.FromString(step); }
             yield return _s.Mcp.CallToolData(_s.Config, "build", BuilderTool, args, done);
         }
@@ -375,9 +531,21 @@ namespace CampaignVault.UnityClient.App
             if (system.Length > 0) { b.System = system; }
             int at = Math.Max(0, BuilderDependencies.IndexOf(b.Steps, b.Current));
             b.Steps.Clear();
-            foreach (var s in data.GetArray("steps")) { b.Steps.Add(BuilderStep.Parse(s)); }
+            var reads = data.Get("reads");
+            foreach (var s in data.GetArray("steps"))
+            {
+                var step = BuilderStep.Parse(s);
+                var told = reads.Get(step.Key);
+                if (told.Kind == JsonKind.Array)
+                {
+                    step.Reads = new List<string>();
+                    foreach (var key in told.ArrayValue) { if (key.Kind == JsonKind.String) { step.Reads.Add(key.StringValue); } }
+                }
+                b.Steps.Add(step);
+            }
             b.StatBlocks.Clear();
             foreach (var s in data.GetArray("statBlocks")) { b.StatBlocks.Add(StatBlockSchema.Parse(s)); }
+            b.MaxLevel = Math.Max(0, (int)data.GetNumber("maxLevel", 0));
             foreach (string key in new List<string>(b.Draft.Choices.Keys))
             {
                 if (b.Step(key) == null) { b.Draft.Choices.Remove(key); }
@@ -391,7 +559,7 @@ namespace CampaignVault.UnityClient.App
         {
             var b = _s.Builder;
             var step = b.Step(key);
-            if (step == null || (step.Source.Length == 0 && step.Kind != StepKinds.Spells) || b.Options.ContainsKey(step.Key)) { yield break; }
+            if (step == null || (step.Source.Length == 0 && step.Kind != StepKinds.Spells && step.Kind != StepKinds.LevelChoices) || b.Options.ContainsKey(step.Key)) { yield break; }
             string busy = "builder-options:" + step.Key;
             if (!_s.TryBeginBusy(busy)) { yield break; }
             try
@@ -422,6 +590,7 @@ namespace CampaignVault.UnityClient.App
             var data = result.Data.Data;
             foreach (var o in data.GetArray("options")) { options.Options.Add(BuilderOption.Parse(o)); }
             options.Count = (int)data.GetNumber("count", -1);
+            foreach (var slot in data.GetArray("slots")) { options.Slots.Add(LevelSlot.Parse(slot)); }
             var groups = data.Get("groupCounts");
             if (groups.Kind == JsonKind.Object)
             {
@@ -575,6 +744,126 @@ namespace CampaignVault.UnityClient.App
                 b.NotOptions.Clear();
                 BuilderAdvisor.Match(ids, offered, b.Suggested, b.NotOptions);
             }
+            _s.Notify(StateArea.Builder);
+        }
+
+        // ---- the DM fills the rest ----
+
+        /// <summary>
+        /// One model call for every step still open (skills, spells, level choices; never the ability scores or who the
+        /// character is), in the onboarding conversation. The picks that are options are added to the draft and the
+        /// preview checks them; the rest are listed on their step. Nothing is saved: the player reviews, then saves.
+        /// </summary>
+        public IEnumerator BuilderDmFill()
+        {
+            var b = _s.Builder;
+            var ob = _s.Onboarding;
+            if (b.FillBusy || b.Steps.Count == 0) { yield break; }
+            string notReady;
+            if (!_s.ProviderReady(out notReady))
+            {
+                _s.RaiseToast("The DM needs a working AI provider to fill in picks: " + notReady, ToastKind.Warning);
+                yield break;
+            }
+            b.ClearFill();
+            b.FillBusy = true;
+            _s.Notify(StateArea.Builder);
+            try
+            {
+                List<FillTarget> targets = null;
+                yield return FillTargets(delegate (List<FillTarget> t) { targets = t; });
+                if (targets.Count == 0)
+                {
+                    b.FillError = "Nothing is open that the DM can pick from options. Ability scores and who they are stay yours.";
+                    yield break;
+                }
+                int revision = b.Revision;
+                string marker = BuilderAdvisor.Marker(b.Draft.Name, "the DM fills the rest");
+                if (LastMarker(ob.BrainstormChat) != marker) { ob.BrainstormChat.Add(new KeyValuePair<string, string>(OnboardingBrainstorm.MarkerRole, marker)); }
+                string instruction = BuilderFiller.Instruction(targets);
+                ob.BrainstormChat.Add(new KeyValuePair<string, string>("user", instruction));
+                var messages = new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("system", BuilderFiller.SystemPrompt(b.System, b.Draft, targets, ob.Answers)),
+                };
+                messages.AddRange(OnboardingBrainstorm.ModelMessages(ob.BrainstormChat, OnboardingBrainstorm.Dropped(ob.BrainstormChat, OnboardingBrainstorm.MaxConversationChars)));
+                string reply = null;
+                string error = null;
+                yield return _s.Driver.Brainstorm(messages, null, delegate (string r, string e) { reply = r; error = e; });
+                if (error != null) { b.FillError = TextSanitizer.Clean(error, 400); yield break; }
+                if (revision != b.Revision)
+                {
+                    b.FillError = "The character changed while the DM was thinking, so its picks weren't used. Ask again.";
+                    yield break;
+                }
+                ob.BrainstormChat.Add(new KeyValuePair<string, string>("assistant", TextSanitizer.Clean(reply, OnboardingBrainstorm.MaxReplyChars)));
+                b.FillBusy = false;
+                yield return ApplyDmFill(reply, targets);
+            }
+            finally
+            {
+                b.FillBusy = false;
+                _s.Notify(StateArea.Builder);
+            }
+        }
+
+        /// <summary>The fillable steps that are open and have options for the draft as it is (their options loaded first).</summary>
+        private IEnumerator FillTargets(Action<List<FillTarget>> done)
+        {
+            var b = _s.Builder;
+            var targets = new List<FillTarget>();
+            foreach (var step in new List<BuilderStep>(b.Steps))
+            {
+                if (!BuilderFiller.CanFill(step)) { continue; }
+                yield return BuilderOptions(step.Key);
+                StepOptions options;
+                if (!b.Options.TryGetValue(step.Key, out options) || options.Error.Length > 0 || options.Options.Count == 0) { continue; }
+                if (BuilderFiller.IsOpen(step, options, b.Draft)) { targets.Add(new FillTarget { Step = step, Options = options }); }
+            }
+            done(targets);
+        }
+
+        /// <summary>
+        /// The fill reply applied to the draft: each step's options-only picks added, the rest listed as rejected, then the
+        /// steps, options and preview catch up. Split from the call so tests can feed a reply. Without targets, the open
+        /// steps are worked out first.
+        /// </summary>
+        public IEnumerator ApplyDmFill(string reply, List<FillTarget> targets = null)
+        {
+            var b = _s.Builder;
+            if (targets == null) { yield return FillTargets(delegate (List<FillTarget> t) { targets = t; }); }
+            var result = new FillResult();
+            string error;
+            if (!BuilderFiller.Parse(reply, targets, b.Draft, result, out error))
+            {
+                b.FillError = error;
+                _s.Notify(StateArea.Builder);
+                yield break;
+            }
+            b.FillReply = TextSanitizer.Clean(result.Prose, OnboardingBrainstorm.MaxReplyChars);
+            b.Filled.Clear();
+            b.Rejected.Clear();
+            foreach (var kv in result.Rejected) { b.Rejected[kv.Key] = kv.Value; }
+            foreach (var t in targets)
+            {
+                JsonValue value;
+                if (!result.Choices.TryGetValue(t.Step.Key, out value) || !b.Draft.Set(t.Step.Key, value)) { continue; }
+                b.Filled.Add(t.Step.Title);
+                // A step that reads this one has options for the old pick: they're fetched again (its picks, if any, stay to be checked).
+                foreach (string dependent in BuilderDependencies.Dependents(t.Step.Key, b.Steps)) { b.Options.Remove(dependent); }
+            }
+            DropSpellCounts(b, null);
+            b.Revision++;
+            b.PreviewCurrent = false;
+            _s.Notify(StateArea.Builder);
+            yield return BuilderSteps();
+            yield return BuilderOptions(b.Current);
+            yield return BuilderPreview();
+        }
+
+        public void DismissDmFill()
+        {
+            _s.Builder.ClearFill();
             _s.Notify(StateArea.Builder);
         }
 

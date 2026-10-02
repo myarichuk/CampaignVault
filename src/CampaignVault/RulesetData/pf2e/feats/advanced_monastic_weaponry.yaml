@@ -4,7 +4,10 @@
 name: advanced_monastic_weaponry
 system: pf2e
 prerequisite: Monastic Weaponry
+prerequisites:
+  - { feat: monastic_weaponry }
 mechanicalSummary: Your rigorous training regimen allows you to wield complex weaponry with ease.
 extraPools: []
+category: class
 classes: [monk]
 level: 6

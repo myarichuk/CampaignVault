@@ -4,6 +4,9 @@
 name: advanced_witchcraft
 system: pf2e
 prerequisite: Basic Witchcraft
+prerequisites:
+  - { feat: basic_witchcraft }
 mechanicalSummary: You gain one witch feat.
 extraPools: []
+category: archetype
 level: 6

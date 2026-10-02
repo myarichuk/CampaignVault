@@ -4,6 +4,11 @@
 name: master_druid_spellcasting
 system: pf2e
 prerequisite: Expert Druid Spellcasting; Legendary in Nature
+prerequisites:
+  - { feat: expert_druid_spellcasting }
+  - { skill: Nature, rank: legendary }
 mechanicalSummary: You gain the master spellcasting benefits.
 extraPools: []
+category: archetype
+skills: [Nature]
 level: 18

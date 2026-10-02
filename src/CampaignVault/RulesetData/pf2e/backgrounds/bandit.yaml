@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: bandit
+system: pf2e
+description: "Your past includes no small amount of rural banditry, robbing travelers on the road and scraping by. Whether your robbery was sanctioned by a local noble or you did so of your own accord, you eventually got caught up in the adventuring life. Now, adventure is your stock and trade, and years of camping and skirmishing have only helped."
+boosts: [Dexterity, Charisma]
+skillProficiencies: [Intimidation]
+lore: Lore related to the terrain you worked in (such as Desert Lore or Plains Lore)
+skillFeat: group_coercion
+feature: Group Coercion

@@ -4,7 +4,10 @@
 name: greater_mercy
 system: pf2e
 prerequisite: Mercy
+prerequisites:
+  - { feat: mercy }
 mechanicalSummary: Your faith enhances your ability to remove conditions.
 extraPools: []
+category: class
 classes: [champion]
 level: 8

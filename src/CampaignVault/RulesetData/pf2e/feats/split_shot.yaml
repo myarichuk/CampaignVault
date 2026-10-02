@@ -5,5 +5,6 @@ name: split_shot
 system: pf2e
 mechanicalSummary: You fragment a ranged spell.
 extraPools: []
+category: class
 classes: [sorcerer]
 level: 4

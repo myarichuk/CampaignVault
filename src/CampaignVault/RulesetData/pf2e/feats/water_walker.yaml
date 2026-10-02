@@ -5,5 +5,6 @@ name: water_walker
 system: pf2e
 mechanicalSummary: When in the throes of your curse, your steps take on a supernatural buoyancy.
 extraPools: []
+category: class
 classes: [oracle]
 level: 8

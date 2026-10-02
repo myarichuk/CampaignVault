@@ -4,7 +4,10 @@
 name: wild_winds_gust
 system: pf2e
 prerequisite: Wild Winds Initiate
+prerequisites:
+  - { feat: wild_winds_initiate }
 mechanicalSummary: You build air pressure with repeated motions, before releasing an enormous crescent of rushing wind strikes.
 extraPools: []
+category: class
 classes: [monk]
 level: 14

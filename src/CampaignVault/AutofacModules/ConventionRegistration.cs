@@ -192,6 +192,7 @@ internal static class ConventionRegistration
 
         builder.RegisterType<CampaignDocumentKeys>().SingleInstance();
         builder.RegisterType<CreationSources>().AsSelf().SingleInstance();
+        builder.RegisterType<LevelUpPlanner>().AsSelf().SingleInstance();
         builder.RegisterType<CharacterCreationService>().AsSelf().InstancePerLifetimeScope();
         // Explicit (not namespace-convention) registration: InteractionModeSelector lives in
         // CampaignVault.Rulesets.Modes, which RegisterNameMatchedServices does not scan (it only matches

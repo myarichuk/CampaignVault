@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: holy or unholy trait
 mechanicalSummary: Your deity’s grace doesn’t extend to your sworn enemies.
 extraPools: []
+category: class
 classes: [cleric]
 level: 1

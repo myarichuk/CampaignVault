@@ -5,4 +5,6 @@ name: can_t_fall_here
 system: pf2e
 mechanicalSummary: You physically help an ally remain standing and encourage them to push through their pain against dire odds.
 extraPools: []
+category: ancestry
+ancestries: [hobgoblin]
 level: 13

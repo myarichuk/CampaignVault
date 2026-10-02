@@ -5,4 +5,6 @@ name: advanced_general_training
 system: pf2e
 mechanicalSummary: Over the long course of your adventuring life, your adaptability has let you pick up numerous useful abilities.
 extraPools: []
+category: ancestry
+ancestries: [human]
 level: 13

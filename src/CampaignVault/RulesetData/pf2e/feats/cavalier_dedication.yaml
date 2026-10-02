@@ -4,6 +4,10 @@
 name: cavalier_dedication
 system: pf2e
 prerequisite: Trained in Nature or Trained in Society
+prerequisites:
+  - { anyOf: [{ skill: Nature, rank: trained }, { skill: Society, rank: trained }] }
 mechanicalSummary: You gain a young animal companion that serves as your mount.
 extraPools: []
+category: archetype
+skills: [Nature, Society]
 level: 2

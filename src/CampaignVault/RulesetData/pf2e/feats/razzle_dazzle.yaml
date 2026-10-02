@@ -5,4 +5,6 @@ name: razzle_dazzle
 system: pf2e
 mechanicalSummary: "You've spent considerable time practicing the manipulation of light, weaponizing your blade's reflection or bolstering the luminosity of magical displays to unconventional heights."
 extraPools: []
+category: ancestry
+ancestries: [gnome]
 level: 1

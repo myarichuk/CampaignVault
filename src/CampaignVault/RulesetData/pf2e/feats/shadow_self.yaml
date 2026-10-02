@@ -4,6 +4,11 @@
 name: shadow_self
 system: pf2e
 prerequisite: Legendary in Stealth
+prerequisites:
+  - { skill: Stealth, rank: legendary }
 mechanicalSummary: "You slip from your adversaries' notice and appear to be somewhere else."
 extraPools: []
+category: ancestry
+ancestries: [halfling]
+skills: [Stealth]
 level: 17

@@ -1,5 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
-    <!-- SpellSectionViewModel: cantrips, spells known or prepared. -->
+    <!-- SpellSectionViewModel: cantrips, spells known or prepared; or one level choice (LevelChoicesStepViewModel). -->
     <ui:VisualElement class="cv-builder__section">
         <ui:VisualElement class="cv-row">
             <ui:Label class="cv-h3 cv-grow">

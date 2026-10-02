@@ -4,7 +4,10 @@
 name: shield_of_reckoning
 system: pf2e
 prerequisite: "Shield Warden; blessed shield, champion's reaction"
+prerequisites:
+  - { feat: shield_warden }
 mechanicalSummary: When you shield your ally against an attack, you call upon your power to protect your ally further.
 extraPools: []
+category: class
 classes: [champion]
 level: 10

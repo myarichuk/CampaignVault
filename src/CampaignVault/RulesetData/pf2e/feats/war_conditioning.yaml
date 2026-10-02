@@ -5,4 +5,6 @@ name: war_conditioning
 system: pf2e
 mechanicalSummary: You have extensive training in remote environments, allowing you to move through these areas easily.
 extraPools: []
+category: ancestry
+ancestries: [hobgoblin]
 level: 13

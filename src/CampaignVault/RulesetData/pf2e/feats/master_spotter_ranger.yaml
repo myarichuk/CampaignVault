@@ -4,6 +4,9 @@
 name: master_spotter_ranger
 system: pf2e
 prerequisite: Ranger Dedication; expert in Perception
+prerequisites:
+  - { feat: ranger_dedication }
 mechanicalSummary: Your proficiency rank in Perception increases to master.
 extraPools: []
+category: archetype
 level: 12

@@ -4,7 +4,10 @@
 name: precise_debilitations
 system: pf2e
 prerequisite: thief racket; Debilitating Strike
+prerequisites:
+  - { classFeature: thief }
 mechanicalSummary: You attack with great precision.
 extraPools: []
+category: class
 classes: [rogue]
 level: 10

@@ -4,6 +4,11 @@
 name: disarming_block
 system: pf2e
 prerequisite: Bastion Dedication; Trained in Athletics
+prerequisites:
+  - { feat: bastion_dedication }
+  - { skill: Athletics, rank: trained }
 mechanicalSummary: With deft and practiced movement, you block at an angle to potentially dislodge the weapon.
 extraPools: []
+category: archetype
+skills: [Athletics]
 level: 4

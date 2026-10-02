@@ -4,6 +4,10 @@
 name: terrain_expertise
 system: pf2e
 prerequisite: Trained in Survival
+prerequisites:
+  - { skill: Survival, rank: trained }
 mechanicalSummary: +1 to Survival checks in certain terrain
 extraPools: []
+category: skill
+skills: [Survival]
 level: 1

@@ -4,6 +4,9 @@
 name: dual_onslaught
 system: pf2e
 prerequisite: Dual-Weapon Warrior Dedication
+prerequisites:
+  - { feat: dual_weapon_warrior_dedication }
 mechanicalSummary: When you lash out with both weapons, you leave no room for the target to escape your attack.
 extraPools: []
+category: archetype
 level: 14

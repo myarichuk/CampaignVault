@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: Debilitating Strike
 mechanicalSummary: Your debilitations are especially effective on your most powerful attacks.
 extraPools: []
+category: class
 classes: [rogue]
 level: 12

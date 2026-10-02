@@ -4,6 +4,9 @@
 name: specialized_mount
 system: pf2e
 prerequisite: Incredible Mount
+prerequisites:
+  - { feat: incredible_mount }
 mechanicalSummary: You’ve trained your mount to perform in unusual or even extreme circumstances, granting it abilities far beyond others of its kind.
 extraPools: []
+category: archetype
 level: 14

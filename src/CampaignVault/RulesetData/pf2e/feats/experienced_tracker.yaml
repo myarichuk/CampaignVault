@@ -4,6 +4,10 @@
 name: experienced_tracker
 system: pf2e
 prerequisite: Trained in Survival
+prerequisites:
+  - { skill: Survival, rank: trained }
 mechanicalSummary: Track at your full Speed at a –5 penalty
 extraPools: []
+category: skill
+skills: [Survival]
 level: 1

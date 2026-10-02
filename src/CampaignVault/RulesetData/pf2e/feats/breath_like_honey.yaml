@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Sweetbreath Kholo heritage
 mechanicalSummary: You smell of honey and savory things.
 extraPools: []
+category: ancestry
+ancestries: [kholo]
 level: 9

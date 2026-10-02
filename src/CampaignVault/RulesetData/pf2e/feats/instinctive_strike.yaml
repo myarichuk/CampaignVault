@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: Acute Scent or Scent
 mechanicalSummary: "You trust your instincts and your sense of smell, using all your senses to pinpoint your opponent's location."
 extraPools: []
+category: class
 classes: [barbarian]
 level: 8

@@ -4,7 +4,11 @@
 name: qi_center
 system: pf2e
 prerequisite: Master of Many Styles; Qi Spells
+prerequisites:
+  - { feat: master_of_many_styles }
+  - { feat: qi_spells }
 mechanicalSummary: You center yourself with the universe and draw upon its vast power.
 extraPools: []
+category: class
 classes: [monk]
 level: 18

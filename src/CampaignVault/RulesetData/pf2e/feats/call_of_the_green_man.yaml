@@ -5,4 +5,6 @@ name: call_of_the_green_man
 system: pf2e
 mechanicalSummary: You can call forth nearby nature spirits to augment your body.
 extraPools: []
+category: ancestry
+ancestries: [leshy]
 level: 13

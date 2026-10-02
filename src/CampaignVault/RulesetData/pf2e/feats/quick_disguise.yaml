@@ -4,6 +4,10 @@
 name: quick_disguise
 system: pf2e
 prerequisite: Expert in Deception
+prerequisites:
+  - { skill: Deception, rank: expert }
 mechanicalSummary: Set up a disguise in less time
 extraPools: []
+category: skill
+skills: [Deception]
 level: 2

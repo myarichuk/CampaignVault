@@ -1,0 +1,22 @@
+# Source: SRD 5.1 (CC-BY-4.0), adapted as a party companion template. Edit freely in the builder.
+name: Riding Horse
+system: dnd5e
+description: A steady mount that will carry a rider all day.
+challengeRating: "1/4"
+hp: 13
+defense: 10
+companion: true
+statBlock:
+  creatureType: Beast
+  challengeRating: "1/4"
+  statBlockHp: "13"
+  armorClass: "10"
+  movement: "60"
+  strength: "16"
+  dexterity: "10"
+  constitution: "12"
+  intelligence: "2"
+  wisdom: "11"
+  charisma: "7"
+  attacks: "Hooves +5, 2d4+2 bludgeoning, reach 5 ft."
+  traits: "A mount: does not fight on its own initiative unless the rider is down."

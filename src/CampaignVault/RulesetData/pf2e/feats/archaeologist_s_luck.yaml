@@ -4,6 +4,9 @@
 name: archaeologist_s_luck
 system: pf2e
 prerequisite: Archaeologist Dedication
+prerequisites:
+  - { feat: archaeologist_dedication }
 mechanicalSummary: You are more than just skillful; your drive to find the secrets of the past manifests as a strange kind of luck.
 extraPools: []
+category: archetype
 level: 8

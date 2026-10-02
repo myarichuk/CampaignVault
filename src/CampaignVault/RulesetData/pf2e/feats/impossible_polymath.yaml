@@ -4,7 +4,12 @@
 name: impossible_polymath
 system: pf2e
 prerequisite: Trained in Arcana, Trained in Nature, or Trained in Religion; Esoteric Polymath
+prerequisites:
+  - { anyOf: [{ skill: Arcana, rank: trained }, { skill: Nature, rank: trained }, { skill: Religion, rank: trained }] }
+  - { feat: esoteric_polymath }
 mechanicalSummary: Your esoteric formulas are so unusual that they allow you to dabble in magic from diverse traditions that other bards don’t understand.
 extraPools: []
+category: class
 classes: [bard]
+skills: [Arcana, Nature, Religion]
 level: 18

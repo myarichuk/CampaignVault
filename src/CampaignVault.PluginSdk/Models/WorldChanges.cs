@@ -1178,13 +1178,17 @@ public class LevelUpChange : WorldChange
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
 
-    [Description("Level-up choices to record, keyed by choice key from lookup kind:'level_up' (e.g. 'subclass': 'battleMaster', 'fightingStyle': 'archery', 'asiOrFeat': 'grappler'). For PF2e feat budgets with no enumerated catalog, use keys like 'classFeat'/'skillFeat'/'generalFeat'/'ancestryFeat' with a free-text feat name. Appended to the character's choice history — does not overwrite earlier picks, so repeatable choices (feats at multiple levels) are all kept.")]
+    [Description("Level-up choices to record, keyed by choice key from lookup kind:'level_up' (e.g. 'subclass': 'champion', 'fightingStyle': 'archery', 'asiOrFeat': 'grappler'). For PF2e feat budgets with no enumerated catalog, use keys like 'classFeat'/'skillFeat'/'generalFeat'/'ancestryFeat' with a free-text feat name. Appended to the character's choice history — does not overwrite earlier picks, so repeatable choices (feats at multiple levels) are all kept.")]
     [JsonPropertyName("choices")]
     public Dictionary<string, string>? Choices { get; set; }
 
     [Description("5e only: ability score increases from an Ability Score Improvement (e.g. { \"Strength\": 2 } or { \"Strength\": 1, \"Dexterity\": 1 }). Applied directly to the character's ability scores.")]
     [JsonPropertyName("abilityScoreIncreases")]
     public Dictionary<string, int>? AbilityScoreIncreases { get; set; }
+
+    [Description("The level's choices as lookup kind:'level_up' lists them under 'slots': slot id → the option ids picked, e.g. { \"3.subclass\": [\"champion\"], \"4.asiOrFeat\": [\"Strength\", \"Constitution\"], \"5.skillIncrease\": [\"Athletics\"] }. Checked against the class's progression and applied: ability score improvements and PF2e attribute boosts change the scores, a feat taken instead is added, a PF2e skill increase raises the skill's rank. Refused whole, with the reason, if a pick isn't allowed. One level at a time. Prefer this over 'choices' and 'abilityScoreIncreases', which only record.")]
+    [JsonPropertyName("picks")]
+    public Dictionary<string, List<string>>? Picks { get; set; }
 }
 
 /// <summary>

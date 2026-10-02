@@ -5,4 +5,6 @@ name: prodigious_climber
 system: pf2e
 mechanicalSummary: Your natural climbing ability and technique has made you a potent climber.
 extraPools: []
+category: ancestry
+ancestries: [tripkee]
 level: 5

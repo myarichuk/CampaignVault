@@ -4,6 +4,10 @@
 name: dance_underfoot
 system: pf2e
 prerequisite: Step Lively
+prerequisites:
+  - { feat: step_lively }
 mechanicalSummary: You dart under the legs of your enemies in combat.
 extraPools: []
+category: ancestry
+ancestries: [halfling]
 level: 9

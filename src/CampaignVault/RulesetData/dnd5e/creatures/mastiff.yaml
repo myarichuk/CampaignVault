@@ -1,0 +1,23 @@
+# Source: SRD 5.1 (CC-BY-4.0), adapted as a party companion template. Edit freely in the builder.
+name: Mastiff
+system: dnd5e
+description: A guard and hunting dog, loyal to the death.
+challengeRating: "1/8"
+hp: 5
+defense: 12
+companion: true
+statBlock:
+  creatureType: Beast
+  challengeRating: "1/8"
+  statBlockHp: "5"
+  armorClass: "12"
+  movement: "40"
+  strength: "13"
+  dexterity: "14"
+  constitution: "12"
+  intelligence: "3"
+  wisdom: "12"
+  charisma: "7"
+  attacks: "Bite +3, 1d6+1 piercing, reach 5 ft., a Medium or smaller target makes a DC 11 Strength save or is knocked prone"
+  skillModifiers: "Perception +3"
+  traits: "Keen Hearing and Smell: advantage on Wisdom (Perception) checks that rely on hearing or smell."

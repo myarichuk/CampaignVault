@@ -4,6 +4,10 @@
 name: doublespeak
 system: pf2e
 prerequisite: Master in Deception
+prerequisites:
+  - { skill: Deception, rank: master }
 mechanicalSummary: "You're skilled at saying one thing and meaning something different."
 extraPools: []
+category: skill
+skills: [Deception]
 level: 7

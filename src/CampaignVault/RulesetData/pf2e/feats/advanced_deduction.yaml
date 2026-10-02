@@ -4,6 +4,9 @@
 name: advanced_deduction
 system: pf2e
 prerequisite: Basic Deduction
+prerequisites:
+  - { feat: basic_deduction }
 mechanicalSummary: You gain one investigator feat.
 extraPools: []
+category: archetype
 level: 6

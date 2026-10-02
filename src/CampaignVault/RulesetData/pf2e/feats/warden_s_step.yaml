@@ -4,7 +4,11 @@
 name: warden_s_step
 system: pf2e
 prerequisite: Master in Stealth
+prerequisites:
+  - { skill: Stealth, rank: master }
 mechanicalSummary: You can guide your allies to move quietly through the wilderness.
 extraPools: []
+category: class
 classes: [ranger]
+skills: [Stealth]
 level: 10

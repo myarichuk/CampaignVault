@@ -4,6 +4,11 @@
 name: lightning_snares
 system: pf2e
 prerequisite: Snarecrafter Dedication; Master in Crafting
+prerequisites:
+  - { feat: snarecrafter_dedication }
+  - { skill: Crafting, rank: master }
 mechanicalSummary: You can rig a trap with incredible speed.
 extraPools: []
+category: archetype
+skills: [Crafting]
 level: 12

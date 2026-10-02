@@ -5,4 +5,6 @@ name: skillful_tail
 system: pf2e
 mechanicalSummary: You’ve always had a tail, but with practice, you’ve learned to use it for more than signaling your mood.
 extraPools: []
+category: ancestry
+ancestries: [nephilim]
 level: 5

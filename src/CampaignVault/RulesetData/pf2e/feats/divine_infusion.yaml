@@ -5,5 +5,6 @@ name: divine_infusion
 system: pf2e
 mechanicalSummary: You pour energy into the subject of your healing to empower its attacks.
 extraPools: []
+category: class
 classes: [cleric]
 level: 4

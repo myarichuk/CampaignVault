@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: expert strikes
 mechanicalSummary: You put all your force into a single mighty, carefully controlled blow.
 extraPools: []
+category: class
 classes: [monk]
 level: 6

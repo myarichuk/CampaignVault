@@ -4,6 +4,10 @@
 name: environmental_guide
 system: pf2e
 prerequisite: Master in Survival
+prerequisites:
+  - { skill: Survival, rank: master }
 mechanicalSummary: You can rapidly adapt to climates and help others do the same.
 extraPools: []
+category: skill
+skills: [Survival]
 level: 7

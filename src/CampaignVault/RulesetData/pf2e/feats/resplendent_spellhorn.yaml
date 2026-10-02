@@ -4,6 +4,10 @@
 name: resplendent_spellhorn
 system: pf2e
 prerequisite: Evolved Spellhorn
+prerequisites:
+  - { feat: evolved_spellhorn }
 mechanicalSummary: Your magic continues to flourish.
 extraPools: []
+category: ancestry
+ancestries: [kobold]
 level: 13

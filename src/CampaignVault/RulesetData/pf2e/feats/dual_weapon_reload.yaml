@@ -4,6 +4,9 @@
 name: dual_weapon_reload
 system: pf2e
 prerequisite: Dual-Weapon Warrior Dedication
+prerequisites:
+  - { feat: dual_weapon_warrior_dedication }
 mechanicalSummary: You carry your ammunition in a way that allows you to reload while holding two weapons.
 extraPools: []
+category: archetype
 level: 4

@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: blessed shield
 mechanicalSummary: Your shield is a vessel of divine protection.
 extraPools: []
+category: class
 classes: [champion]
 level: 20

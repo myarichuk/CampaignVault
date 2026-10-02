@@ -5,4 +5,6 @@ name: nocturnal_tripkee
 system: pf2e
 mechanicalSummary: You tend to do most of your hunting and work at night and have adapted to the requirements of nocturnal life.
 extraPools: []
+category: ancestry
+ancestries: [tripkee]
 level: 1

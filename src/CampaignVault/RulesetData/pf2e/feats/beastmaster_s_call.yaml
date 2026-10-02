@@ -4,6 +4,9 @@
 name: beastmaster_s_call
 system: pf2e
 prerequisite: Beastmaster Dedication; Call Companion
+prerequisites:
+  - { feat: beastmaster_dedication }
 mechanicalSummary: You quickly call in a primal projection of a non-active companion to provide the companion’s support benefit.
 extraPools: []
+category: archetype
 level: 12

@@ -5,5 +5,6 @@ name: coven_spell
 system: pf2e
 mechanicalSummary: "You rhyme with your ally\u2019s incantations or echo their movements, linking your magic to empower their spell in one of two ways.\n"
 extraPools: []
+category: class
 classes: [witch]
 level: 12

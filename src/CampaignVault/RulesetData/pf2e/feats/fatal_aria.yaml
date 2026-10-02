@@ -5,5 +5,6 @@ name: fatal_aria
 system: pf2e
 mechanicalSummary: Your songs overwhelm the target with unbearable emotion, potentially striking them dead on the spot.
 extraPools: []
+category: class
 classes: [bard]
 level: 20

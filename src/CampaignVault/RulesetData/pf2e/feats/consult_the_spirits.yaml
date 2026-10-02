@@ -4,6 +4,10 @@
 name: consult_the_spirits
 system: pf2e
 prerequisite: Master in Occultism, Master in Nature, or Master in Religion
+prerequisites:
+  - { anyOf: [{ skill: Occultism, rank: master }, { skill: Nature, rank: master }, { skill: Religion, rank: master }] }
 mechanicalSummary: You have learned rites or meditations that enable you to perceive minor, invisible spirits within a place.
 extraPools: []
+category: skill
+skills: [Nature, Occultism, Religion]
 level: 7

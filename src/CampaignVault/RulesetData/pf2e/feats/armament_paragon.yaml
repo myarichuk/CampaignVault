@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: blessed armament
 mechanicalSummary: "Add the following property runes to the list you can choose for your blessed armament: animated,  greater fearsome ,  grievous ,  keen , and  greater vitalizing ."
 extraPools: []
+category: class
 classes: [champion]
 level: 20

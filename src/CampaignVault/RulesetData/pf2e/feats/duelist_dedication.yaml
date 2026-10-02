@@ -6,4 +6,5 @@ system: pf2e
 prerequisite: trained in light armor and simple weapons
 mechanicalSummary: You are always ready to draw your weapon and begin a duel, no matter the circumstances.
 extraPools: []
+category: archetype
 level: 2

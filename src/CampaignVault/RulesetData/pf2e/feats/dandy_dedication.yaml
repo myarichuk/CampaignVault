@@ -4,6 +4,10 @@
 name: dandy_dedication
 system: pf2e
 prerequisite: Trained in Diplomacy
+prerequisites:
+  - { skill: Diplomacy, rank: trained }
 mechanicalSummary: You are a consummate student of dignity, etiquette, and fashion.
 extraPools: []
+category: archetype
+skills: [Diplomacy]
 level: 2

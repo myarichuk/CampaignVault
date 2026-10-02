@@ -4,7 +4,10 @@
 name: unusual_composition
 system: pf2e
 prerequisite: polymath muse
+prerequisites:
+  - { classFeature: polymath }
 mechanicalSummary: You can translate the emotion and power of a composition to other mediums.
 extraPools: []
+category: class
 classes: [bard]
 level: 10

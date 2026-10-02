@@ -4,6 +4,10 @@
 name: acrobatic_performer
 system: pf2e
 prerequisite: Trained in Acrobatics
+prerequisites:
+  - { skill: Acrobatics, rank: trained }
 mechanicalSummary: "You're an incredible acrobat, evoking wonder and enrapturing audiences with your prowess."
 extraPools: []
+category: skill
+skills: [Acrobatics]
 level: 1

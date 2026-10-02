@@ -4,7 +4,10 @@
 name: twirling_throw
 system: pf2e
 prerequisite: Flying Blade
+prerequisites:
+  - { feat: flying_blade }
 mechanicalSummary: Your thrown weapons seem to defy physics as they soar through the air and spin back to you after a strike.
 extraPools: []
+category: class
 classes: [swashbuckler]
 level: 4

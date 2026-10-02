@@ -5,5 +5,6 @@ name: call_and_response
 system: pf2e
 mechanicalSummary: Your composition takes the form of a call-and-response chant that lets your allies continue the effect without you.
 extraPools: []
+category: class
 classes: [bard]
 level: 8

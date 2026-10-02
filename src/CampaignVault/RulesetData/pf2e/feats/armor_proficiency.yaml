@@ -5,4 +5,5 @@ name: armor_proficiency
 system: pf2e
 mechanicalSummary: Become trained in a type of armor
 extraPools: []
+category: general
 level: 1

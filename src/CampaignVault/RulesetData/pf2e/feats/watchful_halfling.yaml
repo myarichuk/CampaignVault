@@ -5,4 +5,6 @@ name: watchful_halfling
 system: pf2e
 mechanicalSummary: You pay close attention to the people around you, allowing you to more easily notice when they act out of character.
 extraPools: []
+category: ancestry
+ancestries: [halfling]
 level: 1

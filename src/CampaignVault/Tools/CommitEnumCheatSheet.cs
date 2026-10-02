@@ -129,6 +129,7 @@ Cooldown: one successful interrupt per location per in-game day. Do not use duri
 | `reason` | Optional narrative milestone text logged in commit summary |
 | `choices` | `{ key: chosenOptionId }` from `lookup kind:'level_up'` (e.g. `subclass`, `fightingStyle`, `asiOrFeat`) — appended to the character's level-up choice history, never overwrites earlier picks |
 | `abilityScoreIncreases` (5e only) | `{ Ability: amount }` for an ASI, e.g. `{ "Strength": 2 }` or `{ "Strength": 1, "Dexterity": 1 }` |
+| `picks` | `{ slotId: [optionIds] }` from lookup kind:'level_up' `slots`, e.g. `{ "4.asiOrFeat": ["Strength","Constitution"], "5.skillIncrease": ["Athletics"] }`. Validated, then applied (scores/modifiers, feat, PF2e skill rank) before the level's hit points; refused whole with the reason. Prefer it to `choices` + `abilityScoreIncreases` |
 | Eligibility | `isPc: true` or `isPartyCompanion: true` — milestone campaigns level on narrative say-so; XP campaigns surface an XP_THRESHOLD pressure once `xp_grant`-tracked XP crosses the threshold |
 
 """;

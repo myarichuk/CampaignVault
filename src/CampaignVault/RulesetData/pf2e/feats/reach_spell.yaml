@@ -5,5 +5,6 @@ name: reach_spell
 system: pf2e
 mechanicalSummary: You can extend your spells’ range.
 extraPools: []
+category: class
 classes: [bard, cleric, druid, oracle, sorcerer, witch, wizard]
 level: 1

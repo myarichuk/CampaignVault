@@ -4,6 +4,10 @@
 name: defy_death
 system: pf2e
 prerequisite: Orc Ferocity
+prerequisites:
+  - { feat: orc_ferocity }
 mechanicalSummary: You’re exceptionally difficult to kill.
 extraPools: []
+category: ancestry
+ancestries: [orc]
 level: 5

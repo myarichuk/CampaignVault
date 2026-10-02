@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: spirit instinct
 mechanicalSummary: You call forth protective spirits to ward off ranged attacks.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 6

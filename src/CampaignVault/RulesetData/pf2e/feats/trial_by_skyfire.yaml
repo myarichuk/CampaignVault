@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: cosmos mystery or flame mystery
 mechanicalSummary: Your lips murmur as you portend a great disaster, one you hope you survive.
 extraPools: []
+category: class
 classes: [oracle]
 level: 10

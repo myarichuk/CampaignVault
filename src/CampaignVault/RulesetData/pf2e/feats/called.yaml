@@ -5,4 +5,6 @@ name: called
 system: pf2e
 mechanicalSummary: You’ve heard the Call, and by resisting it, you’ve developed a bulwark against effects that target your mind.
 extraPools: []
+category: ancestry
+ancestries: [changeling]
 level: 5

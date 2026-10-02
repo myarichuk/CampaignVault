@@ -4,6 +4,11 @@
 name: inspiring_marshal_stance
 system: pf2e
 prerequisite: Marshal Dedication; Trained in Diplomacy
+prerequisites:
+  - { feat: marshal_dedication }
+  - { skill: Diplomacy, rank: trained }
 mechanicalSummary: You become a brilliant example of dedication and poise in battle, encouraging your allies to follow suit.
 extraPools: []
+category: archetype
+skills: [Diplomacy]
 level: 4

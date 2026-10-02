@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: blessed armament
 mechanicalSummary: Your blessed armament radiates power, further enhancing your chosen weapon.
 extraPools: []
+category: class
 classes: [champion]
 level: 10

@@ -4,7 +4,10 @@
 name: specialized_companion_druid
 system: pf2e
 prerequisite: Incredible Companion (Druid)
+prerequisites:
+  - { feat: incredible_companion_druid }
 mechanicalSummary: Your animal companion continues to grow in power and ability.
 extraPools: []
+category: class
 classes: [druid]
 level: 14

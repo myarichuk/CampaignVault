@@ -6,4 +6,5 @@ system: pf2e
 prerequisite: You speak at least 3 languages
 mechanicalSummary: You have studied languages and their development.
 extraPools: []
+category: archetype
 level: 2

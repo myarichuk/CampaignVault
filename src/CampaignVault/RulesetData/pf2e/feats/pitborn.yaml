@@ -5,4 +5,6 @@ name: pitborn
 system: pf2e
 mechanicalSummary: Your blood bears the mark of a demon.
 extraPools: []
+category: ancestry
+ancestries: [nephilim]
 level: 1

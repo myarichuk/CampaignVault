@@ -5,4 +5,6 @@ name: rock_runner
 system: pf2e
 mechanicalSummary: Your innate connection to stone makes you adept at moving across uneven surfaces.
 extraPools: []
+category: ancestry
+ancestries: [dwarf]
 level: 1

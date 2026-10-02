@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: claw unarmed attack
 mechanicalSummary: Your claws carry an irritant that is harmless to you but can be damaging to others.
 extraPools: []
+category: ancestry
+ancestries: [catfolk]
 level: 9

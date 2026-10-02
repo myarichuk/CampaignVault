@@ -39,13 +39,25 @@ levels:
             options:
               - id: lore
                 label: "College of Lore"
-                description: "Bonus proficiencies, Cutting Words, Additional Magical Secrets, Peerless Skill."
-              - id: valor
-                label: "College of Valor"
-                description: "Bonus proficiencies, Combat Inspiration, Extra Attack, Battle Magic."
-              - id: glamour
-                label: "College of Glamour"
-                description: "Mantle of Inspiration, Enthralling Performance, Mantle of Majesty, Unbreakable Majesty."
+                description: "Bonus proficiencies, cutting words, additional magical secrets, peerless skill."
+                features:
+                  3:
+                    - name: "Bonus Proficiencies"
+                      description: "Proficiency with three skills of your choice."
+                      choices:
+                        skills:
+                          type: "SkillProficiency"
+                          required: true
+                          count: 3
+                          prompt: "Bonus Proficiencies"
+                    - name: "Cutting Words"
+                      description: "Reaction when a creature you can see within 60 ft. makes an attack roll, ability check or damage roll: spend one use of Bardic Inspiration, roll the die and subtract it from the roll. Works before or after the roll, before the DM says how it turned out; not on a creature that can't hear you or is immune to being charmed."
+                  6:
+                    - name: "Additional Magical Secrets"
+                      description: "Learn two spells of your choice from any class. They must be of a level you can cast or cantrips, count as bard spells, and don't count against your bard spells known."
+                  14:
+                    - name: "Peerless Skill"
+                      description: "When you make an ability check, you can spend one use of Bardic Inspiration and add the die to the roll, after rolling but before the DM says how it turned out."
     spellSlots: {1: 4, 2: 2}
   4:
     cantripsKnown: 3

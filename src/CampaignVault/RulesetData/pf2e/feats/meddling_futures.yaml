@@ -5,5 +5,6 @@ name: meddling_futures
 system: pf2e
 mechanicalSummary: You open yourself to the guidance of whatever spirits or powers deign to help you.
 extraPools: []
+category: class
 classes: [oracle]
 level: 2

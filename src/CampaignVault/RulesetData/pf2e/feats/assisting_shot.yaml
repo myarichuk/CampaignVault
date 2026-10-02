@@ -5,5 +5,6 @@ name: assisting_shot
 system: pf2e
 mechanicalSummary: Using your last shot to gauge your accuracy, you can fire off a quick shot to interfere with a foe in combat.
 extraPools: []
+category: class
 classes: [fighter]
 level: 2

@@ -5,5 +5,6 @@ name: shattering_strike_monk
 system: pf2e
 mechanicalSummary: The force of your considered blow shatters objects and defenses alike.
 extraPools: []
+category: class
 classes: [monk]
 level: 16

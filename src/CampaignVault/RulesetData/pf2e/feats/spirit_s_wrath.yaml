@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: spirit instinct
 mechanicalSummary: You call forth an ephemeral spirit, typically the apparition of an ancestor or a nature spirit, which takes the form of a wisp.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 12

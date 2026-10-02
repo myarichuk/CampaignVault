@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: merchant
+system: pf2e
+description: "In a dusty shop, market stall, or merchant caravan, you bartered wares for coin and trade goods. The skills you picked up still apply in the adventuring life, in which a good deal on a suit of armor could prevent your death."
+boosts: [Intelligence, Charisma]
+skillProficiencies: [Diplomacy]
+lore: Mercantile Lore
+skillFeat: bargain_hunter
+feature: Bargain Hunter

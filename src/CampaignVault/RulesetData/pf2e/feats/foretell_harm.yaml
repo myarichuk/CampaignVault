@@ -5,5 +5,6 @@ name: foretell_harm
 system: pf2e
 mechanicalSummary: "Your magic echoes ominously as you glimpse injury in the target's future."
 extraPools: []
+category: class
 classes: [oracle]
 level: 1

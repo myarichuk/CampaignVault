@@ -5,5 +5,6 @@ name: positioning_assault
 system: pf2e
 mechanicalSummary: With punishing blows, you force your opponent into position.
 extraPools: []
+category: class
 classes: [fighter]
 level: 8

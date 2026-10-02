@@ -5,4 +5,5 @@ name: toughness
 system: pf2e
 mechanicalSummary: Increase your maximum HP and reduce the DCs of recovery checks
 extraPools: []
+category: general
 level: 1

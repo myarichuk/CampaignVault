@@ -5,4 +5,6 @@ name: silent_step
 system: pf2e
 mechanicalSummary: You Step, then Hide or Sneak.
 extraPools: []
+category: ancestry
+ancestries: [catfolk]
 level: 9

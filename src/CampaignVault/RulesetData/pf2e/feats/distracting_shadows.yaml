@@ -5,4 +5,6 @@ name: distracting_shadows
 system: pf2e
 mechanicalSummary: You have learned to remain hidden by using larger folk as a distraction to avoid drawing attention to yourself.
 extraPools: []
+category: ancestry
+ancestries: [halfling]
 level: 1

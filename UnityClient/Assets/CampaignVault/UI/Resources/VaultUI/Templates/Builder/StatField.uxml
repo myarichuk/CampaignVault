@@ -1,12 +1,9 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
-    <!-- StatFieldViewModel: one stat-block field; commits on blur or Enter. -->
-    <ui:VisualElement>
-        <ui:Label class="cv-caption cv-builder__group">
-            <Bindings>
-                <ui:DataBinding property="text" data-source-path="GroupTitle" binding-mode="ToTarget" />
-                <cv:ClassBinding property="cls-hidden" data-source-path="GroupTitle" class-name="cv-hidden" invert="true" />
-            </Bindings>
-        </ui:Label>
+    <!-- StatFieldViewModel: one stat-block field; commits on blur or Enter. A compact one is a narrow box in a row. -->
+    <ui:VisualElement class="cv-statfield">
+        <Bindings>
+            <cv:ClassBinding property="cls-compact" data-source-path="IsCompact" class-name="cv-statfield--compact" />
+        </Bindings>
         <ui:Label class="cv-caption cv-field-caption">
             <Bindings>
                 <ui:DataBinding property="text" data-source-path="Caption" binding-mode="ToTarget" />
@@ -17,7 +14,36 @@
                 <ui:DataBinding property="name" data-source-path="Name" binding-mode="ToTarget" />
                 <ui:DataBinding property="placeholder" data-source-path="Hint" binding-mode="ToTarget" />
                 <ui:DataBinding property="value" data-source-path="Value" binding-mode="TwoWay" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="IsBox" class-name="cv-hidden" invert="true" />
             </Bindings>
         </cv:VaultField>
+        <!-- A choice field (creature type): a searchable list. -->
+        <cv:ContentPresenter>
+            <Bindings>
+                <ui:DataBinding property="content" data-source-path="Combo" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:ContentPresenter>
+        <!-- A list field: skills (a row per skill set, a button per skill left) or attacks (column captions, a row
+             per attack, an add button). Both draw their rows with Common/EntryRow. -->
+        <ui:VisualElement class="cv-modifiers">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="IsList" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <cv:Repeater item-template="Common/EntryRow">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Header" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+            <cv:Repeater item-template="Common/EntryRow">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Rows" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+            <cv:Repeater item-template="Common/Choice" class="cv-templates">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Addable" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

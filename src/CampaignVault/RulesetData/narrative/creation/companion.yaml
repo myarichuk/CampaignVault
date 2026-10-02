@@ -1,0 +1,5 @@
+# Character builder recipe: a Narrative companion. Like a player character (creation/pc.yaml): who they are, no stats.
+name: companion
+system: narrative
+steps:
+  - { key: identity, kind: identity, schema: nature, prompt: Who they are }

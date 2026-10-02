@@ -4,6 +4,11 @@
 name: ferocious_beasts
 system: pf2e
 prerequisite: Bonded Animal, animal companion, or Pet; Orc Ferocity
+prerequisites:
+  - { anyOf: [{ feat: bonded_animal }, { feat: animal_companion }, { feat: pet }] }
+  - { feat: orc_ferocity }
 mechanicalSummary: Since ancient times, the mightiest orc beast tamers would draw out the true fighting spirit of their companion beasts by feeding the creatures a draft incorporating the orc’s own blood.
 extraPools: []
+category: ancestry
+ancestries: [orc]
 level: 13

@@ -5,5 +5,6 @@ name: diverse_mystery
 system: pf2e
 mechanicalSummary: You have broadened your understanding of the divine and can tap into the wonders of a different mystery.
 extraPools: []
+category: class
 classes: [oracle]
 level: 16

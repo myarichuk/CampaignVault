@@ -4,7 +4,10 @@
 name: symphony_of_the_muse
 system: pf2e
 prerequisite: Harmonize
+prerequisites:
+  - { feat: harmonize }
 mechanicalSummary: You have learned how to weave countless performances together into a solo symphony with multitudinous effects.
 extraPools: []
+category: class
 classes: [bard]
 level: 20

@@ -18,7 +18,10 @@ public static class CreationStepKinds
     /// <summary>The six scores by standard array, point buy or roll; the choice is <see cref="AbilityScoreChoice"/>.</summary>
     public const string AbilityScores = "abilityScores";
 
-    /// <summary>Free boosts spread over abilities (PF2e); the choice is a string list of ability names.</summary>
+    /// <summary>
+    /// Attribute boosts (PF2e); the choice is a string list of ability names, each one +1 to that ability's modifier
+    /// (the stats field <c>&lt;ability&gt;Mod</c>). One step per source of boosts, so no ability is picked twice in one.
+    /// </summary>
     public const string Allocate = "allocate";
 
     /// <summary>Cantrips and leveled spells; the choice is <see cref="SpellChoice"/>.</summary>
@@ -30,7 +33,12 @@ public static class CreationStepKinds
     /// <summary>Name, concept and look live on the draft itself; a <see cref="CreationStep.Schema"/> adds a stat block.</summary>
     public const string Identity = "identity";
 
-    /// <summary>The progression's pending choices for levels above 1; the choice is an object keyed by choice key.</summary>
+    /// <summary>
+    /// The class progression's choices up to the draft's level (subclass, fighting style, ability score improvements, PF2e
+    /// skill increases and attribute boosts), or those of the step's <c>choiceTypes</c>; the choice is an object of
+    /// <c>&lt;level&gt;.&lt;choice key&gt;</c> → option id, or a list (a slot that takes several; an improvement: one ability
+    /// for +2, two for +1 each, or one feat).
+    /// </summary>
     public const string LevelChoices = "levelChoices";
 
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal)
@@ -64,6 +72,13 @@ public sealed record CreationStep
     /// <summary>A path whose value is the pick count (e.g. <c>class.skillChoices.count</c>). Wins over <see cref="Count"/> when it resolves.</summary>
     public string? CountFrom { get; init; }
 
+    /// <summary>
+    /// A path whose number is added to the count (PF2e skills: <c>modifier.intelligence</c>, the ability modifier the
+    /// draft's choices give), or several joined by <c>+</c> (<c>modifier.intelligence + choices.extraSkills</c>). The
+    /// count never drops below 0.
+    /// </summary>
+    public string? CountPlus { get; init; }
+
     /// <summary>A path to a list of option ids this step must not offer (e.g. <c>background.skillProficiencies</c>).</summary>
     public string? Exclude { get; init; }
 
@@ -90,6 +105,13 @@ public sealed record CreationStep
 
     /// <summary>Places this step right after the step with this key (a plugin adding a step before <c>identity</c>). Otherwise steps keep file order.</summary>
     public string? After { get; init; }
+
+    /// <summary>
+    /// levelChoices only: the progression choice types this step asks for (<c>Enum</c>, <c>SkillIncrease</c>, ...; see
+    /// ChoiceType). Empty asks for all of them. A recipe can then ask for a PF2e class's racket before the skills and its
+    /// skill increases after them.
+    /// </summary>
+    public List<string> ChoiceTypes { get; init; } = [];
 }
 
 /// <summary>Allowed ability-score methods for an <see cref="CreationStepKinds.AbilityScores"/> step. A null method is not allowed.</summary>
@@ -150,6 +172,11 @@ public sealed record CharacterDraft
     public string? System { get; init; }
 
     public int Level { get; init; } = 1;
+
+    /// <summary>companion only: the level of the player characters, for the power check. Absent means no check.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? PartyLevel { get; init; }
+
     public string? Name { get; init; }
 
     /// <summary>One line on who they are; stored in notes.</summary>
@@ -214,7 +241,16 @@ public sealed record CharacterDraft
 }
 
 /// <summary>An option a step offers. <see cref="Group"/> splits one step's options (spells: <c>cantrips</c> / <c>spells</c>).</summary>
-public sealed record CreationOption(string Id, string Label, string? Description = null, string? Group = null);
+public sealed record CreationOption(string Id, string Label, string? Description = null, string? Group = null)
+{
+    /// <summary>A template's field values (a companion archetype's stat block), copied into the draft when picked.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyDictionary<string, string>? Values { get; init; }
+
+    /// <summary>Not from the shipped free-licensed rules (a plugin's or the campaign's): the builder tags it "homebrew".</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Homebrew { get; init; }
+}
 
 /// <summary>A problem with a draft: an error blocks commit, a warning doesn't.</summary>
 public sealed record CreationIssue(string Step, string Message)
@@ -237,8 +273,9 @@ public sealed class CreationContext
     public int Level { get; init; } = 1;
 
     /// <summary>
-    /// A recipe path against the draft: the first segment is a step key (its chosen template, e.g. <c>class</c>) or
-    /// <c>draft</c>; the rest walks the template's fields (<c>class.skillChoices.count</c>). Null when it doesn't resolve.
+    /// A recipe path against the draft: the first segment is a step key (its chosen template, e.g. <c>class</c>),
+    /// <c>draft</c>, or <c>modifier</c> (<c>modifier.intelligence</c>: the ability modifier the draft's choices give so
+    /// far); the rest walks the template's fields (<c>class.skillChoices.count</c>). Null when it doesn't resolve.
     /// </summary>
     public required Func<string, object?> Resolve { get; init; }
 

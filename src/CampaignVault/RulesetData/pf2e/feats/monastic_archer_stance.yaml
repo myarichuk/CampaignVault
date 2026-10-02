@@ -5,5 +5,6 @@ name: monastic_archer_stance
 system: pf2e
 mechanicalSummary: You enter a specialized stance for a unique martial art centered around the use of a bow.
 extraPools: []
+category: class
 classes: [monk]
 level: 1

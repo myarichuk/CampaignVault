@@ -4,7 +4,10 @@
 name: deity_s_protection
 system: pf2e
 prerequisite: Advanced Domain
+prerequisites:
+  - { feat: advanced_domain }
 mechanicalSummary: When you call upon your deity’s power to fulfill the promise of their domain, you gain divine protection.
 extraPools: []
+category: class
 classes: [cleric]
 level: 14

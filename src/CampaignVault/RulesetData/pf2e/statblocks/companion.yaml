@@ -1,0 +1,30 @@
+# The PF2e companion stat block the builder edits. Each key is a PF2e system-stats field (or a line of the notes:
+# creatureType, attacks, traits, stance); the client draws the editor from this. The creature's level is the draft's.
+name: companion
+system: pf2e
+fields:
+  - { key: creatureType, label: Creature type, type: choice, source: creatureTypes, group: defense }
+  - { key: statBlockHp, label: Hit points, type: int, min: 1, max: 300, required: true, group: defense }
+  - { key: armorClass, label: Armor class, type: int, min: 5, max: 40, group: defense }
+  - { key: movement, label: Speed (ft), type: int, min: 0, max: 120, group: defense }
+  - { key: strengthMod, label: STR, type: int, min: -5, max: 10, group: abilities }
+  - { key: dexterityMod, label: DEX, type: int, min: -5, max: 10, group: abilities }
+  - { key: constitutionMod, label: CON, type: int, min: -5, max: 10, group: abilities }
+  - { key: intelligenceMod, label: INT, type: int, min: -5, max: 10, group: abilities }
+  - { key: wisdomMod, label: WIS, type: int, min: -5, max: 10, group: abilities }
+  - { key: charismaMod, label: CHA, type: int, min: -5, max: 10, group: abilities }
+  - { key: savingThrowModifiers, label: Saves, type: modifiers, source: saves, min: -5, max: 30, group: abilities }
+  - { key: skillModifiers, label: Perception and skills, type: modifiers, source: skills, min: -5, max: 30, group: abilities }
+  - key: attacks
+    label: Strikes
+    type: rows
+    item: strike
+    max: 6
+    group: offense
+    columns:
+      - { key: name, label: Strike, required: true }
+      - { key: bonus, label: To hit, type: int, min: -5, max: 30, required: true }
+      - { key: damage, label: Damage, type: dice, required: true }
+      - { key: notes, label: Traits and notes }
+  - { key: traits, label: Abilities, type: text, group: notes }
+  - { key: stance, label: Stance toward the party, type: text, group: notes }

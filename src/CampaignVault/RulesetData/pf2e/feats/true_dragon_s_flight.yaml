@@ -4,6 +4,10 @@
 name: true_dragon_s_flight
 system: pf2e
 prerequisite: "Dragon's Flight"
+prerequisites:
+  - { feat: dragon_s_flight }
 mechanicalSummary: Your wings have grown more powerful, capable of keeping you aloft longer.
 extraPools: []
+category: ancestry
+ancestries: [dragonblood]
 level: 9

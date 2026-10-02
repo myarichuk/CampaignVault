@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: arcane or primal patron
 mechanicalSummary: Your familiar can shed its material form, becoming a mass of animated magic.
 extraPools: []
+category: class
 classes: [witch]
 level: 8

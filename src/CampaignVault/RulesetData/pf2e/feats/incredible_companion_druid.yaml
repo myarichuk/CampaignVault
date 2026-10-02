@@ -4,7 +4,10 @@
 name: incredible_companion_druid
 system: pf2e
 prerequisite: Mature Animal Companion (Druid)
+prerequisites:
+  - { feat: mature_animal_companion_druid }
 mechanicalSummary: Your animal companion continues to grow and develop.
 extraPools: []
+category: class
 classes: [druid]
 level: 8

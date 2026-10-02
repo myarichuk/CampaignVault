@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: superstition instinct
 mechanicalSummary: You draw upon your superstitious fury to destroy a spell.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 12

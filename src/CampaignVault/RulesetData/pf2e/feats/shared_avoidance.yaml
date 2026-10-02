@@ -4,7 +4,10 @@
 name: shared_avoidance
 system: pf2e
 prerequisite: Premonition of Avoidance
+prerequisites:
+  - { feat: premonition_of_avoidance }
 mechanicalSummary: You can project your premonitions of danger to your allies.
 extraPools: []
+category: class
 classes: [cleric]
 level: 10

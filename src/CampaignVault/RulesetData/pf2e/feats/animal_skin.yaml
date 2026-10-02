@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: animal instinct
 mechanicalSummary: Your proficiency in unarmored defense increases to expert.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 6

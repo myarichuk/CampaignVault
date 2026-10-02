@@ -4,6 +4,9 @@
 name: incredible_investiture
 system: pf2e
 prerequisite: Charisma +3
+prerequisites:
+  - { ability: Charisma, min: 3 }
 mechanicalSummary: Invest up to 12 magic items
 extraPools: []
+category: general
 level: 11

@@ -4,7 +4,10 @@
 name: projectile_snatching
 system: pf2e
 prerequisite: Deflect Projectile
+prerequisites:
+  - { feat: deflect_projectile }
 mechanicalSummary: You pluck missiles from the air and hurl them back at their source.
 extraPools: []
+category: class
 classes: [monk]
 level: 8

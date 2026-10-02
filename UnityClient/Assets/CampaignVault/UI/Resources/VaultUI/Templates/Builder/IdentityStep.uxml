@@ -1,5 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
-    <!-- IdentityStepViewModel: name, concept, look; a companion's stat block when the step names one. -->
+    <!-- IdentityStepViewModel: name, concept, look; then the step's schema when it names one (a companion's stat block, a Narrative character's nature). -->
     <ui:VisualElement class="cv-builder__widget">
         <ui:Label text="NAME" class="cv-caption cv-field-caption" />
         <cv:VaultField name="identity-name" placeholder="what the table calls them" is-delayed="true">
@@ -29,10 +29,25 @@
             <Bindings>
                 <cv:ClassBinding property="cls-hidden" data-source-path="HasSchema" class-name="cv-hidden" invert="true" />
             </Bindings>
-            <ui:Label text="STAT BLOCK" class="cv-caption cv-card__title" />
-            <cv:Repeater item-template="Builder/StatField">
+            <ui:Label class="cv-caption cv-card__title">
                 <Bindings>
-                    <ui:DataBinding property="itemsSource" data-source-path="Stats" binding-mode="ToTarget" />
+                    <ui:DataBinding property="text" data-source-path="SchemaTitle" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <ui:VisualElement name="stat-templates" class="cv-field-caption">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="HasTemplates" class-name="cv-hidden" invert="true" />
+                </Bindings>
+                <ui:Label text="START FROM A CREATURE" class="cv-caption cv-field-caption" />
+                <cv:ContentPresenter>
+                    <Bindings>
+                        <ui:DataBinding property="content" data-source-path="TemplateCombo" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:ContentPresenter>
+            </ui:VisualElement>
+            <cv:Repeater item-template="Builder/StatGroup">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Groups" binding-mode="ToTarget" />
                 </Bindings>
             </cv:Repeater>
         </ui:VisualElement>

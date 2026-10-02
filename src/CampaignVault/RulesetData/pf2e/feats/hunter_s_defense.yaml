@@ -4,6 +4,11 @@
 name: hunter_s_defense
 system: pf2e
 prerequisite: Trained in Nature
+prerequisites:
+  - { skill: Nature, rank: trained }
 mechanicalSummary: Your canny understanding of natural and primal creatures helps you predict and dodge their attacks.
 extraPools: []
+category: ancestry
+ancestries: [tripkee]
+skills: [Nature]
 level: 1

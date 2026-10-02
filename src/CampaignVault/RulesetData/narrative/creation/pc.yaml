@@ -1,0 +1,7 @@
+# Character builder recipe: a Narrative player character. No level, no stats: who they are is the whole sheet. The
+# identity step's name, concept and look are the draft's own; its "nature" fields go to the character's psychology
+# (descriptors → traits, drives → wants, fears → fears). Step kinds: PLUGINS.md.
+name: pc
+system: narrative
+steps:
+  - { key: identity, kind: identity, schema: nature, prompt: Who they are }

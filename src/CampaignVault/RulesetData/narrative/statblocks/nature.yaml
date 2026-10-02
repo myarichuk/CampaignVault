@@ -1,0 +1,10 @@
+# A Narrative character's nature, edited on the identity step. Each field is one of the character's psychology lists
+# (DraftCharacterMapper.PsychologyFields): descriptors are its traits, drives its wants, fears its fears. Entries are
+# separated by commas.
+name: nature
+system: narrative
+title: Nature
+fields:
+  - { key: descriptors, label: Three descriptors, type: list, min: 3, max: 3, hint: "three words, comma-separated", group: who they are }
+  - { key: drives, label: Drives, type: list, max: 5, hint: "what they want (optional)", group: what moves them }
+  - { key: fears, label: Fears, type: list, max: 5, hint: "what they dread (optional)", group: what moves them }

@@ -4,6 +4,9 @@
 name: devout_magic
 system: pf2e
 prerequisite: Champion Dedication
+prerequisites:
+  - { feat: champion_dedication }
 mechanicalSummary: You gain a devotion spell of your choice listed in the devotion spells class feature
 extraPools: []
+category: archetype
 level: 4

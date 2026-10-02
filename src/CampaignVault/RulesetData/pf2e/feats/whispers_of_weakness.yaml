@@ -5,5 +5,6 @@ name: whispers_of_weakness
 system: pf2e
 mechanicalSummary: Voices whisper to you how to best lay a creature low.
 extraPools: []
+category: class
 classes: [oracle]
 level: 1

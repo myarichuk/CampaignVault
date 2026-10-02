@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: saboteur
+system: pf2e
+description: "Whether you do it for personal enjoyment or at the behest of a mercenary company or military organization, you have a knack for destroying things. You have a sense for an object or structure's weak spots and know where to deliver a hammer strike or alchemical bomb. You adventure to hone your skills or complete a particular mission."
+boosts: [Strength, Dexterity]
+skillProficiencies: [Thievery]
+lore: Engineering Lore
+skillFeat: concealing_legerdemain
+feature: Concealing Legerdemain

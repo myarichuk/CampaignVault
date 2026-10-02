@@ -4,6 +4,9 @@
 name: elbow_breaker
 system: pf2e
 prerequisite: Wrestler Dedication
+prerequisites:
+  - { feat: wrestler_dedication }
 mechanicalSummary: You bend your opponent’s body or limbs into agonizing positions that make it difficult for them to maintain their grip.
 extraPools: []
+category: archetype
 level: 4

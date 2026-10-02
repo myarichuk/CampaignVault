@@ -5,4 +5,6 @@ name: squawk
 system: pf2e
 mechanicalSummary: You let out an awkward squawk, ruffle your feathers, or fake some other birdlike tic to cover up a social misstep or faux pas.
 extraPools: []
+category: ancestry
+ancestries: [tengu]
 level: 1

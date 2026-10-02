@@ -4,7 +4,11 @@
 name: spellbook_prodigy
 system: pf2e
 prerequisite: Trained in Arcana
+prerequisites:
+  - { skill: Arcana, rank: trained }
 mechanicalSummary: You are particularly adept at learning spells to add to your spellbook.
 extraPools: []
+category: class
 classes: [wizard]
+skills: [Arcana]
 level: 1

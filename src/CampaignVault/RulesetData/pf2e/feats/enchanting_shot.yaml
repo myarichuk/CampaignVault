@@ -4,6 +4,9 @@
 name: enchanting_shot
 system: pf2e
 prerequisite: Eldritch Archer Dedication
+prerequisites:
+  - { feat: eldritch_archer_dedication }
 mechanicalSummary: With a single whisper carried on the wind, you enchant your ammunition to make a foe more vulnerable to your attacks.
 extraPools: []
+category: archetype
 level: 8

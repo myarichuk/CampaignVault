@@ -4,6 +4,11 @@
 name: expert_oracle_spellcasting
 system: pf2e
 prerequisite: Basic Oracle Spellcasting; Master in Religion
+prerequisites:
+  - { feat: basic_oracle_spellcasting }
+  - { skill: Religion, rank: master }
 mechanicalSummary: You gain the expert spellcasting benefits.
 extraPools: []
+category: archetype
+skills: [Religion]
 level: 12

@@ -4,6 +4,9 @@
 name: stage_fighting
 system: pf2e
 prerequisite: Gladiator Dedication
+prerequisites:
+  - { feat: gladiator_dedication }
 mechanicalSummary: You pull punches to give a better show.
 extraPools: []
+category: archetype
 level: 4

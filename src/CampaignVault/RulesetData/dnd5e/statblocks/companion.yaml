@@ -2,7 +2,9 @@
 name: companion
 system: dnd5e
 fields:
-  - { key: statBlockHp, label: Hit points, type: int, min: 1, max: 300, group: defense }
+  - { key: creatureType, label: Creature type, type: choice, source: creatureTypes, group: defense }
+  - { key: challengeRating, label: Challenge rating, type: text, compact: true, group: defense }
+  - { key: statBlockHp, label: Hit points, type: int, min: 1, max: 300, required: true, group: defense }
   - { key: armorClass, label: Armor class, type: int, min: 5, max: 25, group: defense }
   - { key: movement, label: Speed (ft), type: int, min: 0, max: 120, group: defense }
   - { key: strength, label: STR, type: int, min: 1, max: 30, group: abilities }
@@ -11,3 +13,17 @@ fields:
   - { key: intelligence, label: INT, type: int, min: 1, max: 30, group: abilities }
   - { key: wisdom, label: WIS, type: int, min: 1, max: 30, group: abilities }
   - { key: charisma, label: CHA, type: int, min: 1, max: 30, group: abilities }
+  - { key: skillModifiers, label: Skills, type: modifiers, source: skills, min: -5, max: 20, group: abilities }
+  - key: attacks
+    label: Attacks
+    type: rows
+    item: attack
+    max: 6
+    group: offense
+    columns:
+      - { key: name, label: Attack, required: true }
+      - { key: bonus, label: To hit, type: int, min: -5, max: 20, required: true }
+      - { key: damage, label: Damage, type: dice, required: true }
+      - { key: notes, label: Notes }
+  - { key: traits, label: Traits, type: text, group: notes }
+  - { key: stance, label: Stance toward the party, type: text, group: notes }

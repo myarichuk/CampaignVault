@@ -4,7 +4,10 @@
 name: esoteric_polymath
 system: pf2e
 prerequisite: polymath muse
+prerequisites:
+  - { classFeature: polymath }
 mechanicalSummary: You keep a book of occult spells, similar to a wizard’s spellbook, and can use its spells to supplement your spell repertoire.
 extraPools: []
+category: class
 classes: [bard]
 level: 2

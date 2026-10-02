@@ -5,4 +5,6 @@ name: pack_hunter
 system: pf2e
 mechanicalSummary: You were taught how to hunt as part of a pack.
 extraPools: []
+category: ancestry
+ancestries: [kholo]
 level: 1

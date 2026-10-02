@@ -4,6 +4,10 @@
 name: legendary_medic
 system: pf2e
 prerequisite: Legendary in Medicine
+prerequisites:
+  - { skill: Medicine, rank: legendary }
 mechanicalSummary: Remove disease, blinded, deafened, doomed, or drained
 extraPools: []
+category: skill
+skills: [Medicine]
 level: 15

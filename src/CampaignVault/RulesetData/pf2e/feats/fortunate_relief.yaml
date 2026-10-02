@@ -5,5 +5,6 @@ name: fortunate_relief
 system: pf2e
 mechanicalSummary: Your god favors your attempts to remove afflictions and conditions.
 extraPools: []
+category: class
 classes: [cleric]
 level: 12

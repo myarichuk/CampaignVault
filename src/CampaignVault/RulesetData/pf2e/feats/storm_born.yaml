@@ -4,7 +4,10 @@
 name: storm_born
 system: pf2e
 prerequisite: storm order
+prerequisites:
+  - { classFeature: storm }
 mechanicalSummary: You are at home out in the elements, reveling in the power of nature unleashed.
 extraPools: []
+category: class
 classes: [druid]
 level: 1

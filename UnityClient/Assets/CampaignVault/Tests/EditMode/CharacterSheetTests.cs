@@ -2,6 +2,7 @@ using System.Linq;
 using NUnit.Framework;
 using CampaignVault.UnityClient.Json;
 using CampaignVault.UnityClient.Model;
+using CampaignVault.UnityClient.UI.Sheet;
 
 namespace CampaignVault.UnityClient.Tests
 {
@@ -50,12 +51,72 @@ namespace CampaignVault.UnityClient.Tests
   }
 }";
 
+        private const string Pf2eWolfCompanion = @"{ ""character"": { ""id"": ""chars/ash"", ""name"": ""Ash"", ""isPartyCompanion"": true, ""maxHp"": 24, ""currentHp"": 24,
+  ""systemStats"": { ""$system"": ""pf2e"", ""level"": 1, ""statBlockHp"": 24, ""strengthMod"": 3, ""dexterityMod"": 4,
+    ""savingThrowModifiers"": { ""Fortitude"": 8, ""Reflex"": 10, ""Will"": 6 },
+    ""skillModifiers"": { ""Perception"": 8, ""Stealth"": 9, ""Warfare Lore"": 4 } } } }";
+
         private const string Pf2eFighterWithStraySpellcasting = @"{ ""character"": { ""id"": ""chars/brakk"", ""name"": ""Brakk"", ""isPartyCompanion"": true,
   ""systemStats"": { ""$system"": ""pf2e"", ""level"": 3, ""ancestry"": ""Orc"", ""spellcastingAbility"": ""Wisdom"", ""spellDc"": 16, ""spellcastingProficiency"": ""Trained"" } } }";
 
         private static CharacterSheet Sheet(string json)
         {
             return CharacterSheet.FromPayload(JsonValue.Parse(json));
+        }
+
+        private const string NarrativeWren = @"{ ""character"": { ""id"": ""chars/wren"", ""name"": ""Wren Hollis"", ""isPc"": true,
+  ""currentAppearance"": ""Tar-black hands."",
+  ""psychology"": { ""traits"": [ ""wry"", ""restless"", ""loyal to a fault"" ], ""wants"": [ ""Find her brother"" ], ""fears"": [ ""Deep water"", ""being forgotten"" ] },
+  ""systemStats"": { ""$system"": ""narrative"" } } }";
+
+        [Test]
+        public void Narrative_HasNoStats_AndShowsItsNatureDrivesAndFears_OnBothSheets()
+        {
+            var s = Sheet(NarrativeWren);
+
+            Assert.IsFalse(s.HasStats);
+            CollectionAssert.AreEqual(new[] { "Wry, restless, loyal to a fault.", "Drives: Find her brother.", "Fears: Deep water; being forgotten." }, s.NatureLines());
+
+            var sheet = new SheetViewModel(s);
+            CollectionAssert.AreEqual(s.NatureLines(), sheet.Nature);
+            CollectionAssert.IsEmpty(sheet.Abilities);
+            CollectionAssert.IsEmpty(sheet.Vitals);
+
+            var card = new StatBlockViewModel(s);
+            Assert.AreEqual("Nature", card.Sections[0].Title);
+            CollectionAssert.AreEqual(s.NatureLines(), card.Sections[0].Paragraphs.Select(p => p.Text).ToArray());
+        }
+
+        private const string Dnd5eHunter = @"{
+  ""character"": { ""id"": ""chars/rook"", ""name"": ""Rook"", ""classLevel"": ""Ranger 3"", ""isPc"": true,
+    ""systemStats"": { ""$system"": ""dnd5e"", ""level"": 3, ""classLevels"": [ { ""class"": ""Ranger"", ""level"": 3 } ] } },
+  ""classFeatures"": [
+    { ""level"": 1, ""name"": ""Favored Enemy"", ""description"": ""Advantage on Survival checks to track your chosen enemy."", ""from"": null, ""spells"": [] },
+    { ""level"": 3, ""name"": ""Hunter's Prey"", ""description"": ""Choose one."", ""from"": ""Hunter"", ""spells"": [] },
+    { ""level"": 1, ""name"": ""Domain Spells"", ""description"": ""Always prepared."", ""from"": ""Life Domain"", ""spells"": [ ""cure_wounds"", ""bless"" ] }
+  ]
+}";
+
+        [Test]
+        public void ClassFeatures_AreReadFromThePayload_AndShownOneLineEach()
+        {
+            var s = Sheet(Dnd5eHunter);
+
+            Assert.AreEqual(3, s.ClassFeatures.Count);
+            Assert.AreEqual("Hunter", s.ClassFeatures[1].From);
+            var sheet = new SheetViewModel(s);
+            Assert.AreEqual("Hunter's Prey (Hunter, level 3). Choose one.", sheet.ClassFeatures[1]);
+            Assert.AreEqual("Favored Enemy (level 1). Advantage on Survival checks to track your chosen enemy.", sheet.ClassFeatures[0]);
+            StringAssert.EndsWith("Spells: Cure Wounds, Bless.", sheet.ClassFeatures[2]);
+            var card = new StatBlockViewModel(s);
+            Assert.IsTrue(card.Sections.Any(x => x.Title == "Class features" && x.Paragraphs.Count == 3));
+        }
+
+        [Test]
+        public void ACharacterWithoutPsychology_HasNoNatureSection()
+        {
+            Assert.IsEmpty(Sheet(Pf2eWizard).NatureLines());
+            CollectionAssert.IsEmpty(new SheetViewModel(Sheet(Pf2eWizard)).Nature);
         }
 
         [Test]
@@ -112,11 +173,29 @@ namespace CampaignVault.UnityClient.Tests
         }
 
         [Test]
+        public void Pf2e_AStatBlockCreature_ListsItsModifiersWithoutRanks_PerceptionAndLore()
+        {
+            var s = Sheet(Pf2eWolfCompanion);
+            Assert.AreEqual(8, s.Perception);
+            Assert.AreEqual(new[] { "Fortitude", "Reflex", "Will" }, s.Saves.Where(c => c.Rank > 0).Select(c => c.Name).ToArray());
+            Assert.AreEqual(10, s.Saves[1].Mod);
+            Assert.AreEqual(new[] { "Stealth", "Warfare Lore" }, s.Skills.Where(c => c.Rank > 0).Select(c => c.Name).ToArray());
+
+            var card = new StatBlockViewModel(s);
+            var lines = card.Lines.Select(l => l.Key + ": " + l.Value).ToArray();
+            Assert.AreEqual("Perception: +8", lines[0]);
+            CollectionAssert.Contains(lines, "Saving Throws: Fortitude +8, Reflex +10, Will +6");
+            CollectionAssert.Contains(lines, "Skills: Stealth +9, Warfare Lore +4");
+        }
+
+        [Test]
         public void Pf2e_RanksSpellcastingPoolsAndFeats()
         {
             var s = Sheet(Pf2eWizard);
             Assert.IsTrue(s.IsPf2e);
             Assert.AreEqual("Ancient Elf", s.Lineage, "a heritage that names the ancestry isn't doubled");
+            Assert.AreEqual("Rock Dwarf", CharacterSheet.Named("rock_dwarf"), "template names read as titles");
+            Assert.AreEqual("Martial Disciple", CharacterSheet.Named("martial_disciple"));
             Assert.AreEqual("Wizard 4", s.ClassLine);
             Assert.AreEqual(-1, s.Abilities[0].Score, "PF2e has modifiers only");
             Assert.AreEqual(4, s.Abilities[3].Mod);

@@ -4,7 +4,10 @@
 name: swift_retribution
 system: pf2e
 prerequisite: "champion's reaction"
+prerequisites:
+  - { feat: champion_s_reaction }
 mechanicalSummary: The transgressions of your enemies fuel you to retaliate with divine speed.
 extraPools: []
+category: class
 classes: [champion]
 level: 18

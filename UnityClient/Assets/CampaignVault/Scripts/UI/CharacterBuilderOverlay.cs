@@ -40,9 +40,9 @@ namespace CampaignVault.UnityClient.UI
         /// For the campaign being set up in onboarding, not the one at the table: a new party member (empty id) or the
         /// built character with this id.
         /// </summary>
-        public void SetPartyTarget(string editId)
+        public void SetPartyTarget(string editId, string kind)
         {
-            _kind = "pc";
+            _kind = string.IsNullOrEmpty(kind) ? "pc" : kind;
             _forParty = true;
             _editId = editId ?? string.Empty;
         }

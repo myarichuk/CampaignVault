@@ -4,6 +4,9 @@
 name: basic_wizard_spellcasting
 system: pf2e
 prerequisite: Wizard Dedication
+prerequisites:
+  - { feat: wizard_dedication }
 mechanicalSummary: You gain the basic spellcasting benefits.
 extraPools: []
+category: archetype
 level: 4

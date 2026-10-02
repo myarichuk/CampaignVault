@@ -5,5 +5,6 @@ name: lunge
 system: pf2e
 mechanicalSummary: You attack an enemy at the edge of your reach.
 extraPools: []
+category: class
 classes: [fighter]
 level: 2

@@ -20,8 +20,39 @@ CampaignVault install, and restart the host.
 See [PLUGINS.md](https://github.com/myarichuk/CampaignVault/blob/master/PLUGINS.md) in
 the main repository for the full plugin architecture, trust model, and quick-start guide.
 
-## Unreleased
+## 0.13.0
 
+- **Character creation** (`CampaignVault.Rulesets.Creation`): the contracts behind the recipe-driven character builder.
+  `ICharacterCreation` (steps, options, preview, commit for a `CharacterDraft`), `IRecipeValidator` (a named check a
+  recipe step points at; plugins add their own), `CreationStep`, `CreationOption` (with `Values` for templates that
+  fill several fields at once), `CreationIssue`, `CreationContext`, and the ability score rules (`AbilityScoreMethods`,
+  `PointBuyRules`, `AbilityScoreChoice`). `CharacterDraft.PartyLevel` lets companion checks compare against the party.
+  `CreationStep.CountPlus` adds a path's number to a step's count, and `CreationContext.Resolve` reads
+  `modifier.<ability>` (PF2e: trained skills = the class's count + the Intelligence modifier). An `allocate` step's
+  picks are attribute boosts, +1 each to `<ability>Mod`.
+- **Feat effects** (`FeatEffect`, `FeatRequirement`, `ActiveFeatEffect`): declarative feat mechanics whose numbers the
+  engine owns; a model only supplies a toggle or an asserted condition. `RulesetTemplate.Requires` hides any template
+  unless its plugin (and, if named, mode) is active.
+- **Spells on the sheet** (`SpellRepertoire`, `Character.Spells`): cantrips, spells known or spellbook, and prepared
+  spells, set by the builder. `RulesetSystem.Canonicalize` maps system spellings to the canonical ids.
+- **Plugin manifest** gains `author` and `description`.
+- **Full rulesets out of tree.** `IRulesetModule`, `IActionResolution`, `ICombatRuleset`
+  (`CampaignVault.Rulesets`) and the character-bootstrap contracts (`IBootstrapStep`,
+  `ILevelGainStep`, `ICharacterBootstrapPipeline` + in-box implementations,
+  `BootstrapContext`, `BootstrapStepResult`, `BootstrapReport`,
+  `IBootstrapEquipmentAccess` in `CampaignVault.Rulesets.Bootstrap`) moved here from
+  the host (same namespaces, so host code is untouched). A plugin referencing only
+  this package can now author a complete ruleset: dice resolution, action economy,
+  and HP/defense/proficiency derivation.
+- **Deliberately not moved:** session-bound pressures. `IPressureContributor` and
+  `IRulesetPressureContributor` stay host-side (first-party resolvers implement the
+  host's `IHostRulesetModule` for those); out-of-tree rulesets contribute pressure
+  via `IPluginGuidanceContributor` / `IPluginContextContributor`, which the host
+  surfaces on the same read paths.
+- **Bootstrap stays Raven-free.** Steps that derived stats from worn gear previously
+  took a live session; they now read `BootstrapContext.EquipmentAccess`
+  (`GetEquippedItemsAsync`), which the host backs with its session. Null means no
+  equipment data — degrade to unarmored defaults.
 - **Death** (`death`, `DeathChange`, `Character.Death` / `IsDead`, `DeathRecord`): explicit character death, since 0 HP
   is only downed. Records day, cause, killer and body location; clears an NPC's location, schedule and companion flag
   (a dead PC keeps its location), lapses its minions, and rejects positive `hp` deltas on the dead. `revive:true`
@@ -40,23 +71,6 @@ the main repository for the full plugin architecture, trust model, and quick-sta
   Locked marks refuse `remove` without `force:true`. Cap 32 per character. Publishes `core.pierced.v1` (includes
   `piercingId`). Cards show a compact summary (stacks as `3× …`). Mutate only via the verb (or return `PiercingChange`
   from an event handler).
-- **Full rulesets out of tree.** `IRulesetModule`, `IActionResolution`, `ICombatRuleset`
-  (`CampaignVault.Rulesets`) and the character-bootstrap contracts (`IBootstrapStep`,
-  `ILevelGainStep`, `ICharacterBootstrapPipeline` + in-box implementations,
-  `BootstrapContext`, `BootstrapStepResult`, `BootstrapReport`,
-  `IBootstrapEquipmentAccess` in `CampaignVault.Rulesets.Bootstrap`) moved here from
-  the host (same namespaces, so host code is untouched). A plugin referencing only
-  this package can now author a complete ruleset: dice resolution, action economy,
-  and HP/defense/proficiency derivation.
-- **Deliberately not moved:** session-bound pressures. `IPressureContributor` and
-  `IRulesetPressureContributor` stay host-side (first-party resolvers implement the
-  host's `IHostRulesetModule` for those); out-of-tree rulesets contribute pressure
-  via `IPluginGuidanceContributor` / `IPluginContextContributor`, which the host
-  surfaces on the same read paths.
-- **Bootstrap stays Raven-free.** Steps that derived stats from worn gear previously
-  took a live session; they now read `BootstrapContext.EquipmentAccess`
-  (`GetEquippedItemsAsync`), which the host backs with its session. Null means no
-  equipment data — degrade to unarmored defaults.
 
 ## 0.11.1
 

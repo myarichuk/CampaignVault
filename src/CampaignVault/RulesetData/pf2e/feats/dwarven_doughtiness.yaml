@@ -5,4 +5,6 @@ name: dwarven_doughtiness
 system: pf2e
 mechanicalSummary: You are naturally calm and collected in the face of imminent danger.
 extraPools: []
+category: ancestry
+ancestries: [dwarf]
 level: 1

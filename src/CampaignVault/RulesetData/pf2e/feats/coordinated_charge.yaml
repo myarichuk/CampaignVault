@@ -4,6 +4,9 @@
 name: coordinated_charge
 system: pf2e
 prerequisite: Marshal Dedication
+prerequisites:
+  - { feat: marshal_dedication }
 mechanicalSummary: You heroically dash into the fray, inspiring your allies to follow.
 extraPools: []
+category: archetype
 level: 12

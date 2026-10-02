@@ -4,7 +4,10 @@
 name: clinging_shadows_initiate
 system: pf2e
 prerequisite: Qi Spells
+prerequisites:
+  - { feat: qi_spells }
 mechanicalSummary: You learn a mystical stance that transforms your qi into sticky smoke that shrouds your limbs.
 extraPools: []
+category: class
 classes: [monk]
 level: 8

@@ -5,4 +5,6 @@ name: brine_may
 system: pf2e
 mechanicalSummary: Your mother was a sea hag, granting you one sea-green or blue eye.
 extraPools: []
+category: ancestry
+ancestries: [changeling]
 level: 1

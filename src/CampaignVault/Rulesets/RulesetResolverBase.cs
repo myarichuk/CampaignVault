@@ -900,13 +900,12 @@ public abstract class RulesetResolverBase<TStats> : IHostRulesetModule, IActionR
             DiceMechanic.Disadvantage => AdvantageEffect.Disadvantage,
             _ => AdvantageEffect.None,
         };
-        var resolved = Pipeline.Resolve(query, baseBonus, explicitAdvantage);
+        var feat = action is null
+            ? FeatEffectFold.None
+            : FeatEffectRules.Fold(kind, subject, action, action.FeatEffects.GetValueOrDefault(actor.Id) ?? [], System, isActor: actor.Id == action.CharacterId);
+        var resolved = Pipeline.Resolve(query, baseBonus, explicitAdvantage, feat.Advantage, feat.Disadvantage);
         if (action is not null)
-        {
-            var featEffects = action.FeatEffects.GetValueOrDefault(actor.Id) ?? [];
-            var feat = FeatEffectRules.Fold(kind, subject, action, featEffects, System, isActor: actor.Id == action.CharacterId);
             resolved = resolved with { Bonus = resolved.Bonus + feat.Bonus, Notes = [.. resolved.Notes, .. feat.Notes] };
-        }
         var mechanic = resolved.Advantage switch
         {
             AdvantageEffect.Advantage => DiceMechanic.Advantage,

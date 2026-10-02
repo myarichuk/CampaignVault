@@ -5,5 +5,6 @@ name: head_stomp
 system: pf2e
 mechanicalSummary: Make an unarmed melee Strike against a prone target.
 extraPools: []
+category: class
 classes: [rogue]
 level: 4

@@ -5,4 +5,6 @@ name: bone_magic
 system: pf2e
 mechanicalSummary: "Your connection to your iruxi ancestors manifests as a simple primal spell that you cast using a fragment of an ancestor's bones."
 extraPools: []
+category: ancestry
+ancestries: [lizardfolk]
 level: 1

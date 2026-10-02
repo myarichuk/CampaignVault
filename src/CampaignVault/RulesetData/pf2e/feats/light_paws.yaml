@@ -5,4 +5,6 @@ name: light_paws
 system: pf2e
 mechanicalSummary: You can balance on your toes to step carefully over obstructions.
 extraPools: []
+category: ancestry
+ancestries: [catfolk]
 level: 5

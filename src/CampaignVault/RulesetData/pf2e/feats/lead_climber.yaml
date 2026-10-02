@@ -4,6 +4,10 @@
 name: lead_climber
 system: pf2e
 prerequisite: Expert in Athletics
+prerequisites:
+  - { skill: Athletics, rank: expert }
 mechanicalSummary: When climbing, you can prepare routes for others to follow, and you can pull your allies up to avoid disaster.
 extraPools: []
+category: skill
+skills: [Athletics]
 level: 2

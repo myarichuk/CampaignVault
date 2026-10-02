@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Angelkin, Lawbringer, Musetouched, or or another lineage feat associated with celestials
 mechanicalSummary: You possess celestial magic.
 extraPools: []
+category: ancestry
+ancestries: [nephilim]
 level: 9

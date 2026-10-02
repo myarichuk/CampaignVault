@@ -4,7 +4,11 @@
 name: defensive_coordination
 system: pf2e
 prerequisite: warrior muse; Rallying Anthem
+prerequisites:
+  - { classFeature: warrior }
+  - { feat: rallying_anthem }
 mechanicalSummary: Like the storied heroes who persist in the face of overwhelming odds, you and your allies will hold the line.
 extraPools: []
+category: class
 classes: [bard]
 level: 6

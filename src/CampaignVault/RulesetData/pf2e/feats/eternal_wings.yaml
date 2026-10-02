@@ -4,6 +4,10 @@
 name: eternal_wings
 system: pf2e
 prerequisite: Divine Wings
+prerequisites:
+  - { feat: divine_wings }
 mechanicalSummary: Your wings are now a permanent part of your body.
 extraPools: []
+category: ancestry
+ancestries: [nephilim]
 level: 17

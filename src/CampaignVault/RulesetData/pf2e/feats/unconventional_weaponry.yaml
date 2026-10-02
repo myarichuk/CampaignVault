@@ -5,4 +5,6 @@ name: unconventional_weaponry
 system: pf2e
 mechanicalSummary: You’ve familiarized yourself with a particular weapon, potentially from another ancestry or culture.
 extraPools: []
+category: ancestry
+ancestries: [human]
 level: 1

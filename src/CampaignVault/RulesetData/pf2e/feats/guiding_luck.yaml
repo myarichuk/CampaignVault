@@ -4,6 +4,10 @@
 name: guiding_luck
 system: pf2e
 prerequisite: Halfling Luck
+prerequisites:
+  - { feat: halfling_luck }
 mechanicalSummary: Your luck guides you to look the right way and aim your blows unerringly.
 extraPools: []
+category: ancestry
+ancestries: [halfling]
 level: 9

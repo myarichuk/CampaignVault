@@ -5,5 +5,6 @@ name: improvise_admixture
 system: pf2e
 mechanicalSummary: "You scrounge together enough ingredients from what's left in your alchemist's toolkit to produce a few more versatile vials on the fly."
 extraPools: []
+category: class
 classes: [alchemist]
 level: 2

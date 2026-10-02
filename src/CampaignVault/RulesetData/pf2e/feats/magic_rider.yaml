@@ -5,4 +5,6 @@ name: magic_rider
 system: pf2e
 mechanicalSummary: Your people used powerful magic to travel between distant worlds in the distant past, and the remnants of that magic make such transportation easier for you.
 extraPools: []
+category: ancestry
+ancestries: [elf]
 level: 17

@@ -4,6 +4,9 @@
 name: devout_blessing
 system: pf2e
 prerequisite: Champion Dedication
+prerequisites:
+  - { feat: champion_dedication }
 mechanicalSummary: You gain the blessing of the devoted class feature
 extraPools: []
+category: archetype
 level: 6

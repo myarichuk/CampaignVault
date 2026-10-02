@@ -4,7 +4,11 @@
 name: camouflage
 system: pf2e
 prerequisite: Master in Stealth
+prerequisites:
+  - { skill: Stealth, rank: master }
 mechanicalSummary: You alter your appearance to blend in to the wilderness.
 extraPools: []
+category: class
 classes: [ranger]
+skills: [Stealth]
 level: 10

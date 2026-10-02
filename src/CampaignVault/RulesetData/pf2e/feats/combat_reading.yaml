@@ -5,5 +5,6 @@ name: combat_reading
 system: pf2e
 mechanicalSummary: You use a performer’s cold reading techniques, aura reading, and other tricks to discover your foe’s strengths and weaknesses.
 extraPools: []
+category: class
 classes: [bard]
 level: 4

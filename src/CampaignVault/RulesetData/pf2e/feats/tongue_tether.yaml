@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Snaptongue Tripkee heritage
 mechanicalSummary: Your tongue can momentarily latch on as readily as your hands.
 extraPools: []
+category: ancestry
+ancestries: [tripkee]
 level: 9

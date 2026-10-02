@@ -5,4 +5,6 @@ name: orc_weapon_familiarity
 system: pf2e
 mechanicalSummary: In combat, you favor the brutal weapons that are traditional for your orc ancestors.
 extraPools: []
+category: ancestry
+ancestries: [orc]
 level: 1

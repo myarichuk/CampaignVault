@@ -4,7 +4,10 @@
 name: eclectic_polymath
 system: pf2e
 prerequisite: Esoteric Polymath
+prerequisites:
+  - { feat: esoteric_polymath }
 mechanicalSummary: Your flexible mind can quickly shift from one spell to another.
 extraPools: []
+category: class
 classes: [bard]
 level: 12

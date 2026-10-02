@@ -5,5 +5,6 @@ name: remediate
 system: pf2e
 mechanicalSummary: If your next action is to use your divine font to cast a 3-action heal or harm spell, you can harness the residual energy to counterbalance opposing forces.
 extraPools: []
+category: class
 classes: [cleric]
 level: 16

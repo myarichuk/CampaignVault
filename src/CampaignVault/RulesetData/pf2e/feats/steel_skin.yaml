@@ -4,6 +4,11 @@
 name: steel_skin
 system: pf2e
 prerequisite: Sentinel Dedication; Trained in Survival
+prerequisites:
+  - { feat: sentinel_dedication }
+  - { skill: Survival, rank: trained }
 mechanicalSummary: You wear your armor like a second skin, taking comfort in the protection it offers.
 extraPools: []
+category: skill
+skills: [Survival]
 level: 4

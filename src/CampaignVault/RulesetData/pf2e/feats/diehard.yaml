@@ -5,4 +5,5 @@ name: diehard
 system: pf2e
 mechanicalSummary: Die at dying 5, rather than dying 4
 extraPools: []
+category: general
 level: 1

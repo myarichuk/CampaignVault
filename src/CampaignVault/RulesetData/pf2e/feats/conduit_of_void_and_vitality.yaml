@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: any oracle mystery
 mechanicalSummary: You use the unstable energy of your curse to manipulate the most basic of divine magic.
 extraPools: []
+category: class
 classes: [oracle]
 level: 16

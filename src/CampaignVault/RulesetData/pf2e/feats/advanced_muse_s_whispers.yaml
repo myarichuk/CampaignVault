@@ -4,6 +4,9 @@
 name: advanced_muse_s_whispers
 system: pf2e
 prerequisite: "Basic Muse's Whispers"
+prerequisites:
+  - { feat: basic_muse_s_whispers }
 mechanicalSummary: You gain one bard feat.
 extraPools: []
+category: archetype
 level: 6

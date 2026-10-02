@@ -4,7 +4,10 @@
 name: meditative_focus
 system: pf2e
 prerequisite: Qi Spells
+prerequisites:
+  - { feat: qi_spells }
 mechanicalSummary: Your meditation is so effective that you can achieve a deep focus with the world around you.
 extraPools: []
+category: class
 classes: [monk]
 level: 12

@@ -4,7 +4,10 @@
 name: advanced_qi_spells
 system: pf2e
 prerequisite: Qi Spells
+prerequisites:
+  - { feat: qi_spells }
 mechanicalSummary: Your talent at controlling your qi has reached new heights.
 extraPools: []
+category: class
 classes: [monk]
 level: 6

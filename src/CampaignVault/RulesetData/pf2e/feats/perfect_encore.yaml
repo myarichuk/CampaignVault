@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: magnum opus
 mechanicalSummary: You develop another incredible creation.
 extraPools: []
+category: class
 classes: [bard]
 level: 20

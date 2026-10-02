@@ -5,5 +5,6 @@ name: tangle_of_battle
 system: pf2e
 mechanicalSummary: Your vicious strike pulls your foe closer, giving you the opportunity to grab them.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 10

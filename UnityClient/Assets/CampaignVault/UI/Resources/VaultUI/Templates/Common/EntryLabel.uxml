@@ -1,0 +1,11 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- EntryCellViewModel, a caption: a row's fixed name (a skill), or a column heading in a header row. -->
+    <ui:Label class="cv-caption cv-entry__cell cv-entry__label">
+        <Bindings>
+            <ui:DataBinding property="text" data-source-path="Caption" binding-mode="ToTarget" />
+            <cv:ClassBinding property="cls-name" data-source-path="IsName" class-name="cv-entry__cell--name" />
+            <cv:ClassBinding property="cls-narrow" data-source-path="IsNarrow" class-name="cv-entry__cell--narrow" />
+            <cv:ClassBinding property="cls-wide" data-source-path="IsWide" class-name="cv-entry__cell--wide" />
+        </Bindings>
+    </ui:Label>
+</ui:UXML>

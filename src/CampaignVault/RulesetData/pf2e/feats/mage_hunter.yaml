@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: superstition instinct
 mechanicalSummary: You use your hatred of magic to lash out at a known spellcaster.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 6

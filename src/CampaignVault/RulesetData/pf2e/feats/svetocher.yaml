@@ -5,4 +5,6 @@ name: svetocher
 system: pf2e
 mechanicalSummary: You were born to a moroi, the most common vampires, and you share their supernatural fortitude and power of persuasion.
 extraPools: []
+category: ancestry
+ancestries: [dhampir]
 level: 1

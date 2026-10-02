@@ -4,6 +4,10 @@
 name: water_sprint
 system: pf2e
 prerequisite: Master in Athletics
+prerequisites:
+  - { skill: Athletics, rank: master }
 mechanicalSummary: Experience and training have taught you that water has just enough surface tension for a master sprinter to traverse the surface.
 extraPools: []
+category: skill
+skills: [Athletics]
 level: 7

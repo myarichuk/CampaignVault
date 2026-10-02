@@ -4,7 +4,10 @@
 name: harmonize
 system: pf2e
 prerequisite: maestro muse
+prerequisites:
+  - { classFeature: maestro }
 mechanicalSummary: You can perform multiple compositions simultaneously,
 extraPools: []
+category: class
 classes: [bard]
 level: 6

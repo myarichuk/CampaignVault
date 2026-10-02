@@ -4,6 +4,10 @@
 name: envenom_fangs
 system: pf2e
 prerequisite: Iruxi Armaments
+prerequisites:
+  - { feat: iruxi_armaments }
 mechanicalSummary: You envenom your fangs.
 extraPools: []
+category: ancestry
+ancestries: [lizardfolk]
 level: 5

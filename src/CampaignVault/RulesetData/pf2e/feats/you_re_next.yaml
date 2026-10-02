@@ -4,7 +4,11 @@
 name: you_re_next
 system: pf2e
 prerequisite: Trained in Intimidation
+prerequisites:
+  - { skill: Intimidation, rank: trained }
 mechanicalSummary: After downing a foe, you menace another.
 extraPools: []
+category: class
 classes: [rogue, swashbuckler]
+skills: [Intimidation]
 level: 1

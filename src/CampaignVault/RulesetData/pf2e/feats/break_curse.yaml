@@ -4,6 +4,10 @@
 name: break_curse
 system: pf2e
 prerequisite: Master in Occultism or Master in Religion
+prerequisites:
+  - { anyOf: [{ skill: Occultism, rank: master }, { skill: Religion, rank: master }] }
 mechanicalSummary: Use your knowledge to break curses
 extraPools: []
+category: skill
+skills: [Occultism, Religion]
 level: 7

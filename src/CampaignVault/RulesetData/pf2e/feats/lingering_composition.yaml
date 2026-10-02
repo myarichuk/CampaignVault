@@ -4,7 +4,10 @@
 name: lingering_composition
 system: pf2e
 prerequisite: maestro muse
+prerequisites:
+  - { classFeature: maestro }
 mechanicalSummary: By adding a flourish, you make your compositions last longer.
 extraPools: []
+category: class
 classes: [bard]
 level: 1

@@ -5,4 +5,6 @@ name: pride_in_arms
 system: pf2e
 mechanicalSummary: With a shout of triumph, you grant inspiration to an ally fight on.
 extraPools: []
+category: ancestry
+ancestries: [hobgoblin]
 level: 9

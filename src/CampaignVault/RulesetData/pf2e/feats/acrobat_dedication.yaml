@@ -4,6 +4,10 @@
 name: acrobat_dedication
 system: pf2e
 prerequisite: Trained in Acrobatics
+prerequisites:
+  - { skill: Acrobatics, rank: trained }
 mechanicalSummary: You become an expert in Acrobatics.
 extraPools: []
+category: archetype
+skills: [Acrobatics]
 level: 2

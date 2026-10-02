@@ -5,5 +5,6 @@ name: combine_elixirs
 system: pf2e
 mechanicalSummary: You can add the full ingredients of a second elixir to an elixir you make to create a hybrid concoction.
 extraPools: []
+category: class
 classes: [alchemist]
 level: 6

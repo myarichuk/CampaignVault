@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: dispel magic in your spell repertoire
 mechanicalSummary: You weave dispelling energy into a spell.
 extraPools: []
+category: class
 classes: [sorcerer]
 level: 14

@@ -4,7 +4,10 @@
 name: triple_shot
 system: pf2e
 prerequisite: Double Shot
+prerequisites:
+  - { feat: double_shot }
 mechanicalSummary: You can quickly fire multiple shots with greater control.
 extraPools: []
+category: class
 classes: [fighter]
 level: 6

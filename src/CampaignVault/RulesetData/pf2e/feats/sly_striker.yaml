@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: sneak attack
 mechanicalSummary: Your attacks deal more damage, even against creatures that aren’t off-guard.
 extraPools: []
+category: class
 classes: [rogue]
 level: 8

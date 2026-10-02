@@ -4,6 +4,9 @@
 name: master_witch_spellcasting
 system: pf2e
 prerequisite: "Expert Witch Spellcasting; legendary in the skill associated with your patron's tradition"
+prerequisites:
+  - { feat: expert_witch_spellcasting }
 mechanicalSummary: You gain the master spellcasting benefits.
 extraPools: []
+category: archetype
 level: 18

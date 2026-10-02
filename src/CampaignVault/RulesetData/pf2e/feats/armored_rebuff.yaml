@@ -4,6 +4,9 @@
 name: armored_rebuff
 system: pf2e
 prerequisite: Sentinel Dedication
+prerequisites:
+  - { feat: sentinel_dedication }
 mechanicalSummary: You rebuff puny attacks with your armor, knocking back your foe.
 extraPools: []
+category: archetype
 level: 8

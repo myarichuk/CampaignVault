@@ -4,6 +4,10 @@
 name: planar_survival
 system: pf2e
 prerequisite: Master in Survival
+prerequisites:
+  - { skill: Survival, rank: master }
 mechanicalSummary: Use Survival to Subsist on different planes
 extraPools: []
+category: skill
+skills: [Survival]
 level: 7

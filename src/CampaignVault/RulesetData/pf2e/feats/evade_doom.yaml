@@ -5,4 +5,6 @@ name: evade_doom
 system: pf2e
 mechanicalSummary: You can elude supernatural disaster.
 extraPools: []
+category: ancestry
+ancestries: [catfolk]
 level: 9

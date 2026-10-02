@@ -4,6 +4,10 @@
 name: legendary_codebreaker
 system: pf2e
 prerequisite: Legendary in Society
+prerequisites:
+  - { skill: Society, rank: legendary }
 mechanicalSummary: Quickly Decipher Writing using Society
 extraPools: []
+category: skill
+skills: [Society]
 level: 15

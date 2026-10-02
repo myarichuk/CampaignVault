@@ -6,4 +6,6 @@ system: pf2e
 prerequisite: Angelkin, Lawbringer, Musetouched, or another lineage feat associated with celestials
 mechanicalSummary: Your celestial powers allow you to remove lesser afflictions with ease.
 extraPools: []
+category: ancestry
+ancestries: [nephilim]
 level: 13

@@ -5,5 +5,6 @@ name: elemental_summons
 system: pf2e
 mechanicalSummary: You can call the elements to you.
 extraPools: []
+category: class
 classes: [druid]
 level: 4

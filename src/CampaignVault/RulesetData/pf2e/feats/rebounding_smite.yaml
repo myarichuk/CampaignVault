@@ -4,7 +4,10 @@
 name: rebounding_smite
 system: pf2e
 prerequisite: Channel Smite
+prerequisites:
+  - { feat: channel_smite }
 mechanicalSummary: The energy from your smite persists for a moment, allowing you to pass it to a new target.
 extraPools: []
+category: class
 classes: [cleric]
 level: 16

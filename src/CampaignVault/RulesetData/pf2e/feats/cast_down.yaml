@@ -5,5 +5,6 @@ name: cast_down
 system: pf2e
 mechanicalSummary: The sheer force of your faith can bring a foe crashing down.
 extraPools: []
+category: class
 classes: [cleric]
 level: 6

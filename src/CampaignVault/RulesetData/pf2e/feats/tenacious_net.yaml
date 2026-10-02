@@ -5,4 +5,6 @@ name: tenacious_net
 system: pf2e
 mechanicalSummary: Escaping your nets is no simple task.
 extraPools: []
+category: ancestry
+ancestries: [tripkee]
 level: 5

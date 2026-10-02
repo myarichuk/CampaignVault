@@ -5,5 +5,6 @@ name: raging_thrower
 system: pf2e
 mechanicalSummary: Thrown weapons become especially deadly in your fury.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 1

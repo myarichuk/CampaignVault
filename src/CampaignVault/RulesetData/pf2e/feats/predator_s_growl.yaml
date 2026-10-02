@@ -4,6 +4,11 @@
 name: predator_s_growl
 system: pf2e
 prerequisite: Expert in Intimidation
+prerequisites:
+  - { skill: Intimidation, rank: expert }
 mechanicalSummary: You give a throaty growl to attempt to Demoralize a creature you just found.
 extraPools: []
+category: ancestry
+ancestries: [catfolk]
+skills: [Intimidation]
 level: 9

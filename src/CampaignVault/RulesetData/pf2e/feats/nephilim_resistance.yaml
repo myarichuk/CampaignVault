@@ -5,4 +5,6 @@ name: nephilim_resistance
 system: pf2e
 mechanicalSummary: You resist energy like your extraplanar predecessors.
 extraPools: []
+category: ancestry
+ancestries: [nephilim]
 level: 5

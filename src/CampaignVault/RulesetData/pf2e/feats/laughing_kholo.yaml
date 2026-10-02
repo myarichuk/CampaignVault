@@ -4,6 +4,11 @@
 name: laughing_kholo
 system: pf2e
 prerequisite: Master in Intimidation
+prerequisites:
+  - { skill: Intimidation, rank: master }
 mechanicalSummary: Your sinister giggle is a sound of warning and threat.
 extraPools: []
+category: ancestry
+ancestries: [kholo]
+skills: [Intimidation]
 level: 9

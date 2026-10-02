@@ -4,7 +4,10 @@
 name: loyal_warhorse
 system: pf2e
 prerequisite: Faithful Steed
+prerequisites:
+  - { feat: faithful_steed }
 mechanicalSummary: The loyalty you and your mount share is unbreakable.
 extraPools: []
+category: class
 classes: [champion]
 level: 6

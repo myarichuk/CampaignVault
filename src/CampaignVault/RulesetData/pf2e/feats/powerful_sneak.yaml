@@ -5,5 +5,6 @@ name: powerful_sneak
 system: pf2e
 mechanicalSummary: You’ve learned to exploit your enemies’ openings.
 extraPools: []
+category: class
 classes: [rogue]
 level: 18

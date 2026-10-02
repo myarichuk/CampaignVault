@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: detective
+system: pf2e
+description: "You solved crimes as a police inspector or took jobs for wealthy clients as a private investigator. You might have become an adventurer as part of your next big mystery, but likely it was due to the consequences or aftermath of a prior case."
+boosts: [Intelligence, Wisdom]
+skillProficiencies: [Society]
+lore: Underworld Lore
+skillFeat: streetwise
+feature: Streetwise

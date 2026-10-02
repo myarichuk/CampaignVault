@@ -4,6 +4,10 @@
 name: big_mouth
 system: pf2e
 prerequisite: Cheek Pouches
+prerequisites:
+  - { feat: cheek_pouches }
 mechanicalSummary: Instead of storing up to four items of Light Bulk in your cheek pouches, you can store up to 1 Bulk worth of items.
 extraPools: []
+category: ancestry
+ancestries: [ratfolk]
 level: 9

@@ -4,6 +4,9 @@
 name: dual_thrower
 system: pf2e
 prerequisite: Dual-Weapon Warrior Dedication
+prerequisites:
+  - { feat: dual_weapon_warrior_dedication }
 mechanicalSummary: You know how to throw two weapons as easily as strike with them.
 extraPools: []
+category: archetype
 level: 4

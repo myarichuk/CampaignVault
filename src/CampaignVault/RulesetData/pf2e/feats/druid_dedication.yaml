@@ -4,6 +4,9 @@
 name: druid_dedication
 system: pf2e
 prerequisite: Wisdom +2
+prerequisites:
+  - { ability: Wisdom, min: 2 }
 mechanicalSummary: You cast spells like a druid.
 extraPools: []
+category: archetype
 level: 2

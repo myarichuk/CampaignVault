@@ -4,6 +4,9 @@
 name: fatal_shot
 system: pf2e
 prerequisite: Eldritch Archer Dedication
+prerequisites:
+  - { feat: eldritch_archer_dedication }
 mechanicalSummary: You modify an arrow or bolt to bring death to your target in a single potent hit.
 extraPools: []
+category: archetype
 level: 18

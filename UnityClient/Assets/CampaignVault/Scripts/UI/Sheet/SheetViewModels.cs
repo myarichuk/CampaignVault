@@ -30,6 +30,16 @@ namespace CampaignVault.UnityClient.UI.Sheet
             if (s.Activity.Length > 0) { parts.Add(s.Activity); }
             return string.Join(" — ", parts.ToArray());
         }
+
+        /// <summary>"Hunter's Prey (Hunter, level 3). Choose one." with the spells it gives so far.</summary>
+        internal static string FeatureLine(CharacterSheet.ClassFeature f)
+        {
+            string source = f.From.Length > 0 ? f.From + ", level " + f.Level : "level " + f.Level;
+            string text = f.Name + " (" + source + ").";
+            if (f.Description.Length > 0) { text += " " + f.Description.TrimEnd('.') + "."; }
+            if (f.Spells.Count > 0) { text += " Spells: " + string.Join(", ", f.Spells.ToArray()) + "."; }
+            return text;
+        }
     }
 
     /// <summary>A condition or mood chip; long text is cut, the hover keeps it whole.</summary>
@@ -247,6 +257,8 @@ namespace CampaignVault.UnityClient.UI.Sheet
             Skills = s.Skills.ConvertAll(delegate (CharacterSheet.Check c) { return new CheckViewModel(c, s.IsPf2e); });
             Resources = s.Resources.ConvertAll(delegate (CharacterSheet.Resource r) { return new ResourceViewModel(r); });
             Features = s.Features.ConvertAll(delegate (string f) { return DisplayText.Plain(f); });
+            ClassFeatures = s.ClassFeatures.ConvertAll(delegate (CharacterSheet.ClassFeature f) { return DisplayText.Plain(SheetViewModels.FeatureLine(f)); });
+            Nature = s.NatureLines().ConvertAll(delegate (string n) { return DisplayText.Plain(n); });
             Gear = new List<GearViewModel>();
             foreach (var g in s.Equipped) { Gear.Add(new GearViewModel(g, true)); }
             foreach (var g in s.Carried) { Gear.Add(new GearViewModel(g, false)); }
@@ -271,6 +283,10 @@ namespace CampaignVault.UnityClient.UI.Sheet
         [CreateProperty] public List<CheckViewModel> Skills { get; private set; }
         [CreateProperty] public List<ResourceViewModel> Resources { get; private set; }
         [CreateProperty] public List<string> Features { get; private set; }
+        /// <summary>The class's and subclass's features at the character's level, one line each with the rule text.</summary>
+        [CreateProperty] public List<string> ClassFeatures { get; private set; }
+        /// <summary>Descriptors, drives and fears (the psychology a Narrative character is built with); empty hides the section.</summary>
+        [CreateProperty] public List<string> Nature { get; private set; }
         [CreateProperty] public List<GearViewModel> Gear { get; private set; }
         [CreateProperty] public List<GaugeViewModel> Needs { get; private set; }
         [CreateProperty] public List<LedgerViewModel> Recent { get; private set; }
@@ -352,6 +368,9 @@ namespace CampaignVault.UnityClient.UI.Sheet
         private static readonly HashSet<string> Drawn = new HashSet<string>
         {
             "statBlockHp", "armorClass", "movement", "strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
+            "strengthMod", "dexterityMod", "constitutionMod", "intelligenceMod", "wisdomMod", "charismaMod",
+            // The Perception, Saving Throws and Skills lines above.
+            "skillModifiers", "savingThrowModifiers",
         };
 
         public StatBlockViewModel(CharacterSheet s, StatBlockSchema schema = null)
@@ -369,6 +388,7 @@ namespace CampaignVault.UnityClient.UI.Sheet
             Abilities = s.Abilities.ConvertAll(delegate (CharacterSheet.Ability a) { return new StatAbilityViewModel(a); });
 
             Lines = new List<StatLineViewModel>();
+            if (s.Perception != int.MinValue) { Lines.Add(new StatLineViewModel("Perception", CharacterSheet.Signed(s.Perception))); }
             string saves = Listed(s.Saves, s.IsPf2e);
             if (saves.Length > 0) { Lines.Add(new StatLineViewModel("Saving Throws", saves)); }
             string skills = Listed(s.Skills, s.IsPf2e);
@@ -391,10 +411,21 @@ namespace CampaignVault.UnityClient.UI.Sheet
             if (schema != null) { AddSchemaLines(s, schema); }
 
             Sections = new List<StatSectionViewModel>();
+            var nature = s.NatureLines();
+            if (nature.Count > 0)
+            {
+                var section = Section("Nature");
+                foreach (string n in nature) { section.Paragraphs.Add(new ParagraphViewModel(n, false)); }
+            }
             if (s.Features.Count > 0)
             {
                 var traits = Section("Traits");
                 foreach (string f in s.Features) { traits.Paragraphs.Add(new ParagraphViewModel(f + ".", false)); }
+            }
+            if (s.ClassFeatures.Count > 0)
+            {
+                var features = Section("Class features");
+                foreach (var f in s.ClassFeatures) { features.Paragraphs.Add(new ParagraphViewModel(SheetViewModels.FeatureLine(f), false)); }
             }
             if (s.Equipped.Count > 0 || s.Carried.Count > 0)
             {

@@ -4,6 +4,10 @@
 name: backup_disguise
 system: pf2e
 prerequisite: Expert in Deception
+prerequisites:
+  - { skill: Deception, rank: expert }
 mechanicalSummary: You have a specific disguise that you keep at the ready, worn underneath your outer garment.
 extraPools: []
+category: skill
+skills: [Deception]
 level: 2

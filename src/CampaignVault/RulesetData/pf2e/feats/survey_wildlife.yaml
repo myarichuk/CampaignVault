@@ -4,6 +4,10 @@
 name: survey_wildlife
 system: pf2e
 prerequisite: Trained in Survival
+prerequisites:
+  - { skill: Survival, rank: trained }
 mechanicalSummary: Identify nearby creatures through signs and clues
 extraPools: []
+category: skill
+skills: [Survival]
 level: 1

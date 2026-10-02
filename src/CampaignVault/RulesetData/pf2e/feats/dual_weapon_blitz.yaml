@@ -4,6 +4,9 @@
 name: dual_weapon_blitz
 system: pf2e
 prerequisite: Dual-Weapon Warrior Dedication
+prerequisites:
+  - { feat: dual_weapon_warrior_dedication }
 mechanicalSummary: You attack as you weave your way around the battlefield.
 extraPools: []
+category: archetype
 level: 10

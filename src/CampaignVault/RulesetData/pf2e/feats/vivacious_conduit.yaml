@@ -5,4 +5,6 @@ name: vivacious_conduit
 system: pf2e
 mechanicalSummary: Your connection to the First World has grown, and its vital energy flows into you rapidly.
 extraPools: []
+category: ancestry
+ancestries: [gnome]
 level: 9

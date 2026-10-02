@@ -4,6 +4,10 @@
 name: monster_crafting
 system: pf2e
 prerequisite: Master in Survival
+prerequisites:
+  - { skill: Survival, rank: master }
 mechanicalSummary: Craft items using monster parts
 extraPools: []
+category: skill
+skills: [Survival]
 level: 7

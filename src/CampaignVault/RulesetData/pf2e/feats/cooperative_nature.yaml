@@ -5,4 +5,6 @@ name: cooperative_nature
 system: pf2e
 mechanicalSummary: The short human life span lends perspective and has taught you from a young age to set aside differences and work with others to achieve greatness.
 extraPools: []
+category: ancestry
+ancestries: [human]
 level: 1

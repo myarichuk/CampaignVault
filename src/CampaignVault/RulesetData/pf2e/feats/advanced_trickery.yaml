@@ -4,6 +4,9 @@
 name: advanced_trickery
 system: pf2e
 prerequisite: Basic Trickery
+prerequisites:
+  - { feat: basic_trickery }
 mechanicalSummary: You gain one rogue feat.
 extraPools: []
+category: archetype
 level: 6

@@ -5,4 +5,6 @@ name: duskwalker_weapon_familiarity
 system: pf2e
 mechanicalSummary: You have familiarity with the bo staff, longbow, composite longbow, scythe, and staff
 extraPools: []
+category: ancestry
+ancestries: [duskwalker]
 level: 1

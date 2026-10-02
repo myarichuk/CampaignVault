@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: master in Perception
 mechanicalSummary: Your battle instincts make you more aware of concealed and invisible opponents.
 extraPools: []
+category: class
 classes: [fighter, investigator, ranger, rogue]
 level: 8

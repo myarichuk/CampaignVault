@@ -59,7 +59,7 @@ namespace CampaignVault.UnityClient.UI.Builder
     /// </summary>
     public sealed class BuilderViewModel : ViewModel
     {
-        public const string LevelCapFormat = "Levels above {0} need the level-up choices (subclass, feats, more spells), which the builder doesn't walk through yet. Build at {0} and level up in play.";
+        public const string LevelCapFormat = "The builder goes up to level {0} for this system. Build at {0} and level up in play.";
 
         private readonly VaultAppState _s;
         private readonly VaultController _c;
@@ -69,6 +69,7 @@ namespace CampaignVault.UnityClient.UI.Builder
         private string _levelText = string.Empty;
         private bool _canLevelDown;
         private bool _canLevelUp;
+        private bool _showLevel;
         private string _levelUpHint = string.Empty;
         private string _levelCapReason = string.Empty;
         private string _error = string.Empty;
@@ -101,6 +102,14 @@ namespace CampaignVault.UnityClient.UI.Builder
         private bool _canAsk;
         private string _askHint = string.Empty;
 
+        private string _fillLabel = string.Empty;
+        private bool _canFill;
+        private string _fillHint = string.Empty;
+        private bool _showFilled;
+        private string _filledText = string.Empty;
+        private string _fillError = string.Empty;
+        private List<string> _fillParagraphs = new List<string>();
+
         private string _status = string.Empty;
         private bool _showAnother;
         private bool _canBack;
@@ -116,6 +125,8 @@ namespace CampaignVault.UnityClient.UI.Builder
             LevelUp = delegate { _c.Run(_c.SetBuilderLevel(_s.Builder.Draft.Level + 1)); };
             DismissNote = delegate { _c.DismissBuilderNote(); };
             Ask = delegate { _c.Run(_c.AskDmAboutStep(_askText)); };
+            Fill = delegate { _c.Run(_c.BuilderDmFill()); };
+            DismissFill = delegate { _c.DismissDmFill(); };
             Another = delegate { _c.Run(_c.NewBuilderDraft(_s.Builder.Draft.Kind)); };
             Back = delegate { _c.BuilderStepBy(-1); };
             Next = delegate { _c.BuilderStepBy(1); };
@@ -126,6 +137,8 @@ namespace CampaignVault.UnityClient.UI.Builder
         // ------------------------------------------------------------------ toolbar
         [CreateProperty] public List<StepPillViewModel> Steps { get { return _steps; } private set { SetList(ref _steps, value); } }
         [CreateProperty] public bool HasSteps { get { return _hasSteps; } private set { Set(ref _hasSteps, value); } }
+        /// <summary>The level stepper: shown once there are steps, unless the system has no levels (Narrative).</summary>
+        [CreateProperty] public bool ShowLevel { get { return _showLevel; } private set { Set(ref _showLevel, value); } }
         [CreateProperty] public string LevelText { get { return _levelText; } private set { Set(ref _levelText, value); } }
         [CreateProperty] public bool CanLevelDown { get { return _canLevelDown; } private set { Set(ref _canLevelDown, value); } }
         [CreateProperty] public bool CanLevelUp { get { return _canLevelUp; } private set { Set(ref _canLevelUp, value); } }
@@ -173,6 +186,18 @@ namespace CampaignVault.UnityClient.UI.Builder
         [CreateProperty] public bool CanAsk { get { return _canAsk; } private set { Set(ref _canAsk, value); } }
         [CreateProperty] public string AskHint { get { return _askHint; } private set { Set(ref _askHint, value); } }
         [CreateProperty] public Action Ask { get; private set; }
+
+        /// <summary>"The DM fills the rest": one call proposes picks for every open step, for the player to review.</summary>
+        [CreateProperty] public string FillLabel { get { return _fillLabel; } private set { Set(ref _fillLabel, value); } }
+        [CreateProperty] public bool CanFill { get { return _canFill; } private set { Set(ref _canFill, value); } }
+        [CreateProperty] public string FillHint { get { return _fillHint; } private set { Set(ref _fillHint, value); } }
+        [CreateProperty] public Action Fill { get; private set; }
+        /// <summary>The card saying what the DM filled (and what it couldn't), until dismissed.</summary>
+        [CreateProperty] public bool ShowFilled { get { return _showFilled; } private set { Set(ref _showFilled, value); } }
+        [CreateProperty] public string FilledText { get { return _filledText; } private set { Set(ref _filledText, value); } }
+        [CreateProperty] public string FillError { get { return _fillError; } private set { Set(ref _fillError, value); } }
+        [CreateProperty] public List<string> FillParagraphs { get { return _fillParagraphs; } private set { SetList(ref _fillParagraphs, value); } }
+        [CreateProperty] public Action DismissFill { get; private set; }
 
         // ------------------------------------------------------------------ foot
         [CreateProperty] public string Status { get { return _status; } private set { Set(ref _status, value); } }
@@ -223,12 +248,14 @@ namespace CampaignVault.UnityClient.UI.Builder
                 });
 
             HasSteps = b.Steps.Count > 0;
+            ShowLevel = HasSteps && b.System != "narrative";
             LevelText = b.Draft.Level.ToString();
             CanLevelDown = b.Draft.Level > 1;
-            bool capped = b.Draft.Level >= VaultController.MaxBuilderLevel;
+            int max = _c.BuilderMaxLevel;
+            bool capped = b.Draft.Level >= max;
             CanLevelUp = !capped;
             LevelUpHint = capped ? string.Empty : "One level higher";
-            LevelCapReason = capped ? string.Format(LevelCapFormat, VaultController.MaxBuilderLevel) : string.Empty;
+            LevelCapReason = capped ? string.Format(LevelCapFormat, max) : string.Empty;
             Error = DisplayText.Plain(b.Error);
             ClearedNote = DisplayText.Plain(b.ClearedNote);
         }
@@ -254,6 +281,11 @@ namespace CampaignVault.UnityClient.UI.Builder
             Issues = issues;
             var warnings = new List<string>();
             foreach (var issue in b.IssuesFor(step.Key, true)) { warnings.Add(DisplayText.Plain(issue.Message)); }
+            List<string> rejected;
+            if (b.Rejected.TryGetValue(step.Key, out rejected) && rejected.Count > 0)
+            {
+                warnings.Add(DisplayText.Plain("Not used from the DM's picks, as they aren't options here: " + string.Join(", ", rejected.ToArray()) + "."));
+            }
             Warnings = warnings;
 
             if (_stepWidget == null || _stepWidget.Step.Key != step.Key || _stepWidget.Step.Kind != step.Kind)
@@ -306,6 +338,18 @@ namespace CampaignVault.UnityClient.UI.Builder
                     if (b.Options.TryGetValue(step.Key, out opts)) { foreach (var o in opts.Options) { if (o.Id == id && o.Group.Length > 0) { group = o.Group; } } }
                     if (!CharacterDraft.Strings(b.Draft.Get(step.Key).Get(group)).Contains(id)) { _c.Run(_c.BuilderToggleSpell(step.Key, group, id)); }
                     break;
+                case StepKinds.LevelChoices:
+                    // The id's slot is its option's group; an ability offered by several improvements goes to the first still open.
+                    StepOptions levelOpts;
+                    if (!b.Options.TryGetValue(step.Key, out levelOpts)) { break; }
+                    var picks = LevelChoices.Picks(b.Draft.Get(step.Key));
+                    foreach (var slot in levelOpts.Slots)
+                    {
+                        if (picks.ContainsKey(slot.Id) || !levelOpts.Options.Exists(delegate (BuilderOption o) { return o.Group == slot.Id && o.Id == id; })) { continue; }
+                        _c.Run(_c.BuilderLevelPick(step.Key, slot, id));
+                        break;
+                    }
+                    break;
                 default:
                     if (!b.Draft.GetList(step.Key).Contains(id)) { _c.Run(_c.BuilderToggle(step.Key, id)); }
                     break;
@@ -340,9 +384,19 @@ namespace CampaignVault.UnityClient.UI.Builder
             AskLabel = b.AskBusy ? "THE DM IS THINKING…" : "ASK THE DM";
             CanAsk = !b.AskBusy && !busy;
             string notReady;
-            AskHint = _s.ProviderReady(out notReady)
+            bool ready = _s.ProviderReady(out notReady);
+            AskHint = ready
                 ? "The DM answers in the same conversation as your campaign setup and suggests options from this step."
                 : "Needs a working AI provider: " + notReady;
+            FillLabel = b.FillBusy ? "THE DM IS PICKING…" : "DM FILLS THE REST";
+            CanFill = !b.FillBusy && !b.AskBusy && !busy && b.Steps.Count > 0;
+            FillHint = ready
+                ? "The DM picks for every step still open (skills, spells, level choices), never your ability scores or who they are. You review it all before saving."
+                : "Needs a working AI provider: " + notReady;
+            FillError = DisplayText.Plain(b.FillError);
+            FillParagraphs = DisplayText.RichChunks(b.FillReply);
+            ShowFilled = b.FillError.Length > 0 || b.FillReply.Length > 0 || b.Filled.Count > 0 || b.Rejected.Count > 0;
+            FilledText = FilledLine(b);
         }
 
         private void RefreshFoot(BuilderState b)
@@ -367,6 +421,26 @@ namespace CampaignVault.UnityClient.UI.Builder
                 foreach (var schema in b.StatBlocks) { if (string.Equals(schema.Name, step.Schema, StringComparison.OrdinalIgnoreCase)) { return schema; } }
             }
             return null;
+        }
+
+        /// <summary>"The DM filled level choices and spells. Look them over before you save." and what it left open.</summary>
+        public static string FilledLine(BuilderState b)
+        {
+            var parts = new List<string>();
+            if (b.Filled.Count > 0)
+            {
+                var titles = new List<string>();
+                foreach (string t in b.Filled) { titles.Add(t.ToLowerInvariant()); }
+                parts.Add("The DM filled " + string.Join(", ", titles.ToArray()) + ". Look them over before you save.");
+            }
+            else if (b.FillReply.Length > 0 || b.Rejected.Count > 0) { parts.Add("None of the DM's picks were options, so nothing changed."); }
+            if (b.Rejected.Count > 0)
+            {
+                var steps = new List<string>();
+                foreach (string key in b.Rejected.Keys) { var step = b.Step(key); steps.Add(step != null ? step.Title.ToLowerInvariant() : key); }
+                parts.Add("Some of its picks weren't options, so they weren't used (see " + string.Join(", ", steps.ToArray()) + ").");
+            }
+            return DisplayText.Plain(string.Join(" ", parts.ToArray()));
         }
 
         public static string StatusOf(BuilderState b)

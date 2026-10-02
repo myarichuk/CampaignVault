@@ -4,7 +4,10 @@
 name: uplifting_overture
 system: pf2e
 prerequisite: maestro muse
+prerequisites:
+  - { classFeature: maestro }
 mechanicalSummary: You learn the uplifting overture composition cantrip, which aids your allies’ skills with the inspiring nature of your performance.
 extraPools: []
+category: class
 classes: [bard]
 level: 2

@@ -23,6 +23,9 @@ public class CombatFeatureWiringTests(RavenDBFixture fixture) : IClassFixture<Ra
     private readonly CampaignDocumentKeys _keys = new();
     private readonly string _campaign = "feature-wiring-" + Guid.NewGuid().ToString("N")[..8];
 
+    private static readonly ProgressionDefinitionProvider Progressions =
+        new(Path.Combine(Path.GetTempPath(), "cv-wiring-progressions-" + Guid.NewGuid().ToString("N")), Assembly);
+
     private static FakeRollService Rolls(params int[] results)
     {
         var rolls = new FakeRollService();
@@ -86,6 +89,9 @@ public class CombatFeatureWiringTests(RavenDBFixture fixture) : IClassFixture<Ra
         Character actor, RulesetAction action, params int[] rolls)
     {
         var fake = Rolls(rolls);
+        // What the action handler does: the class features and picked options (Archery, Dueling) are effects like a feat's.
+        var features = CharacterClassFeatures.Effects(actor, RulesetSystem.Dnd5e, Progressions);
+        action.FeatEffects[actor.Id] = [.. features, .. action.FeatEffects.GetValueOrDefault(actor.Id) ?? []];
         var output = await new Dnd5eRulesetResolver(fake).ResolveAsync(Context(actor, Pell()), action, TestContext.Current.CancellationToken);
         return (output, fake);
     }
@@ -104,10 +110,19 @@ public class CombatFeatureWiringTests(RavenDBFixture fixture) : IClassFixture<Ra
     [Fact]
     public async Task ExplicitBonus_ReplacesDerivedToHit_ButNotDamage()
     {
-        var (_, fake) = await Run(Hank(), Attack("ranged", ("bonus", "2")), 15, 6);
+        var (_, fake) = await Run(Hank(s => s.LevelUpChoices.Clear()), Attack("ranged", ("bonus", "2")), 15, 6);
 
         Assert.Equal(2, fake.RecordedRequests[0].Bonus);
         Assert.Equal(4, fake.RecordedRequests[1].Bonus);
+    }
+
+    [Fact]
+    public async Task FightingStyleEffects_AddToAStatedBonus()
+    {
+        // Archery is a roll effect from the progression, so it stacks like a feat's; a stated bonus is the rest.
+        var (_, fake) = await Run(Hank(), Attack("ranged", ("bonus", "2")), 15, 6);
+
+        Assert.Equal(4, fake.RecordedRequests[0].Bonus);
     }
 
     [Fact]
@@ -138,6 +153,90 @@ public class CombatFeatureWiringTests(RavenDBFixture fixture) : IClassFixture<Ra
     {
         action.FeatEffects["hank"] = [.. effects];
         return action;
+    }
+
+    private static ActiveFeatEffect Named(string name, string kind, Action<FeatEffect> tweak) =>
+        new(name, new FeatEffect { Kind = kind }.Also(tweak));
+
+    [Fact]
+    public async Task ExtraDamage_RollsOnAHit_WhenItsToggleIsSet()
+    {
+        var extra = Named("Divine Strike", FeatEffectKinds.ExtraDamage, e => { e.Dice = "1d8"; e.DamageType = "radiant"; e.Toggle = "divineStrike"; });
+
+        var (off, _) = await Run(Hank(), WithFeatEffects(Attack("ranged"), extra), 15, 6, 5);
+        Assert.Contains("Hit for 6 damage", off.Result.Narrative);
+
+        var (on, fake) = await Run(Hank(), WithFeatEffects(Attack("ranged", ("divineStrike", "true")), extra), 15, 6, 5);
+        Assert.Contains("Hit for 11 damage", on.Result.Narrative);
+        Assert.Contains("Divine Strike +5 radiant", on.Result.Narrative);
+        Assert.Equal("1d8", fake.RecordedRequests[2].Expression);
+    }
+
+    [Fact]
+    public async Task ExtraDamage_NeedingAnAssertion_ReportsWhenNotClaimed()
+    {
+        var extra = Named("Colossus Slayer", FeatEffectKinds.ExtraDamage, e => { e.Dice = "1d8"; e.Assert = ["targetHurt"]; e.When = "the target is below its maximum"; });
+
+        var (output, _) = await Run(Hank(), WithFeatEffects(Attack("ranged"), extra), 15, 6, 5);
+
+        Assert.Contains("Hit for 6 damage", output.Result.Narrative);
+        Assert.Contains("needs assert=targetHurt", output.Result.Narrative);
+    }
+
+    [Fact]
+    public async Task CritRange_WidensTheCriticalHit()
+    {
+        var crit = Named("Improved Critical", FeatEffectKinds.CritRange, e => e.Value = 19);
+        var fake = Rolls();
+        fake.NextRolls.Enqueue(new RollOutcome { Result = 21, IndividualDice = [19], Summary = "19" });
+        fake.NextRolls.Enqueue(new RollOutcome { Result = 6, Summary = "6" });
+        fake.NextRolls.Enqueue(new RollOutcome { Result = 7, Summary = "7" });
+        var action = WithFeatEffects(Attack("ranged"), crit);
+        var output = await new Dnd5eRulesetResolver(fake).ResolveAsync(Context(Hank(), Pell()), action, TestContext.Current.CancellationToken);
+
+        Assert.Contains("CRITICAL HIT", output.Result.Narrative);
+
+        var miss = Rolls();
+        miss.NextRolls.Enqueue(new RollOutcome { Result = 21, IndividualDice = [18], Summary = "18" });
+        miss.NextRolls.Enqueue(new RollOutcome { Result = 6, Summary = "6" });
+        var plain = await new Dnd5eRulesetResolver(miss).ResolveAsync(Context(Hank(), Pell()), WithFeatEffects(Attack("ranged"), crit), TestContext.Current.CancellationToken);
+        Assert.DoesNotContain("CRITICAL HIT", plain.Result.Narrative);
+    }
+
+    [Fact]
+    public async Task Resistance_HalvesDamageOfThatType()
+    {
+        var action = Attack("ranged");
+        action.DamageType = "fire";
+        action.FeatEffects["pell"] = [Named("Fire Ward", FeatEffectKinds.Resistance, e => e.DamageType = "fire")];
+
+        var (output, _) = await Run(Hank(), action, 15, 6);
+
+        Assert.Contains("Hit for 3 damage", output.Result.Narrative);   // 6 rolled, halved
+    }
+
+    [Fact]
+    public async Task AdvantageEffect_RollsTheAttackWithAdvantage_AndDisadvantageCancelsIt()
+    {
+        var adv = Named("Reckless", FeatEffectKinds.Advantage, e => e.On = "attack");
+        var dis = Named("Blinded Aim", FeatEffectKinds.Disadvantage, e => e.On = "attack");
+
+        var (_, one) = await Run(Hank(), WithFeatEffects(Attack("ranged"), adv), 15, 6, 3);
+        Assert.Equal(DiceMechanic.Advantage, one.RecordedRequests[0].Mechanic);
+
+        var (note, both) = await Run(Hank(), WithFeatEffects(Attack("ranged"), adv, dis), 15, 6);
+        Assert.Equal(DiceMechanic.Standard, both.RecordedRequests[0].Mechanic);
+        Assert.Contains("Reckless: advantage", note.Result.Narrative);
+    }
+
+    [Fact]
+    public void Validate_NewKinds_CheckTheirOwnFields()
+    {
+        Assert.Empty(FeatEffectRules.Validate([new FeatEffect { Kind = "extraDamage", Dice = "2d6", DamageType = "fire" }, new FeatEffect { Kind = "advantage", On = "save", Subject = "dexterity" }]));
+        Assert.Contains(FeatEffectRules.Validate([new FeatEffect { Kind = "extraDamage", Dice = "lots" }]), m => m.Contains("dice like"));
+        Assert.Contains(FeatEffectRules.Validate([new FeatEffect { Kind = "advantage" }]), m => m.Contains("needs on:"));
+        Assert.Contains(FeatEffectRules.Validate([new FeatEffect { Kind = "critRange", Value = 12 }]), m => m.Contains("15 to 20"));
+        Assert.Contains(FeatEffectRules.Validate([new FeatEffect { Kind = "resistance" }]), m => m.Contains("damageType"));
     }
 
     [Fact]
@@ -189,7 +288,7 @@ public class CombatFeatureWiringTests(RavenDBFixture fixture) : IClassFixture<Ra
     public async Task FeatEffects_StackOnTopOfAnExplicitBonus()
     {
         var action = WithFeatEffects(Attack("ranged", ("bonus", "2")), Effect(FeatEffectKinds.AttackBonus, 1));
-        var (_, fake) = await Run(Hank(), action, 15, 6);
+        var (_, fake) = await Run(Hank(s => s.LevelUpChoices.Clear()), action, 15, 6);
 
         Assert.Equal(3, fake.RecordedRequests[0].Bonus);
     }
@@ -932,5 +1031,14 @@ public class CombatFeatureWiringTests(RavenDBFixture fixture) : IClassFixture<Ra
         fighter.ClassLevel = "Fighter 11";
         var ok = await MultiAsync(fighter, action, 15, 4, 15, 4, 15, 4);
         Assert.DoesNotContain("per Attack action", ok.Result.Narrative);
+    }
+}
+
+internal static class FeatEffectTestExtensions
+{
+    public static FeatEffect Also(this FeatEffect effect, Action<FeatEffect> tweak)
+    {
+        tweak(effect);
+        return effect;
     }
 }

@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: fury instinct
 mechanicalSummary: When you are struck with the mightiest of blows, you can flex your muscles to turn aside some of the damage.
 extraPools: []
+category: class
 classes: [barbarian]
 level: 4

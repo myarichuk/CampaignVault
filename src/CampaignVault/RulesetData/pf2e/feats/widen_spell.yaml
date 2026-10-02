@@ -5,5 +5,6 @@ name: widen_spell
 system: pf2e
 mechanicalSummary: You manipulate the energy of your spell, causing it to spread out and affect a wider area.
 extraPools: []
+category: class
 classes: [druid, oracle, sorcerer, witch, wizard]
 level: 1

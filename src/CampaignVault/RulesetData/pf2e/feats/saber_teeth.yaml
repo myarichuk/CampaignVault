@@ -5,4 +5,6 @@ name: saber_teeth
 system: pf2e
 mechanicalSummary: You have long fangs, natural or augmented.
 extraPools: []
+category: ancestry
+ancestries: [catfolk]
 level: 1

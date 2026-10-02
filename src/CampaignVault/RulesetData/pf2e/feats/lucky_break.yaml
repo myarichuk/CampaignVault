@@ -4,6 +4,10 @@
 name: lucky_break
 system: pf2e
 prerequisite: "Cat's Luck"
+prerequisites:
+  - { feat: cat_s_luck }
 mechanicalSummary: You are luckier even than most catfolk.
 extraPools: []
+category: ancestry
+ancestries: [catfolk]
 level: 5

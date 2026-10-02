@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core / Player Core 2) by Paizo Inc.,
+# released under the Open RPG Creative (ORC) License. Pulled directly from the
+# official Archives of Nethys database (elasticsearch.aonprd.com).
+name: guard
+system: pf2e
+description: "You served in the guard, out of either patriotism or the need for coin. Either way, you know how to get a difficult suspect to talk. However you left the guard, you might think of adventuring as a way to use your skills on a wider stage."
+boosts: [Strength, Charisma]
+skillProficiencies: [Intimidation]
+lore: Legal Lore or Warfare Lore skill
+skillFeat: quick_coercion
+feature: Quick Coercion

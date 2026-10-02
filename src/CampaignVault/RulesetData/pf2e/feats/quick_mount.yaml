@@ -4,6 +4,11 @@
 name: quick_mount
 system: pf2e
 prerequisite: Cavalier Dedication; Expert in Nature
+prerequisites:
+  - { feat: cavalier_dedication }
+  - { skill: Nature, rank: expert }
 mechanicalSummary: You and your mount can spring into action at a moment’s notice.
 extraPools: []
+category: skill
+skills: [Nature]
 level: 4

@@ -5,4 +5,6 @@ name: jungle_strider
 system: pf2e
 mechanicalSummary: You are adept at dodging roots, foliage, and other jungle obstacles.
 extraPools: []
+category: ancestry
+ancestries: [tripkee]
 level: 1

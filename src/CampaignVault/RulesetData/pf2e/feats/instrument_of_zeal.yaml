@@ -6,5 +6,6 @@ system: pf2e
 prerequisite: Blessed Counterstrike or Retributive Strike; champion’s reaction that grants an ally resistance to an enemy’s damage (including the grandeur, justice, liberation, and redemption causes)
 mechanicalSummary: Divine energy fills your weapon.
 extraPools: []
+category: class
 classes: [champion]
 level: 16
