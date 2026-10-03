@@ -733,6 +733,13 @@ namespace CampaignVault.UnityClient.App
             if (error != null)
             {
                 b.AskError = TextSanitizer.Clean(error, 400);
+                b.AskFailure = RecordFailure(b.AskError, delegate
+                {
+                    // The question is already in the chat: take it out so the same request goes out once, not twice.
+                    if (b.AskBusy || b.CurrentStep == null || b.CurrentStep.Key != step.Key) { return; }
+                    DropLastChatLine(ob, "user", text);
+                    Run(AskDmAboutStep(text));
+                });
             }
             else
             {
@@ -745,6 +752,13 @@ namespace CampaignVault.UnityClient.App
                 BuilderAdvisor.Match(ids, offered, b.Suggested, b.NotOptions);
             }
             _s.Notify(StateArea.Builder);
+        }
+
+        /// <summary>Takes the trailing chat line back out when it is the one a failed call added, so a retry doesn't send it twice.</summary>
+        private static void DropLastChatLine(OnboardingState ob, string role, string text)
+        {
+            int last = ob.BrainstormChat.Count - 1;
+            if (last >= 0 && ob.BrainstormChat[last].Key == role && ob.BrainstormChat[last].Value == text) { ob.BrainstormChat.RemoveAt(last); }
         }
 
         // ---- the DM fills the rest ----
@@ -790,7 +804,17 @@ namespace CampaignVault.UnityClient.App
                 string reply = null;
                 string error = null;
                 yield return _s.Driver.Brainstorm(messages, null, delegate (string r, string e) { reply = r; error = e; });
-                if (error != null) { b.FillError = TextSanitizer.Clean(error, 400); yield break; }
+                if (error != null)
+                {
+                    b.FillError = TextSanitizer.Clean(error, 400);
+                    b.FillFailure = RecordFailure(b.FillError, delegate
+                    {
+                        if (b.FillBusy) { return; }
+                        DropLastChatLine(ob, "user", instruction);
+                        Run(BuilderDmFill());
+                    });
+                    yield break;
+                }
                 if (revision != b.Revision)
                 {
                     b.FillError = "The character changed while the DM was thinking, so its picks weren't used. Ask again.";

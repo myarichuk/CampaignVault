@@ -34,5 +34,10 @@
                 <cv:ClassBinding property="cls-hidden" data-source-path="Error" class-name="cv-hidden" invert="true" />
             </Bindings>
         </ui:Label>
+        <cv:ContentPresenter>
+            <Bindings>
+                <ui:DataBinding property="content" data-source-path="Card" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:ContentPresenter>
     </ui:VisualElement>
 </ui:UXML>

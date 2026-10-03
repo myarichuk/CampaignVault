@@ -76,8 +76,13 @@ namespace CampaignVault.UnityClient.UI.Table
         public virtual void Update(TranscriptSegment seg) { }
 
         /// <summary>The item for a segment that is not activity. <paramref name="animate"/>: a roll tumbles in (not for restored history).</summary>
-        public static StoryItemViewModel For(TranscriptSegment seg, bool animate, Later later)
+        public static StoryItemViewModel For(TranscriptSegment seg, bool animate, Later later, VaultAppState state = null)
         {
+            if (seg.Failure != null && state != null && seg.Kind == SegmentKind.System)
+            {
+                return new ErrorCardViewModel(seg.Failure, delegate { state.RequestRetryTurn(); }, delegate { state.RequestSettings(); },
+                    delegate (string note) { state.RaiseToast(note, ToastKind.Success); }, delegate { return state.CanRetryTurn; }, state);
+            }
             switch (seg.Kind)
             {
                 case SegmentKind.Narration:
@@ -378,7 +383,7 @@ namespace CampaignVault.UnityClient.UI.Table
             }
             else
             {
-                entry.Item = StoryItemViewModel.For(seg, animate, _later);
+                entry.Item = StoryItemViewModel.For(seg, animate, _later, _s);
                 _items.Add(entry.Item);
             }
             _entries.Add(entry);
@@ -412,7 +417,7 @@ namespace CampaignVault.UnityClient.UI.Table
                 if (entry.Item.Accepts(seg)) { entry.Item.Update(seg); }
                 else
                 {
-                    var replacement = StoryItemViewModel.For(seg, false, _later);
+                    var replacement = StoryItemViewModel.For(seg, false, _later, _s);
                     int at = _items.IndexOf(entry.Item);
                     if (at >= 0) { _items[at] = replacement; }
                     entry.Item = replacement;

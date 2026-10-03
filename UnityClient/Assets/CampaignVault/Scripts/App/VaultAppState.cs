@@ -148,6 +148,7 @@ namespace CampaignVault.UnityClient.App
         /// <summary>"DM drafts companions": the one model call is out.</summary>
         public bool Drafting;
         public string DraftError = string.Empty;
+        public FailedCall DraftFailure;
 
         /// <summary>Pre-fills the current question's field (a brainstormed write-up); cleared per question.</summary>
         public string Draft = string.Empty;
@@ -161,6 +162,7 @@ namespace CampaignVault.UnityClient.App
         public readonly List<KeyValuePair<string, string>> BrainstormChat = new List<KeyValuePair<string, string>>();
         public string BrainstormLive = string.Empty;
         public string BrainstormError = string.Empty;
+        public FailedCall BrainstormFailure;
 
         public void ClearBrainstorm()
         {
@@ -171,6 +173,20 @@ namespace CampaignVault.UnityClient.App
             BrainstormLive = string.Empty;
             BrainstormError = string.Empty;
         }
+    }
+
+    /// <summary>
+    /// A model call outside the DM's turn that failed (a brainstorm, the advisor, the filler, the drafter): what to show
+    /// and how to send the identical request again. <see cref="Message"/> is the error text the screen shows, so a card
+    /// is only drawn while that text is still there.
+    /// </summary>
+    public sealed class FailedCall
+    {
+        public LlmFailure Failure;
+        public string Message = string.Empty;
+        public Action Retry;
+        public Action OpenSettings;
+        public Action<string> Copied;
     }
 
     /// <summary>What a step offers for the current draft (character_builder action=options).</summary>
@@ -268,6 +284,7 @@ namespace CampaignVault.UnityClient.App
         public string AskDraft = string.Empty;
         public bool AskBusy;
         public string AskError = string.Empty;
+        public FailedCall AskFailure;
         public string AskStep = string.Empty;
         public string AskReply = string.Empty;
         /// <summary>Option ids the DM suggested that the step offers.</summary>
@@ -278,6 +295,7 @@ namespace CampaignVault.UnityClient.App
         // "The DM fills the rest": one model call proposes picks for every open step; the player reviews them.
         public bool FillBusy;
         public string FillError = string.Empty;
+        public FailedCall FillFailure;
         /// <summary>What the DM said about its picks, shown until dismissed or the next fill.</summary>
         public string FillReply = string.Empty;
         /// <summary>The titles of the steps the DM filled.</summary>
@@ -483,6 +501,17 @@ namespace CampaignVault.UnityClient.App
         {
             if (Toast != null) { Toast(TextSanitizer.Clean(message, 400), kind); }
         }
+
+        /// <summary>A failure card asked for the provider settings (a rejected key, an unknown model).</summary>
+        public event Action SettingsRequested;
+        /// <summary>A failure card asked to send the last player line again.</summary>
+        public event Action RetryTurnRequested;
+        /// <summary>Set by the controller: the last player line failed and can be sent again.</summary>
+        public Func<bool> TurnRetryAvailable;
+
+        public void RequestSettings() { if (SettingsRequested != null) { SettingsRequested(); } }
+        public void RequestRetryTurn() { if (RetryTurnRequested != null) { RetryTurnRequested(); } }
+        public bool CanRetryTurn { get { return TurnRetryAvailable != null && TurnRetryAvailable(); } }
 
         public void RequestSetup()
         {

@@ -4,6 +4,7 @@ using Unity.Properties;
 using CampaignVault.UnityClient.App;
 using CampaignVault.UnityClient.Json;
 using CampaignVault.UnityClient.Model;
+using CampaignVault.UnityClient.UI.Table;
 using CampaignVault.UnityClient.UI.Mvvm;
 
 namespace CampaignVault.UnityClient.UI.Builder
@@ -160,6 +161,12 @@ namespace CampaignVault.UnityClient.UI.Builder
         [CreateProperty] public StepViewModel StepWidget { get { return _stepWidget; } private set { Set(ref _stepWidget, value); } }
 
         [CreateProperty] public bool ShowAdvice { get { return _showAdvice; } private set { Set(ref _showAdvice, value); } }
+        private readonly ErrorCardSlot _adviceSlot = new ErrorCardSlot();
+        private readonly ErrorCardSlot _fillSlot = new ErrorCardSlot();
+        private object _adviceCard;
+        private object _fillCard;
+        [CreateProperty] public object AdviceCard { get { return _adviceCard; } private set { Set(ref _adviceCard, value); } }
+        [CreateProperty] public object FillCard { get { return _fillCard; } private set { Set(ref _fillCard, value); } }
         [CreateProperty] public string AdviceError { get { return _adviceError; } private set { Set(ref _adviceError, value); } }
         [CreateProperty] public List<string> AdviceParagraphs { get { return _adviceParagraphs; } private set { SetList(ref _adviceParagraphs, value); } }
         [CreateProperty] public List<SuggestionViewModel> Suggestions { get { return _suggestions; } private set { SetList(ref _suggestions, value); } }
@@ -307,7 +314,9 @@ namespace CampaignVault.UnityClient.UI.Builder
         {
             ShowAdvice = b.AskStep == step.Key && (b.AskReply.Length > 0 || b.AskError.Length > 0);
             if (!ShowAdvice) { return; }
-            AdviceError = DisplayText.Plain(b.AskError);
+            var adviceCard = _adviceSlot.Sync(b.AskFailure, b.AskError);
+            AdviceCard = adviceCard;
+            AdviceError = adviceCard != null ? string.Empty : DisplayText.Plain(b.AskError);
             AdviceParagraphs = DisplayText.RichChunks(b.AskReply);
             StepOptions opts;
             b.Options.TryGetValue(step.Key, out opts);
@@ -393,7 +402,9 @@ namespace CampaignVault.UnityClient.UI.Builder
             FillHint = ready
                 ? "The DM picks for every step still open (skills, spells, level choices), never your ability scores or who they are. You review it all before saving."
                 : "Needs a working AI provider: " + notReady;
-            FillError = DisplayText.Plain(b.FillError);
+            var fillCard = _fillSlot.Sync(b.FillFailure, b.FillError);
+            FillCard = fillCard;
+            FillError = fillCard != null ? string.Empty : DisplayText.Plain(b.FillError);
             FillParagraphs = DisplayText.RichChunks(b.FillReply);
             ShowFilled = b.FillError.Length > 0 || b.FillReply.Length > 0 || b.Filled.Count > 0 || b.Rejected.Count > 0;
             FilledText = FilledLine(b);

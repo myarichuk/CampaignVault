@@ -58,6 +58,11 @@
                     <cv:ClassBinding property="cls-hidden" data-source-path="BrainstormError" class-name="cv-hidden" invert="true" />
                 </Bindings>
             </ui:Label>
+            <cv:ContentPresenter>
+                <Bindings>
+                    <ui:DataBinding property="content" data-source-path="BrainstormCard" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:ContentPresenter>
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

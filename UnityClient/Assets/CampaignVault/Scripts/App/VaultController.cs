@@ -30,6 +30,8 @@ namespace CampaignVault.UnityClient.App
             _host = host;
             _prefs = prefs;
             if (_s.Driver != null) { _s.Driver.ToolSucceeded += OnDriverTool; }
+            _s.TurnRetryAvailable = delegate { return CanRetryLastTurn; };
+            _s.RetryTurnRequested += delegate { RetryLastTurn(); };
         }
 
         // The session number the log already shows a recap for (0 = none this run).
@@ -1272,6 +1274,11 @@ namespace CampaignVault.UnityClient.App
             if (error != null)
             {
                 ob.BrainstormError = TextSanitizer.Clean(error, 400);
+                ob.BrainstormFailure = RecordFailure(ob.BrainstormError, delegate
+                {
+                    if (ob.BrainstormBusy || ob.Question != question) { return; }
+                    Run(BrainstormTurn(finalizeInstruction));
+                });
             }
             else if (finalizeInstruction == null)
             {
@@ -1283,6 +1290,24 @@ namespace CampaignVault.UnityClient.App
                 ob.Brainstorming = false;
             }
             _s.Notify(StateArea.Onboarding);
+        }
+
+        /// <summary>
+        /// The driver's record of the call that just failed, with how to send it again. Read it right after the call:
+        /// the next call overwrites it. Null when the driver left none (the caller then shows its plain error text).
+        /// </summary>
+        private FailedCall RecordFailure(string message, Action retry)
+        {
+            var failure = _s.Driver != null ? _s.Driver.LastFailure : null;
+            if (failure == null) { return null; }
+            return new FailedCall
+            {
+                Failure = failure,
+                Message = message,
+                Retry = retry,
+                OpenSettings = delegate { _s.RequestSettings(); },
+                Copied = delegate (string note) { _s.RaiseToast(note, ToastKind.Success); },
+            };
         }
 
         public void ResetOnboarding()
@@ -1847,6 +1872,14 @@ namespace CampaignVault.UnityClient.App
         }
 
         /// <summary>Copies the edited fields into the active profile. A blank key keeps the saved one.</summary>
+        /// <summary>Zeroes the open campaign's persisted cost counter (the session counter is untouched).</summary>
+        public void ResetCampaignUsage()
+        {
+            if (_s.Driver.CampaignUsage == null || !_s.HasCampaign) { return; }
+            _s.Driver.CampaignUsage.Reset(_s.CampaignSlug);
+            _s.Notify(StateArea.Driver);
+        }
+
         public bool SaveProfile(ProviderProfile edited, string newKey, out string reason)
         {
             var p = _s.Byok.Active;
@@ -1858,6 +1891,9 @@ namespace CampaignVault.UnityClient.App
             p.ReasoningEffort = edited.ReasoningEffort ?? string.Empty;
             p.DisableStreaming = edited.DisableStreaming;
             p.SinglePass = edited.SinglePass;
+            p.PriceInPerM = Math.Max(0f, edited.PriceInPerM);
+            p.PriceCachedPerM = Math.Max(0f, edited.PriceCachedPerM);
+            p.PriceOutPerM = Math.Max(0f, edited.PriceOutPerM);
             if (!string.IsNullOrEmpty((newKey ?? string.Empty).Trim())) { _s.Byok.SetApiKey(newKey); }
             _s.Byok.Save();
             // New settings deserve a fresh try: the old refusal was about the old ones.

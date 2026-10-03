@@ -300,10 +300,46 @@ namespace CampaignVault.UnityClient.Tests
             Assert.AreEqual(1, turn.Rolls.Count);
             StringAssert.StartsWith("Perception", turn.Rolls[0]);
             Assert.AreEqual(1900, _driver.SessionUsage.Prompt);
+            Assert.AreEqual("local · free", _driver.SessionUsage.CostText(), "the fake provider is a keyless local preset");
 
             _driver.ResetConversation();
             Assert.AreEqual(0, _driver.Turns.Count);
             Assert.IsTrue(_driver.SessionUsage.IsEmpty);
+        }
+
+        [UnityTest]
+        public IEnumerator Usage_ProviderReportedCostIsKeptExact()
+        {
+            _script.Enqueue(req => new Reply { Body = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"Hello.\"}}],\"usage\":{\"prompt_tokens\":100,\"completion_tokens\":20,\"cost\":0.0123}}" });
+
+            yield return Send("Hi.");
+
+            Assert.AreEqual(0.0123, _driver.SessionUsage.Cost, 1e-9);
+            Assert.AreEqual(0.0123, _driver.Turns[0].Usage.Cost, 1e-9);
+            Assert.AreEqual("$0.012", _driver.SessionUsage.CostText());
+        }
+
+        [UnityTest]
+        public IEnumerator Usage_AlsoCountsTowardTheOpenCampaign()
+        {
+            string dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "vault-usage-" + Guid.NewGuid().ToString("N"));
+            CampaignUsageStore.DirOverride = dir;
+            try
+            {
+                _driver.CampaignUsage = new CampaignUsageStore();
+                _driver.Prompts.CampaignSlug = "ember";
+                _script.Enqueue(req => new Reply { Body = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"Hello.\"}}],\"usage\":{\"prompt_tokens\":100,\"completion_tokens\":20,\"cost\":0.5}}" });
+
+                yield return Send("Hi.");
+
+                Assert.AreEqual(0.5, _driver.SessionUsage.Cost, 1e-9);
+                Assert.AreEqual(0.5, new CampaignUsageStore().Total("ember").Cost, 1e-9, "persisted, not just in memory");
+            }
+            finally
+            {
+                CampaignUsageStore.DirOverride = null;
+                if (System.IO.Directory.Exists(dir)) { System.IO.Directory.Delete(dir, true); }
+            }
         }
 
         [UnityTest]
@@ -359,6 +395,20 @@ namespace CampaignVault.UnityClient.Tests
         }
 
         [UnityTest]
+        public IEnumerator FailedTurn_PutsTheFailureOnTheWarningLine_SoTheStoryCanShowACard()
+        {
+            _script.Enqueue(req => new Reply { Status = 401, Body = "{\"error\":{\"message\":\"bad key\"}}" });
+
+            yield return Send("Hello.");
+
+            var warning = _transcript.Segments.Last(s => s.Kind == SegmentKind.System);
+            Assert.IsNotNull(warning.Failure);
+            Assert.AreSame(_driver.LastFailure, warning.Failure);
+            Assert.AreEqual(LlmFailureKind.Auth, warning.Failure.Kind);
+            Assert.AreEqual(1, _transcript.Segments.Count(s => s.Kind == SegmentKind.Player), "one player line, however it is shown");
+        }
+
+        [UnityTest]
         public IEnumerator BusyProvider_PastTheRetries_SaysWhatToDoInPlainWords()
         {
             for (int i = 0; i <= OpenAiChatDriver.MaxTransientRetries; i++)
@@ -372,6 +422,72 @@ namespace CampaignVault.UnityClient.Tests
             StringAssert.Contains("press RETRY", warning.Text);
             StringAssert.DoesNotContain("HTTP", warning.Text, "no status codes for the player");
             Assert.AreEqual(0, _driver.History.Count, "the failed line is forgotten, so RETRY can send it fresh");
+        }
+
+        [UnityTest]
+        public IEnumerator RejectedKey_LeavesATechnicalFailure_WithoutTheKey()
+        {
+            const string key = "sk-testsecret1234567890";
+            _driver.Byok.Active.ApiKey = key;
+            _script.Enqueue(req => new Reply { Status = 401, Body = "{\"error\":{\"message\":\"Incorrect API key provided: " + key + "\"}}" });
+
+            yield return Send("Hello.");
+
+            var failure = _driver.LastFailure;
+            Assert.IsNotNull(failure);
+            Assert.AreEqual(LlmFailureKind.Auth, failure.Kind);
+            Assert.IsFalse(failure.Retryable);
+            Assert.AreEqual(401, failure.Status);
+            StringAssert.Contains("fake-model", failure.Technical);
+            StringAssert.Contains("401", failure.Technical);
+            StringAssert.DoesNotContain(key, failure.Technical);
+            Assert.IsNotEmpty(_driver.ProviderProblem);
+        }
+
+        [UnityTest]
+        public IEnumerator BusyProvider_PastTheRetries_RecordsEveryAttemptInTheFailure()
+        {
+            for (int i = 0; i <= OpenAiChatDriver.MaxTransientRetries; i++)
+            {
+                _script.Enqueue(req => new Reply { Status = 429, Body = "{\"error\":{\"message\":\"slow down\"}}" });
+            }
+
+            yield return Send("Hello.");
+
+            var failure = _driver.LastFailure;
+            Assert.AreEqual(LlmFailureKind.RateLimit, failure.Kind);
+            Assert.IsTrue(failure.Retryable);
+            StringAssert.Contains("attempts: " + (OpenAiChatDriver.MaxTransientRetries + 1), failure.Technical);
+            StringAssert.Contains("slow down", failure.Technical);
+            Assert.IsNotEmpty(_driver.LastError);
+        }
+
+        [UnityTest]
+        public IEnumerator NextSuccessfulTurn_ClearsTheLastFailure()
+        {
+            _script.Enqueue(req => new Reply { Status = 413, Body = "{\"error\":{\"message\":\"too big\"}}" });
+            yield return Send("Hello.");
+            Assert.AreEqual(LlmFailureKind.BadRequest, _driver.LastFailure.Kind, _driver.LastFailure.Technical);
+
+            _script.Enqueue(req => Sse(Delta("{\"content\":\"Fine now.\"}")));
+            yield return Send("Hello.");
+            Assert.IsNull(_driver.LastFailure);
+            Assert.IsEmpty(_driver.LastError);
+        }
+
+        [UnityTest]
+        public IEnumerator Brainstorm_FailureCarriesTheSameRecord()
+        {
+            _script.Enqueue(req => new Reply { Status = 404, Body = "{\"error\":{\"message\":\"no such model\"}}" });
+            string error = null;
+            yield return EditModeCoroutines.Drive(_driver.Brainstorm(
+                new List<KeyValuePair<string, string>> { new KeyValuePair<string, string>("user", "hi") },
+                null, delegate (string reply, string err) { error = err; }));
+
+            Assert.IsNotNull(error);
+            Assert.AreEqual(LlmFailureKind.ModelNotFound, _driver.LastFailure.Kind, _driver.LastFailure.Technical);
+            Assert.IsTrue(_driver.LastFailure.NeedsSettings);
+            StringAssert.Contains("no such model", _driver.LastFailure.Technical);
         }
 
         [UnityTest]

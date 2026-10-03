@@ -45,6 +45,8 @@ namespace CampaignVault.UnityClient.App
             if (prefs == null) { prefs = VaultSmokeRunner.RequestedServerUrl() != null ? (IVaultPrefs)new MemoryPrefs() : new UnityPrefs(); }
             // Nor the saved chronicle: only the real player's prefs come with one.
             if (prefs is UnityPrefs) { state.Store = new TranscriptStore(System.IO.Path.Combine(Application.persistentDataPath, "Transcripts")); }
+            // Likewise the persisted campaign cost counters.
+            if (prefs is UnityPrefs) { state.Driver.CampaignUsage = new CampaignUsageStore(); }
             State = state;
             Controller = new VaultController(state, this, prefs);
             Controller.LoadPreferences();

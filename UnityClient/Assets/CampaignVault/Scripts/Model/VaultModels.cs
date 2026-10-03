@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using CampaignVault.UnityClient.AI;
 using CampaignVault.UnityClient.Json;
 
 namespace CampaignVault.UnityClient.Model
@@ -48,6 +49,8 @@ namespace CampaignVault.UnityClient.Model
         public bool Streaming;
         /// <summary>Loaded from the client's saved history rather than played this run.</summary>
         public bool Restored;
+        /// <summary>Set on a ⚠ line that reports a failed model call: the story shows it as an error card (details, copy, retry). Not saved with the history.</summary>
+        public LlmFailure Failure;
     }
 
     /// <summary>

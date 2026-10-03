@@ -31,6 +31,13 @@
                 </ui:VisualElement>
                 <ui:VisualElement class="cv-spacer" />
                 <ui:VisualElement name="TopActions" class="cv-row">
+                    <ui:Label name="CostChip" class="cv-costchip">
+                        <Bindings>
+                            <ui:DataBinding property="text" data-source-path="CostText" binding-mode="ToTarget" />
+                            <ui:DataBinding property="tooltip" data-source-path="CostTip" binding-mode="ToTarget" />
+                            <cv:ClassBinding property="cls-hidden" data-source-path="CostVisible" class-name="cv-hidden" invert="true" />
+                        </Bindings>
+                    </ui:Label>
                     <!-- Status sigils: an icon in a gilt lozenge, a gem that carries the state. -->
                     <cv:ClickArea name="sigil-server" silent="true" class="cv-sigil">
                         <Bindings>

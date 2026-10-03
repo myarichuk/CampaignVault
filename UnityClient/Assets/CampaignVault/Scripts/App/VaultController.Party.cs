@@ -187,7 +187,12 @@ namespace CampaignVault.UnityClient.App
                 string reply = null;
                 string error = null;
                 yield return _s.Driver.Brainstorm(messages, null, delegate (string r, string e) { reply = r; error = e; });
-                if (error != null) { ob.DraftError = TextSanitizer.Clean(error, 400); yield break; }
+                if (error != null)
+                {
+                    ob.DraftError = TextSanitizer.Clean(error, 400);
+                    ob.DraftFailure = RecordFailure(ob.DraftError, delegate { if (!ob.Drafting) { DraftCompanions(); } });
+                    yield break;
+                }
                 yield return ApplyCompanionDrafts(reply, kit);
             }
             finally

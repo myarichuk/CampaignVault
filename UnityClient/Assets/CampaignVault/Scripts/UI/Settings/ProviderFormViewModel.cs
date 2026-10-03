@@ -34,6 +34,10 @@ namespace CampaignVault.UnityClient.UI.Settings
         private string _effort = string.Empty;
         private bool _stream = true;
         private bool _storyteller = true;
+        private string _priceIn = string.Empty;
+        private string _priceCached = string.Empty;
+        private string _priceOut = string.Empty;
+        private string _spend = string.Empty;
         private string _key = string.Empty;
         private string _keyPlaceholder = string.Empty;
         private string _keyState = string.Empty;
@@ -57,9 +61,11 @@ namespace CampaignVault.UnityClient.UI.Settings
             Save = DoSave;
             Test = DoTest;
             Forget = DoForget;
+            ResetSpend = delegate { controller.ResetCampaignUsage(); };
             Delete = delegate { controller.DeleteProfile(); };
             Note = DisplayText.Plain("Keys are stored as plain text in " + ByokSettings.FilePath + " on this device and are only ever sent to the endpoint above.");
-            Watch(state, StateArea.Providers);
+            PricesNote = DisplayText.Plain("Leave blank to use the bundled prices (checked " + ModelPricing.Bundled.AsOf + "). Fill these in for a custom endpoint or a model the table doesn't know; they win over the table.");
+            Watch(state, StateArea.Providers | StateArea.Driver | StateArea.Campaign);
             Refresh();
         }
 
@@ -82,6 +88,13 @@ namespace CampaignVault.UnityClient.UI.Settings
         [CreateProperty] public bool Stream { get { return _stream; } set { Set(ref _stream, value); } }
         /// <summary>A separate pass writes the scene from a call that sees no tool data.</summary>
         [CreateProperty] public bool Storyteller { get { return _storyteller; } set { Set(ref _storyteller, value); } }
+        [CreateProperty] public string PriceIn { get { return _priceIn; } set { Set(ref _priceIn, value ?? string.Empty); } }
+        [CreateProperty] public string PriceCached { get { return _priceCached; } set { Set(ref _priceCached, value ?? string.Empty); } }
+        [CreateProperty] public string PriceOut { get { return _priceOut; } set { Set(ref _priceOut, value ?? string.Empty); } }
+        [CreateProperty] public string PricesNote { get; private set; }
+        /// <summary>What the open campaign has cost so far, or why there is no counter.</summary>
+        [CreateProperty] public string Spend { get { return _spend; } private set { Set(ref _spend, value); } }
+        [CreateProperty] public Action ResetSpend { get; private set; }
         /// <summary>A key being pasted: never shown again, never read back from the profile.</summary>
         [CreateProperty] public string Key { get { return _key; } set { Set(ref _key, value ?? string.Empty); } }
         [CreateProperty] public string KeyPlaceholder { get { return _keyPlaceholder; } private set { Set(ref _keyPlaceholder, value); } }
@@ -127,6 +140,7 @@ namespace CampaignVault.UnityClient.UI.Settings
             KeyPlaceholder = needsKey ? "paste a key to set or replace it" : "not needed for local models";
             KeyState = KeyStateOf(profile);
             CanDelete = byok.Profiles.Count > 1;
+            PaintSpend();
 
             string signature = Signature(byok);
             if (!_saving && signature != _seen)
@@ -152,11 +166,38 @@ namespace CampaignVault.UnityClient.UI.Settings
                 byok.ActiveIndex.ToString(CultureInfo.InvariantCulture), p.Preset, p.Name, p.BaseUrl, p.Model,
                 p.Temperature.ToString("R", CultureInfo.InvariantCulture), p.MaxTokens.ToString(CultureInfo.InvariantCulture),
                 p.ReasoningEffort ?? string.Empty, p.DisableStreaming ? "1" : "0", p.SinglePass ? "1" : "0",
+                Price(p.PriceInPerM), Price(p.PriceCachedPerM), Price(p.PriceOutPerM),
             });
+        }
+
+        private static string Price(float perMillion)
+        {
+            return perMillion > 0 ? perMillion.ToString("0.####", CultureInfo.InvariantCulture) : string.Empty;
+        }
+
+        private static float ParsePrice(string text, float keep)
+        {
+            string trimmed = (text ?? string.Empty).Trim().TrimStart('$');
+            if (trimmed.Length == 0) { return 0; }
+            float value;
+            return float.TryParse(trimmed, NumberStyles.Float, CultureInfo.InvariantCulture, out value) && value >= 0 ? value : keep;
+        }
+
+        private void PaintSpend()
+        {
+            var store = _s.Driver != null ? _s.Driver.CampaignUsage : null;
+            if (!_s.HasCampaign) { Spend = "Open a campaign to see what it has cost."; return; }
+            if (store == null) { Spend = "Cost is not tracked in this run."; return; }
+            TokenUsage total = store.Total(_s.CampaignSlug);
+            Spend = total.IsEmpty ? "This campaign has no counted model calls yet."
+                : "This campaign so far: " + total.CostText() + " (" + total + ", " + total.Calls + " calls).";
         }
 
         private void Load(ProviderProfile profile)
         {
+            PriceIn = Price(profile.PriceInPerM);
+            PriceCached = Price(profile.PriceCachedPerM);
+            PriceOut = Price(profile.PriceOutPerM);
             Name = profile.Name;
             BaseUrl = profile.BaseUrl;
             Model = profile.Model;
@@ -189,6 +230,9 @@ namespace CampaignVault.UnityClient.UI.Settings
                 ReasoningEffort = _effort,
                 DisableStreaming = !_stream,
                 SinglePass = !_storyteller,
+                PriceInPerM = ParsePrice(_priceIn, profile.PriceInPerM),
+                PriceCachedPerM = ParsePrice(_priceCached, profile.PriceCachedPerM),
+                PriceOutPerM = ParsePrice(_priceOut, profile.PriceOutPerM),
             };
         }
 

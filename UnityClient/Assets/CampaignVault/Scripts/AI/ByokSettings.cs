@@ -28,6 +28,10 @@ namespace CampaignVault.UnityClient.AI
         public bool DisableStreaming;
         /// <summary>Legacy: one model call writes both the tool calls and the scene (no storyteller pass).</summary>
         public bool SinglePass;
+        /// <summary>Optional prices per million tokens (0 = unset). They win over the bundled table, and are the only way to price a Custom endpoint.</summary>
+        public float PriceInPerM;
+        public float PriceCachedPerM;
+        public float PriceOutPerM;
     }
 
     /// <summary>A starting point for a profile; local presets need no key.</summary>

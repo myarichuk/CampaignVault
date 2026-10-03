@@ -119,6 +119,7 @@ namespace CampaignVault.UnityClient.UI
             _root.RegisterCallback<GeometryChangedEvent>(delegate { ApplyBreakpoints(); });
             _state.Changed += OnChanged;
             _state.SetupRequested += OpenSetup;
+            _state.SettingsRequested += delegate { OpenSettings(SettingsViewModel.ProviderTab); };
             _state.CampaignsRequested += OpenCampaigns;
             _state.PartyBuilderRequested += OpenPartyBuilder;
             _state.PartyBuilderDone += delegate { if (_overlays.IsOpen(_builder)) { _overlays.Close(_builder); } };

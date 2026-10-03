@@ -35,11 +35,13 @@ namespace CampaignVault.UnityClient.UI.Dialogs
         private string _usage = string.Empty;
         private string _response = string.Empty;
         private string _tools = string.Empty;
+        private string _failure = string.Empty;
 
         public InspectorViewModel(VaultAppState state, VaultController controller)
         {
             _s = state;
             CopyResponse = delegate { Copy(_s.Driver.LastResponseJson, "Response copied."); };
+            CopyFailure = delegate { Copy(_failure, "Failure details copied."); };
             CopyTools = delegate { Copy(string.Join("\n", _s.Driver.ToolLog.ToArray()), "Tool log copied."); };
             CopyPrompt = delegate { Copy(_s.Prompts.BuildSystemPrompt(), "System prompt copied."); };
             Export = delegate
@@ -56,6 +58,9 @@ namespace CampaignVault.UnityClient.UI.Dialogs
         [CreateProperty] public string Usage { get { return _usage; } private set { Set(ref _usage, value); } }
         [CreateProperty] public string Response { get { return _response; } private set { Set(ref _response, value); } }
         [CreateProperty] public string Tools { get { return _tools; } private set { Set(ref _tools, value); } }
+        /// <summary>The last failed model call, as the copy-pastable technical block (the key is never in it).</summary>
+        [CreateProperty] public string Failure { get { return _failure; } private set { Set(ref _failure, value); } }
+        [CreateProperty] public Action CopyFailure { get; private set; }
         [CreateProperty] public Action CopyResponse { get; private set; }
         [CreateProperty] public Action CopyTools { get; private set; }
         [CreateProperty] public Action CopyPrompt { get; private set; }
@@ -72,6 +77,7 @@ namespace CampaignVault.UnityClient.UI.Dialogs
             var d = _s.Driver;
             Request = string.IsNullOrEmpty(d.LastRequestMeta) ? "(no request sent yet)" : d.LastRequestMeta;
             Usage = DescribeUsage(d);
+            Failure = d.LastFailure == null ? "(no failure)" : d.LastFailure.Technical;
             Response = string.IsNullOrEmpty(d.LastResponseJson) ? "(no response yet)" : d.LastResponseJson;
             Tools = d.ToolLog.Count == 0 ? "(none yet)" : string.Join("\n", d.ToolLog.ToArray());
         }

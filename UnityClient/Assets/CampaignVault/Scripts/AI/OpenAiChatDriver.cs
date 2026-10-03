@@ -54,6 +54,9 @@ namespace CampaignVault.UnityClient.AI
         /// <summary>Last failure text, kept after IsBusy clears so the UI can show it.</summary>
         public string LastError { get; private set; }
 
+        /// <summary>The last failed call in full: friendly text, copy-pastable technical block, whether a retry makes sense. Null after a success.</summary>
+        public LlmFailure LastFailure { get; private set; }
+
         /// <summary>
         /// Set when the provider refused outright (key rejected, model or endpoint
         /// unknown): retrying can't help until the settings change. Cleared by the
@@ -90,6 +93,9 @@ namespace CampaignVault.UnityClient.AI
 
         /// <summary>Provider-reported tokens since the conversation started.</summary>
         public TokenUsage SessionUsage = new TokenUsage();
+
+        /// <summary>The campaign's persisted running spend; every counted call also lands here (null = not tracked).</summary>
+        public CampaignUsageStore CampaignUsage;
 
         /// <summary>
         /// Who the player's character is, for the storyteller (name, looks,
@@ -168,6 +174,7 @@ namespace CampaignVault.UnityClient.AI
             LastResponseJson = string.Empty;
             ToolLog.Clear();
             LastError = string.Empty;
+            LastFailure = null;
             Turns.Clear();
             _passages.Clear();
             SessionUsage = new TokenUsage();
@@ -217,6 +224,7 @@ namespace CampaignVault.UnityClient.AI
             int generation = ++_generation;
             _cancelRequested = false;
             LastError = string.Empty;
+            LastFailure = null;
             CurrentTool = string.Empty;
             JsonValue userMessage = null;
             bool assistantReplied = false;
@@ -310,9 +318,9 @@ namespace CampaignVault.UnityClient.AI
                         break;
                     }
                     LastResponseJson = CapText(response.ToJson(), 8000);
-                    var usage = TokenUsage.FromJson(response.Get("usage"));
+                    var usage = MeasureUsage(response, Byok.Model);
                     record.Usage.Add(usage);
-                    SessionUsage.Add(usage);
+                    RecordUsage(usage, Byok.Model);
                     JsonValue firstChoice = response.GetArray("choices").Count > 0
                         ? response.GetArray("choices")[0]
                         : JsonValue.Null;
@@ -320,7 +328,8 @@ namespace CampaignVault.UnityClient.AI
                     if (message.IsNull)
                     {
                         if (live != null) { transcript.Remove(live); }
-                        Fail(transcript, Byok.Model + " returned no message (empty choices). Open Inspect for the raw response.", changed);
+                        Fail(transcript, Byok.Model + " returned no message (empty choices). Open Inspect for the raw response.", changed,
+                            LlmFailure.Malformed("no message in the reply", FailureContext(Byok.ChatUrl(), 1, LastResponseJson)));
                         loopFailed = true;
                         break;
                     }
@@ -519,7 +528,8 @@ namespace CampaignVault.UnityClient.AI
                 if (!anyOutput && assistantReplied && !_cancelRequested)
                 {
                     Fail(transcript, Byok.Model + " returned an empty reply (no text, no tool calls). "
-                        + "Check the endpoint serves OpenAI-style chat completions — open Inspect for the raw response.", changed);
+                        + "Check the endpoint serves OpenAI-style chat completions — open Inspect for the raw response.", changed,
+                        LlmFailure.Malformed("no text and no tool calls", FailureContext(Byok.ChatUrl(), 1, LastResponseJson)));
                 }
             }
             finally
@@ -595,9 +605,9 @@ namespace CampaignVault.UnityClient.AI
                 yield break;
             }
             LastResponseJson = CapText(response.ToJson(), 8000);
-            var usage = TokenUsage.FromJson(response.Get("usage"));
+            var usage = MeasureUsage(response, model);
             record.Usage.Add(usage);
-            SessionUsage.Add(usage);
+            RecordUsage(usage, model);
             if (live != null) { transcript.Remove(live); }
             var choices = response.GetArray("choices");
             JsonValue message = choices.Count > 0 ? choices[0].Get("message") : JsonValue.Null;
@@ -607,7 +617,8 @@ namespace CampaignVault.UnityClient.AI
             string scene = content.Trim();
             if (scene.Length == 0)
             {
-                Fail(transcript, model + " returned an empty scene. Open Inspect for the raw response.", changed);
+                Fail(transcript, model + " returned an empty scene. Open Inspect for the raw response.", changed,
+                    LlmFailure.Malformed("an empty scene", FailureContext(Byok.ChatUrl(), 1, LastResponseJson)));
                 done(false);
                 yield break;
             }
@@ -627,8 +638,20 @@ namespace CampaignVault.UnityClient.AI
         public IEnumerator Brainstorm(IList<KeyValuePair<string, string>> roleMessages, Action<string> onDelta, Action<string, string> done, bool retryBusy = true)
         {
             string reason;
-            if (!Byok.Validate(out reason)) { done(null, reason); yield break; }
-            if (IsBusy) { done(null, "The DM is busy with a turn. Try again when it finishes."); yield break; }
+            if (!Byok.Validate(out reason))
+            {
+                LastFailure = LlmFailure.Setup(reason, FailureContext(Byok.ChatUrl(), 0, string.Empty));
+                done(null, reason);
+                yield break;
+            }
+            if (IsBusy)
+            {
+                const string busy = "The DM is busy with a turn. Try again when it finishes.";
+                LastFailure = LlmFailure.Other(busy, FailureContext(Byok.ChatUrl(), 0, string.Empty));
+                done(null, busy);
+                yield break;
+            }
+            LastFailure = null;
             IsBusy = true;
             _cancelRequested = false;
             _retryBusy = retryBusy;
@@ -649,14 +672,19 @@ namespace CampaignVault.UnityClient.AI
                     onDelta ?? delegate { },
                     delegate (JsonValue r, string err) { response = r; failure = err; });
                 if (failure != null) { done(null, failure); yield break; }
-                SessionUsage.Add(TokenUsage.FromJson(response.Get("usage")));
+                RecordUsage(MeasureUsage(response, model), model);
                 var choices = response.GetArray("choices");
                 JsonValue message = choices.Count > 0 ? choices[0].Get("message") : JsonValue.Null;
                 string content = string.Empty;
                 string reasoning;
                 if (!message.IsNull) { ExtractContent(message, out content, out reasoning); }
                 content = content.Trim();
-                if (content.Length == 0) { done(null, model + " returned an empty reply."); yield break; }
+                if (content.Length == 0)
+                {
+                    LastFailure = LlmFailure.Malformed("an empty reply", FailureContext(Byok.ChatUrl(), 1, CapText(response.ToJson(), 1500)));
+                    done(null, model + " returned an empty reply.");
+                    yield break;
+                }
                 done(content, null);
             }
             finally { IsBusy = false; _retryBusy = true; }
@@ -693,6 +721,21 @@ namespace CampaignVault.UnityClient.AI
             changed();
         }
 
+        /// <summary>Counts one priced call toward the session and, when a campaign is open, toward its persisted total.</summary>
+        private void RecordUsage(TokenUsage usage, string model)
+        {
+            SessionUsage.Add(usage);
+            if (CampaignUsage != null && Prompts != null) { CampaignUsage.Add(Prompts.CampaignSlug, model, usage); }
+        }
+
+        /// <summary>One call's reported tokens, priced for the active profile.</summary>
+        private TokenUsage MeasureUsage(JsonValue response, string model)
+        {
+            TokenUsage usage = TokenUsage.FromJson(response.Get("usage"));
+            usage.ApplyPrice(ModelPricing.Bundled, Byok.Active, model);
+            return usage;
+        }
+
         public const int MaxTransientRetries = 2;
 
         /// <summary>No answer, a dropped stream (a 200 that failed), a timeout, a rate limit or a server error: a retry can work.</summary>
@@ -701,18 +744,22 @@ namespace CampaignVault.UnityClient.AI
             return status == 0 || status == 200 || status == 408 || status == 425 || status == 429 || (status >= 500 && status <= 599);
         }
 
-        /// <summary>Plain words for the player: what happened, that nothing is lost, what to press. The raw status goes to Inspect.</summary>
-        internal static string FriendlyTransient(long status, string raw)
+        /// <summary>What a failure report needs to know about the call that just ran (the key is passed only so it can be scrubbed).</summary>
+        private LlmFailure.Context FailureContext(string endpoint, int attempts, string body)
         {
-            string why = status == 429 ? "is getting too many requests right now"
-                : "is overloaded or dropped the connection";
-            LastTechnicalError = raw;
-            return "The AI service " + why + ", so the DM couldn't answer. Nothing was lost: press RETRY to send it again. "
-                + "If this keeps happening, try another model in Settings.";
+            return new LlmFailure.Context
+            {
+                Endpoint = endpoint,
+                Model = Byok.Model.Trim(),
+                RequestMeta = LastRequestMeta,
+                Attempts = Math.Max(1, attempts),
+                ApiKey = Byok.HasKey ? Byok.ApiKey() : string.Empty,
+                Body = CapText(body, 1500),
+            };
         }
 
-        /// <summary>The provider's own words for the last transient failure, for the Inspect panel.</summary>
-        public static string LastTechnicalError = string.Empty;
+        /// <summary>The provider's raw reply to the last PostChat, kept only to describe a failure.</summary>
+        private string _lastBody = string.Empty;
 
         /// <summary>
         /// One model call. Streams when the endpoint allows it; an endpoint that
@@ -731,7 +778,8 @@ namespace CampaignVault.UnityClient.AI
             long status = 0;
             bool streamedText = false;
             Action<string> trackDelta = delegate (string delta) { streamedText = true; onDelta(delta); };
-            Action<JsonValue, string, long> keep = delegate (JsonValue r, string err, long code) { response = r; failure = err; status = code; };
+            int attempts = 0;
+            Action<JsonValue, string, long> keep = delegate (JsonValue r, string err, long code) { response = r; failure = err; status = code; attempts++; };
             yield return PostChat(request, stream, trackDelta, keep);
             if (usageOptions && failure != null && !streamedText && !_cancelRequested && (status == 400 || status == 422))
             {
@@ -745,8 +793,7 @@ namespace CampaignVault.UnityClient.AI
             {
                 request = build(false, false);
                 LastRequestMeta = DescribeRequest(request) + " · stream retry";
-                yield return PostChat(request, false, onDelta,
-                    delegate (JsonValue r, string err, long code) { response = r; failure = err; status = code; });
+                yield return PostChat(request, false, onDelta, keep);
                 if (failure == null) { _noStreamEndpoints.Add(endpoint); }
             }
             // A busy provider (free models especially) drops or refuses requests that work a moment later: try again, quietly.
@@ -759,12 +806,23 @@ namespace CampaignVault.UnityClient.AI
                 request = build(stream, usageOptions && !_noStreamOptions.Contains(endpoint));
                 yield return PostChat(request, stream, trackDelta, keep);
             }
-            if (failure != null && !_cancelRequested && _retryBusy && IsTransient(status)) { failure = FriendlyTransient(status, failure); }
-            if (failure == null) { ProviderProblem = string.Empty; }
-            else if (!_cancelRequested)
+            if (failure == null)
             {
-                string problem = ProviderProblemFor(status, Byok.Model.Trim());
-                if (problem.Length > 0) { ProviderProblem = problem; }
+                ProviderProblem = string.Empty;
+                LastFailure = null;
+            }
+            else
+            {
+                LlmFailure.Context context = FailureContext(endpoint, attempts, _lastBody);
+                if (_cancelRequested) { LastFailure = LlmFailure.Cancelled(context); }
+                else
+                {
+                    LastFailure = LlmFailure.From(status, failure, context);
+                    // Callers still get one string: the friendly wording for the quiet-retry kinds, the provider's own for the rest.
+                    if (_retryBusy && IsTransient(status)) { failure = LastFailure.Friendly; }
+                    string problem = ProviderProblemFor(status, Byok.Model.Trim());
+                    if (problem.Length > 0) { ProviderProblem = problem; }
+                }
             }
             done(response, failure);
         }
@@ -1040,6 +1098,7 @@ namespace CampaignVault.UnityClient.AI
         private IEnumerator PostChat(JsonValue request, bool stream, Action<string> onDelta, Action<JsonValue, string, long> done)
         {
             byte[] payload = Encoding.UTF8.GetBytes(request.ToJson());
+            _lastBody = string.Empty;
             using (UnityWebRequest web = new UnityWebRequest(Byok.ChatUrl(), "POST"))
             {
                 ChatStreamAccumulator accumulator = null;
@@ -1071,6 +1130,7 @@ namespace CampaignVault.UnityClient.AI
                 _activeChat = null;
 
                 string body = sse != null ? sse.RawText : (web.downloadHandler.text ?? string.Empty);
+                _lastBody = body;
                 if (web.result != UnityWebRequest.Result.Success)
                 {
                     string detail = string.Empty;
@@ -1191,10 +1251,13 @@ namespace CampaignVault.UnityClient.AI
         /// red (the UI colors ⚠ system lines as errors), so problems can't
         /// slide by as faint footnotes.
         /// </summary>
-        private void Fail(VaultTranscript transcript, string text, Action changed)
+        private void Fail(VaultTranscript transcript, string text, Action changed, LlmFailure failure = null)
         {
             LastError = text;
-            transcript.Add(new TranscriptSegment { Kind = SegmentKind.System, Text = "⚠ " + text });
+            // A transport failure was already described by RequestReply; anything else gets a generic record here.
+            if (failure != null) { LastFailure = failure; }
+            else if (LastFailure == null) { LastFailure = LlmFailure.Other(text, FailureContext(Byok.ChatUrl(), 1, string.Empty)); }
+            transcript.Add(new TranscriptSegment { Kind = SegmentKind.System, Text = "⚠ " + text, Failure = LastFailure });
             changed();
         }
     }

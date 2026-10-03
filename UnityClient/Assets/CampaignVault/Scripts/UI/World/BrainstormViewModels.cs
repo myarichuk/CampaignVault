@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.Properties;
 using CampaignVault.UnityClient.AI;
 using CampaignVault.UnityClient.App;
+using CampaignVault.UnityClient.UI.Table;
 using CampaignVault.UnityClient.UI.Mvvm;
 
 namespace CampaignVault.UnityClient.UI.World
@@ -104,6 +105,9 @@ namespace CampaignVault.UnityClient.UI.World
         [CreateProperty] public string Trimmed { get { return _trimmed; } private set { Set(ref _trimmed, value); } }
         [CreateProperty] public List<ChatItemViewModel> Items { get { return _items; } private set { SetList(ref _items, value); } }
         [CreateProperty] public bool Busy { get { return _busy; } private set { Set(ref _busy, value); } }
+        private readonly ErrorCardSlot _errorSlot = new ErrorCardSlot();
+        private object _card;
+        [CreateProperty] public object Card { get { return _card; } private set { Set(ref _card, value); } }
         [CreateProperty] public string Error { get { return _error; } private set { Set(ref _error, value); } }
         /// <summary>Goes up whenever the newest message should be brought into view.</summary>
         [CreateProperty] public int ScrollTick { get { return _scroll; } private set { Set(ref _scroll, value); } }
@@ -120,7 +124,9 @@ namespace CampaignVault.UnityClient.UI.World
                 + (dropped.Count == 1 ? "1 earlier message" : dropped.Count + " earlier messages") + " (marked below). Your first message and the latest ones are still sent. "
                 + "WRITE IT UP now to keep what you settled, or restate what matters in your next message.");
             Busy = ob.BrainstormBusy;
-            Error = DisplayText.Plain(ob.BrainstormError);
+            var card = _errorSlot.Sync(ob.BrainstormFailure, ob.BrainstormError);
+            Card = card;
+            Error = card != null ? string.Empty : DisplayText.Plain(ob.BrainstormError);
 
             var indexes = new List<int>();
             for (int i = 0; i < chat.Count; i++) { indexes.Add(i); }

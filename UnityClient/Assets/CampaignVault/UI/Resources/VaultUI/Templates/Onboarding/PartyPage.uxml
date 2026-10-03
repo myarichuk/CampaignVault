@@ -64,6 +64,11 @@
                 <cv:ClassBinding property="cls-hidden" data-source-path="DraftError" class-name="cv-hidden" invert="true" />
             </Bindings>
         </ui:Label>
+        <cv:ContentPresenter>
+            <Bindings>
+                <ui:DataBinding property="content" data-source-path="DraftCard" binding-mode="ToTarget" />
+            </Bindings>
+        </cv:ContentPresenter>
         <cv:Repeater name="party-actions" item-template="Common/ActionButton" class="cv-onboarding__answer cv-onboarding__party-actions">
             <Bindings>
                 <ui:DataBinding property="itemsSource" data-source-path="Actions" binding-mode="ToTarget" />

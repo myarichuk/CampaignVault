@@ -4,6 +4,7 @@ using System.Globalization;
 using Unity.Properties;
 using CampaignVault.UnityClient.AI;
 using CampaignVault.UnityClient.App;
+using CampaignVault.UnityClient.UI.Table;
 using CampaignVault.UnityClient.UI.Mvvm;
 
 namespace CampaignVault.UnityClient.UI.World
@@ -263,6 +264,9 @@ namespace CampaignVault.UnityClient.UI.World
         [CreateProperty] public string WriteUpLabel { get { return _writeUpLabel; } private set { Set(ref _writeUpLabel, value); } }
         [CreateProperty] public string WriteUpTooltip { get { return _writeUpTip; } private set { Set(ref _writeUpTip, value); } }
         [CreateProperty] public bool Busy { get { return _busy; } private set { Set(ref _busy, value); } }
+        private readonly ErrorCardSlot _brainstormSlot = new ErrorCardSlot();
+        private object _brainstormCard;
+        [CreateProperty] public object BrainstormCard { get { return _brainstormCard; } private set { Set(ref _brainstormCard, value); } }
         [CreateProperty] public string BrainstormError { get { return _brainstormError; } private set { Set(ref _brainstormError, value); } }
 
         /// <summary>What ANSWER sends.</summary>
@@ -293,7 +297,9 @@ namespace CampaignVault.UnityClient.UI.World
                 ? "The DM drafts this answer from what you've discussed so far. It replaces what's in the field now."
                 : "The DM drafts this answer from what you've discussed so far, for you to edit.";
             Busy = ob.BrainstormBusy;
-            BrainstormError = DisplayText.Plain(ob.BrainstormError);
+            var card = _brainstormSlot.Sync(ob.BrainstormFailure, ob.BrainstormError);
+            BrainstormCard = card;
+            BrainstormError = card != null ? string.Empty : DisplayText.Plain(ob.BrainstormError);
         }
 
         private void PaintCount()

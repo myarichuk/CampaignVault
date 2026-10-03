@@ -9,6 +9,10 @@
         <cv:VaultField name="inspector-usage" multiline="true" readonly="true" class="cv-mono cv-field--multiline cv-inspector__usage">
             <Bindings><ui:DataBinding property="value" data-source-path="Usage" binding-mode="ToTarget" /></Bindings>
         </cv:VaultField>
+        <ui:Label text="LAST FAILURE" class="cv-caption" />
+        <cv:VaultField name="inspector-failure" multiline="true" readonly="true" class="cv-mono cv-field--multiline cv-inspector__usage">
+            <Bindings><ui:DataBinding property="value" data-source-path="Failure" binding-mode="ToTarget" /></Bindings>
+        </cv:VaultField>
         <ui:Label text="LAST MODEL RESPONSE (RAW JSON)" class="cv-caption" />
         <cv:VaultField name="inspector-response" multiline="true" readonly="true" class="cv-mono cv-field--multiline cv-inspector__response">
             <Bindings><ui:DataBinding property="value" data-source-path="Response" binding-mode="ToTarget" /></Bindings>
@@ -20,6 +24,7 @@
     </ui:VisualElement>
     <ui:VisualElement name="foot">
         <cv:VaultButton label="COPY RESPONSE"><Bindings><ui:DataBinding property="command" data-source-path="CopyResponse" binding-mode="ToTarget" /></Bindings></cv:VaultButton>
+        <cv:VaultButton label="COPY FAILURE"><Bindings><ui:DataBinding property="command" data-source-path="CopyFailure" binding-mode="ToTarget" /></Bindings></cv:VaultButton>
         <cv:VaultButton label="COPY TOOL LOG"><Bindings><ui:DataBinding property="command" data-source-path="CopyTools" binding-mode="ToTarget" /></Bindings></cv:VaultButton>
         <cv:VaultButton label="COPY SYSTEM PROMPT"><Bindings><ui:DataBinding property="command" data-source-path="CopyPrompt" binding-mode="ToTarget" /></Bindings></cv:VaultButton>
         <cv:VaultButton label="EXPORT TRANSCRIPT"><Bindings><ui:DataBinding property="command" data-source-path="Export" binding-mode="ToTarget" /></Bindings></cv:VaultButton>

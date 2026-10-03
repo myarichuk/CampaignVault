@@ -1,5 +1,6 @@
 using System;
 using Unity.Properties;
+using CampaignVault.UnityClient.AI;
 using CampaignVault.UnityClient.App;
 using CampaignVault.UnityClient.Flows;
 using CampaignVault.UnityClient.Server;
@@ -27,6 +28,8 @@ namespace CampaignVault.UnityClient.UI.Shell
         private bool _modelBusy;
         private string _modelTip = string.Empty;
         private bool _textMenuOpen;
+        private string _costText = string.Empty;
+        private string _costTip = string.Empty;
 
         public TopBarViewModel(VaultAppState state, VaultController controller, Action openCampaigns, Action toggleCodex,
             Action toggleSettings, Action openProvider, Action leave)
@@ -58,6 +61,10 @@ namespace CampaignVault.UnityClient.UI.Shell
         [CreateProperty] public bool ModelBad { get { return _modelBad; } private set { Set(ref _modelBad, value); } }
         [CreateProperty] public bool ModelBusy { get { return _modelBusy; } private set { Set(ref _modelBusy, value); } }
         [CreateProperty] public string ModelTip { get { return _modelTip; } private set { Set(ref _modelTip, value); } }
+        /// <summary>"session ~$0.08 · campaign ~$1.92"; empty (and hidden) until a call has reported usage.</summary>
+        [CreateProperty] public string CostText { get { return _costText; } private set { Set(ref _costText, value); } }
+        [CreateProperty] public bool CostVisible { get { return _costText.Length > 0; } }
+        [CreateProperty] public string CostTip { get { return _costTip; } private set { Set(ref _costTip, value); } }
         [CreateProperty] public bool TextMenuOpen { get { return _textMenuOpen; } private set { Set(ref _textMenuOpen, value); } }
 
         [CreateProperty] public Action CheckServer { get; private set; }
@@ -92,6 +99,19 @@ namespace CampaignVault.UnityClient.UI.Shell
             ModelBad = !ready || failed;
             ModelOk = ready && !busy && !failed;
             ModelTip = ModelTooltip(ready, reason);
+            PaintCost(driver);
+        }
+
+        private void PaintCost(AI.OpenAiChatDriver driver)
+        {
+            var store = driver != null ? driver.CampaignUsage : null;
+            string slug = _s.CampaignSlug;
+            TokenUsage session = driver != null ? driver.SessionUsage : null;
+            TokenUsage campaign = store != null && !string.IsNullOrEmpty(slug) ? store.Total(slug) : null;
+            CostText = UsageSummary.Chip(session, campaign);
+            Notify(nameof(CostVisible));
+            CostTip = UsageSummary.Tooltip(session, campaign,
+                campaign != null ? store.Breakdown(slug) : null, ModelPricing.Bundled.AsOf);
         }
 
         private void PaintContext()

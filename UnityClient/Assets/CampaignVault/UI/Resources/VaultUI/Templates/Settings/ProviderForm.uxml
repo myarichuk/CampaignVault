@@ -78,6 +78,51 @@
             </Bindings>
         </cv:VaultSwitch>
 
+        <ui:Label text="PRICES, USD PER 1M TOKENS (OPTIONAL)" class="cv-caption" />
+        <ui:VisualElement class="cv-row">
+            <ui:VisualElement class="cv-grow cv-form__column">
+                <ui:Label text="INPUT" class="cv-caption cv-field-caption" />
+                <cv:VaultField name="provider-price-in" placeholder="table">
+                    <Bindings>
+                        <ui:DataBinding property="value" data-source-path="PriceIn" binding-mode="TwoWay" />
+                    </Bindings>
+                </cv:VaultField>
+            </ui:VisualElement>
+            <ui:VisualElement class="cv-grow cv-form__column">
+                <ui:Label text="CACHED INPUT" class="cv-caption cv-field-caption" />
+                <cv:VaultField name="provider-price-cached" placeholder="= input">
+                    <Bindings>
+                        <ui:DataBinding property="value" data-source-path="PriceCached" binding-mode="TwoWay" />
+                    </Bindings>
+                </cv:VaultField>
+            </ui:VisualElement>
+            <ui:VisualElement class="cv-grow">
+                <ui:Label text="OUTPUT" class="cv-caption cv-field-caption" />
+                <cv:VaultField name="provider-price-out" placeholder="table">
+                    <Bindings>
+                        <ui:DataBinding property="value" data-source-path="PriceOut" binding-mode="TwoWay" />
+                    </Bindings>
+                </cv:VaultField>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:Label class="cv-body cv-muted">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="PricesNote" binding-mode="ToTarget" />
+            </Bindings>
+        </ui:Label>
+        <ui:VisualElement class="cv-row cv-form__group">
+            <ui:Label name="provider-spend" class="cv-body cv-grow">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Spend" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <cv:VaultButton name="provider-reset-spend" label="RESET CAMPAIGN COUNTER" icon="trash" class="cv-btn--small cv-btn--ghost">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="ResetSpend" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+        </ui:VisualElement>
+
         <ui:Label text="API KEY" class="cv-caption" />
         <cv:VaultField name="provider-key" password="true">
             <Bindings>

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Unity.Properties;
 using CampaignVault.UnityClient.App;
+using CampaignVault.UnityClient.UI.Table;
 using CampaignVault.UnityClient.UI.Mvvm;
 
 namespace CampaignVault.UnityClient.UI.World
@@ -117,6 +118,10 @@ namespace CampaignVault.UnityClient.UI.World
         [CreateProperty] public List<ActionViewModel> SuggestionActions { get { return _suggestionActions; } private set { SetList(ref _suggestionActions, value); } }
         [CreateProperty] public bool ShowLevel { get { return _showLevel; } private set { Set(ref _showLevel, value); } }
         [CreateProperty] public bool Empty { get { return _empty; } private set { Set(ref _empty, value); } }
+        private readonly ErrorCardSlot _draftSlot = new ErrorCardSlot();
+        private object _draftCard;
+        /// <summary>The failed drafting call as a card (details, copy, retry); the plain DraftError text shows when there is none.</summary>
+        [CreateProperty] public object DraftCard { get { return _draftCard; } private set { Set(ref _draftCard, value); } }
         [CreateProperty] public string DraftError { get { return _draftError; } private set { Set(ref _draftError, value); } }
         [CreateProperty] public List<PartyMemberViewModel> Members { get { return _members; } private set { SetList(ref _members, value); } }
         [CreateProperty] public List<ActionViewModel> Actions { get { return _actions; } private set { SetList(ref _actions, value); } }
@@ -162,7 +167,9 @@ namespace CampaignVault.UnityClient.UI.World
 
             bool pending = VaultController.HasPendingDrafts(ob);
             bool pc = VaultController.HasBuiltPc(ob);
-            DraftError = DisplayText.Plain(ob.DraftError);
+            var draftCard = _draftSlot.Sync(ob.DraftFailure, ob.DraftError);
+            DraftCard = draftCard;
+            DraftError = draftCard != null ? string.Empty : DisplayText.Plain(ob.DraftError);
             // A narrative game's builder asks only who they are: name, concept, look, descriptors, drives and fears.
             // One player character: once built, EDIT on its card changes it, and the button goes away.
             _add.Show("CREATE PLAYER CHARACTER", "character", true,

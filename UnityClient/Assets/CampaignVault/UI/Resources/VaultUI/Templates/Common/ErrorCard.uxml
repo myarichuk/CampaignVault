@@ -1,0 +1,49 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- A failed model call (ErrorCardViewModel): friendly line, Details fold-out with the technical block, COPY, RETRY or OPEN SETTINGS. -->
+    <ui:VisualElement class="cv-errcard cv-seg">
+        <Bindings>
+            <cv:ClassBinding property="cls-open" data-source-path="Open" class-name="cv-errcard--open" />
+        </Bindings>
+        <ui:VisualElement class="cv-errcard__top">
+            <ui:VisualElement picking-mode="Ignore" class="cv-icon cv-icon--warning" />
+            <ui:Label selectable="true" class="cv-errcard__text">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Friendly" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
+        <cv:ClickArea silent="true" class="cv-errcard__head">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="Toggle" binding-mode="ToTarget" />
+            </Bindings>
+            <ui:VisualElement picking-mode="Ignore" class="cv-icon cv-icon--chevron cv-errcard__chevron" />
+            <ui:Label text="DETAILS" class="cv-errcard__title" />
+        </cv:ClickArea>
+        <ui:VisualElement class="cv-errcard__details">
+            <ui:Label selectable="true" class="cv-errcard__technical">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Technical" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <cv:VaultButton label="COPY DETAILS" class="cv-btn--ghost cv-btn--small">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="Copy" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+        </ui:VisualElement>
+        <ui:VisualElement class="cv-row cv-errcard__actions">
+            <cv:VaultButton label="RETRY" icon="refresh" class="cv-btn--small">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="ShowRetry" class-name="cv-hidden" invert="true" />
+                    <ui:DataBinding property="command" data-source-path="Retry" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+            <cv:VaultButton label="OPEN SETTINGS" icon="settings" class="cv-btn--small">
+                <Bindings>
+                    <cv:ClassBinding property="cls-hidden" data-source-path="ShowSettings" class-name="cv-hidden" invert="true" />
+                    <ui:DataBinding property="command" data-source-path="OpenSettings" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

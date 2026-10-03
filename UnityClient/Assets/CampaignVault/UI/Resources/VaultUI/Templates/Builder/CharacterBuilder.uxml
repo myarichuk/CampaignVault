@@ -117,6 +117,11 @@
                                 <cv:ClassBinding property="cls-hidden" data-source-path="FillError" class-name="cv-hidden" invert="true" />
                             </Bindings>
                         </ui:Label>
+                        <cv:ContentPresenter>
+                            <Bindings>
+                                <ui:DataBinding property="content" data-source-path="FillCard" binding-mode="ToTarget" />
+                            </Bindings>
+                        </cv:ContentPresenter>
                         <cv:Repeater item-template="Common/RichText">
                             <Bindings>
                                 <ui:DataBinding property="itemsSource" data-source-path="FillParagraphs" binding-mode="ToTarget" />
@@ -145,6 +150,11 @@
                                 <cv:ClassBinding property="cls-hidden" data-source-path="AdviceError" class-name="cv-hidden" invert="true" />
                             </Bindings>
                         </ui:Label>
+                        <cv:ContentPresenter>
+                            <Bindings>
+                                <ui:DataBinding property="content" data-source-path="AdviceCard" binding-mode="ToTarget" />
+                            </Bindings>
+                        </cv:ContentPresenter>
                         <cv:Repeater item-template="Common/RichText">
                             <Bindings>
                                 <ui:DataBinding property="itemsSource" data-source-path="AdviceParagraphs" binding-mode="ToTarget" />
