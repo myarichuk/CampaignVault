@@ -121,6 +121,7 @@ namespace CampaignVault.UnityClient.UI
             _state.SetupRequested += OpenSetup;
             _state.CampaignsRequested += OpenCampaigns;
             _state.PartyBuilderRequested += OpenPartyBuilder;
+            _state.PartyBuilderDone += delegate { if (_overlays.IsOpen(_builder)) { _overlays.Close(_builder); } };
             OnChanged(StateArea.All);
         }
 

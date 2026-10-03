@@ -674,7 +674,7 @@ namespace CampaignVault.UnityClient.App
                 string who = b.Draft.Name.Length > 0 ? b.Draft.Name : "The character";
                 _s.RaiseToast(update ? who + " is updated." : who + " is saved to the campaign.", ToastKind.Success);
                 // The first player character built is the one the player plays.
-                if (b.ForOnboarding) { RecordPartyMember(b, id); }
+                if (b.ForOnboarding) { RecordPartyMember(b, id); _s.Notify(StateArea.Builder); _s.FinishPartyBuilder(); }
                 else if (b.Draft.Kind == "pc" && string.IsNullOrEmpty(_s.PcId) && id.Length > 0) { SetPcId(id); }
                 _s.Notify(StateArea.Builder);
             }

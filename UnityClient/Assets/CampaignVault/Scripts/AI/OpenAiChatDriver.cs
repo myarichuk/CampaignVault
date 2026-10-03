@@ -305,7 +305,7 @@ namespace CampaignVault.UnityClient.AI
                             transcript.NotifyUpdated(live);
                         }
                         if (_cancelRequested) { AddStopped(transcript, changed); }
-                        else { Fail(transcript, "Chat error: " + failure, changed); }
+                        else { Fail(transcript, failure.StartsWith("The AI service") ? failure : "Chat error: " + failure, changed); }
                         loopFailed = true;
                         break;
                     }
@@ -624,13 +624,14 @@ namespace CampaignVault.UnityClient.AI
         /// owns the messages; nothing touches the play history or the server.
         /// done(reply, error) — exactly one of them is non-null.
         /// </summary>
-        public IEnumerator Brainstorm(IList<KeyValuePair<string, string>> roleMessages, Action<string> onDelta, Action<string, string> done)
+        public IEnumerator Brainstorm(IList<KeyValuePair<string, string>> roleMessages, Action<string> onDelta, Action<string, string> done, bool retryBusy = true)
         {
             string reason;
             if (!Byok.Validate(out reason)) { done(null, reason); yield break; }
             if (IsBusy) { done(null, "The DM is busy with a turn. Try again when it finishes."); yield break; }
             IsBusy = true;
             _cancelRequested = false;
+            _retryBusy = retryBusy;
             try
             {
                 var messages = JsonValue.NewArray();
@@ -658,8 +659,11 @@ namespace CampaignVault.UnityClient.AI
                 if (content.Length == 0) { done(null, model + " returned an empty reply."); yield break; }
                 done(content, null);
             }
-            finally { IsBusy = false; }
+            finally { IsBusy = false; _retryBusy = true; }
         }
+
+        /// <summary>Quiet retries of a busy provider; off for a throwaway helper call (a level hint) that shouldn't hold the DM up.</summary>
+        private bool _retryBusy = true;
 
         internal JsonValue BuildNarrationMessages(string playerText, TurnBrief brief)
         {
@@ -688,6 +692,27 @@ namespace CampaignVault.UnityClient.AI
             AddSystem(transcript, "Stopped — the table keeps whatever the DM already committed.");
             changed();
         }
+
+        public const int MaxTransientRetries = 2;
+
+        /// <summary>No answer, a dropped stream (a 200 that failed), a timeout, a rate limit or a server error: a retry can work.</summary>
+        internal static bool IsTransient(long status)
+        {
+            return status == 0 || status == 200 || status == 408 || status == 425 || status == 429 || (status >= 500 && status <= 599);
+        }
+
+        /// <summary>Plain words for the player: what happened, that nothing is lost, what to press. The raw status goes to Inspect.</summary>
+        internal static string FriendlyTransient(long status, string raw)
+        {
+            string why = status == 429 ? "is getting too many requests right now"
+                : "is overloaded or dropped the connection";
+            LastTechnicalError = raw;
+            return "The AI service " + why + ", so the DM couldn't answer. Nothing was lost: press RETRY to send it again. "
+                + "If this keeps happening, try another model in Settings.";
+        }
+
+        /// <summary>The provider's own words for the last transient failure, for the Inspect panel.</summary>
+        public static string LastTechnicalError = string.Empty;
 
         /// <summary>
         /// One model call. Streams when the endpoint allows it; an endpoint that
@@ -724,6 +749,17 @@ namespace CampaignVault.UnityClient.AI
                     delegate (JsonValue r, string err, long code) { response = r; failure = err; status = code; });
                 if (failure == null) { _noStreamEndpoints.Add(endpoint); }
             }
+            // A busy provider (free models especially) drops or refuses requests that work a moment later: try again, quietly.
+            for (int attempt = 1; attempt <= MaxTransientRetries && _retryBusy && failure != null && !streamedText && !_cancelRequested && IsTransient(status); attempt++)
+            {
+                Status = "the provider is busy: trying again (" + attempt + "/" + MaxTransientRetries + ")…";
+                float until = Time.realtimeSinceStartup + 2f * attempt;
+                while (Time.realtimeSinceStartup < until && !_cancelRequested) { yield return null; }
+                if (_cancelRequested) { break; }
+                request = build(stream, usageOptions && !_noStreamOptions.Contains(endpoint));
+                yield return PostChat(request, stream, trackDelta, keep);
+            }
+            if (failure != null && !_cancelRequested && _retryBusy && IsTransient(status)) { failure = FriendlyTransient(status, failure); }
             if (failure == null) { ProviderProblem = string.Empty; }
             else if (!_cancelRequested)
             {

@@ -9,7 +9,7 @@
                 <cv:VariantBinding property="var-icon" data-source-path="Icon" class-prefix="cv-icon--" />
             </Bindings>
         </ui:VisualElement>
-        <ui:Label class="cv-system__text">
+        <ui:Label selectable="true" class="cv-system__text">
             <Bindings>
                 <ui:DataBinding property="text" data-source-path="Text" binding-mode="ToTarget" />
             </Bindings>

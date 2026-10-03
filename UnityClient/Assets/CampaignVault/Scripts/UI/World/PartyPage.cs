@@ -65,7 +65,14 @@ namespace CampaignVault.UnityClient.UI.World
     public sealed class PartyPageViewModel : QuestionPageViewModel
     {
         private readonly VaultController _c;
-        private List<ChoiceViewModel> _levels = new List<ChoiceViewModel>();
+        private readonly ActionViewModel _suggest;
+        private readonly ActionViewModel _takeSuggestion;
+        private string _levelLabel = string.Empty;
+        private string _levelTier = string.Empty;
+        private string _suggestionText = string.Empty;
+        private bool _canLower;
+        private bool _canRaise;
+        private bool _hasSuggestion;
         private readonly ActionViewModel _add;
         private readonly ActionViewModel _addCompanion;
         private readonly ActionViewModel _drafts;
@@ -74,6 +81,7 @@ namespace CampaignVault.UnityClient.UI.World
         private readonly ActionViewModel _discard;
         private List<PartyMemberViewModel> _members = new List<PartyMemberViewModel>();
         private List<ActionViewModel> _actions = new List<ActionViewModel>();
+        private List<ActionViewModel> _suggestionActions = new List<ActionViewModel>();
         private bool _showLevel = true;
         private bool _empty = true;
         private string _draftError = string.Empty;
@@ -81,6 +89,10 @@ namespace CampaignVault.UnityClient.UI.World
         public PartyPageViewModel(VaultController controller)
         {
             _c = controller;
+            Lower = delegate { _c.SetPartyLevel(_c.State.Onboarding.PartyLevel - 1); };
+            Raise = delegate { _c.SetPartyLevel(_c.State.Onboarding.PartyLevel + 1); };
+            _suggest = new ActionViewModel("suggest-level", "party-level-suggest", delegate { _c.SuggestPartyLevel(); }, ghost: true);
+            _takeSuggestion = new ActionViewModel("take-level", "party-level-take", delegate { _c.SetPartyLevel(_c.State.Onboarding.LevelSuggestion); });
             _add = new ActionViewModel("add", "party-add", delegate { _c.OpenPartyBuilder(string.Empty); }, primary: true);
             _addCompanion = new ActionViewModel("add-companion", "party-add-companion", delegate { _c.OpenPartyBuilder(string.Empty, "companion"); });
             _drafts = new ActionViewModel("drafts", "party-dm", delegate { _c.DraftCompanions(); });
@@ -91,8 +103,18 @@ namespace CampaignVault.UnityClient.UI.World
 
         public override string Template { get { return "Onboarding/PartyPage"; } }
 
-        /// <summary>1 to the builder's cap for the chosen system (5e: 20; PF2e: 3).</summary>
-        [CreateProperty] public List<ChoiceViewModel> Levels { get { return _levels; } private set { SetList(ref _levels, value); } }
+        /// <summary>The level stepper: 1 to the builder's cap for the chosen system (5e: 20; PF2e: 3).</summary>
+        [CreateProperty] public string LevelLabel { get { return _levelLabel; } private set { Set(ref _levelLabel, value); } }
+        /// <summary>What the level means in play ("Tier 2 · local heroes").</summary>
+        [CreateProperty] public string LevelTier { get { return _levelTier; } private set { Set(ref _levelTier, value); } }
+        [CreateProperty] public bool CanLower { get { return _canLower; } private set { Set(ref _canLower, value); } }
+        [CreateProperty] public bool CanRaise { get { return _canRaise; } private set { Set(ref _canRaise, value); } }
+        [CreateProperty] public Action Lower { get; private set; }
+        [CreateProperty] public Action Raise { get; private set; }
+        /// <summary>The DM's read on the level from the plot, shown with buttons to take it or ask again. Never applied on its own.</summary>
+        [CreateProperty] public string SuggestionText { get { return _suggestionText; } private set { Set(ref _suggestionText, value); } }
+        [CreateProperty] public bool HasSuggestion { get { return _hasSuggestion; } private set { Set(ref _hasSuggestion, value); } }
+        [CreateProperty] public List<ActionViewModel> SuggestionActions { get { return _suggestionActions; } private set { SetList(ref _suggestionActions, value); } }
         [CreateProperty] public bool ShowLevel { get { return _showLevel; } private set { Set(ref _showLevel, value); } }
         [CreateProperty] public bool Empty { get { return _empty; } private set { Set(ref _empty, value); } }
         [CreateProperty] public string DraftError { get { return _draftError; } private set { Set(ref _draftError, value); } }
@@ -105,16 +127,34 @@ namespace CampaignVault.UnityClient.UI.World
             return "Build your characters now (the DM can draft companions around them for you to review), or leave it all for the table.";
         }
 
+        /// <summary>Levels in the SRD's own tiers (5e: 1-4, 5-10, 11-16, 17-20); a shorter ladder is split in thirds.</summary>
+        internal static string TierOf(int level, int max)
+        {
+            if (max >= 20)
+            {
+                return level <= 4 ? "Apprentice: local heroes" : level <= 10 ? "Seasoned: heroes of the realm" : level <= 16 ? "Veteran: masters of their craft" : "Legend: world-shaking";
+            }
+            return level <= 1 ? "Fresh start" : "Seasoned adventurers";
+        }
+
         public override void Update(OnboardingState ob)
         {
             base.Update(ob);
             bool narrative = ob.System == "Narrative";
             ShowLevel = !narrative;
-            var levels = new List<int>();
-            for (int level = 1; level <= VaultController.MaxBuilderLevelFor(VaultController.RulesetOf(ob.System)); level++) { levels.Add(level); }
-            Levels = ItemList.Sync(_levels, levels, delegate (int level) { return "level-" + level; },
-                delegate (int level) { return new ChoiceViewModel("level-" + level, level.ToString(), null, true, delegate { _c.SetPartyLevel(level); }, "party-level-" + level); },
-                delegate (ChoiceViewModel vm, int level) { vm.Update(level.ToString(), null, ob.PartyLevel == level); });
+            int maxLevel = VaultController.MaxBuilderLevelFor(VaultController.RulesetOf(ob.System));
+            LevelLabel = "LEVEL " + ob.PartyLevel;
+            LevelTier = TierOf(ob.PartyLevel, maxLevel);
+            CanLower = ob.PartyLevel > 1;
+            CanRaise = ob.PartyLevel < maxLevel;
+            bool differs = ob.LevelSuggestion > 0 && ob.LevelSuggestion != ob.PartyLevel;
+            HasSuggestion = ob.SuggestingLevel || ob.LevelSuggestion > 0;
+            SuggestionText = ob.SuggestingLevel ? "The DM is reading your plot…"
+                : ob.LevelSuggestion > 0 ? "The DM suggests level " + ob.LevelSuggestion + (ob.LevelReason.Length > 0 ? ": " + ob.LevelReason : ".")
+                : string.Empty;
+            _takeSuggestion.Show("USE LEVEL " + ob.LevelSuggestion, "check", differs);
+            _suggest.Show("ASK AGAIN", "spark", !ob.SuggestingLevel);
+            SuggestionActions = differs ? new List<ActionViewModel> { _takeSuggestion, _suggest } : new List<ActionViewModel> { _suggest };
             Members = ItemList.Sync(_members, ob.Party, delegate (PartyMember m) { return m.Id; },
                 delegate (PartyMember m) { return new PartyMemberViewModel(m, _c); },
                 delegate (PartyMemberViewModel vm, PartyMember m) { vm.Update(m, narrative); });
@@ -124,8 +164,9 @@ namespace CampaignVault.UnityClient.UI.World
             bool pc = VaultController.HasBuiltPc(ob);
             DraftError = DisplayText.Plain(ob.DraftError);
             // A narrative game's builder asks only who they are: name, concept, look, descriptors, drives and fears.
-            _add.Show(ob.Party.Count == 0 ? "ADD A CHARACTER" : "ADD ANOTHER", "character", true,
-                narrative ? "Open the character builder: who they are, no stats." : "Open the character builder.");
+            // One player character: once built, EDIT on its card changes it, and the button goes away.
+            _add.Show("CREATE PLAYER CHARACTER", "character", true,
+                narrative ? "Open the character builder: who you are, no stats." : "Open the character builder for your character.");
             _addCompanion.Show("ADD A COMPANION", "character", true,
                 narrative ? "Someone who travels with the party: who they are, no stats."
                 : "A hireling, pet or ally who travels with the party: pick a template or write a stat block.");
@@ -138,7 +179,9 @@ namespace CampaignVault.UnityClient.UI.World
             _discard.Show("DISCARD DRAFTS", "close", pending && !ob.Drafting, "Drop the DM's drafts that aren't saved.");
             _table.Show("WE'LL BUILD AT THE TABLE", "chevron", Empty, Empty ? "Skip this: the Dungeon Master walks you through it before the first scene." : "You have started building characters: use them, or add more.");
             _use.Show("USE THIS PARTY", "check", !Empty && !pending && !ob.Drafting, pending ? "Review or discard the DM's drafts first." : null);
-            var actions = new List<ActionViewModel> { _add, _addCompanion };
+            var actions = new List<ActionViewModel>();
+            if (!pc) { actions.Add(_add); }
+            actions.Add(_addCompanion);
             if (!Empty) { actions.Add(_use); }
             actions.Add(_drafts);
             if (pending) { actions.Add(_discard); }

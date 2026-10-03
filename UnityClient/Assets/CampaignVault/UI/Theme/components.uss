@@ -414,7 +414,13 @@
 .cv-onboarding__systems { margin-bottom: 16px; }
 .cv-onboarding__answer { margin-top: 16px; }
 .cv-onboarding__choices > .cv-btn { margin-bottom: 8px; }
-.cv-onboarding__levels > .cv-btn { margin-right: 8px; margin-top: 6px; }
+.cv-levelstep { margin-top: 6px; }
+.cv-levelstep__btn { min-width: 40px; }
+.cv-levelstep__value { min-width: 110px; -unity-text-align: middle-center; -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: var(--fs-md); color: var(--gold-bright); }
+.cv-levelstep__tier { margin-left: var(--sp-3); }
+.cv-levelstep__suggest { margin-top: var(--sp-2); }
+.cv-levelstep__actions { margin-top: var(--sp-2); }
+.cv-levelstep__actions > .cv-btn { margin-right: var(--sp-2); }
 .cv-templates > .cv-btn { margin-right: 8px; margin-top: 6px; }
 .cv-onboarding__member { margin-top: 8px; }
 .cv-onboarding__party-actions > .cv-btn { margin-bottom: 8px; }

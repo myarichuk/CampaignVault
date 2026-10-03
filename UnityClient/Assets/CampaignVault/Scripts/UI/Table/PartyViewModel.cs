@@ -75,6 +75,7 @@ namespace CampaignVault.UnityClient.UI.Table
         private string _noticeIcon = "party";
         private bool _showChoose;
         private bool _showBuild;
+        private bool _canBuild = true;
         private readonly Action<string> _openSheet;
 
         public PartyViewModel(VaultAppState state, VaultController controller, Action<string> openSheet, Action openCampaigns, Action openBuilder)
@@ -84,7 +85,7 @@ namespace CampaignVault.UnityClient.UI.Table
             Build = openBuilder;
             Choose = openCampaigns;
             RefreshTable = delegate { controller.Run(controller.RefreshTable()); };
-            Watch(state, StateArea.Session | StateArea.Campaign | StateArea.Pc | StateArea.Busy);
+            Watch(state, StateArea.Session | StateArea.Campaign | StateArea.Pc | StateArea.Busy | StateArea.Driver | StateArea.Onboarding);
         }
 
         [CreateProperty] public List<MemberViewModel> Members { get { return _members; } private set { SetList(ref _members, value); } }
@@ -92,6 +93,8 @@ namespace CampaignVault.UnityClient.UI.Table
         [CreateProperty] public string NoticeIcon { get { return _noticeIcon; } private set { Set(ref _noticeIcon, value); } }
         [CreateProperty] public bool ShowChoose { get { return _showChoose; } private set { Set(ref _showChoose, value); } }
         [CreateProperty] public bool ShowBuild { get { return _showBuild; } private set { Set(ref _showBuild, value); } }
+        /// <summary>The header's + : off while the DM is setting the world up, and once the player character exists (there is one).</summary>
+        [CreateProperty] public bool CanBuild { get { return _canBuild; } private set { Set(ref _canBuild, value); } }
         [CreateProperty] public Action Build { get; private set; }
         [CreateProperty] public Action Choose { get; private set; }
         /// <summary>Re-reads the table (HP, quests, time) from the server.</summary>
@@ -100,18 +103,26 @@ namespace CampaignVault.UnityClient.UI.Table
         public override void Refresh()
         {
             var session = _s.Session;
+            // The DM is seeding (or the session is opening): the table is being set, so nothing here is offered.
+            bool dmWorking = _s.Driver != null && _s.Driver.IsBusy;
+            // The character built in the setup dialogue (the roster answer alone doesn't count: the DM may still be creating it).
+            var built = _s.SetupPending ? _s.Onboarding.Party.Find(delegate (PartyMember m) { return !m.Pending && m.Kind != "companion"; }) : null;
+            bool hasPc = built != null;
+            CanBuild = !dmWorking && !hasPc && (session == null || session.Party.Count == 0);
             if (session == null || session.Party.Count == 0)
             {
                 Members = new List<MemberViewModel>();
                 ShowChoose = !_s.HasCampaign;
-                bool busy = _s.IsBusy("refresh") || _s.IsBusy("session");
-                ShowBuild = _s.HasCampaign && session == null && _s.SetupPending && !busy;
+                bool busy = _s.IsBusy("refresh") || _s.IsBusy("session") || dmWorking;
+                ShowBuild = _s.HasCampaign && session == null && _s.SetupPending && !busy && !hasPc;
                 NoticeIcon = _s.HasCampaign ? "party" : "campaigns";
                 if (!_s.HasCampaign) { Notice = "No campaign at the table."; }
                 // One OPEN SESSION lives in the Journal; the first line sent opens it too.
                 else if (session == null)
                 {
-                    Notice = busy ? "Gathering the party…"
+                    Notice = dmWorking ? "The DM is setting up your world. Your character joins when it's ready."
+                        : busy ? "Gathering the party…"
+                        : hasPc && _s.SetupPending ? "Your character is ready: " + (built.Name.Length > 0 ? built.Name : "unnamed") + ". The DM places them in the world."
                         : _s.SetupPending ? "No player characters yet. Build one, or the DM creates them from your answers."
                         : "The party gathers when the session opens.";
                 }

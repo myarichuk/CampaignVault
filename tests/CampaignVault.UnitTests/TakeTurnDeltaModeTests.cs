@@ -926,6 +926,171 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
     }
 
     /// <summary>
+    /// "Likely to act next" must be someone in the scene. A character a change merely touched (an activity update
+    /// from afar) and the people of a stale partyLocationId used to enter the initiative pool regardless of where
+    /// they were. The party's own location wins, and a touched character elsewhere never takes the slot.
+    /// </summary>
+    [Fact]
+    public async Task Initiative_NeverPicksSomeoneFromAnotherLocation_EvenWhenTouchedOrStaleLocationSent()
+    {
+        var slug = NewSlug("initiative-away");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var hereId = $"locations/{slug}-road";
+        var awayId = $"locations/{slug}-city";
+        var pcId = $"chars/{slug}-pc";
+        var farId = $"chars/{slug}-far";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = hereId, Name = "Road" });
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = awayId, Name = "City" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = hereId, MaxHp = 10, CurrentHp = 10 });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            {
+                Id = farId, Name = "Far Away", CurrentLocationId = awayId, MaxHp = 10, CurrentHp = 10,
+                Needs = new NeedsProfile { ActiveNeeds = new Dictionary<string, float> { ["hunger"] = 95f } }
+            });
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var result = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Narrative = "The road is quiet.",
+            PartyLocationId = awayId, // stale: where the party was
+            Changes = [new ActivityChange { CharacterId = farId, NewActivity = "Haggling at a stall" }]
+        }, slug);
+
+        Assert.True(result.Success, result.Summary);
+        var data = result.Data!;
+        var withInitiative = (data.Npcs ?? []).Where(n => n.Initiative != null).Select(n => n.CharacterId).ToList();
+        Assert.DoesNotContain(farId, withInitiative);
+        Assert.DoesNotContain(data.Context ?? [], c => c.Contains(farId));
+    }
+
+    /// <summary>
+    /// When the PC leaves, unscheduled non-keepAlive visitors left at the origin are evicted at once (not after the
+    /// sweep's grace period); companions, keepAlive NPCs and anyone travelling along stay.
+    /// </summary>
+    [Fact]
+    public async Task PcTravel_EvictsLeftBehindEncounterSpawns_ButNotResidentsCompanionsOrKeepAlive()
+    {
+        var slug = NewSlug("travel-evict");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var fromId = $"locations/{slug}-road";
+        var toId = $"locations/{slug}-city";
+        var pcId = $"chars/{slug}-pc";
+        var visitorId = $"chars/transient_encounter_{slug}";
+        var shopkeeperId = $"chars/{slug}-shopkeeper";
+        var companionId = $"chars/{slug}-companion";
+        var namedId = $"chars/{slug}-named";
+
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = fromId, Name = "Road" });
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = toId, Name = "City" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = fromId, MaxHp = 10, CurrentHp = 10 });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = visitorId, Name = "Visitor", CurrentLocationId = fromId, MaxHp = 10, CurrentHp = 10 });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = shopkeeperId, Name = "Shopkeeper", CurrentLocationId = fromId, MaxHp = 10, CurrentHp = 10 });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = companionId, Name = "Companion", IsPartyCompanion = true, CurrentLocationId = fromId, MaxHp = 10, CurrentHp = 10 });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = namedId, Name = "Named", KeepAlive = true, CurrentLocationId = fromId, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var result = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Narrative = "They walk on.",
+            Changes = [new TravelChange
+            {
+                CharacterId = pcId, DestinationLocationId = toId,
+                TravelCostHoursOverride = 0.01, EncounterRiskModifier = -1000
+            }]
+        }, slug);
+        Assert.True(result.Success, result.Summary);
+
+        using var check = _fixture.Store.OpenAsyncSession();
+        Assert.Equal(toId, (await check.LoadAsync<Character>(pcId, TestContext.Current.CancellationToken))!.CurrentLocationId);
+        Assert.Null((await check.LoadAsync<Character>(visitorId, TestContext.Current.CancellationToken))!.CurrentLocationId);
+        Assert.Equal(fromId, (await check.LoadAsync<Character>(shopkeeperId, TestContext.Current.CancellationToken))!.CurrentLocationId);
+        Assert.Equal(fromId, (await check.LoadAsync<Character>(companionId, TestContext.Current.CancellationToken))!.CurrentLocationId);
+        Assert.Equal(fromId, (await check.LoadAsync<Character>(namedId, TestContext.Current.CancellationToken))!.CurrentLocationId);
+    }
+
+    /// <summary>An NPC created with neither schedule nor keepAlive gets a heads-up that the sweep will remove them;
+    /// one with keepAlive does not.</summary>
+    [Fact]
+    public async Task CharacterCreate_WithoutScheduleOrKeepAlive_WarnsTheyWillBeSweptAway()
+    {
+        var slug = NewSlug("create-warn");
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: _fixture.CreateRepository());
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var result = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Narrative = "Two strangers.",
+            Changes =
+            [
+                new CharacterCreate { CharacterId = $"chars/{slug}-drifter", Name = "Drifter", MaxHp = 5 },
+                new CharacterCreate { CharacterId = $"chars/{slug}-keeper", Name = "Keeper", MaxHp = 5, KeepAlive = true }
+            ]
+        }, slug);
+
+        Assert.True(result.Success, result.Summary);
+        var text = string.Join("\n", result.Data!.Summary ?? []);
+        Assert.Contains("NOTE: Drifter", text);
+        Assert.DoesNotContain("NOTE: Keeper", text);
+        Assert.Contains("keepAlive", text);
+    }
+
+    /// <summary>The DM cannot narrate dawn from a clock it never saw: a rest reports the clock, says when it ended
+    /// while still night, and says the hut lasts only the 8 hours.</summary>
+    [Fact]
+    public async Task Rest_ReportsTheClock_StillNight_AndHutExpiry()
+    {
+        var slug = NewSlug("rest-clock");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+        var locId = $"locations/{slug}-fold";
+        var pcId = $"chars/{slug}-pc";
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Fold" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await repo.SaveTimeAsync(cs, new CampaignTime { Hour = 18 });
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var result = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Narrative = "She sleeps in the hut.",
+            Changes = [new RestChange { CharacterId = pcId, LocationId = locId, IntendedHours = 8, SecurityModifier = 100 }]
+        }, slug);
+
+        Assert.True(result.Success, result.Summary);
+        var text = string.Join("\n", result.Data!.Summary ?? []);
+        Assert.Contains("Clock: +8h", text);
+        Assert.Contains("still night", text);
+        Assert.Contains("intendedHours would have been 12", text);
+        Assert.Contains("Tiny Hut lasts 8 hours", text);
+    }
+
+    /// <summary>
     /// NpcInitiativeNudge lets the DM declare that a specific NPC's psychology should make them react
     /// to something that just happened (e.g. a squeamish NPC watching game field-dressed) — it bypasses
     /// the normal need/momentum scorer outright, even against a candidate that would otherwise dominate

@@ -199,8 +199,32 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
         if (maxValue <= 0)
             return false;
 
-        desiredPools[poolName] = BuildPool(poolName, template, maxValue, existing, levelForMax);
+        var built = BuildPool(poolName, template, maxValue, existing, levelForMax);
+
+        // A PC's or companion's purse is the player's to record, so it starts (and a legacy full one resets) empty. An
+        // NPC with no purse record gets a modest one, so a robbed merchant or a searched guard has something on them.
+        // An NPC who has since spent down to 0 keeps 0: only a missing pool or a reset legacy default is reseeded.
+        if (poolName == "gold" && !character.IsPc && !character.IsPartyCompanion && built.Current == 0
+            && (existing == null || existing.Current > 0))
+        {
+            built = built with { Current = Math.Min(NpcPurse(character.Id, characterLevel), built.Max) };
+        }
+
+        desiredPools[poolName] = built;
         return true;
+    }
+
+    /// <summary>A believable pocketful for an NPC, scaled by level (3-15 gp per level). Seeded by id, so the same
+    /// character always rolls the same purse and re-deriving pools never reshuffles it.</summary>
+    internal static int NpcPurse(string? characterId, int level)
+    {
+        var seed = 17;
+        foreach (var ch in characterId ?? "")
+        {
+            seed = unchecked(seed * 31 + ch);
+        }
+
+        return new Random(seed).Next(3, 16) * Math.Max(1, level);
     }
 
     private static IReadOnlyList<string> CollectFeatNames(SystemExtension stats, string system) =>
@@ -308,11 +332,16 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
             };
         }
 
+        // Characters created before a purse started empty carry the old default: full to the ceiling, on a pool that
+        // never recovers, never touched. Nobody earns exactly the ceiling untouched, so it is the default, not wealth.
+        var legacyFullPurse = startsAt == "zero" && recovery == RecoveryType.Never
+                              && existing.Current == existing.Max && existing.Max == maxValue && maxValue > 0;
+
         return existing with
         {
             Max = maxValue,
             Recovery = recovery,
-            Current = Math.Min(existing.Current, maxValue),
+            Current = legacyFullPurse ? 0 : Math.Min(existing.Current, maxValue),
             Die = die,
         };
     }

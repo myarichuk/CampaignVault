@@ -113,7 +113,7 @@ namespace CampaignVault.UnityClient.PlayTests
             Assert.AreEqual(string.Empty, s.PcId, "a character for the campaign being set up isn't the one at the table");
 
             TableHarness.Step("back on the party step: the card, EDIT, and USE THIS PARTY");
-            ui.Overlays.CloseTop();
+            // The builder closes itself on save: back on the setup dialogue.
             yield return TableHarness.Frames(8);
             Assert.IsInstanceOf<OnboardingOverlay>(ui.Overlays.Top);
             Assert.IsNotNull(Root.Q<Button>("party-edit-aric-thorne"));
@@ -229,7 +229,7 @@ namespace CampaignVault.UnityClient.PlayTests
             Assert.AreEqual(string.Empty, B.Error);
             Assert.AreEqual("companion", s.Onboarding.Party[1].Kind);
             string companionId = s.Onboarding.Party[1].Id;
-            ui.Overlays.CloseTop();
+            // The builder closes itself on save: back on the setup dialogue.
             yield return TableHarness.Frames(8);
             Assert.IsNotNull(Root.Q<Button>("party-edit-mastiff"));
             yield return _h.Snap("p5-party-with-companion");
@@ -274,7 +274,7 @@ namespace CampaignVault.UnityClient.PlayTests
             Assert.AreEqual(3, s.Onboarding.Party.Count, "the reviewed draft replaces its card");
             string draftedId = s.Onboarding.Party[2].Id;
             StringAssert.StartsWith("chars/", draftedId);
-            ui.Overlays.CloseTop();
+            // The builder closes itself on save: back on the setup dialogue.
             yield return TableHarness.Frames(8);
             Assert.IsNotNull(Root.Q<Button>("party-edit-brann-holt"));
             Assert.IsTrue(Root.Q<Button>("party-use").enabledSelf);
@@ -381,7 +381,7 @@ namespace CampaignVault.UnityClient.PlayTests
             yield return TableHarness.WaitFor(delegate { return B.CommittedId.Length > 0 || B.Error.Length > 0; }, 30f);
             Assert.AreEqual(string.Empty, B.Error);
             Assert.AreEqual("Brakka Stonefist", s.Onboarding.Party[0].Name);
-            ui.Overlays.CloseTop();
+            // The builder closes itself on save: back on the setup dialogue.
             yield return TableHarness.Frames(8);
 
             TableHarness.Step("a companion: the PF2e stat block (modifiers, saves, Perception, Strikes)");
@@ -442,7 +442,7 @@ namespace CampaignVault.UnityClient.PlayTests
             Assert.AreEqual("party", s.Onboarding.Question.Key, s.Onboarding.Error);
             ui.OpenOnboarding();
             yield return TableHarness.Frames(4);
-            Assert.IsFalse(Shown("party-level-1"), "a narrative game has no level");
+            Assert.IsFalse(Shown("party-level-value"), "a narrative game has no level");
             Press("party-add");
             yield return TableHarness.WaitFor(delegate { return B.Steps.Count > 0 && B.PreviewCurrent && B.StatBlocks.Count > 0; }, 20f);
             Assert.AreEqual("narrative", B.System);
@@ -474,7 +474,7 @@ namespace CampaignVault.UnityClient.PlayTests
             yield return TableHarness.WaitFor(delegate { return B.CommittedId.Length > 0 || B.Error.Length > 0; }, 30f);
             Assert.AreEqual(string.Empty, B.Error);
             Assert.AreEqual("Wren Hollis", s.Onboarding.Party[0].Name);
-            ui.Overlays.CloseTop();
+            // The builder closes itself on save: back on the setup dialogue.
             yield return TableHarness.Frames(8);
             yield return _h.Snap("p7-narrative-party");
 

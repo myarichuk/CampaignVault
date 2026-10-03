@@ -15,7 +15,12 @@ namespace CampaignVault.UnityClient.App
     public sealed partial class VaultController
     {
         /// <summary>Opens the builder for a new party member, or for the one with this id.</summary>
-        public void OpenPartyBuilder(string editId, string kind = "pc") { _s.RequestPartyBuilder(editId, kind); }
+        public void OpenPartyBuilder(string editId, string kind = "pc")
+        {
+            // One player character: a second new PC is never opened (EDIT on the first one still is). Companions are any number.
+            if (kind == "pc" && string.IsNullOrEmpty(editId) && HasBuiltPc(_s.Onboarding)) { return; }
+            _s.RequestPartyBuilder(editId, kind);
+        }
 
         public void SetPartyLevel(int level)
         {
@@ -25,6 +30,48 @@ namespace CampaignVault.UnityClient.App
             if (ob.PartyLevel == level) { return; }
             ob.PartyLevel = level;
             _s.Notify(StateArea.Onboarding);
+        }
+
+        public void SuggestPartyLevel() { Run(SuggestPartyLevelRoutine()); }
+
+        /// <summary>
+        /// One small model call: given the plot and world so far, what starting level fits? The answer is shown beside the
+        /// level stepper and applied only when the player takes it. A failure is quiet: the stepper works without it.
+        /// </summary>
+        public IEnumerator SuggestPartyLevelRoutine()
+        {
+            var ob = _s.Onboarding;
+            if (ob.SuggestingLevel || ob.System == "Narrative") { yield break; }
+            ob.LevelSuggestionAsked = true;
+            string notReady;
+            if (!_s.ProviderReady(out notReady)) { yield break; }
+            ob.SuggestingLevel = true;
+            _s.Notify(StateArea.Onboarding);
+            try
+            {
+                int max = MaxBuilderLevelFor(RulesetOf(ob.System));
+                var messages = new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("system", PartyLevelAdvisor.SystemPrompt(RulesetOf(ob.System), max, ob.Answers)),
+                };
+                messages.AddRange(OnboardingBrainstorm.ModelMessages(ob.BrainstormChat, OnboardingBrainstorm.Dropped(ob.BrainstormChat, OnboardingBrainstorm.MaxConversationChars)));
+                messages.Add(new KeyValuePair<string, string>("user", PartyLevelAdvisor.Instruction()));
+                string reply = null;
+                string error = null;
+                yield return _s.Driver.Brainstorm(messages, null, delegate (string r, string e) { reply = r; error = e; }, retryBusy: false);
+                int level;
+                string reason;
+                if (error == null && PartyLevelAdvisor.Parse(reply, max, out level, out reason))
+                {
+                    ob.LevelSuggestion = level;
+                    ob.LevelReason = reason;
+                }
+            }
+            finally
+            {
+                ob.SuggestingLevel = false;
+                _s.Notify(StateArea.Onboarding);
+            }
         }
 
         /// <summary>A character the builder just saved joins (or updates) the party.</summary>

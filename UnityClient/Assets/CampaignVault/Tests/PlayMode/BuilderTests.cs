@@ -100,6 +100,8 @@ namespace CampaignVault.UnityClient.PlayTests
             yield return TableHarness.Frames(3);
 
             Step("open from the party frames");
+            yield return TableHarness.WaitFor(delegate { return !_h.State.Driver.IsBusy; }, 30f); // the party frames lock while the DM works
+            yield return TableHarness.Frames(3);
             Press("PartyBuild");
             Assert.IsInstanceOf<CharacterBuilderOverlay>(ui.Overlays.Top);
             yield return Settle();
@@ -327,6 +329,8 @@ namespace CampaignVault.UnityClient.PlayTests
             Step("campaign");
             yield return TableCampaign("Level Five");
             string slug = _h.State.CampaignSlug;
+            yield return TableHarness.WaitFor(delegate { return !_h.State.Driver.IsBusy; }, 30f); // the party frames lock while the DM works
+            yield return TableHarness.Frames(3);
             Press("PartyBuild");
             yield return Settle();
 

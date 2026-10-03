@@ -6,6 +6,7 @@
         <cv:VaultButton name="PartyBuild" icon="add" tooltip="Build a character" class="cv-btn--icon cv-btn--ghost cv-btn--small">
             <Bindings>
                 <ui:DataBinding property="command" data-source-path="Build" binding-mode="ToTarget" />
+                <ui:DataBinding property="enabledSelf" data-source-path="CanBuild" binding-mode="ToTarget" />
             </Bindings>
         </cv:VaultButton>
         <cv:VaultButton name="PartyRefresh" icon="refresh" tooltip="Refresh the table (HP, quests, time)" class="cv-btn--icon cv-btn--ghost cv-btn--small">

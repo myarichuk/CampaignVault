@@ -333,7 +333,7 @@ namespace CampaignVault.UnityClient.Tests
         [UnityTest]
         public IEnumerator B9_FailedFirstCall_DoesNotStackUserMessages()
         {
-            _script.Enqueue(req => new Reply { Status = 500, Body = "{\"error\":{\"message\":\"boom\"}}" });
+            _script.Enqueue(req => new Reply { Status = 401, Body = "{\"error\":{\"message\":\"boom\"}}" });
             _script.Enqueue(req => Sse(Delta("{\"content\":\"Better now.\"}")));
 
             yield return Send("First try.");
@@ -342,6 +342,36 @@ namespace CampaignVault.UnityClient.Tests
 
             Assert.AreEqual(1, UserMessages(_chatRequests[1]));
             Assert.AreEqual("Better now.", _transcript.Segments.Last(s => s.Kind == SegmentKind.Narration).Text);
+        }
+
+        [UnityTest]
+        public IEnumerator BusyProvider_IsRetriedQuietly_ThenAnswers()
+        {
+            _script.Enqueue(req => new Reply { Status = 503, Body = "{\"error\":{\"message\":\"overloaded\"}}" });
+            _script.Enqueue(req => Sse(Delta("{\"content\":\"Here now.\"}")));
+
+            yield return Send("Hello.");
+
+            Assert.AreEqual(2, _chatRequests.Count, "one retry");
+            Assert.AreEqual(1, UserMessages(_chatRequests[1]), "the line is sent once, not stacked");
+            Assert.IsFalse(_transcript.Segments.Any(s => s.Kind == SegmentKind.System));
+            Assert.AreEqual("Here now.", _transcript.Segments.Last(s => s.Kind == SegmentKind.Narration).Text);
+        }
+
+        [UnityTest]
+        public IEnumerator BusyProvider_PastTheRetries_SaysWhatToDoInPlainWords()
+        {
+            for (int i = 0; i <= OpenAiChatDriver.MaxTransientRetries; i++)
+            {
+                _script.Enqueue(req => new Reply { Status = 429, Body = "{\"error\":{\"message\":\"slow down\"}}" });
+            }
+
+            yield return Send("Hello.");
+
+            var warning = _transcript.Segments.Last(s => s.Kind == SegmentKind.System);
+            StringAssert.Contains("press RETRY", warning.Text);
+            StringAssert.DoesNotContain("HTTP", warning.Text, "no status codes for the player");
+            Assert.AreEqual(0, _driver.History.Count, "the failed line is forgotten, so RETRY can send it fresh");
         }
 
         [UnityTest]

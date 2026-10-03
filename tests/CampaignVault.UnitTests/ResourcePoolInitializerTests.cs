@@ -238,6 +238,7 @@ public class ResourcePoolInitializerTests
         var character = new Character
         {
             Id = "chars/pc1",
+            IsPc = true,
             ClassLevel = "Human Fighter 1",
             SystemStats = system == RulesetSystem.Dnd5e
                 ? new Dnd5eExtension { Level = 1 }
@@ -249,6 +250,58 @@ public class ResourcePoolInitializerTests
         Assert.True(character.SystemStats.ResourcePools.ContainsKey("gold"));
         Assert.Equal(1000000, character.SystemStats.ResourcePools["gold"].Max);
         Assert.Equal(0, character.SystemStats.ResourcePools["gold"].Current);   // the max is a ceiling, not a purse
+    }
+
+    [Fact]
+    public void InitializePools_LegacyFullPurse_IsEmptied_ButRealWealthIsKept()
+    {
+        Character Make(int current) => new()
+        {
+            Id = "chars/pc1",
+            IsPc = true,
+            ClassLevel = "Human Fighter 1",
+            SystemStats = new Dnd5eExtension
+            {
+                Level = 1,
+                ResourcePools =
+                {
+                    ["gold"] = new ResourcePool { Current = current, Max = 1000000, Recovery = RecoveryType.Never, LastRecoveredDay = 0 }
+                }
+            }
+        };
+
+        var legacy = Make(1000000);
+        _sut.InitializePools(legacy, RulesetSystem.Dnd5e, null);
+        Assert.Equal(0, legacy.SystemStats!.ResourcePools["gold"].Current);
+
+        var earned = Make(43);
+        _sut.InitializePools(earned, RulesetSystem.Dnd5e, null);
+        Assert.Equal(43, earned.SystemStats!.ResourcePools["gold"].Current);
+    }
+
+    [Fact]
+    public void InitializePools_NpcWithoutPurse_GetsAModestOne_ThatSpendingCanEmpty()
+    {
+        Character Npc() => new()
+        {
+            Id = "chars/innkeeper",
+            ClassLevel = "Human Commoner 1",
+            SystemStats = new Dnd5eExtension { Level = 1 }
+        };
+
+        var npc = Npc();
+        _sut.InitializePools(npc, RulesetSystem.Dnd5e, null);
+        var purse = npc.SystemStats!.ResourcePools["gold"].Current;
+        Assert.InRange(purse, 3, 15);
+
+        var again = Npc();
+        _sut.InitializePools(again, RulesetSystem.Dnd5e, null);
+        Assert.Equal(purse, again.SystemStats!.ResourcePools["gold"].Current); // same id, same purse
+
+        // Spent down to nothing: re-deriving must not hand the money back.
+        npc.SystemStats.ResourcePools["gold"] = npc.SystemStats.ResourcePools["gold"] with { Current = 0 };
+        _sut.InitializePools(npc, RulesetSystem.Dnd5e, null);
+        Assert.Equal(0, npc.SystemStats.ResourcePools["gold"].Current);
     }
 
     [Fact]

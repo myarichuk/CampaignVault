@@ -404,7 +404,10 @@ public class CampaignRepository
     {
         var npcs = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
             .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
+            .OpenSubclause()
             .ContainsAny("Locations", targetIds)
+            .CloseSubclause()
+            .AndAlso().WhereEquals("IsDead", false)
             .Take(20)
             .ToListAsync();
 
@@ -425,7 +428,10 @@ public class CampaignRepository
     {
         var npcs = await session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
             .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
+            .OpenSubclause()
             .WhereIn("CurrentLocationId", targetIds)
+            .CloseSubclause()
+            .AndAlso().WhereEquals("IsDead", false)
             .Take(20)
             .ToListAsync();
         return [.. npcs];

@@ -52,6 +52,10 @@
 .cv-builder__sheet .cv-sheet__col { flex-basis: auto; flex-grow: 0; }
 .cv-builder__sheet .cv-sheet__col--left { margin-right: 0; }
 .cv-builder__sheet .cv-vitals { flex-wrap: wrap; }
+/* HP takes the first line; the other tiles share the next ones evenly, so no tile hangs off a ragged edge. */
+.cv-builder__sheet .cv-vitals { margin-right: -12px; }
+.cv-builder__sheet .cv-vital { width: auto; min-width: 100px; flex-grow: 1; flex-basis: 100px; margin-bottom: var(--sp-3); }
+.cv-builder__sheet .cv-vital--hp { flex-basis: 100%; width: 100%; }
 
 /* ------------------------------------------------------------ option cards */
 .cv-options { flex-direction: row; flex-wrap: wrap; }
@@ -67,6 +71,10 @@
 .cv-option__desc { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Regular.asset"); font-size: var(--fs-sm); color: var(--text-3); white-space: normal; margin-top: var(--sp-1); -unity-text-align: upper-left; }
 .cv-option--selected { border-color: var(--gold); background-color: var(--gold-deep); }
 .cv-option--selected .cv-option__label { color: var(--gold-bright); }
+.cv-option:hover { background-color: var(--ink-4); border-color: var(--gold); }
+.cv-option--selected:hover, .cv-option--selected:active, .cv-option--selected:focus { background-color: var(--gold-deep-hover); border-color: var(--gold); }
+.cv-option:active, .cv-option:focus { background-color: var(--ink-3); }
+.cv-option--selected:hover .cv-option__label, .cv-option--selected:active .cv-option__label, .cv-option--selected:focus .cv-option__label { color: var(--gold-bright); }
 .cv-option--suggested { border-color: var(--arcane); }
 .cv-option--full { opacity: 0.5; }
 
@@ -81,9 +89,9 @@
     border-bottom-width: 1px; border-color: var(--line-faint);
 }
 .cv-abilityrow__name { width: 150px; flex-shrink: 0; }
-.cv-abilityrow__controls { flex-direction: row; align-items: center; flex-grow: 1; flex-wrap: wrap; }
+.cv-abilityrow__controls { flex-direction: row; align-items: center; flex-grow: 1; }
 .cv-abilityrow__controls .cv-btn { margin-right: var(--sp-1); }
-.cv-abilityrow__pool { flex-direction: row; align-items: center; flex-wrap: wrap; }
+.cv-abilityrow__pool { flex-direction: row; align-items: center; flex-shrink: 0; }
 .cv-abilityrow__minus .cv-icon { rotate: 180deg; }
 .cv-abilityrow__score { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: var(--fs-lg); color: var(--text-1); min-width: 40px; -unity-text-align: middle-center; }
 .cv-abilityrow__total { flex-direction: row; align-items: center; width: 200px; flex-shrink: 0; justify-content: flex-end; }

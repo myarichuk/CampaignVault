@@ -471,6 +471,37 @@ namespace CampaignVault.UnityClient.App
         // =====================================================================
 
         /// <summary>Starts a DM turn. False (with a toast) when it can't: no provider, or a turn is running.</summary>
+        private string _lastSentLine = string.Empty;
+        private string _lastSentShown;
+        private TranscriptSegment _lastSentSegment;
+
+        /// <summary>The last line failed to get any answer (the provider was busy): it can be sent again as it was.</summary>
+        public bool CanRetryLastTurn
+        {
+            get { return _lastSentLine.Length > 0 && _s.Driver != null && !_s.Driver.IsBusy && !string.IsNullOrEmpty(_s.Driver.LastError); }
+        }
+
+        /// <summary>
+        /// Sends the failed line again exactly as it was (a setup brief included: typing "retry" would give the DM nothing
+        /// to retry). The failed bubble and its warning leave the log, so the story shows one attempt.
+        /// </summary>
+        public bool RetryLastTurn()
+        {
+            if (!CanRetryLastTurn) { return false; }
+            var segments = _s.Transcript.Segments;
+            int at = -1;
+            for (int i = segments.Count - 1; i >= 0; i--) { if (segments[i] == _lastSentSegment) { at = i; break; } }
+            if (at >= 0)
+            {
+                var failed = new List<TranscriptSegment>();
+                for (int i = at; i < segments.Count; i++) { failed.Add(segments[i]); }
+                foreach (var seg in failed) { _s.Transcript.Remove(seg); }
+            }
+            string line = _lastSentLine, shown = _lastSentShown;
+            Run(SendPlayerTextRoutine(line, shown));
+            return true;
+        }
+
         public bool SendPlayerText(string text)
         {
             if (!CanSend(text)) { return false; }
@@ -502,6 +533,9 @@ namespace CampaignVault.UnityClient.App
             bool setup = _s.SetupPending && _s.Session == null;
             string sent = setup && !Storyteller.IsOocPlayer(line) ? Storyteller.OocPrefix + " " + line : line;
             var player = new TranscriptSegment { Kind = SegmentKind.Player, Text = shown ?? line };
+            _lastSentLine = text;
+            _lastSentShown = shown;
+            _lastSentSegment = player;
             _turnActive = true;
             try
             {
@@ -982,6 +1016,8 @@ namespace CampaignVault.UnityClient.App
                     MoveToQuestion(ob, parsed);
                     ob.Error = string.Empty;
                     SetOnboarding(OnboardingPhase.Question, string.Empty);
+                    // The party step opens with the DM's read on the starting level, asked once; the player still chooses.
+                    if (parsed.Key == "party" && !ob.LevelSuggestionAsked) { SuggestPartyLevel(); }
                     yield break;
                 }
                 ob.Prefilled.Remove(parsed.Key);
@@ -1263,6 +1299,10 @@ namespace CampaignVault.UnityClient.App
             ob.Draft = string.Empty;
             ob.Party.Clear();
             ob.PartyLevel = 1;
+            ob.LevelSuggestion = 0;
+            ob.LevelReason = string.Empty;
+            ob.SuggestingLevel = false;
+            ob.LevelSuggestionAsked = false;
             ob.Drafting = false;
             ob.DraftError = string.Empty;
             ob.ClearBrainstorm();

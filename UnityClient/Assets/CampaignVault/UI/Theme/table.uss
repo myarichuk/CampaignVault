@@ -168,7 +168,7 @@
 .cv-roll--result-crit-failure .cv-roll__face { -unity-background-image-tint-color: rgba(214, 69, 69, 0.3); }
 .cv-roll--result-crit-failure .cv-roll__total { color: #FF8A8A; }
 
-.cv-thinking { flex-direction: row; align-items: center; height: 26px; flex-shrink: 0; padding-left: 4px; opacity: 0; transition-property: opacity; transition-duration: var(--motion); }
+.cv-thinking { flex-direction: row; align-items: center; height: 26px; flex-shrink: 0; padding-left: 15px; margin-bottom: 4px; opacity: 0; transition-property: opacity; transition-duration: var(--motion); }
 .cv-thinking--on { opacity: 1; }
 .cv-thinking .cv-icon { width: 16px; height: 16px; margin-right: 10px; -unity-background-image-tint-color: var(--gold-dim); }
 .cv-thinking__text { font-size: var(--fs-sm); -unity-font-definition: url("../Fonts/SDF/EBGaramond-Italic.asset"); color: var(--text-3); }

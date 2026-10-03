@@ -8,11 +8,45 @@
                 <cv:ClassBinding property="cls-hidden" data-source-path="ShowLevel" class-name="cv-hidden" invert="true" />
             </Bindings>
             <ui:Label class="cv-caption" text="STARTING LEVEL" />
-            <cv:Repeater item-template="Common/Choice" class="cv-row cv-onboarding__levels">
+            <ui:VisualElement class="cv-row cv-levelstep">
+                <cv:VaultButton name="party-level-lower" label="−" class="cv-btn--small cv-levelstep__btn">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="Lower" binding-mode="ToTarget" />
+                        <ui:DataBinding property="enabledSelf" data-source-path="CanLower" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+                <ui:Label name="party-level-value" class="cv-levelstep__value">
+                    <Bindings>
+                        <ui:DataBinding property="text" data-source-path="LevelLabel" binding-mode="ToTarget" />
+                    </Bindings>
+                </ui:Label>
+                <cv:VaultButton name="party-level-raise" label="+" class="cv-btn--small cv-levelstep__btn">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="Raise" binding-mode="ToTarget" />
+                        <ui:DataBinding property="enabledSelf" data-source-path="CanRaise" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:VaultButton>
+                <ui:Label name="party-level-tier" class="cv-body cv-muted cv-levelstep__tier">
+                    <Bindings>
+                        <ui:DataBinding property="text" data-source-path="LevelTier" binding-mode="ToTarget" />
+                    </Bindings>
+                </ui:Label>
+            </ui:VisualElement>
+            <ui:VisualElement name="party-level-suggestion" class="cv-levelstep__suggest">
                 <Bindings>
-                    <ui:DataBinding property="itemsSource" data-source-path="Levels" binding-mode="ToTarget" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="HasSuggestion" class-name="cv-hidden" invert="true" />
                 </Bindings>
-            </cv:Repeater>
+                <ui:Label name="party-level-suggestion-text" class="cv-body cv-muted">
+                    <Bindings>
+                        <ui:DataBinding property="text" data-source-path="SuggestionText" binding-mode="ToTarget" />
+                    </Bindings>
+                </ui:Label>
+                <cv:Repeater name="party-level-suggestion-actions" item-template="Common/ActionButton" class="cv-row cv-levelstep__actions">
+                    <Bindings>
+                        <ui:DataBinding property="itemsSource" data-source-path="SuggestionActions" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:Repeater>
+            </ui:VisualElement>
         </ui:VisualElement>
         <ui:Label name="party-empty" class="cv-body cv-muted cv-onboarding__answer" text="No characters yet.">
             <Bindings>

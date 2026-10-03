@@ -3,7 +3,7 @@
     <ui:VisualElement class="cv-player">
         <ui:VisualElement class="cv-player__bubble">
             <ui:VisualElement picking-mode="Ignore" class="cv-icon cv-icon--send" />
-            <ui:Label class="cv-player__text">
+            <ui:Label selectable="true" class="cv-player__text">
                 <Bindings>
                     <ui:DataBinding property="text" data-source-path="Text" binding-mode="ToTarget" />
                 </Bindings>

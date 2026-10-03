@@ -109,6 +109,9 @@ public class TravelChangeHandler : IWorldChangeHandler
         else if (exit != null)
         {
             totalHours = 4;
+            ctx.RecordMessage(
+                $"NOTE: the exit to {tc.DestinationLocationId} has no travel cost, so this leg was assumed to take 4h. " +
+                "For a longer walk (a full day on the road) pass travelCostHoursOverride, or set travelCostHours on the exit.");
         }
         else
         {
@@ -278,6 +281,19 @@ public class TravelChangeHandler : IWorldChangeHandler
 
             await ClearStaleEngagementsAsync(character, tc.DestinationLocationId, ctx, ct);
 
+            if (character.IsPc && !isFollower && fromLocationId != null)
+            {
+                try
+                {
+                    await EvictLeftBehindTransientsAsync(ctx, character, fromLocationId, tc.DestinationLocationId, ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    // Housekeeping only: the sweep's grace-period eviction still covers them.
+                    ctx.Logger.LogWarning(ex, "Could not evict transients left at {Location}", fromLocationId);
+                }
+            }
+
             foreach (var line in await ResolveRouteSecretsAsync(ctx, character, startLoc, exit, destination, ct))
             {
                 ctx.RecordMessage(line);
@@ -321,6 +337,70 @@ public class TravelChangeHandler : IWorldChangeHandler
         }
 
         return ChangeHandlerResult.Ok;
+    }
+
+    /// <summary>
+    /// The party has left: encounter-spawned NPCs (<c>chars/transient_encounter_*</c>, the engine's own
+    /// throwaways) still parked at the origin go now rather than after the sweep's grace period. Deliberately not
+    /// "anyone without a schedule": a seeded shopkeeper or guard has no routine either but lives there. Companions,
+    /// PCs, scheduled or keepAlive NPCs, the dead, anyone travelling in this batch, and quest givers with an open
+    /// quest stay.
+    /// </summary>
+    private static async Task EvictLeftBehindTransientsAsync(
+        ChangeContext ctx, Character pc, string fromLocationId, string destinationLocationId, CancellationToken ct)
+    {
+        if (ctx.Session == null)
+        {
+            return;
+        }
+
+        var left = await ctx.Session.Advanced.AsyncDocumentQuery<Character, Character_Search>()
+            .WaitForNonStaleResults(TimeSpan.FromSeconds(3))
+            .WhereEquals("CurrentLocationId", fromLocationId)
+            .AndAlso().WhereEquals(x => x.KeepAlive, false)
+            .AndAlso().WhereEquals(x => x.IsPc, false)
+            .AndAlso().WhereEquals(x => x.IsPartyCompanion, false)
+            .AndAlso().WhereEquals("HasSchedule", false)
+            .AndAlso().WhereEquals("IsDead", false)
+            .Take(20)
+            .ToListAsync(ct);
+        if (left.Count == 0)
+        {
+            return;
+        }
+
+        var quests = await SimulationQueryHelper.QueryActiveQuestsAsync(ctx.Session, pc.CampaignName, ct);
+        var day = (int)(await ctx.GetCurrentTimeAsync()).TotalDaysElapsed;
+        foreach (var npc in left)
+        {
+            if (!npc.Id.StartsWith("chars/transient_encounter_", StringComparison.OrdinalIgnoreCase)
+                || HasCoTravelInBatch(npc.Id, destinationLocationId, ctx)
+                || quests.Any(q => q.GiverId == npc.Id && q.OverallState is QuestState.Open or QuestState.InProgress))
+            {
+                continue;
+            }
+
+            const string reason = "Party left: transient not travelling with them";
+            await ctx.Dispatcher.DispatchMutationAsync(ctx, new ActivityChange
+            {
+                CharacterId = npc.Id,
+                NewLocationId = null,
+                UpdateLocation = true,
+                NewActivity = "stayed behind as the party moved on",
+                Reason = reason
+            }, ct);
+            await ctx.Dispatcher.DispatchMutationAsync(ctx, new CharacterUpdate
+            {
+                CharacterId = npc.Id,
+                DepartedAtDay = day,
+                DepartedFromLocationId = fromLocationId
+            }, ct);
+            await ctx.Dispatcher.DispatchMutationAsync(ctx, new LocationUpdate
+            {
+                LocationId = fromLocationId,
+                RecordDeparture = new DepartedNpcRecord(npc.Id, npc.Name, day, reason)
+            }, ct);
+        }
     }
 
     /// <summary>Why this group move could lose someone, if anything: a stated hazard, or night in the wild.

@@ -1,6 +1,6 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
     <!-- A quiet aside or a reasoning line (ProseViewModel). -->
-    <ui:Label class="cv-aside">
+    <ui:Label selectable="true" class="cv-aside">
         <Bindings>
             <ui:DataBinding property="text" data-source-path="Text" binding-mode="ToTarget" />
         </Bindings>

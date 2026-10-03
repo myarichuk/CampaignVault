@@ -265,7 +265,8 @@ namespace CampaignVault.UnityClient.UI.Builder
         private void Picked(OptionViewModel o)
         {
             if (_many) { Run(Controller.BuilderToggle(Step.Key, o.Option.Id)); }
-            else if (!o.Selected) { Run(Controller.BuilderChoose(Step.Key, JsonValue.FromString(o.Option.Id))); }
+            // Clicking the picked option again clears the pick (the step goes back to open).
+            else { Run(Controller.BuilderChoose(Step.Key, o.Selected ? null : JsonValue.FromString(o.Option.Id))); }
         }
     }
 

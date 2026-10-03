@@ -241,6 +241,17 @@ public class CharacterCreateHandler : IWorldChangeHandler
         await ctx.Session.StoreAsync(newChar, ct);
         ctx.RegisterNewCharacter(newChar);
 
+        // The sweep drops NPCs with neither a schedule nor keepAlive once their location goes unvisited. Right for a
+        // passer-by, a silent loss for anyone meant to be there: say so while the DM can still choose.
+        if (!newChar.IsPc && !newChar.IsPartyCompanion && !newChar.KeepAlive && newChar.Schedule == null
+            && !newChar.Id.StartsWith("chars/transient_encounter_", StringComparison.OrdinalIgnoreCase))
+        {
+            ((ChangeContext)ctx).RecordMessage(
+                $"NOTE: {newChar.Name} ({newChar.Id}) has no schedule and keepAlive is false, so the engine will quietly " +
+                "remove them once their location goes unvisited. If they should stay, set keepAlive: true (or give " +
+                "them a schedule); if they are a passer-by, ignore this.");
+        }
+
         return ChangeHandlerResult.Ok;
     }
 

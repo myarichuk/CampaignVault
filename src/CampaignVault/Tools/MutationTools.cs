@@ -1061,6 +1061,8 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
         var request = ctx.Request!;
         var changes = request.Changes!;
 
+        var timeBefore = await _repository.GetTimeAsync(new CampaignSession(ctx.Session, ctx.Campaign));
+        var hoursBefore = timeBefore.TotalDaysElapsed * 24.0 + timeBefore.Hour;
         var commitResult = await _repository.StageChangesAsync(new CampaignSession(ctx.Session, ctx.Campaign), changes, request.PartyLocationId);
         if (!commitResult.Success)
         {
@@ -1088,6 +1090,15 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
         ApplyInitiativeNudges(ctx);
 
         var commitTime = await _repository.GetTimeAsync(new CampaignSession(ctx.Session, ctx.Campaign));
+
+        // The DM cannot narrate dawn from a clock it never saw move: a delta response carries no world state, so say
+        // what the commit did to the clock whenever it moved (travel, rest, a time skip).
+        var hoursPassed = commitTime.TotalDaysElapsed * 24.0 + commitTime.Hour - hoursBefore;
+        if (hoursPassed > 0)
+        {
+            result.Summary = [$"Clock: +{hoursPassed:0.#}h. It is now {commitTime.FormattedDate}, hour {commitTime.Hour}.", .. result.Summary];
+        }
+
         var sceneEvent = new Event
         {
             Id = "events/" + Guid.NewGuid(),
@@ -1411,14 +1422,28 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
     {
         var pool = new Dictionary<string, Character>(StringComparer.OrdinalIgnoreCase);
 
-        var locationId = ctx.Request?.PartyLocationId;
-        if (string.IsNullOrWhiteSpace(locationId))
+        // The scene is where the player character actually is (this turn's travel included: the session's tracked
+        // entity carries it). The caller's partyLocationId is only a fallback: an agent that sends a stale one
+        // (the place it was last turn, or last session) would otherwise pull that place's people into this scene.
+        var pc = await ctx.Session.Query<Character>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
+            .Where(c => c.CampaignName == ctx.Campaign && c.IsPc && c.CurrentLocationId != null)
+            .FirstOrDefaultAsync();
+        var locationId = !string.IsNullOrWhiteSpace(pc?.CurrentLocationId) ? pc!.CurrentLocationId : ctx.Request?.PartyLocationId;
+
+        // Two sources of truth that disagree mean we cannot say who is in the scene: the character record still says
+        // the PC is somewhere else (a rest or activity that never moved them, a missed travel) or the caller's
+        // partyLocationId is stale. Guessing would surface people from the wrong place, so say so and skip the pick.
+        var declaredLocationId = !string.IsNullOrWhiteSpace(ctx.Request?.PartyLocationId)
+            ? ctx.Request!.PartyLocationId
+            : ctx.AppliedChanges.OfType<RestChange>().Select(r => r.LocationId).FirstOrDefault(l => !string.IsNullOrWhiteSpace(l));
+        if (!string.IsNullOrWhiteSpace(declaredLocationId) && !string.IsNullOrWhiteSpace(pc?.CurrentLocationId)
+            && !string.Equals(declaredLocationId, pc!.CurrentLocationId, StringComparison.OrdinalIgnoreCase))
         {
-            var pc = await ctx.Session.Query<Character>()
-                .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
-                .Where(c => c.CampaignName == ctx.Campaign && c.IsPc && c.CurrentLocationId != null)
-                .FirstOrDefaultAsync();
-            locationId = pc?.CurrentLocationId;
+            Warn(ctx, $"LOCATION MISMATCH: this turn is set at '{declaredLocationId}' but {pc.Name} is recorded at " +
+                      $"'{pc.CurrentLocationId}', so no one was picked to act next. Move them with a travel change, or an " +
+                      "activity change with newLocationId and updateLocation: true, so the scene and who is in it are right.");
+            return;
         }
 
         if (!string.IsNullOrWhiteSpace(locationId))
@@ -1450,7 +1475,18 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             }
 
             var npc = await _repository.GetCharacterAsync(new CampaignSession(ctx.Session, ctx.Campaign), id);
-            if (npc != null)
+            if (npc == null)
+            {
+                continue;
+            }
+
+            // Touched by this turn's changes is not the same as in the scene: someone mentioned, messaged, or
+            // changed from afar can't act next in a scene they are not in. Only a character at the party's
+            // location (or not yet positioned) qualifies, or one the DM explicitly nudged.
+            var inScene = string.IsNullOrWhiteSpace(locationId)
+                          || string.IsNullOrEmpty(npc.CurrentLocationId)
+                          || string.Equals(npc.CurrentLocationId, locationId, StringComparison.OrdinalIgnoreCase);
+            if (inScene || ctx.Cursor.PendingInitiativeNudgesByEntityId.ContainsKey(id))
             {
                 pool.TryAdd(id, npc);
             }

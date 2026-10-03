@@ -11,7 +11,7 @@
                     <ui:DataBinding property="text" data-source-path="Speaker" binding-mode="ToTarget" />
                 </Bindings>
             </ui:Label>
-            <ui:Label class="cv-voice__line">
+            <ui:Label selectable="true" class="cv-voice__line">
                 <Bindings>
                     <ui:DataBinding property="text" data-source-path="Line" binding-mode="ToTarget" />
                 </Bindings>

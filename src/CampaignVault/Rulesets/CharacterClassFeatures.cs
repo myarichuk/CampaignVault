@@ -38,11 +38,22 @@ public static class CharacterClassFeatures
     /// names its class matches that class's level and key. An older pick names no class: a single class matches it by
     /// level and key, but with several classes its level may be the character's, so the key alone matches.
     /// </summary>
+    /// <summary>
+    /// True when <paramref name="record"/> is the pick for <paramref name="key"/>. DMs often write the class into the key
+    /// ("Sorcerer subclass") instead of the class field; both spellings are the same pick.
+    /// </summary>
+    public static bool KeyIs(LevelUpChoiceRecord record, string key, string? className)
+    {
+        var norm = CombatFeatureRules.Norm(record.Key);
+        return norm == CombatFeatureRules.Norm(key)
+               || (className is not null && norm == CombatFeatureRules.Norm(className + key));
+    }
+
     public static Func<int, string, IEnumerable<string>> Picked(SystemExtension? stats, bool multiclass, string? className = null)
     {
         var records = stats?.LevelUpChoices ?? [];
         return (level, key) => records
-            .Where(r => r.Key.Equals(key, StringComparison.OrdinalIgnoreCase)
+            .Where(r => KeyIs(r, key, className)
                         && (r.Class is null ? multiclass || r.Level == level : r.Level == level && (className is null || r.Class.Equals(className, StringComparison.OrdinalIgnoreCase))))
             .Select(r => r.Value);
     }

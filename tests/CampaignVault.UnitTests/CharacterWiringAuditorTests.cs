@@ -167,6 +167,39 @@ public class CharacterWiringAuditorTests
     }
 
     [Fact]
+    public void Dnd5e_MulticlassSubclassPicks_WrittenWithTheClassInTheKey_CountAsRecorded()
+    {
+        var (auditor, _) = Create();
+        var maeve = FighterRogue();
+        maeve.ClassLevel = "Sorcerer 2 / Wizard 10";
+        var stats = (Dnd5eExtension)maeve.SystemStats!;
+        stats.Level = 12;
+
+        var before = auditor.Audit(maeve, RulesetSystem.Dnd5e, null).Single(f => f.Code == "missing_choices");
+        Assert.Contains("Sorcerer subclass", before.Message);
+        Assert.Contains("Wizard subclass", before.Message);
+        Assert.Contains("\"class\"", before.Message); // the nag shows the shape to write
+
+        stats.LevelUpChoices.Add(new LevelUpChoiceRecord { Level = 1, Key = "Sorcerer subclass", Value = "Storm Sorcery" });
+        stats.LevelUpChoices.Add(new LevelUpChoiceRecord { Level = 2, Key = "Wizard subclass", Value = "Evocation" });
+        Assert.DoesNotContain(auditor.Audit(maeve, RulesetSystem.Dnd5e, null), f => f.Code == "missing_choices");
+    }
+
+    [Fact]
+    public void EmptyPurse_IsFlaggedForThePcOnly()
+    {
+        var (auditor, initializer) = Create();
+        var pc = FighterRogue();
+        initializer.InitializePools(pc, RulesetSystem.Dnd5e, null);
+        Assert.Contains(auditor.Audit(pc, RulesetSystem.Dnd5e, null), f => f.Code == "purse_empty");
+
+        var npc = FighterRogue();
+        npc.IsPc = false;
+        initializer.InitializePools(npc, RulesetSystem.Dnd5e, null);
+        Assert.DoesNotContain(auditor.Audit(npc, RulesetSystem.Dnd5e, null), f => f.Code == "purse_empty");
+    }
+
+    [Fact]
     public void Dnd5e_MissingClassSaves_AreFlagged()
     {
         var (auditor, _) = Create();

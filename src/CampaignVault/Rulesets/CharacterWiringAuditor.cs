@@ -123,6 +123,13 @@ public sealed class CharacterWiringAuditor(
 
         AuditPools(character, system, config, declared, resolvedDefs, findings);
 
+        // Only the player's character: an NPC's purse is seeded for them, and a PC's is theirs to record.
+        if (character.IsPc && stats.ResourcePools.TryGetValue("gold", out var purse) && purse.Current <= 0)
+        {
+            findings.Add(new WiringFinding("purse_empty",
+                "gold pool is 0. If they are carrying coin, record it with a resource change on 'gold'; ignore this if they are genuinely broke."));
+        }
+
         if (character.IsPc || character.IsPartyCompanion)
         {
             AuditRequiredChoices(stats, system, declared, findings);
@@ -165,7 +172,8 @@ public sealed class CharacterWiringAuditor(
                 foreach (var choice in def.Choices.Where(c => c.Required && c.Type == ChoiceType.Enum))
                 {
                     var recorded = stats.LevelUpChoices.Any(r =>
-                        CombatFeatureRules.Norm(r.Key) == CombatFeatureRules.Norm(choice.Key));
+                        CharacterClassFeatures.KeyIs(r, choice.Key, progression.ClassName)
+                        && (r.Class is null || r.Class.Equals(progression.ClassName, StringComparison.OrdinalIgnoreCase)));
                     if (!recorded)
                     {
                         missing.Add($"{progression.ClassName} {choice.Key} (level {level})");
@@ -179,7 +187,9 @@ public sealed class CharacterWiringAuditor(
             findings.Add(new WiringFinding("missing_choices",
                 $"required level-up choices not recorded: {string.Join(", ", missing.Distinct())}. Features that depend on them "
                 + "(fighting styles, subclass abilities) are not applied. Record them with level_up choices or "
-                + "systemStats.levelUpChoices [{level, key, value}]."));
+                + "systemStats.levelUpChoices, one record per choice in this shape: "
+                + "{\"level\": 1, \"class\": \"Sorcerer\", \"key\": \"subclass\", \"value\": \"Storm Sorcery\"} "
+                + "(level is the class level; key is the choice's own key, not prefixed with the class)."));
         }
     }
 
@@ -254,9 +264,11 @@ public sealed class CharacterWiringAuditor(
         {
             findings.Add(new WiringFinding("class_skills_unset",
                 stats.SkillModifiers.Count == 0
-                    ? "skillModifiers is empty; class skill proficiencies were never committed."
+                    ? "skillModifiers is empty; class skill proficiencies were never committed. Record each as a systemStats.levelUpChoices "
+                      + "record {\"level\": 1, \"key\": \"skills\", \"value\": \"<Skill>\"} and the engine derives the modifier."
                     : "skillModifiers holds only background-derived skills; class-chosen skill proficiencies were never committed "
-                      + "(passive Perception and checks will read as untrained)."));
+                      + "(passive Perception and checks will read as untrained). Record each as a systemStats.levelUpChoices "
+                      + "record {\"level\": 1, \"key\": \"skills\", \"value\": \"<Skill>\"}."));
         }
 
         // Multiclassing never grants saving-throw proficiencies; only the starting class does.

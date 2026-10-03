@@ -103,6 +103,20 @@ public class RestChangeHandler : IWorldChangeHandler
             character.LastRestType = restType;
             character.RestSequence = (character.RestSequence ?? 0) + 1;
 
+            if (rc.SecurityModifier >= 100 && hoursRested >= 8)
+            {
+                ctx.RecordMessage(
+                    "NOTE: a +100 shelter such as Leomund's Tiny Hut lasts 8 hours. It ends with this rest: narrate the " +
+                    "dome as gone, and give any further rest here a normal security modifier.");
+            }
+
+            if (hoursRested >= 6 && time.Hour < 5)
+            {
+                ctx.RecordMessage(
+                    $"NOTE: {character.Name}'s rest ended at hour {time.Hour}, still night, not morning. To sleep until " +
+                    $"dawn (hour 6) from where it started, intendedHours would have been {hoursRested + (6 - time.Hour)}.");
+            }
+
             if (restType == RestType.LongRest)
             {
                 await ClearUntilLongRestConditionsAsync(rc.CharacterId, character, ctx, ct);

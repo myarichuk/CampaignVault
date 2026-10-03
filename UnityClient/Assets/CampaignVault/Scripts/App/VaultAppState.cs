@@ -139,6 +139,12 @@ namespace CampaignVault.UnityClient.App
         /// <summary>The party step: characters built so far (kept across the builder round trips), and the starting level.</summary>
         public readonly List<PartyMember> Party = new List<PartyMember>();
         public int PartyLevel = 1;
+        /// <summary>The DM's suggested starting level from the campaign so far (0 = none yet), and why. Only ever a suggestion: the player's pick is PartyLevel.</summary>
+        public int LevelSuggestion;
+        public string LevelReason = string.Empty;
+        public bool SuggestingLevel;
+        /// <summary>The DM was asked once for this campaign: the step asks on its own only the first time.</summary>
+        public bool LevelSuggestionAsked;
         /// <summary>"DM drafts companions": the one model call is out.</summary>
         public bool Drafting;
         public string DraftError = string.Empty;
@@ -459,6 +465,9 @@ namespace CampaignVault.UnityClient.App
         public event Action CampaignsRequested;
         /// <summary>The onboarding party step wants the builder: a new character of this kind (pc or companion) when the id is empty, else the one with this id.</summary>
         public event Action<string, string> PartyBuilderRequested;
+        /// <summary>A party member was saved from the builder opened over the setup dialogue: the builder closes and the dialogue continues.</summary>
+        public event Action PartyBuilderDone;
+        public void FinishPartyBuilder() { if (PartyBuilderDone != null) { PartyBuilderDone(); } }
 
         public void RequestPartyBuilder(string editId, string kind)
         {

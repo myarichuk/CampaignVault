@@ -77,6 +77,9 @@ namespace CampaignVault.UnityClient.UI.Table
         private bool _spinning;
         private string _thinkingText = string.Empty;
         private int _focusRequest;
+        private readonly List<QuickActionViewModel> _baseQuicks;
+        private readonly QuickActionViewModel _retry;
+        private bool _retryShown;
 
         public CommandBarViewModel(VaultAppState state, VaultController controller)
         {
@@ -88,13 +91,16 @@ namespace CampaignVault.UnityClient.UI.Table
                 var captured = q;
                 quick.Add(new QuickActionViewModel(q.Label, q.Icon, q.Tooltip, delegate { Use(captured); }));
             }
+            _baseQuicks = quick;
+            _retry = new QuickActionViewModel("RETRY", "refresh", "The DM couldn't answer: send your last line again", delegate { _c.RetryLastTurn(); });
             Quicks = quick;
             SetUp = delegate { state.RequestSetup(); };
             Act = ActOrStop;
             Watch(state, StateArea.Driver | StateArea.Busy | StateArea.Campaign | StateArea.Session | StateArea.Providers | StateArea.Preferences);
         }
 
-        [CreateProperty] public List<QuickActionViewModel> Quicks { get; private set; }
+        [CreateProperty] public List<QuickActionViewModel> Quicks { get { return _quicks; } private set { SetList(ref _quicks, value); } }
+        private List<QuickActionViewModel> _quicks;
         /// <summary>What is in the box. The view writes it as the player types; a quick action or a recall sets it.</summary>
         [CreateProperty] public string Draft { get { return _draft; } set { Set(ref _draft, value ?? string.Empty); } }
         [CreateProperty] public string Placeholder { get { return _placeholder; } private set { Set(ref _placeholder, value); } }
@@ -127,6 +133,15 @@ namespace CampaignVault.UnityClient.UI.Table
                 : _s.SetupPending && _s.Session == null ? "Tell the DM about your characters, or answer their questions…"
                 : _s.Session == null ? "What do you do? Your first line opens the session."
                 : "What do you do?";
+            bool canRetry = _c.CanRetryLastTurn;
+            if (canRetry != _retryShown)
+            {
+                _retryShown = canRetry;
+                var list = new List<QuickActionViewModel>();
+                if (canRetry) { list.Add(_retry); }
+                list.AddRange(_baseQuicks);
+                Quicks = list;
+            }
             Tick();
         }
 
