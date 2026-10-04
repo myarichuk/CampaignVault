@@ -1,3 +1,4 @@
+using CampaignVault.Data;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
 
@@ -24,16 +25,39 @@ public sealed class Dnd5eExhaustionPressureContributor : IRulesetPressureContrib
         {
             // Mechanical D&D 5e exhaustion (1-6 scale), distinct from the ruleset-agnostic
             // narrative "tiredness" need read by CharacterDistressPressureContributor.
-            if (c.SystemStats?.Attributes != null
-                && c.SystemStats.Attributes.TryGetValue("exhaustion_level", out var exhaustion)
-                && exhaustion >= 3f)
+            var exhaustion = Level(c);
+            if (exhaustion >= 3)
             {
                 pressures.Add(new WorldPressureItem(PressureSeverity.Simulation, c.Id,
-                    $"{c.Name} has exhaustion level {exhaustion:F0} (D&D 5e, 1-6 scale). At level 3+, they suffer disadvantage on attacks/saves and reduced speed. Narrate fatigue and consider rest.",
+                    $"{c.Name} has exhaustion level {exhaustion} (D&D 5e, 1-6 scale). The engine applies disadvantage on checks, attacks and saves, and reduced speed. Narrate fatigue and consider rest.",
                     GroupingKey));
             }
         }
 
         return pressures;
+    }
+
+    /// <summary>
+    /// The character's exhaustion level: the "Exhaustion N" status is canonical; the old <c>exhaustion_level</c> attribute is
+    /// still read as a fallback, and the higher of the two wins.
+    /// </summary>
+    public static int Level(Character character)
+    {
+        var level = 0;
+        foreach (var status in character.SystemStats?.StatusEffects ?? [])
+        {
+            var named = string.Equals(status.ConditionName, "exhaustion", StringComparison.OrdinalIgnoreCase)
+                || status.Name.StartsWith("exhaustion", StringComparison.OrdinalIgnoreCase);
+            if (named)
+                level = Math.Max(level, ConditionExpiryEvaluator.TryParseStackLevel(status.Name, out var parsed) ? parsed : 1);
+        }
+
+        if (character.SystemStats?.Attributes != null
+            && character.SystemStats.Attributes.TryGetValue("exhaustion_level", out var attribute))
+        {
+            level = Math.Max(level, (int)attribute);
+        }
+
+        return level;
     }
 }

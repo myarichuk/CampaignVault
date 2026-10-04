@@ -26,7 +26,7 @@ internal static class SpellResolutionHelper
             return SpellResolutionMode.Heal;
         }
 
-        if (action.Parameters.ContainsKey("save") && action.Parameters.ContainsKey("dc"))
+        if (action.Parameters.ContainsKey("save"))
         {
             return SpellResolutionMode.Save;
         }

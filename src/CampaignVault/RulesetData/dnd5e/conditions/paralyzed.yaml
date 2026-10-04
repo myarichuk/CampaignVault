@@ -6,3 +6,9 @@ durationType: Timed
 mechanicalSummary: Incapacitated; auto-fail STR/DEX saves; attacks have advantage; hits within 5 ft are critical hits
 immunities: []
 suppresses: [incapacitated]
+effects:
+  - { kind: blocksActions }
+  - { kind: speed, set: 0 }
+  - { kind: autoFailSave, abilities: [Strength, Dexterity] }
+  - { kind: advantage, on: attack, scope: againstSelf }
+  - { kind: autoCrit, scope: againstSelf, range: melee }

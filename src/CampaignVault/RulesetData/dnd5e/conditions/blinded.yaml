@@ -6,3 +6,6 @@ durationType: Timed
 mechanicalSummary: Auto-fail sight checks; attack rolls have disadvantage; attackers against this creature have advantage
 immunities: []
 suppresses: []
+effects:
+  - { kind: disadvantage, on: attack }
+  - { kind: advantage, on: attack, scope: againstSelf }

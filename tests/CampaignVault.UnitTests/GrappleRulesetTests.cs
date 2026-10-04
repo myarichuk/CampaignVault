@@ -50,10 +50,56 @@ public class GrappleRulesetTests
         var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);
 
         Assert.True(output.Result.Success);
-        var mutation = Assert.Single(output.Mutations);
-        var relation = Assert.IsType<EngagementRelationChange>(mutation);
+        Assert.Equal(2, output.Mutations.Count);
+        var relation = Assert.IsType<EngagementRelationChange>(output.Mutations[0]);
         Assert.Equal(EngagementMutationHelper.GrapplingVerb, relation.Verb);
         Assert.Equal(EngagementCategory.Physical, relation.Category);
+
+        // The target is also Grappled (speed 0 by the condition's data), and the condition remembers who holds it.
+        var status = Assert.IsType<StatusChange>(output.Mutations[1]);
+        Assert.Equal("char2", status.CharacterId);
+        Assert.Equal("grappled", status.Effect!.ConditionName);
+        Assert.Equal("char1", status.Effect.AppliedBy);
+    }
+
+    [Theory]
+    [InlineData("Escape the burning room", false)]
+    [InlineData("Escape grapple", true)]
+    [InlineData("Break free of the hold", false)]
+    [InlineData("Escape the hold", true)]
+    public void EscapeDetector_NeedsTheGrappleToBeNamed(string name, bool expected)
+    {
+        var action = new RulesetAction { ActionName = name, ActionType = RulesetActionType.ContestedCheck };
+
+        Assert.Equal(expected, EngagementMutationHelper.IsEscapeGrappleAction(action));
+    }
+
+    [Fact]
+    public void Escape_AlsoRemovesTheGrappledCondition()
+    {
+        var mutations = new List<WorldChange>();
+
+        EngagementMutationHelper.ApplyGrappleEscape("char2", "char1", mutations);
+
+        Assert.Contains(mutations, m => m is StatusRemove { CharacterId: "char2", Status: "Grappled" });
+    }
+
+    [Fact]
+    public void ReleaseHeldBy_ClearsTheRelationAndTheConditionOnBothSides()
+    {
+        var grappler = new Character { Id = "char1", Name = "Ogre", SystemStats = new Dnd5eExtension() };
+        var target = new Character { Id = "char2", Name = "Hero", SystemStats = new Dnd5eExtension() };
+        grappler.SystemStats!.EngagementRelations.Add(new EngagementRelation { TargetId = "char2", Verb = EngagementMutationHelper.GrapplingVerb, Category = EngagementCategory.Physical });
+        target.SystemStats!.EngagementRelations.Add(new EngagementRelation { TargetId = "char1", Verb = "GrappledBy", Category = EngagementCategory.Physical });
+        target.SystemStats.StatusEffects.Add(new StatusEffect { Name = "Grappled", ConditionName = "grappled", AppliedBy = "char1" });
+        target.SystemStats.StatusEffects.Add(new StatusEffect { Name = "Grappled", ConditionName = "grappled", AppliedBy = "char3" });
+
+        var released = EngagementMutationHelper.ReleaseHeldBy(grappler, id => id == "char2" ? target : null);
+
+        Assert.Equal(["Hero"], released);
+        Assert.Empty(grappler.SystemStats.EngagementRelations);
+        Assert.Empty(target.SystemStats.EngagementRelations);
+        Assert.Equal("char3", Assert.Single(target.SystemStats.StatusEffects).AppliedBy);
     }
 
     [Fact]

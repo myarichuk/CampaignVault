@@ -10,3 +10,5 @@ aliases: [monk]
 skillChoices: { count: 2, from: [Acrobatics, Athletics, History, Insight, Religion, Stealth] }
 proficiencies: { weapons: [simple, shortsword] }
 multiclassProficiencies: { weapons: [simple, shortsword] }
+# Needs 13 in each requirement (a list is "any of these") to take a first level here, and to leave the current class.
+multiclassRequires: [[Dexterity], [Wisdom]]

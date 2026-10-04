@@ -2,7 +2,12 @@
 name: frightened
 system: pf2e
 durationType: Timed
-mechanicalSummary: Valued penalty (frightened X) to all checks and DCs; decreases by 1 at end of each turn
+mechanicalSummary: "Valued: a status penalty equal to the value to all checks and DCs (attack rolls, checks, saves and AC). Decreases by 1 at the end of each of the creature's turns."
 moodHint: terrified
 immunities: []
 suppresses: []
+effects:
+  - { kind: bonus, on: attack, value: -1, bonusType: status, perLevel: true }
+  - { kind: bonus, on: check, value: -1, bonusType: status, perLevel: true }
+  - { kind: bonus, on: save, value: -1, bonusType: status, perLevel: true }
+  - { kind: bonus, on: ac, value: -1, bonusType: status, perLevel: true }

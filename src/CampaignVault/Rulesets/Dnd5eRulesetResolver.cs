@@ -297,8 +297,8 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             if (spell?.OnMiss == MissBehavior.Half)
             {
                 // Acid Arrow shape: a miss still splashes half the (already rolled) initial damage.
-                var splashDamage = ApplyTargetDamageReduction(
-                    (int)Math.Floor(damageRoll.Result / 2.0), targetStats, action.DamageType);
+                var splashDamage = DamageResolver.Resolve(
+                    (int)Math.Floor(damageRoll.Result / 2.0), action.DamageType, targetStats, targetEffects, action, DamageOrdering.Dnd5e);
                 if (splashDamage > 0)
                 {
                     mutations.Add(new HpChange { CharacterId = targetId, Delta = -splashDamage });
@@ -306,6 +306,12 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
                 return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Missed, but the acid still splashes for {splashDamage} damage. {attackDetail}{bareWarning}");
             }
             return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Missed. {attackDetail}{bareWarning}");
+        }
+
+        // A hit on a paralyzed or unconscious creature from within reach is a critical hit.
+        if (!isCrit && attackRoll is not null && ConditionsAutoCrit(target, action))
+        {
+            isCrit = true;
         }
 
         var finalDamage = damageRoll.Result;
@@ -325,22 +331,38 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             sneakMsg = note;
         }
 
+        // Everything this hit deals goes to the target as one HpChange: the dying rules count a hit, not its parts.
         // Dice features add on a hit (Divine Strike): rolled again on a critical hit, mitigated by their own type.
         var extraNotes = new List<string>();
-        finalDamage = ApplyTargetDamageReduction(finalDamage, targetStats, action.DamageType);
-        finalDamage = ApplyFeatResistance(finalDamage, action.DamageType, targetEffects, action, extraNotes);
-
-        var extraMsg = "";
+        var packets = new List<DamagePacket> { new(finalDamage, action.DamageType, Primary: true) };
+        var extraSources = new List<(string Source, string? DamageType)>();
         foreach (var extra in action.ActionType == RulesetActionType.Attack ? FeatEffectRules.ExtraDamage(action, actorEffects, extraNotes) : [])
         {
             var rolled = (await _rollService.RollAsync(new RollRequest { Tag = "extraDamage", Expression = extra.Dice, Mechanic = DiceMechanic.Standard }, ct)).Result;
             if (isCrit)
                 rolled += (await _rollService.RollAsync(new RollRequest { Tag = "extraDamageCrit", Expression = DerivedAttack.DiceOnly(extra.Dice), Mechanic = DiceMechanic.Standard }, ct)).Result;
-            var type = extra.DamageType ?? action.DamageType;
-            var dealt = ApplyTargetDamageReduction(rolled, targetStats, type);
-            dealt = FeatEffectRules.ResistsDamage(targetEffects, type, action) ? dealt / 2 : dealt;
-            finalDamage += dealt;
-            extraMsg += $" {extra.Source} +{dealt}{(string.IsNullOrWhiteSpace(extra.DamageType) ? "" : " " + extra.DamageType)}.";
+            packets.Add(new DamagePacket(rolled, extra.DamageType ?? action.DamageType));
+            extraSources.Add((extra.Source, extra.DamageType));
+        }
+
+        var hasRider = action.Parameters.TryGetValue("riderDice", out var riderDice) && !string.IsNullOrWhiteSpace(riderDice);
+        var riderType = action.Parameters.GetValueOrDefault("riderType");
+        if (hasRider)
+        {
+            var riderRoll = await _rollService.RollAsync(new RollRequest { Tag = "rider", Expression = riderDice!, Mechanic = DiceMechanic.Standard }, ct);
+            packets.Add(new DamagePacket(riderRoll.Result, riderType));
+        }
+
+        var dealt = DamageResolver.Resolve(packets, targetStats, targetEffects, action, DamageOrdering.Dnd5e);
+        extraNotes.AddRange(dealt.Notes);
+        finalDamage = dealt.PerPacket[0];
+
+        var extraMsg = "";
+        for (var i = 0; i < extraSources.Count; i++)
+        {
+            var (source, extraType) = extraSources[i];
+            finalDamage += dealt.PerPacket[i + 1];
+            extraMsg += $" {source} +{dealt.PerPacket[i + 1]}{(string.IsNullOrWhiteSpace(extraType) ? "" : " " + extraType)}.";
         }
 
         if (extraNotes.Count > 0)
@@ -349,20 +371,14 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         mutations.Add(new HpChange
         {
             CharacterId = targetId,
-            Delta = -finalDamage
+            Delta = -dealt.Total,
+            Critical = isCrit,
         });
 
         var riderMsg = "";
-        if (action.Parameters.TryGetValue("riderDice", out var riderDice) && !string.IsNullOrWhiteSpace(riderDice))
+        if (hasRider)
         {
-            var riderRoll = await _rollService.RollAsync(new RollRequest { Tag = "rider", Expression = riderDice, Mechanic = DiceMechanic.Standard }, ct);
-            var riderType = action.Parameters.GetValueOrDefault("riderType");
-            var riderDamage = ApplyTargetDamageReduction(riderRoll.Result, targetStats, riderType);
-            if (riderDamage > 0)
-            {
-                mutations.Add(new HpChange { CharacterId = targetId, Delta = -riderDamage });
-            }
-
+            var riderDamage = dealt.PerPacket[^1];
             riderMsg = $" Rider: +{riderDamage}{(string.IsNullOrWhiteSpace(riderType) ? "" : $" {riderType}")} from the loaded round.";
         }
 
@@ -694,38 +710,6 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     }
 
     /// <summary>
-    /// Applies the target's damage-type multiplier and flat damage reduction, shared by the hit
-    /// and miss-splash paths so both agree on mitigation.
-    /// </summary>
-    /// <summary>
-    /// Takes off the flat reduction the target's effects give for this attack (once, with the hit's own damage: pass
-    /// <paramref name="action"/>), then halves damage of a type the target resists through a feature, race or feat
-    /// (rounded down).
-    /// </summary>
-    private static int ApplyFeatResistance(
-        int damage, string? damageType, IReadOnlyList<ActiveFeatEffect> targetEffects, RulesetAction? action = null, List<string>? notes = null)
-    {
-        if (action is not null)
-            damage = Math.Max(0, damage - FeatEffectRules.DamageReduction(targetEffects, damageType, action, notes ?? []));
-        return FeatEffectRules.ResistsDamage(targetEffects, damageType, action, notes) ? damage / 2 : damage;
-    }
-
-    private static int ApplyTargetDamageReduction(int damage, Dnd5eExtension targetStats, string? actionDamageType)
-    {
-        var damageType = actionDamageType ?? "Physical";
-
-        var drKey = targetStats.DamageResistances.Keys.FirstOrDefault(k => string.Equals(k, damageType, StringComparison.OrdinalIgnoreCase));
-        var flatDr = drKey != null && targetStats.DamageResistances.TryGetValue(drKey, out var dr) ? dr : 0;
-
-        if (targetStats.DamageModifiers.TryGetValue(damageType, out var multiplier))
-        {
-            damage = (int)Math.Floor(damage * multiplier);
-        }
-
-        return Math.Max(0, damage - flatDr);
-    }
-
-    /// <summary>
     /// Resolves one attack roll + damage roll per damage *instance* (Magic Missile dart, Scorching
     /// Ray ray, Eldritch Blast beam) instead of one per listed target. Instance count and
     /// per-instance dice come from the spell's overlay data, not the caller's damageDice — this is
@@ -943,21 +927,18 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     }
 
     /// <summary>
-    /// Rolls each damage pool separately (correct variance and per-type narrative), sums with any
-    /// upcast bonus, then applies the save result to the total — "half as much damage" halves the
-    /// sum, not each pool. Mirrors TryApplySaveDamageAsync's half-on-save math and single HpChange.
+    /// Rolls each damage pool separately (correct variance and per-type narrative), once per cast. Each pool is its own
+    /// typed packet, so a target's resistance to one type touches only that pool.
     /// </summary>
-    private static async Task<(int Damage, string Detail)> ApplyPoolSaveDamageAsync(
+    private static async Task RollPoolSaveDamageAsync(
         RulesetAction action,
         PoolCastShape shape,
-        string targetId,
-        bool saved,
-        List<WorldChange> mutations,
+        SaveDamageRoll rolled,
         IRollService rollService,
         CancellationToken ct)
     {
         var parts = new List<string>();
-        var total = 0;
+        var packets = new List<DamagePacket>();
         foreach (var (type, dice) in shape.Pools)
         {
             var poolRoll = await rollService.RollAsync(new RollRequest
@@ -966,7 +947,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
                 Expression = dice,
                 Mechanic = DiceMechanic.Standard,
             }, ct);
-            total += poolRoll.Result;
+            packets.Add(new DamagePacket(poolRoll.Result, type, Primary: packets.Count == 0));
             parts.Add($"{poolRoll.Result} {type}");
         }
         if (shape.BonusDice != null)
@@ -982,22 +963,17 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
                 }, ct);
                 bonusTotal += bonusRoll.Result;
             }
-            total += bonusTotal;
+            packets.Add(new DamagePacket(bonusTotal, shape.BonusPool));
             parts.Add(shape.BonusPool != null ? $"{bonusTotal} upcast {shape.BonusPool}" : $"{bonusTotal} upcast");
         }
 
-        if (action.Parameters.TryGetValue("damageBonus", out var db) && int.TryParse(db, out var damageBonus))
+        if (action.Parameters.TryGetValue("damageBonus", out var db) && DamageResolver.TryParseBonus(db, out var damageBonus) && packets.Count > 0)
         {
-            total += damageBonus;
+            packets[0] = packets[0] with { Amount = packets[0].Amount + damageBonus };
         }
 
-        var halfOnSave = ResolveHalfOnSave(action.Parameters);
-        var damage = saved && halfOnSave ? (int)Math.Floor(total / 2.0) : saved ? 0 : total;
-        if (damage > 0)
-        {
-            mutations.Add(new HpChange { CharacterId = targetId, Delta = -damage });
-        }
-        return (damage, $" ({string.Join(" + ", parts)})");
+        rolled.Packets = packets;
+        rolled.Detail = $" ({string.Join(" + ", parts)})";
     }
 
     /// <summary>
@@ -1419,13 +1395,15 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             Mechanic = mechanic
         }, ct);
 
-        var isSuccess = outcome.Result >= dc;
+        var isSuccess = !saveFold.AutoFail && outcome.Result >= dc;
         var resultStr = isSuccess ? "Success" : "Failure";
         
-        var damageApplied = await TryApplySaveDamageAsync(
-            action, action.CharacterId, isSuccess, mutations, _rollService, ct);
+        var selfRoll = new SaveDamageRoll { IsRolled = true };
+        await RollSaveDamageAsync(action, selfRoll, _rollService, ct);
+        var (damageApplied, selfNotes) = ApplySaveDamage(
+            action, selfRoll, isSuccess, saveName, action.CharacterId, actorStats, mutations);
         var damageMsg = damageApplied > 0
-            ? $" Took {damageApplied} damage."
+            ? $" Took {damageApplied} damage.{selfNotes}"
             : string.Empty;
 
         return ResolverResult.Ok(
@@ -1461,6 +1439,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var narratives = new List<string>();
         var poolSpell = spell != null && HasPoolData(spell) ? spell : null;
         var poolShape = poolSpell != null ? ResolvePoolShape(action, poolSpell) : null;
+        var rolledDamage = new SaveDamageRoll();
 
         foreach (var targetId in targets)
         {
@@ -1489,19 +1468,23 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
                 Mechanic = mechanic,
             }, ct);
 
-            var isSuccess = outcome.Result >= dc;
-            int damage;
-            string damageDetail;
-            if (poolShape != null)
+            var isSuccess = !spellSaveFold.AutoFail && outcome.Result >= dc;
+            // The cast's damage is rolled once, on the first target, and shared: each target saves and mitigates alone.
+            if (!rolledDamage.IsRolled)
             {
-                (damage, damageDetail) = await ApplyPoolSaveDamageAsync(
-                    action, poolShape, targetId, isSuccess, mutations, _rollService, ct);
+                rolledDamage.IsRolled = true;
+                if (poolShape != null)
+                {
+                    await RollPoolSaveDamageAsync(action, poolShape, rolledDamage, _rollService, ct);
+                }
+                else
+                {
+                    await RollSaveDamageAsync(action, rolledDamage, _rollService, ct);
+                }
             }
-            else
-            {
-                damage = await TryApplySaveDamageAsync(action, targetId, isSuccess, mutations, _rollService, ct);
-                damageDetail = "";
-            }
+
+            var (damage, damageNotes) = ApplySaveDamage(action, rolledDamage, isSuccess, saveName, targetId, targetStats, mutations);
+            var damageDetail = rolledDamage.Detail + damageNotes;
             narratives.Add(
                 $"{action.ActionName} vs {target.Name}: {(isSuccess ? "Saved" : "Failed")} ({saveName} {outcome.Result} vs DC {dc})"
                 + (damage > 0 ? $" — {damage} damage{damageDetail}." : ".") + spellSaveFold.Suffix);
@@ -1586,23 +1569,21 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         return Dnd5eSpellcastingHelper.ComputeSpellAttackBonus(actorStats, proficiency, ability);
     }
 
-    private static async Task<int> TryApplySaveDamageAsync(
+    private static async Task RollSaveDamageAsync(
         RulesetAction action,
-        string targetId,
-        bool saved,
-        List<WorldChange> mutations,
+        SaveDamageRoll rolled,
         IRollService rollService,
         CancellationToken ct)
     {
         if (!action.Parameters.TryGetValue("damageDice", out var damageDice))
         {
-            return 0;
+            return;
         }
 
         var damageBonus = 0;
         if (action.Parameters.TryGetValue("damageBonus", out var db))
         {
-            int.TryParse(db, out damageBonus);
+            DamageResolver.TryParseBonus(db, out damageBonus);
         }
 
         var damageRoll = await rollService.RollAsync(new RollRequest
@@ -1613,18 +1594,69 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             Mechanic = DiceMechanic.Standard,
         }, ct);
 
-        var halfOnSave = ResolveHalfOnSave(action.Parameters);
+        rolled.Packets = [new DamagePacket(damageRoll.Result, action.DamageType, Primary: true)];
+    }
 
-        var damage = saved && halfOnSave
-            ? (int)Math.Floor(damageRoll.Result / 2.0)
-            : saved ? 0 : damageRoll.Result;
-
-        if (damage > 0)
+    /// <summary>
+    /// What one target takes from a save spell's already-rolled damage: the save scales it (half, or none), evasion
+    /// improves a Dexterity save by a step, then <see cref="DamageResolver"/> applies the target's own defenses. One
+    /// HpChange per target.
+    /// </summary>
+    private static (int Damage, string Notes) ApplySaveDamage(
+        RulesetAction action,
+        SaveDamageRoll rolled,
+        bool saved,
+        string saveName,
+        string targetId,
+        Dnd5eExtension targetStats,
+        List<WorldChange> mutations)
+    {
+        if (rolled.Packets.Count == 0)
         {
-            mutations.Add(new HpChange { CharacterId = targetId, Delta = -damage });
+            return (0, "");
         }
 
-        return damage;
+        var halfOnSave = ResolveHalfOnSave(action.Parameters);
+        var targetEffects = action.FeatEffects.GetValueOrDefault(targetId) ?? [];
+        var evasionNotes = new List<string>();
+        var evasion = halfOnSave && FeatEffectRules.HasEvasion(targetEffects, saveName, action, evasionNotes);
+
+        // Saved: half, or none. Failed: all of it, or with evasion only half. Evasion on a save that doesn't halve does nothing.
+        var scale = saved
+            ? (evasion ? SaveScale.None : halfOnSave ? SaveScale.Half : SaveScale.None)
+            : (evasion ? SaveScale.Half : SaveScale.Full);
+        var scaled = rolled.Packets
+            .Select(p => p with { Amount = scale switch { SaveScale.Full => p.Amount, SaveScale.Half => (int)Math.Floor(p.Amount / 2.0), _ => 0 } })
+            .ToList();
+        if (scale == SaveScale.Half && scaled.Count > 1)
+        {
+            // "Half as much damage" halves the sum, not each pool: halve each pool so resistance can touch its own type, then
+            // hand the rounding remainder to the first pool so the total is floor(sum / 2) as it always was.
+            var remainder = (int)Math.Floor(rolled.Packets.Sum(p => p.Amount) / 2.0) - scaled.Sum(p => p.Amount);
+            scaled[0] = scaled[0] with { Amount = scaled[0].Amount + remainder };
+        }
+
+        var result = DamageResolver.Resolve(scaled, targetStats, targetEffects, action, DamageOrdering.Dnd5e);
+        var notes = new List<string>(evasionNotes);
+        if (evasion)
+        {
+            notes.Add(saved ? "evasion: no damage" : "evasion: half damage");
+        }
+
+        notes.AddRange(result.Notes);
+        if (result.Total > 0)
+        {
+            mutations.Add(new HpChange { CharacterId = targetId, Delta = -result.Total });
+        }
+
+        return (result.Total, notes.Count > 0 ? $" ({string.Join("; ", notes)})" : "");
+    }
+
+    private enum SaveScale
+    {
+        Full,
+        Half,
+        None,
     }
 
     public override async Task<float> RollInitiativeAsync(Character character, CancellationToken ct = default)

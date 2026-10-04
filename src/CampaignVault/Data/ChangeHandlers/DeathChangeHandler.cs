@@ -73,31 +73,7 @@ public sealed class DeathChangeHandler : IWorldChangeHandler
 
         var day = (int)(await ctx.GetCurrentTimeAsync()).TotalDaysElapsed;
         var killerId = string.IsNullOrWhiteSpace(req.KillerId) ? null : req.KillerId.Trim();
-        character.Death = new DeathRecord
-        {
-            Day = day,
-            Cause = string.IsNullOrWhiteSpace(req.Cause) ? null : req.Cause.Trim(),
-            KillerId = killerId,
-            BodyLocationId = character.CurrentLocationId,
-        };
-
-        character.CurrentHp = 0;
-        character.DeathSaves = null;
-
-        // A corpse is not "present": clearing the live location drops it from location queries, and with no
-        // schedule the simulation never routes it anywhere again. The body is found via Death.BodyLocationId.
-        // A dead PC keeps its location and flags: the party's own position is derived from its PCs, and the
-        // player, not the engine, decides what a dead PC's death means for the run.
-        character.CurrentActivity = null;
-        character.Schedule = null;
-        character.IdleSceneBeats = 0;
-        character.IdleSceneLocationId = null;
-        if (!character.IsPc)
-        {
-            character.CurrentLocationId = null;
-            character.KeepAlive = false;
-            character.IsPartyCompanion = false;
-        }
+        ApplyDeathState(character, day, req.Cause, killerId);
 
         // Whatever they were bound to or summoning ends with them.
         var lapseMessages = new List<string>();
@@ -124,6 +100,42 @@ public sealed class DeathChangeHandler : IWorldChangeHandler
         return ChangeHandlerResult.Ok;
     }
 
+    /// <summary>
+    /// The state a death leaves behind, with no session needed: the record, 0 HP, no tally, and the body left where it fell.
+    /// Shared by the <c>death</c> commit and damage that kills during combat turn advancement.
+    /// </summary>
+    internal static void ApplyDeathState(Character character, int day, string? cause, string? killerId)
+    {
+        character.Death = new DeathRecord
+        {
+            Day = day,
+            Cause = string.IsNullOrWhiteSpace(cause) ? null : cause.Trim(),
+            KillerId = killerId,
+            BodyLocationId = character.CurrentLocationId,
+        };
+
+        character.CurrentHp = 0;
+        character.DeathSaves = null;
+        HitPointState.SyncDowned(character); // dead is its own state: the engine's Unconscious flag comes off
+        character.TempHp = null;
+        character.TempHpSource = null;
+
+        // A corpse is not "present": clearing the live location drops it from location queries, and with no
+        // schedule the simulation never routes it anywhere again. The body is found via Death.BodyLocationId.
+        // A dead PC keeps its location and flags: the party's own position is derived from its PCs, and the
+        // player, not the engine, decides what a dead PC's death means for the run.
+        character.CurrentActivity = null;
+        character.Schedule = null;
+        character.IdleSceneBeats = 0;
+        character.IdleSceneLocationId = null;
+        if (!character.IsPc)
+        {
+            character.CurrentLocationId = null;
+            character.KeepAlive = false;
+            character.IsPartyCompanion = false;
+        }
+    }
+
     private static ChangeHandlerResult Revive(DeathChange req, Character character, ChangeContext ctx)
     {
         if (!character.IsDead)
@@ -134,6 +146,7 @@ public sealed class DeathChangeHandler : IWorldChangeHandler
         character.CurrentHp = character.MaxHp > 0
             ? Math.Clamp(req.Hp ?? 1, 1, character.MaxHp)
             : Math.Max(req.Hp ?? 1, 1);
+        HitPointState.SyncDowned(character);
         character.CurrentLocationId = string.IsNullOrWhiteSpace(req.NewLocationId)
             ? bodyLocation ?? character.CurrentLocationId
             : req.NewLocationId.Trim();

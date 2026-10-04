@@ -98,7 +98,9 @@ public class CharacterLevelUpToolsTests(RavenDBFixture fixture) : IClassFixture<
         var hild = await Load(id);
         var stats = Assert.IsType<Dnd5eExtension>(hild.SystemStats);
         Assert.Equal((16, 17, 4), (stats.Constitution, stats.Strength, stats.Level));
-        Assert.Equal(28 + 6 + 3, hild.MaxHp);
+        // The level's own gain uses the new modifier (+6 average d10 and +3), and the three earlier levels each gain the
+        // modifier's rise by 1: 40 is what a fighter created at level 4 with Constitution 16 has (13 + 3 * 9).
+        Assert.Equal(28 + (6 + 3) + 3, hild.MaxHp);
         Assert.Contains(stats.LevelUpChoices, r => r.Key == "asiOrFeat" && r.Level == 4);
         Assert.Equal(4, applied.Data!.Status!.Level);
     }

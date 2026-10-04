@@ -2,7 +2,12 @@
 name: sickened
 system: pf2e
 durationType: Timed
-mechanicalSummary: Valued penalty (sickened X) to all checks and DCs; cannot willingly consume food or drink; attempt flat DC 15 check to reduce value on each turn
+mechanicalSummary: 'Valued: a status penalty equal to the value to all checks and DCs. Cannot willingly ingest anything. One action retching allows a Fortitude save to reduce it.'
 moodHint: nauseated, ill
 immunities: []
 suppresses: []
+effects:
+  - { kind: bonus, on: attack, value: -1, bonusType: status, perLevel: true }
+  - { kind: bonus, on: check, value: -1, bonusType: status, perLevel: true }
+  - { kind: bonus, on: save, value: -1, bonusType: status, perLevel: true }
+  - { kind: bonus, on: ac, value: -1, bonusType: status, perLevel: true }

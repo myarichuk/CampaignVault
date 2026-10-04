@@ -2,7 +2,12 @@
 name: paralyzed
 system: pf2e
 durationType: Timed
-mechanicalSummary: Cannot act; critical hits against this creature succeed on a lower degree of success
+mechanicalSummary: 'Frozen in place: off-guard, and cannot act except to Recall Knowledge and use actions that need only the mind. Cannot Seek.'
 moodHint: frozen, helpless
 immunities: []
 suppresses: []
+effects:
+  - { kind: implies, subject: off-guard }
+  - { kind: bonus, on: ac, value: -2, bonusType: circumstance }
+  - { kind: blocksActions }
+# The Recall Knowledge and mind-only exceptions are the DM's to allow; the action gate treats the condition as blocking.

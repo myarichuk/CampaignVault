@@ -38,6 +38,15 @@ public class Character : ICampaignScopedEntity, IHasDirt
     public int MaxHp { get; set; }
 
     /// <summary>
+    /// Temporary hit points: a buffer that takes damage before <see cref="CurrentHp"/>, is not healed back and does not stack
+    /// (a new grant replaces it only when larger). Null when there are none. See <see cref="TempHpSource"/>.
+    /// </summary>
+    public int? TempHp { get; set; }
+
+    /// <summary>What gave the temporary hit points (a spell, a feature), for the sheet; null when there are none.</summary>
+    public string? TempHpSource { get; set; }
+
+    /// <summary>
     /// Set once the character has died (core <c>death</c> verb); null while alive. See <see cref="DeathRecord"/>.
     /// </summary>
     public DeathRecord? Death { get; set; }

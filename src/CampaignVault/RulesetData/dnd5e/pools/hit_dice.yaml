@@ -1,0 +1,9 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+# Hand-authored. One die per character level. The engine recovers half of them (at least one) on a long rest itself, so the
+# pool's own recovery is Never; a short rest spends them by hand (a resource spend of hit_dice plus an HP change).
+name: hit_dice
+description: Hit Dice, one per character level; a short rest spends them to heal, a long rest regains half the total (at least one)
+applicableSystems: [dnd5e]
+recovery: Never
+maxFrom: { levelMultiplier: 1, min: 1 }

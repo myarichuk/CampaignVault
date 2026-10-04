@@ -11,3 +11,18 @@ mechanicalSummary: >
 moodHint: depleted, wearied
 immunities: []
 suppresses: []
+# Cumulative: a creature at level N has the effects of levels 1 to N.
+levels:
+  1:
+    - { kind: disadvantage, on: check }
+  2:
+    - { kind: speed, multiplier: 0.5 }
+  3:
+    - { kind: disadvantage, on: attack }
+    - { kind: disadvantage, on: save }
+  4:
+    - { kind: maxHpMultiplier, multiplier: 0.5 }
+  5:
+    - { kind: speed, set: 0 }
+  6:
+    - { kind: death }

@@ -841,6 +841,10 @@ public abstract class RulesetResolverBase<TStats> : IHostRulesetModule, IActionR
         return DiceMechanic.Standard;
     }
 
+    /// <summary>Whether a hit by this action on <paramref name="target"/> is a critical hit because of the target's conditions.</summary>
+    protected bool ConditionsAutoCrit(Character target, RulesetAction action) =>
+        Pipeline.AutoCrit(target, System, [AttackRangeTag(action)]);
+
     /// <summary>Every roll goes through this; plugins add providers to it. Resolvers built without the container get core's own.</summary>
     protected RollModifierPipeline Pipeline { get; set; } = RollModifierPipeline.BuiltIn;
 
@@ -893,6 +897,14 @@ public abstract class RulesetResolverBase<TStats> : IHostRulesetModule, IActionR
         if (kind == RollKinds.Save && StatusEffectModifierProvider.Normalize(subject) is "wisdom" or "wis" or "intelligence" or "int" or "charisma" or "cha")
             allTags.Add("mental");
 
+        if (action is not null)
+        {
+            // DM-asserted facts ("sourceInSight") are tags too, so a condition can ask for them.
+            allTags.AddRange(FeatEffectRules.Asserted(action));
+            if (kind == RollKinds.Attack)
+                allTags.Add(AttackRangeTag(action));
+        }
+
         var query = new RollQuery(kind, subject, allTags, actor, other, System, options);
         var explicitAdvantage = explicitMechanic switch
         {
@@ -912,7 +924,19 @@ public abstract class RulesetResolverBase<TStats> : IHostRulesetModule, IActionR
             AdvantageEffect.Disadvantage => DiceMechanic.Disadvantage,
             _ => explicitMechanic is DiceMechanic.Advantage or DiceMechanic.Disadvantage ? DiceMechanic.Standard : explicitMechanic,
         };
-        return new RollFold(resolved.Bonus, mechanic, resolved.Notes);
+        return new RollFold(resolved.Bonus, mechanic, resolved.Notes) { AutoFail = resolved.AutoFail };
+    }
+
+    /// <summary>
+    /// "melee" or "ranged" for an attack, so a condition can tell them apart (prone: melee attackers have advantage). A weapon
+    /// says which; with no weapon data a spell attack counts as ranged and anything else as melee.
+    /// </summary>
+    internal static string AttackRangeTag(RulesetAction action)
+    {
+        var weapon = WeaponProfile.Read(action);
+        if (weapon.Known)
+            return weapon.Ranged ? "ranged" : "melee";
+        return action.ActionType == RulesetActionType.Spell ? "ranged" : "melee";
     }
 
     public virtual IReadOnlyDictionary<string, int> GetTurnActionBudget(Character character)
@@ -960,6 +984,9 @@ public abstract class RulesetResolverBase<TStats> : IHostRulesetModule, IActionR
 /// <summary>A roll's final bonus and dice mechanic after the modifier pipeline, with the reasons to show.</summary>
 public sealed record RollFold(int Bonus, DiceMechanic Mechanic, IReadOnlyList<string> Notes)
 {
+    /// <summary>A condition makes the roll fail whatever the dice show (see <c>RollModifier.AutoFail</c>).</summary>
+    public bool AutoFail { get; init; }
+
     /// <summary>" [Willpower 20: −2 vs fear; …]" or empty.</summary>
     public string Suffix => Notes.Count == 0 ? "" : $" [{string.Join("; ", Notes)}]";
 }

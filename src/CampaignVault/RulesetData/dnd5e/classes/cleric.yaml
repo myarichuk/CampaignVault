@@ -10,3 +10,5 @@ aliases: [cleric]
 skillChoices: { count: 2, from: [History, Insight, Medicine, Persuasion, Religion] }
 proficiencies: { armor: [light, medium, shields], weapons: [simple] }
 multiclassProficiencies: { armor: [light, medium, shields] }
+# Needs 13 in each requirement (a list is "any of these") to take a first level here, and to leave the current class.
+multiclassRequires: [[Wisdom]]

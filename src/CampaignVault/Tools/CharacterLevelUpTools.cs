@@ -56,7 +56,8 @@ public sealed class CharacterLevelUpTools(
         [Description("Character id, e.g. 'chars/hero-123'.")] string characterId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
         [Description("apply: slot id → the option ids picked, as options listed them. options: the picks so far, to list the choices they add (a feat's own).")] Dictionary<string, List<string>>? picks = null,
-        [Description("apply only (5e): average or rolled hit points for the level.")] string? hpMode = null)
+        [Description("apply only (5e): average or rolled hit points for the level.")] string? hpMode = null,
+        [Description("The class gaining the level, for a multiclass character (a 5e class not on the sheet is taken as a new class). Default: the only class.")] string? classGained = null)
     {
         var apply = string.Equals(action?.Trim(), "apply", StringComparison.OrdinalIgnoreCase);
         if (!apply && !string.Equals(action?.Trim(), "options", StringComparison.OrdinalIgnoreCase))
@@ -83,14 +84,27 @@ public sealed class CharacterLevelUpTools(
                     Summary: $"{character.Name} can't gain a level: only player characters and companions with a class below level {LevelUpStatusReader.MaxLevel} can.");
             }
 
-            var plan = planner.Plan(character, config.ActiveSystem, picks: picks);
+            // Which class gains the level: a multiclass character has to say, and the answer names the classes.
+            if (ClassGainedResolver.Resolve(character, config.ActiveSystem, classGained).Error is { } classError)
+            {
+                return new ToolResult<CharacterLevelUpResult>(false, Error: ToolErrors.InvalidArgument, Summary: $"{classError} Pass it as classGained.");
+            }
+
+            var plan = planner.Plan(character, config.ActiveSystem, classGained, picks);
             var name = character.Name;
             if (!apply)
             {
-                var features = plan is null
+                // What the gaining class gives at the level it reaches: that class's progression only (a class the character
+                // is taking for the first time has no earlier picks).
+                var gaining = plan is not null && progressions.TryGetProgression(config.ActiveSystem, plan.ProgressionClass ?? plan.ClassName, out var progression)
+                    ? progression
+                    : null;
+                var features = plan is null || gaining is null
                     ? []
-                    : CharacterClassFeatures.Classes(character, config.ActiveSystem, progressions)
-                        .SelectMany(c => c.Progression.FeaturesUpTo(plan.ClassLevel, CharacterClassFeatures.Picked(character.SystemStats, multiclass: false, c.Progression.ClassName)).Where(f => f.Level == plan.ClassLevel))
+                    : gaining.FeaturesUpTo(plan.ClassLevel, plan.IsNewClass
+                            ? (_, _) => Enumerable.Empty<string>()
+                            : CharacterClassFeatures.Picked(character.SystemStats, multiclass: CharacterClassResolver.ResolveClassLevels(character).Count > 1, gaining.ClassName))
+                        .Where(f => f.Level == plan.ClassLevel)
                         .Select(f => CharacterClassFeatures.View(f, plan.ClassLevel))
                         .ToList();
                 return new ToolResult<CharacterLevelUpResult>(true, new CharacterLevelUpResult
@@ -115,8 +129,7 @@ public sealed class CharacterLevelUpTools(
             {
                 CharacterId = character.Id,
                 LevelsGained = 1,
-                HealToMatch = false,
-                ClassGained = plan?.ClassName,
+                ClassGained = plan?.ClassName ?? classGained,
                 Picks = picks is { Count: > 0 } ? picks : null,
                 HpMode = Enum.TryParse<HitPointDerivationMode>(hpMode, true, out var mode) ? mode : null,
                 Reason = status.Ready ? $"Reached the XP for level {status.TargetLevel}" : "Chosen at the level-up menu",

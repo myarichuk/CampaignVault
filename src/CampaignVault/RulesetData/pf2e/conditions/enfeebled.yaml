@@ -1,0 +1,11 @@
+# Source: Pathfinder 2e Remastered (Player Core) by Paizo Inc., ORC License. The summary is our own wording.
+name: enfeebled
+system: pf2e
+durationType: Timed
+mechanicalSummary: 'Valued: a status penalty equal to the value to Strength-based rolls and DCs: Strength-based melee attack and damage rolls and Athletics.'
+moodHint: weakened
+immunities: []
+suppresses: []
+effects:
+  - { kind: bonus, on: check, value: -1, bonusType: status, perLevel: true, subject: Athletics }
+# Partly data: Strength-based melee attack and damage rolls are not encoded (a finesse weapon uses Dexterity, which the roll cannot see).

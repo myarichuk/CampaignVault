@@ -24,7 +24,7 @@ public static class FeatEffectKinds
 
     /// <summary>
     /// Resistance to the damage type (<c>damageType</c>, or several comma-separated): damage of that type to the character is
-    /// halved. 5e.
+    /// halved, once however many sources grant it.
     /// </summary>
     public const string Resistance = "resistance";
 
@@ -39,18 +39,24 @@ public static class FeatEffectKinds
 
     /// <summary>
     /// Damage to the character is reduced by <c>value</c> (before resistance), only damage of <c>damageType</c> when set (or
-    /// several comma-separated). 5e attacks.
+    /// several comma-separated). Attacks and saves.
     /// </summary>
     public const string DamageReduction = "damageReduction";
+
+    /// <summary>
+    /// Evasion: on a Dexterity save for half damage the character takes none on a success and half on a failure. Carries no
+    /// value. 5e.
+    /// </summary>
+    public const string Evasion = "evasion";
 
     public static readonly IReadOnlyList<string> All =
     [
         AttackBonus, DamageBonus, SkillBonus, SaveBonus, ArmorClassBonus, Advantage, Disadvantage, ExtraDamage, CritRange, Resistance,
-        InitiativeBonus, SpeedBonus, PassiveBonus, DamageReduction,
+        InitiativeBonus, SpeedBonus, PassiveBonus, DamageReduction, Evasion,
     ];
 
     /// <summary>Kinds that carry no number: their weight is in <c>dice</c>, <c>damageType</c> or nothing at all.</summary>
-    public static readonly IReadOnlyList<string> Valueless = [Advantage, Disadvantage, ExtraDamage, Resistance];
+    public static readonly IReadOnlyList<string> Valueless = [Advantage, Disadvantage, ExtraDamage, Resistance, Evasion];
 }
 
 /// <summary>PF2e bonus types. Among a feat's effects only the highest bonus and the worst penalty of each typed kind count.</summary>

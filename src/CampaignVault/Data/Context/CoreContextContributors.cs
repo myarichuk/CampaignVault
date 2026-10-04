@@ -340,9 +340,9 @@ internal sealed class SpeedContextContributor(RollModifierPipeline pipeline) : I
                 continue;
             }
 
-            var now = pipeline.Speed(c, options, turn.Config.ActiveSystem);
+            var now = pipeline.CombatSpeed(c, options, turn.Config.ActiveSystem);
             // Armour is an ordinary, permanent state; only something temporary (a status, a plugin's rule) is news.
-            var off = pipeline.Speed(c, options, turn.Config.ActiveSystem, includeArmor: false) != normal;
+            var off = pipeline.CombatSpeed(c, options, turn.Config.ActiveSystem, includeArmor: false) != normal;
             rows.Add((c.Id, c.Name, now, normal, off));
         }
 

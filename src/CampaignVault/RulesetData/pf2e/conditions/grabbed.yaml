@@ -1,8 +1,13 @@
-# Source: Pathfinder 2e Remastered (Player Core), ORC License
+# Source: Pathfinder 2e Remastered (Player Core) by Paizo Inc., ORC License. The summary is our own wording.
 name: grabbed
 system: pf2e
 durationType: Manual
-mechanicalSummary: Immobilized by a grab; can attempt to Escape; ends when grabber releases or is incapacitated. Restricts Manipulate actions (most somatic-component casting) to only those usable with the grabbed hand/limb still bound; a spell requiring a free hand it doesn't have fails.
+mechanicalSummary: 'Held in place by another creature: off-guard and immobilized. A manipulate action needs a successful DC 5 flat check or it is lost.'
 moodHint: trapped, struggling
 immunities: []
 suppresses: []
+effects:
+  - { kind: implies, subject: off-guard }
+  - { kind: bonus, on: ac, value: -2, bonusType: circumstance }
+  - { kind: speed, set: 0 }
+# The grapple ends when the grabber releases the target or can no longer act (the engine releases it when the grabber is incapacitated).

@@ -6,8 +6,10 @@ namespace CampaignVault.Models;
 /// A structured status condition on a character, authored entirely by the LLM DM.
 /// Replaces the old <c>Character.Status: List&lt;string&gt;</c>.
 ///
-/// DESIGN: The MCP is the clock and the store. The LLM DM is the sole decision-maker
-/// on what modifiers apply, whether the effect expires automatically, and when to remove it.
+/// DESIGN: The MCP is the clock and the store. The LLM DM decides which effects exist, whether an effect expires
+/// automatically, and when to remove it. For a status that names a defined condition (<c>ConditionName</c>, or a matching name
+/// such as "Prone" or "Frightened 2"), the engine applies that condition's own mechanics from its YAML: do not also stamp the
+/// same numbers into <see cref="StatModifiers"/>, or they count twice.
 ///
 /// EXPIRATION:
 /// - <see cref="ExpiresAtDay"/>: set to <c>CampaignTime.TotalDaysElapsed + N</c> for wounds

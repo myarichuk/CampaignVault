@@ -202,6 +202,12 @@ public sealed class RulesetActionHandler(
             {
                 return componentFailure.Value;
             }
+
+            var bookkeepingFailure = EvaluateSpellBookkeeping(action, ctx, config);
+            if (bookkeepingFailure != null)
+            {
+                return bookkeepingFailure.Value;
+            }
         }
 
         var output = await module.Actions.ResolveAsync(ctx, action, ct);
@@ -226,6 +232,7 @@ public sealed class RulesetActionHandler(
         }
 
         var narrative = output.Result.Narrative;
+        await ApplyCastConcentrationAsync(action, ctx, ct);
         if (ammoPlan is not null)
         {
             var report = AmmoResolver.Spend(ammoPlan);
@@ -240,6 +247,62 @@ public sealed class RulesetActionHandler(
         return string.IsNullOrWhiteSpace(narrative)
             ? ChangeHandlerResult.Ok
             : new ChangeHandlerResult(true, narrative);
+    }
+
+    /// <summary>
+    /// M-60 and M-61: a leveled cast needs its slot spend in the same batch, and the spell must be on the caster's recorded
+    /// list. Returns a failure to block the cast, or null to go on (after recording the problem as a message when the campaign
+    /// option <c>spellBookkeeping</c> is "warn"). Spells the engine has no definition for (homebrew) are never checked.
+    /// </summary>
+    private ChangeHandlerResult? EvaluateSpellBookkeeping(RulesetAction action, ChangeContext ctx, CampaignConfig config)
+    {
+        if (!ctx.Characters.TryGetValue(action.CharacterId, out var caster) || caster.SystemStats is null
+            || !RulesetSystemResolver.TryFromStats(caster.SystemStats, out var system)
+            || string.IsNullOrWhiteSpace(action.ActionName)
+            || !_spellProvider.TryGet(system!, CastingComponentGate.NormalizeSlug(action.ActionName), out var spell) || spell is null)
+        {
+            return null;
+        }
+
+        var problem = SpellBookkeeping.CheckRepertoire(action, caster, spell)
+                      ?? SpellBookkeeping.CheckSlotPairing(action, caster, spell, ctx.Batch);
+        if (problem is null)
+        {
+            return null;
+        }
+
+        if (SpellBookkeeping.Warns(config.SystemOptions))
+        {
+            ctx.RecordMessage($"[SpellBookkeeping WARNING] {problem}");
+            return null;
+        }
+
+        return ChangeHandlerResult.Failure($"[SpellBookkeeping] {problem}");
+    }
+
+    /// <summary>M-62: a successful 5e cast of a concentration spell marks its caster as concentrating; adding the status ends any earlier concentration.</summary>
+    private async Task ApplyCastConcentrationAsync(RulesetAction action, ChangeContext ctx, CancellationToken ct)
+    {
+        if (action.ActionType != RulesetActionType.Spell
+            || !ctx.Characters.TryGetValue(action.CharacterId, out var caster) || caster.SystemStats is null
+            || !RulesetSystemResolver.TryFromStats(caster.SystemStats, out var system)
+            || !_spellProvider.TryGet(system!, CastingComponentGate.NormalizeSlug(action.ActionName), out var spell) || spell is null
+            || !SpellBookkeeping.AppliesConcentration(caster, spell)
+            || SpellBookkeeping.BatchAddsConcentration(ctx.Batch, caster.Id))
+        {
+            return;
+        }
+
+        ctx.AutoApplyDepth++;
+        try
+        {
+            await ctx.Dispatcher.DispatchMutationAsync(
+                ctx, new StatusChange { CharacterId = caster.Id, Effect = SpellBookkeeping.ConcentrationEffect(spell) }, ct);
+        }
+        finally
+        {
+            ctx.AutoApplyDepth--;
+        }
     }
 
     /// <summary>

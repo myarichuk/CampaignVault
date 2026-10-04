@@ -186,7 +186,8 @@ public class SurvivalDeprivationRule : ISimulationRule
             var currentLevel = existing != null && ConditionExpiryEvaluator.TryParseStackLevel(existing.Name, out var parsed)
                 ? parsed
                 : 0;
-            var newLevel = currentLevel + levelsGained;
+            // The table on the condition says where it ends (exhaustion: 6, death); levels past it add nothing.
+            var newLevel = Math.Min(currentLevel + levelsGained, definition.MaxLevel ?? int.MaxValue);
 
             if (existing != null)
             {

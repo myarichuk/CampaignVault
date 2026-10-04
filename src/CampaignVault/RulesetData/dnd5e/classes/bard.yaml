@@ -10,3 +10,5 @@ aliases: [bard]
 skillChoices: { count: 3, from: [any] }
 proficiencies: { armor: [light], weapons: [simple, crossbow_hand, longsword, rapier, shortsword] }
 multiclassProficiencies: { armor: [light] }
+# Needs 13 in each requirement (a list is "any of these") to take a first level here, and to leave the current class.
+multiclassRequires: [[Charisma]]

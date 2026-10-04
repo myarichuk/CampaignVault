@@ -51,6 +51,7 @@ internal sealed class CharacterManager : ICharacterManager
             existing.ClassLevel = character.ClassLevel;
             existing.CurrentHp = character.CurrentHp;
             existing.MaxHp = character.MaxHp;
+            HitPointState.SyncDowned(existing);
 
             existing.Notes = character.Notes;
             existing.CurrentAppearance = character.CurrentAppearance ?? existing.CurrentAppearance;

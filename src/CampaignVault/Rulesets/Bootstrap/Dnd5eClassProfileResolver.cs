@@ -88,8 +88,29 @@ internal static partial class Dnd5eClassProfileResolver
     public static int TotalLevel(IReadOnlyList<ClassLevelEntry> entries) =>
         entries.Count == 0 ? 0 : entries.Sum(e => e.Level);
 
-    public static bool TryResolveHitDie(string className, out int dieSides) =>
-        ClassHitDieSides.TryGetValue(className.Trim(), out dieSides);
+    /// <summary>The SRD class names (lower case).</summary>
+    public static IEnumerable<string> ClassNames => ClassHitDieSides.Keys;
+
+    /// <summary>The SRD class a name stands for ("Fighter", "fighter (champion)", "Human Wizard"), lower case; null when it names none.</summary>
+    public static string? CanonicalClass(string className)
+    {
+        var name = className.Trim();
+        if (ClassHitDieSides.ContainsKey(name))
+        {
+            return name.ToLowerInvariant();
+        }
+
+        return ClassHitDieSides.Keys
+            .Where(k => Regex.IsMatch(name, $@"\b{k}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+            .OrderByDescending(k => k.Length)
+            .FirstOrDefault();
+    }
+
+    public static bool TryResolveHitDie(string className, out int dieSides)
+    {
+        dieSides = 0;
+        return CanonicalClass(className) is { } known && ClassHitDieSides.TryGetValue(known, out dieSides);
+    }
 
     public static bool TryResolve(
         string? classLevel,

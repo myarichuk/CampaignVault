@@ -304,6 +304,38 @@ the only place that turns "N damage of type T" into an HP change, and make `HpCh
 - **Tests.** New `TempHpTests.cs`.
 - **Compat.** Additive field.
 
+**Phase 2 status (2026-10-04): M-10 to M-15 implemented.** What was built, and where it differs from the tickets:
+- **M-10.** `Rulesets/DamageResolver` (internal static). 5e order is flat reductions, then resistance once (a stat-block
+  multiplier below 1 and a feat's `resistance` are the same step: the smaller factor wins, no double halving), then
+  vulnerability (a multiplier above 1), with immunity (a multiplier of 0) winning. PF2e order is immunity, then weakness
+  (a negative `DamageResistances` value), then resistance. Type lookups are case-insensitive. **Behavior changes beyond the
+  ticket's Compat line:** flat reduction now comes before the multiplier (it came after), and a resistance plus a
+  vulnerability both apply (halve, then double).
+- **M-11, resolver paths.** 5e hit, crit, sneak, extra dice, rider, splash, single save, pool save, self save and PF2e hit and
+  basic save all call it. The multi-instance attacks (Magic Missile darts) stay one `HpChange` per dart, on purpose:
+  each dart is its own damage instance for death saves and concentration.
+- **M-11, other writers.** `Data/DamageApplication` (temp HP, downed, dying rules, concentration) is the one place damage
+  lands. `HpChangeHandler` and `DelayedTickProcessor` both use it through an `IDamageSink`. The tick now gets the
+  dying rules and massive damage it lacked, and `CombatTools` passes a `currentDay` for the death record. **Limit:** a tick's
+  mitigation reads the stat block only (the processor has no feat providers), so a conditional feat resistance such as
+  Rage doesn't apply to a tick. `Data/HitPointState.Set` is the helper for DM-set and level-up HP (clears or starts the
+  tally); `character_update` and `HealToMatch` use it. Death, revive and a natural 20 already handled the tally and stay
+  as they are. Bootstrap writes stay (they initialise a new character). M-31 and M-32 hooks are not built (later phases).
+- **M-12.** The cast's damage is rolled once, on the first target that needs it, and shared (so existing single-target roll
+  order is unchanged). A pool spell's save still halves the sum: each pool is halved so a target's resistance to one type
+  touches only that pool, and the rounding remainder goes to the first pool, so the total is `floor(sum / 2)` as before.
+  The "one number" note for the DM isn't added to the narrative yet.
+- **M-13.** The rider merges into the hit's one `HpChange`; `HpChange.Critical` (optional, omitted from JSON when false) is
+  set on a crit, and a crit at 0 HP records two failures.
+- **M-14.** `evasion` feat-effect kind (valueless, Dexterity saves that allow half), authored on the rogue and monk level 7
+  features and the ranger's Superior Hunter's Defense option.
+- **M-15.** `Character.TempHp` and `TempHpSource` (additive), the `grant_temp_hp` commit (`TempHpGrant`: `characterId`,
+  `amount`, `source`; the larger value wins), spent first by `DamageApplication`, cleared by death and by a long rest. Heal
+  doesn't restore them. Concentration counts the full damage; massive damage and death saves count only what reached HP.
+- **SDK (for 0.17.0, not yet bumped):** `HpChange.Critical`, `Character.TempHp`, `Character.TempHpSource`, `TempHpGrant`,
+  `FeatEffectKinds.Evasion`.
+- **Not run:** the integration suite (needs Docker).
+
 ---
 
 ## 6. Phase 3: condition mechanics as data
@@ -410,6 +442,38 @@ cleanly for every condition, so it belongs in core.
 - **Tests.** `GrappleRulesetTests.cs`, `CombatE2ETests.cs`.
 - **Acceptance.** Grapple has a cause, an effect and an end.
 
+**Phase 3 status (2026-10-04): M-20 to M-27 implemented.** What was built, and where it differs from the tickets:
+- **M-20.** `ConditionEffect` and `ConditionEffectKinds` in `Data/Templates` (not the SDK), `ConditionDefinition.Effects`,
+  `Levels` (cumulative), `EffectsAt`, `MaxLevel`, and `Merge` carries them. Kinds: advantage, disadvantage, autoFailSave,
+  autoCrit, speed, blocksActions, maxHpMultiplier, death, and two the tickets did not list, `bonus` (PF2e numbers, typed,
+  `perLevel`) and `implies` (prone implies off-guard). Documented in PLUGINS.md.
+- **M-21.** `ConditionMechanicsProvider`, a core `IRollModifierProvider` exempt from the plugin system filter. Both
+  directions (own conditions; the target's `againstSelf` ones on an attack). `RollModifier.AutoFail` and
+  `RollResolution.AutoFail` are SDK additions (0.17.0, now bumped); `RollFold` carries it and both resolvers' save paths
+  honor it. Melee or ranged is a roll tag (`melee`/`ranged`) the attack fold adds; the DM's `assert` flags are tags too
+  (`sourceInSight`). `autoCrit` is a hook in the 5e hit path (`ConditionsAutoCrit`), not a roll modifier. PF2e typed
+  stacking (worst penalty and best bonus per type) is applied among the conditions' own numbers only, not against feat effects.
+- **M-22.** `ConditionMechanics.TryResolve`: `ConditionName`, else the normalized name, else the name without a trailing
+  level. No data migration; existing characters pick the behavior up immediately (release-note it).
+- **M-23.** Every 5e SRD condition has effects except charmed and deafened (a relation, a fact about the check). PF2e was
+  audited against Player Core text from Archives of Nethys: prone and paralyzed prose was wrong and is fixed; new files for
+  off-guard, slowed, dying, wounded, drained, enfeebled, clumsy, stupefied; frightened, sickened, fatigued, clumsy, enfeebled
+  (Athletics only), drained (Fortitude), stupefied (Will and skills) are penalties. `charmed` is not a Player Core condition
+  and is left as it was. Prose-only by design, pinned by a test: blinded, charmed, deafened, invisible, stunned, slowed,
+  wounded. `flat-footed` suppression is now `off-guard`. PF2e Sneak Attack also fires when the target has off-guard.
+- **M-24.** `StatusChangeHandler` refuses a condition the target is immune to (a failure with a message); suppression is
+  applied wherever conditions are read. No shipped condition uses `immunities`; it is for homebrew and plugins.
+- **M-25.** The status is canonical. The contributor reads the status level (the attribute is a fallback). The level is
+  capped at the table's top (6); a `death` effect kills from the status handler, whichever way the level arrives. Level 4
+  is an effective cap (`ConditionMechanics.EffectiveMaxHp`) applied by `HpChangeHandler` healing and when the condition
+  lands; **not yet applied** to character_update, level-up top-up and revive clamps (DM overrides).
+- **M-26.** `RollModifierPipeline.CombatSpeed` can be 0 and applies conditions; `Speed` stays floored at 5 for travel.
+  The chase context line uses `CombatSpeed`. Cards and `SpeedRules.Effective` are context-free and still show base speed.
+- **M-27.** A grapple also applies the Grappled (PF2e: Grabbed) condition with `AppliedBy` set; escape removes it; a
+  grappler who gains a `blocksActions` condition releases everyone it holds. The escape detector now needs the grapple
+  named. **Not done:** ending the grapple when the two move apart (no distance model to check). The old grapple test that
+  expected one mutation now expects two.
+
 ---
 
 ## 7. Phases 4 to 10
@@ -454,6 +518,31 @@ cleanly for every condition, so it belongs in core.
 - **Fix.** `DeathSaveChangeHandler.cs:69-70` rolls a bare d20. Route it through `FoldAsync`-equivalent so Bless and
   similar effects count, with a `RollKinds.DeathSave`.
 - **Tests.** `DeathConsumerTests.cs`.
+
+**Phase 4 status (2026-10-04): M-30 to M-33 implemented.** What was built, and where it differs from the tickets:
+- **M-30.** A dying 5e player character (`HitPointState.IsDying`: 0 HP, not dead, not stable) is picked by `next_turn`.
+  Its action budget is every key the ruleset uses at 0 plus `deathSaveDue: 1` (`CombatTools.DeathSaveDueKey`), and the
+  turn summary carries a `DEATH SAVE DUE` line with the `death_save` commit. Nothing rolls on its own (D6). The first
+  `death_save` on that turn spends the marker and a second is refused; outside the PC's own turn it is not limited.
+  The turn-start peek uses the same "can take a turn" test as the pick. Stable, dead
+  and NPC characters at 0 HP are still skipped. `AnyoneAlive` stays "someone with HP above 0", so a round with only
+  dying PCs gives each its turn and then ends the combat. **Not done:** PF2e dying PCs (no dying/wounded flow until
+  M-52), and `start_combat` still drops combatants who are already at 0 HP.
+- **M-31.** `HitPointState.SyncDowned` adds an Unconscious status (key `engine:downed`) to a living player character at
+  0 HP and removes it when HP rises, from `HitPointState.Set`, damage, the death-save natural 20, death and revive.
+  Only the engine's own status is ever removed, so a sleep spell's Unconscious stays. NPCs and the dead are not flagged,
+  and the existing `ActionBlock` list does the blocking, unchanged. A plain Prone status is added with it and stays when
+  they wake. A PC downed before the engine flagged them is backfilled when their dying turn starts or they roll a death
+  save; `character_update`, the repository upsert and `CharacterManager` re-sync after they write HP. **Not done:**
+  incapacitation by a status (stunned) ends concentration only when damage next lands, not at once. Because
+  `unconscious.yaml` suppresses prone, a ranged attack on an unconscious target gets advantage where the rules give a
+  straight roll (Phase 3 data, left alone).
+- **M-32.** `RollKinds.ConcentrationSave` (and `DeathSave`) in the SDK. Core's own layers read both as saves, so statuses
+  and conditions count; a plugin provider asks for the specific kind to grant advantage. Concentration breaks with no
+  roll at 0 HP or when `ActionBlock` says the caster can't act. `IDamageSink.ResolveRollAsync` carries the pipeline;
+  combat turn advancement (delayed ticks) has no pipeline, so a tick-damage concentration check still uses the raw save.
+- **M-33.** The death save resolves through the pipeline: advantage from a provider, a bonus added to the total (the
+  natural die still decides a 1 or a 20), the message shows `(d20 n+bonus)`.
 
 ### Phase 5: level-up and multiclass (independent; M-44 needs M-05)
 
@@ -508,6 +597,43 @@ cleanly for every condition, so it belongs in core.
 - **Fix.** The level-gain step list (`Dnd5eRulesetResolver.cs:42-44`) omits the defense step, so a Constitution or
   Dexterity change from a pick leaves AC stale. After M-05, add the recompute to level-up.
 
+**Phase 5 status (2026-10-04): M-40 to M-44 implemented.** What was built, and where it differs from the tickets:
+- **M-40.** `Dnd5eDeriveHitPointsStep.ApplyLevelGainAsync` takes one hit die per level gained (rolled mode rolls each, and
+  the message lists them); the feature and feat deltas are added once. 3 to 5 equals creating at level 5.
+- **M-42.** `LevelUpChange.HealToMatch` defaults to `true` (a property initializer, so an explicit `false` still opts out and
+  the SDK shape is unchanged). The level-up menu tool no longer forces `false`. Cheat sheet and field description updated.
+- **M-41.** `ClassGainedResolver` is the one answer for the planner, the hit point step, the class-level sync and the
+  `lookup kind=level_up` tool (`className`). Names compare as whole class names ("War" is not "Warlock"). A class the
+  character lacks is added at level 1 in the sync (structured entries are built from a string like "Fighter 5" first, so
+  the trailing number isn't bumped), and the sync now runs right after the hit point step so proficiencies and
+  spellcasting see the new class. A multiclass character must name `classGained`; a single-class one need not. Unknown
+  class names and, in PF2e, any class the character lacks are refused. The requirements are class data
+  (`multiclassRequires` in the 12 SRD class files, plus `ClassDefinition.MulticlassRequires` for plugins), checked for the
+  new class and every current class, only when the class is new, before anything changes. `overridePrerequisites` (an
+  SDK field) lets the DM through and the override is recorded. A class taken for the first time ignores the other classes'
+  recorded picks. The level-up menu tool takes an optional `classGained` too.
+- **M-43.** `LevelUpDerivedStats.ApplyRetroactiveConstitution`: the modifier change times the levels already taken (the
+  new level's gain already uses the new modifier). Legacy `abilityScoreIncreases` now go in with the picks, before the
+  hit point step, so they and the picks behave the same. Skipped under `StatBlockHp`; a drop clamps current HP through
+  `HitPointState.Set`. Not done: a Constitution change made outside a level-up (`character_update` on `systemStats`):
+  `AttributeChange` doesn't carry the six abilities, so the plan's third path has no home today.
+- **M-44.** Differs from the ticket: it isn't a pipeline step. A step runs after the picks and can't tell a derived armor
+  class from a stated one, so the handler measures the formula before and after (`ArmorParameterResolver.Apply`, equipped
+  gear included) and moves the stored armor class by the difference. A stat block's own AC rises by the same amount; an
+  unarmored PF2e character's AC follows the level. Pools: `InitializePools` already ran after the sync, so a new class's
+  pools are initialised; nothing added.
+- **Callers.** The XP-threshold nudge now suggests the class as the sheet names it (it used to send "Human" for "Human
+  Fighter 5") and tells a multiclass character's model to pick one. The level-up menu and `lookup kind=level_up` return
+  the resolver's error (naming the classes) for a multiclass character who doesn't say which, and show the gaining
+  class's own level features. A level-up no longer heals a dead PC or one at 0 HP.
+- **Behavior changes to know.** `HealToMatch` defaults to true; legacy `abilityScoreIncreases` now count for the new
+  level's hit points; a multiclass `level_up` must name `classGained`; the hit die lookup now matches a decorated class
+  name ("Fighter (Champion)") loosely everywhere, so an initial bootstrap of such an entry now counts its dice; a string
+  class like "Human Fighter 5" loses "Human" when a second class is added and it is rewritten from the entries. The Unity
+  menu client doesn't send `classGained` yet: it needs a class picker for multiclass characters.
+- **Tests.** `MechanicsPhase5Tests` (29). Two existing tests changed on purpose: the ASI hit point totals (37 to 40, the
+  retroactive Constitution) in `CharacterLevelUpToolsTests` and `CharacterBootstrapTests`.
+
 ### Phase 6: PF2e correctness
 
 **M-50 Spell attack stat (F14).** Add `SpellAttack` to `Pf2eExtension` (nullable), derived by
@@ -530,6 +656,39 @@ as a documented house rule. Tests: `Pf2eRulesetResolverTests.cs`.
 **M-53 PF2e mitigation.** Covered by M-10; add weakness, and verify the PF2e save path doubles damage on a critical
 failure after mitigation order is correct.
 
+**Phase 6 status (2026-10-04): M-50 to M-53 implemented.** What was built, and where it differs from the tickets:
+
+- **M-50.** `Pf2eExtension.SpellAttackBonus` (the plan said `SpellAttack`; the 5e name and the action parameter are `spellAttackBonus`, so
+  models use one key). Derived by `Pf2eDeriveSpellcastingStep` as the stored (or derived) DC minus 10. A spell action rolls it through
+  `DerivedAttack.Pf2eSpell`: explicit `bonus`, then the `spellAttackBonus` parameter, then the sheet, then DC minus 10 with a note. No
+  weapon proficiency, no STR on damage, no Sneak Attack. The auditor's "caster unwired" finding checks it too. Found on the way: the
+  bootstrap fills a spell DC once and never refreshed it, so it froze at the level first derived; the level-up handler now moves a
+  stored DC and attack by the formula's change (`LevelUpDerivedStats`, the M-44 pattern).
+- **M-51.** A spell that rolls an attack counts toward MAP (`TryConsumeActionSlot`; a save spell does not). `WeaponProfile.Agile`:
+  -4/-8 instead of -5/-10; an explicit `mapPenalty` still wins. The tags reach the resolver through
+  `WeaponParameterResolver.ApplyWeaponItemProperties`, as the plan expected.
+- **M-52.** `Pf2eDying` holds the counters as statuses ("Dying 2", the exhaustion convention) and the recovery rules.
+  `HitPointState.IsDying` is system-aware (so combat gives a dying PF2e PC its turn and the prompt reads RECOVERY CHECK);
+  `UsesDeathSaves` stays 5e-only. `DamageApplication`: 0 HP gives dying 1 (2 on a critical) plus wounded, damage while dying adds
+  1 (2), no second wounded, dying 4 minus doomed is death, (no instant-death rule: PF2e's massive-damage threshold could not be verified against Player Core here, so none is guessed).
+  `HitPointState.SyncDowned` also clears a stale dying on anyone above 0 HP (a revival or upsert that sets HP directly must not leave an action-blocking status). `HitPointState.Set` ends dying and adds one wounded when HP rises above 0 (every heal and top-up passes through it).
+  `DeathSaveChangeHandler` runs the recovery check for a PF2e PC: flat d20 vs DC 10 + dying, no modifiers, nat 20/1 move a step,
+  dying that reaches 0 ends and adds wounded. Concentration: the 5e damage save is gone for PF2e; 0 HP or incapacitation still
+  ends concentration (a house rule, kept). New `doomed.yaml`. A long rest ends wounded for a PC already at max HP (doomed uses the
+  generic stacking long-rest decrement). PCs only, like 5e.
+- **M-53.** Weakness was already in `DamageResolver` (Phase 2: a negative flat value). Added: the save-spell path now sets
+  `Critical` on a critical failure (dying 2 needs it), and tests pin the order (double, then weakness or resistance; half, then
+  resistance; a Strike crit doubles first).
+- **Tests (38 new in `MechanicsPhase6Tests`).** Changed on purpose: `HpChange_Pf2e_FailedFortitudeSave_BreaksConcentration` now says PF2e
+  damage calls for no save (the three PF2e Fortitude-save tests became that one), and
+  `Pf2e_OnlyTheDocumentedConditionsAreProseOnly` lists `doomed`.
+- **Not built.** Hero Points, Treat Wounds (wounded ends on a long rest at full HP only, and rest does not heal until M-70), the Unity
+  client's PF2e dying display, PF2e instant death. Weakness applies per damage packet, not once per instance of a type.
+  `SpellProficiency` is filled once by `Pf2eDeriveProficiencyStep`, so a stored DC does not pick up the Expert jump at level 7 (the
+  level-up delta covers level and ability only).
+- **Also fixed.** `SpellResolutionHelper.InferMode` treated `save` without `dc` as an attack, so the derived-DC fallback was
+  unreachable and MAP would now have counted it; `save` alone is a save (5e derives its DC too).
+
 ### Phase 7: spellcasting bookkeeping (D4)
 
 **M-60 Reject an unpaired slot spend (D4: block by default, `Warn` via config).** The engine knows the spell (`SpellDefinitionProvider`) and its level, and the
@@ -546,6 +705,20 @@ status through the existing `StatusChangeHandler`, which already breaks the prio
 `HandleAdd`). Tests:
 `ConcentrationBreakTests.cs`.
 
+**Phase 7 status (2026-10-04): M-60, M-61 and M-62 built.** Tests: `SpellBookkeepingTests` (26).
+- The gate sits next to the component gate in `RulesetActionHandler` (`SpellBookkeeping.cs`), so a refusal rolls nothing.
+  Setting: the campaign option `spellBookkeeping` in `SystemOptions` (`warn` turns refusals into messages; default blocks). This
+  replaces the plan's `SpellBookkeeping:Enforcement` host-config key: it is per campaign and needs no SDK change.
+- M-60: a leveled cast needs a `ResourceChange` spend (`spell_slots_N`, `pact_magic` or `focus_points`, same caster) anywhere in the
+  batch. Passes when there is no batch, the caster has no `spell_slots_*` pools, the spell has no definition (homebrew), or the
+  action carries `ritual`, `innate`, `focus` or `item` = true. A slot spent in an earlier commit is not seen: the model must pair them.
+- M-61: cantrips against `Cantrips`; leveled spells against `Prepared` when that list is non-empty, else `Known`. Skipped when all
+  three lists are empty. Names compare as slugs.
+- M-62: 5e only. PF2e spell data sets `concentration: true` on 357 of 373 spells (the *concentrate* trait, not 5e concentration),
+  so applying it there would be wrong. Dispatched through `StatusChangeHandler`, so the earlier concentration breaks. Skipped when the
+  batch already adds a concentration status for the caster. Homebrew (`CustomSpell`) spells get no auto concentration.
+- Not done: the prompts and skills still tell the model to commit the status by hand (Phase 10, M-91).
+
 ### Phase 8: rest and survival
 
 **M-70 Rest HP and hit dice (blocked on D1).** If the engine owns it: long rest restores HP to max and half of the
@@ -559,6 +732,18 @@ hunger and thirst needs against the same thresholds `SurvivalDeprivationRule` us
 (`SurvivalThresholds.RecoveryHunger/RecoveryThirst`) before decrementing, and say why when it doesn't. Also make
 `CloneStatusEffect` (`RestChangeHandler.cs`, end of file) copy `ExpiresAtOwnTurnStart` and `PendingDamage`, which it
 silently drops today. Tests: `RestThenAdvanceWorldIntegrationTests.cs`.
+
+**Phase 8 status (2026-10-04): M-70 and M-71 built.** Tests: `MechanicsPhase8Tests` (16).
+- **M-70.** A long rest (`RestChangeHandler`) heals: 5e to the effective maximum (exhaustion 4 lowers it), PF2e by Constitution
+  modifier (at least 1) x level, as Player Core's Rest says. A dying character isn't healed (a message says so); a stable one at 0 wakes.
+  New hand-authored pool `RulesetData/dnd5e/pools/hit_dice.yaml` (one per level, `recovery: Never`): the rest returns half
+  (at least one) itself. `RepairMissingResourcePools` adds it to existing characters. A short rest heals nothing; its result says to
+  spend `hit_dice` (resource, delta -1) and commit the rolled HP. The engine doesn't roll hit dice. Not done: a hit die's size isn't
+  tracked per class (a multiclass character reads `hitDie` or the class), and PF2e has no short-rest healing (Treat Wounds is still open).
+- **M-71.** The 5e exhaustion decrement is skipped, with a reason, when the character is starving or parched. **Deviation:** the gate
+  is `SevereHunger`/`SevereThirst` (90), not the plan's `RecoveryHunger`/`RecoveryThirst` (20): a default character sits at hunger 25 and
+  thirst 20, so the plan's line would block nearly every rest. PF2e doomed isn't gated. `CloneStatusEffect` now copies
+  `ExpiresAtOwnTurnStart`, `PendingDamage`, `EffectKey` and `EffectTier`. Needs are read before the rest's own hours accrue.
 
 ### Phase 9: range and small rules
 

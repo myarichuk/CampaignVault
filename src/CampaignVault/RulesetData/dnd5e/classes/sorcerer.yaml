@@ -9,3 +9,5 @@ pools: [spell_slots_1, spell_slots_2, spell_slots_3, spell_slots_4, spell_slots_
 aliases: [sorcerer]
 skillChoices: { count: 2, from: [Arcana, Deception, Insight, Intimidation, Persuasion, Religion] }
 proficiencies: { weapons: [dagger, dart, sling, quarterstaff, crossbow_light] }
+# Needs 13 in each requirement (a list is "any of these") to take a first level here, and to leave the current class.
+multiclassRequires: [[Charisma]]

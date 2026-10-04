@@ -2,7 +2,9 @@
 name: immobilized
 system: pf2e
 durationType: Manual
-mechanicalSummary: Cannot move; may still act unless otherwise prevented
+mechanicalSummary: Cannot use any action with the move trait. An external force that would move the creature must beat the DC or defense of whatever holds it.
 moodHint: pinned, desperate
 immunities: []
 suppresses: []
+effects:
+  - { kind: speed, set: 0 }

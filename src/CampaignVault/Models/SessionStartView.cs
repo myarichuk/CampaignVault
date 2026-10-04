@@ -135,7 +135,7 @@ public record PartySessionView(
             c.Id,
             c.Name,
             c.IsPc,
-            $"{c.CurrentHp}/{c.MaxHp}",
+            c.TempHp is > 0 ? $"{c.CurrentHp}/{c.MaxHp} (+{c.TempHp} temp)" : $"{c.CurrentHp}/{c.MaxHp}",
             ac,
             c.ClassLevel,
             level,

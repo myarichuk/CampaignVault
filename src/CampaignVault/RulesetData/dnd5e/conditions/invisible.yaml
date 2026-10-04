@@ -6,3 +6,6 @@ durationType: Concentration
 mechanicalSummary: Impossible to see without special sense; attacks have advantage; attackers against this creature have disadvantage
 immunities: []
 suppresses: []
+effects:
+  - { kind: advantage, on: attack }
+  - { kind: disadvantage, on: attack, scope: againstSelf }

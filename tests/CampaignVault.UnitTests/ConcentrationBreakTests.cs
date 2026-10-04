@@ -146,40 +146,13 @@ public class ConcentrationBreakTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task HpChange_Pf2e_FailedFortitudeSave_BreaksConcentration()
+    public async Task HpChange_Pf2e_Damage_DoesNotCallForAConcentrationSave()
     {
+        // PF2e sustains a spell as an action; damage never ends it (the 5e Constitution save does not apply). A roll of 1 would fail any save.
         using var session = _fixture.Store.OpenAsyncSession();
         var character = CreatePf2eConcentratingCharacter(fortitudeSaveModifier: 2);
         var ctx = CreateContext(session, character);
-        var handler = new HpChangeHandler(new FixedRollService(1)); // 1 + 2 bonus = 3, well below DC 10
-
-        var result = await handler.ApplyAsync(new HpChange { CharacterId = character.Id, Delta = -20 }, ctx, TestContext.Current.CancellationToken);
-
-        Assert.True(result.Success);
-        Assert.DoesNotContain(character.SystemStats!.StatusEffects, e => e.Name.Contains("Concentration"));
-    }
-
-    [Fact]
-    public async Task HpChange_Pf2e_SuccessfulFortitudeSave_KeepsConcentration()
-    {
-        using var session = _fixture.Store.OpenAsyncSession();
-        var character = CreatePf2eConcentratingCharacter(fortitudeSaveModifier: 8);
-        var ctx = CreateContext(session, character);
-        var handler = new HpChangeHandler(new FixedRollService(15)); // 15 + 8 bonus, well above DC
-
-        var result = await handler.ApplyAsync(new HpChange { CharacterId = character.Id, Delta = -20 }, ctx, TestContext.Current.CancellationToken);
-
-        Assert.True(result.Success);
-        Assert.Contains(character.SystemStats!.StatusEffects, e => e.Name.Contains("Concentration"));
-    }
-
-    [Fact]
-    public async Task HpChange_Pf2e_FallsBackToConstitutionModWhenNoFortitudeEntry()
-    {
-        using var session = _fixture.Store.OpenAsyncSession();
-        var character = CreatePf2eConcentratingCharacter(fortitudeSaveModifier: null, constitutionMod: 6);
-        var ctx = CreateContext(session, character);
-        var handler = new HpChangeHandler(new FixedRollService(10)); // 10 + 6 fallback mod = 16, above DC 10
+        var handler = new HpChangeHandler(new FixedRollService(1));
 
         var result = await handler.ApplyAsync(new HpChange { CharacterId = character.Id, Delta = -20 }, ctx, TestContext.Current.CancellationToken);
 

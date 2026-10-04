@@ -48,6 +48,6 @@ public static class SpellSlotValidator
 
     public static string? BuildConcentrationHint(SpellDefinition spell) =>
         spell.Concentration == true
-            ? $"[HINT] '{spell.Name}' requires concentration — commit a separate status change after the cast."
+            ? $"[HINT] '{spell.Name}' requires concentration — a ruleset_action cast applies the Concentration status itself; add it by hand only for a cast you recorded without one."
             : null;
 }

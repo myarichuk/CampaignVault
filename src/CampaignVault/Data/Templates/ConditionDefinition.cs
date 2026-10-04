@@ -12,6 +12,32 @@ public record ConditionDefinition : RulesetTemplate
     public List<string> Immunities { get; init; } = [];
     public List<string> Suppresses { get; init; } = [];
 
+    /// <summary>What the condition does to rolls and stats. Applies at every level of a stacking condition.</summary>
+    public List<ConditionEffect> Effects { get; init; } = [];
+
+    /// <summary>
+    /// Stacking conditions only: extra effects by level, cumulative (a creature at level 3 has the effects of levels 1 to 3).
+    /// Keys are 1-based levels.
+    /// </summary>
+    public Dictionary<int, List<ConditionEffect>> Levels { get; init; } = [];
+
+    /// <summary>The highest level the <c>levels</c> table defines (exhaustion: 6), or null for a condition with no levels.</summary>
+    public int? MaxLevel => Levels.Count > 0 ? Levels.Keys.Max() : null;
+
+    /// <summary>The effects in force at <paramref name="level"/>: the base effects plus every level up to it.</summary>
+    public IEnumerable<ConditionEffect> EffectsAt(int level)
+    {
+        foreach (var e in Effects)
+            yield return e;
+        foreach (var (at, list) in Levels.OrderBy(kv => kv.Key))
+        {
+            if (at > level)
+                break;
+            foreach (var e in list)
+                yield return e;
+        }
+    }
+
     [Description("One-line mechanical description surfaced to the LLM in get_system_handbook.")]
     public string? MechanicalSummary { get; init; }
 
@@ -48,6 +74,8 @@ public record ConditionDefinition : RulesetTemplate
             MoodHint = child.MoodHint ?? parent.MoodHint,
             Immunities = child.Immunities.Count > 0 ? child.Immunities : parent.Immunities,
             Suppresses = child.Suppresses.Count > 0 ? child.Suppresses : parent.Suppresses,
+            Effects = child.Effects.Count > 0 ? child.Effects : parent.Effects,
+            Levels = child.Levels.Count > 0 ? child.Levels : parent.Levels,
             IsStacking = child.IsStacking || parent.IsStacking,
             IsSurvivalExhaustion = child.IsSurvivalExhaustion || parent.IsSurvivalExhaustion,
         };

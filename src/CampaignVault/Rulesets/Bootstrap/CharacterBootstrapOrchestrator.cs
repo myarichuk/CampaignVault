@@ -39,6 +39,20 @@ public sealed class CharacterBootstrapOrchestrator(IRulesetModuleSelector rulese
         var results = new List<BootstrapStepResult>();
         var hp = BootstrapHpResolver.Resolve(context.Character, null, null, useStoredMaxHpAsOverride: false);
 
+        // The class entries grow right after the hit point step, which reads them as they were before the level. The steps
+        // after it (proficiencies, spellcasting) then see the new class, as a character created at this level would.
+        var synced = false;
+        void SyncClasses()
+        {
+            if (synced)
+            {
+                return;
+            }
+
+            synced = true;
+            BootstrapClassLevelHelper.SyncClassLevelFromStats(context.Character, context.ClassGained, context.LevelsGained);
+        }
+
         foreach (var step in pipeline.LevelGainSteps)
         {
             var stepContext = WithHpResolution(context, hp);
@@ -52,12 +66,14 @@ public sealed class CharacterBootstrapOrchestrator(IRulesetModuleSelector rulese
             {
                 results.Add(result);
             }
+
+            if (step.Name.EndsWith("derive_hit_points", StringComparison.Ordinal))
+            {
+                SyncClasses();
+            }
         }
 
-        BootstrapClassLevelHelper.SyncClassLevelFromStats(
-            context.Character,
-            context.ClassGained,
-            context.LevelsGained);
+        SyncClasses();
 
         return new BootstrapReport { Steps = results };
     }

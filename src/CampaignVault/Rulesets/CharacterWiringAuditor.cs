@@ -303,10 +303,10 @@ public sealed class CharacterWiringAuditor(
         }
 
         var isCaster = defs.Any(d => d.CasterType is { } ct && ct != CasterType.None);
-        if (isCaster && (stats.SpellcastingAbility is null || stats.SpellDc is null))
+        if (isCaster && (stats.SpellcastingAbility is null || stats.SpellDc is null || stats.SpellAttackBonus is null))
         {
             findings.Add(new WiringFinding("caster_unwired",
-                "spellcasting class without spellcastingAbility/spellDc; spell attacks and saves have no DC to use."));
+                "spellcasting class without spellcastingAbility/spellDc/spellAttackBonus; spell attacks and saves have no DC to use."));
         }
     }
 

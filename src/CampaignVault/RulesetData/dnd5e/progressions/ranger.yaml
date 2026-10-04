@@ -123,6 +123,8 @@ levels:
                             - id: "evasion"
                               label: "Evasion"
                               description: "When a Dexterity save would halve an area's damage, you take none on a success and half on a failure."
+                              effects:
+                                - { kind: evasion }
                             - id: "standAgainstTheTide"
                               label: "Stand Against the Tide"
                               description: "When a hostile creature misses you with a melee attack, you can use your reaction to have it repeat the attack against another creature (not itself) of your choice."

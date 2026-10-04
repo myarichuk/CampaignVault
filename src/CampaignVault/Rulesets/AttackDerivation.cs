@@ -3,7 +3,7 @@ using CampaignVault.Models;
 namespace CampaignVault.Rulesets;
 
 /// <summary>What the resolver can tell about the weapon from the item's tags, the action category and the range parameter.</summary>
-internal readonly record struct WeaponProfile(bool Known, bool Ranged, bool Finesse, bool TwoHanded, bool Heavy, bool Light = false)
+internal readonly record struct WeaponProfile(bool Known, bool Ranged, bool Finesse, bool TwoHanded, bool Heavy, bool Light = false, bool Agile = false)
 {
     public static WeaponProfile Read(RulesetAction action)
     {
@@ -17,7 +17,7 @@ internal readonly record struct WeaponProfile(bool Known, bool Ranged, bool Fine
             || (tags.Count == 0 && action.Parameters.TryGetValue("range", out var range)
                 && range is "Near" or "Far" or "Distant");
         var known = tags.Count > 0 || ranged;
-        return new WeaponProfile(known, ranged, tags.Contains("finesse"), tags.Contains("twohanded"), tags.Contains("heavy"), tags.Contains("light"));
+        return new WeaponProfile(known, ranged, tags.Contains("finesse"), tags.Contains("twohanded"), tags.Contains("heavy"), tags.Contains("light"), tags.Contains("agile"));
     }
 }
 
@@ -135,6 +135,42 @@ internal sealed record DerivedAttack(int ToHit, int Damage, string Note)
         }
 
         return new DerivedAttack(toHit, damage, Describe(explicitBonus, explicitDamageBonus, hitParts, toHit, dmgParts, damage, notes));
+    }
+
+    /// <summary>
+    /// A PF2e spell attack: the caster's spell attack modifier (the sheet's, else the spell DC minus 10, which is the same
+    /// formula), never a weapon's ability and proficiency, and no strength on the damage.
+    /// </summary>
+    public static DerivedAttack Pf2eSpell(Pf2eExtension stats, RulesetAction action, bool explicitBonus)
+    {
+        if (explicitBonus)
+        {
+            return new DerivedAttack(0, 0, Describe(true, true, [], 0, [], 0, []));
+        }
+
+        var notes = new List<string>();
+        int toHit;
+        string source;
+        if (action.Parameters.TryGetValue("spellAttackBonus", out var raw) && int.TryParse(raw, out var stated))
+        {
+            (toHit, source) = (stated, "spellAttackBonus given");
+        }
+        else if (stats.SpellAttackBonus is { } sheet)
+        {
+            (toHit, source) = (sheet, "spell attack on the sheet");
+        }
+        else if (stats.SpellDc is { } dc)
+        {
+            (toHit, source) = (dc - 10, "spell DC - 10");
+            notes.Add("no spellAttackBonus on the sheet: used the spell DC minus 10");
+        }
+        else
+        {
+            (toHit, source) = (0, "no spell attack or DC on the sheet");
+            notes.Add("no spellAttackBonus or spellDc on the sheet: pass bonus");
+        }
+
+        return new DerivedAttack(toHit, 0, Describe(false, true, [$"{source} {Signed(toHit)}"], toHit, [], 0, notes));
     }
 
     private static string Describe(

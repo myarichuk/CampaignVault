@@ -7,3 +7,9 @@ mechanicalSummary: Incapacitated; can't move or speak; unaware of surroundings; 
 moodHint: unconscious
 immunities: []
 suppresses: [incapacitated, prone]
+effects:
+  - { kind: blocksActions }
+  - { kind: speed, set: 0 }
+  - { kind: autoFailSave, abilities: [Strength, Dexterity] }
+  - { kind: advantage, on: attack, scope: againstSelf }
+  - { kind: autoCrit, scope: againstSelf, range: melee }

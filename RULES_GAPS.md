@@ -32,21 +32,31 @@ Rules content and features left out on purpose, or deferred. Each entry says why
 
 - **Mechanics gaps found in the 2026-10 code review (planned: see MECHANICS_REMEDIATION_PLAN.md).** Not built yet;
   each has a ticket in the plan.
-  - Conditions are text only: no advantage, disadvantage, auto-fail, speed or crit effects (F6, M-20 to M-23). Their
-    `Immunities` and `Suppresses` are parsed but never read (F7, M-24).
-  - Exhaustion exists in two disconnected forms (a status and the `exhaustion_level` attribute), has no mechanics and no
-    death at level 6 (F8, M-25).
-  - Temporary hit points don't exist (F18, M-15).
-  - A spell action neither spends a slot nor checks known or prepared spells, and a cast never applies concentration
-    (F19, M-60 to M-62).
-  - Grapple applies only an engagement relation: no Grappled condition, and it doesn't end when the grappler is
-    incapacitated or moves away (F25, M-27).
-  - Speed is floored at 5 ft, so "speed 0" can't be expressed (F26, M-26).
+  - Spell bookkeeping (built, M-60 to M-62): a leveled cast is refused unless its slot spend is in the same commit and the spell
+    is on the caster's cantrip, prepared or known list; a 5e concentration spell marks its caster as concentrating. The campaign
+    option `spellBookkeeping=warn` relaxes the refusals. The action parameters `ritual`, `innate`, `focus` and `item` skip them. Not
+    done: the engine doesn't spend the slot itself, a slot spent in an earlier commit isn't seen, PF2e sustained spells and
+    homebrew spells get no automatic concentration, and the multiclass slot table is untouched.
+  - A grapple ends when the grappler is incapacitated, but not when the two move out of reach (no distance model to
+    check it against). Some conditions stay prose because they name a relation or an action-economy rule (charmed,
+    deafened, blinded in PF2e, slowed, stunned in PF2e). Cards and the static speed view still show the unconditioned
+    speed (M-26 follow-up).
+  - PF2e dying (built, M-52): a PC at 0 HP gets dying 1 (2 from a critical hit) plus wounded; damage while dying raises it; the
+    recovery check is the `death_save` commit; dying 4 (less doomed) kills; healing ends dying and adds wounded. Not built: Hero
+    Points (they spend to avoid dying), the Treat Wounds action that clears wounded (it ends only on a long rest at full HP;
+    a long rest heals now, M-70), recovery checks that need more than a flat roll, and the Unity client's display of the PF2e
+    counters. A PC already at 0 HP before the engine began flagging them gets the Unconscious status at their next HP change.
+  - Multiclassing (5e): `level_up` with a `classGained` the character lacks adds the class at level 1 once the SRD's 13 in
+    the key abilities is met (the DM can override, recorded). The new class's hit die and spellcasting ability come with it, and the
+    proficiency step now runs after the class is added. Not done or not checked: the multiclass spell-slot table (slot
+    sizing is untouched by this work), a new class's level-1 spell and cantrip picks (the level-up menu offers no slots for
+    them), plugin classes outside the twelve SRD names (no hit die), and Pathfinder, which multiclasses through archetype
+    feats (a `classGained` the character lacks is refused). Legacy level-up records with no class name match every class
+    of a multiclass character.
   - Range checks only a maximum band: no ranged-in-melee disadvantage or long-range penalty (F28, M-80).
-  - Evasion isn't modelled (F29, M-14).
 
 - **Scripted effects (not built, on purpose).** The effect vocabulary now covers numeric bonuses, advantage,
-  extra damage dice, critical range, resistance, flat damage reduction, and initiative, speed and passive bonuses. A sandboxed script (Jint: no host access, a time and memory cap)
+  extra damage dice, critical range, resistance, flat damage reduction, evasion, and initiative, speed and passive bonuses. A sandboxed script (Jint: no host access, a time and memory cap)
   could express the rest. We hold off because a script is code: it can't be validated, previewed or tagged the way
   data can, and a DM-written one would run model-written code. Plugin authors who need more already have C#
   (`IRollModifierProvider`, recipe validators). If scripts come, they'd be plugin-only files that return the same
@@ -95,8 +105,8 @@ Rules content and features left out on purpose, or deferred. Each entry says why
 - **The Land druid's bonus cantrip** isn't counted by the spells step. Granted spells are all added as prepared.
 - **Homebrew PF2e feats in the builder.** A campaign's own feat has no category, ancestry or class list in its document,
   so the PF2e feat steps (which filter by those) don't offer it; 5e's improvement feats and spell lists do.
-- **PF2e and the new effect kinds.** Advantage, extra damage dice, critical range and resistance apply to 5e attacks;
-  PF2e rolls take the numeric kinds only.
+- **PF2e and the new effect kinds.** Advantage, extra damage dice and critical range apply to 5e attacks; PF2e rolls take
+  the numeric kinds, resistance and flat damage reduction (damage goes through the same resolver as 5e's).
 
 - **PF2e versatile heritages** (nephilim, changeling, aiuvarin, dromaar; Player Core 2: dhampir, dragonblood,
   duskwalker). They go with any ancestry, so `generate_pf2e_origins.py` skips them today.

@@ -208,6 +208,149 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
         Assert.Equal(2, nextResult.Data.Round);
     }
 
+    // Scoped to its campaign: a PC with no campaign counts as global and would leak into other tests' seed coverage.
+    private static Character DyingCandidate(string id, string name, string campaign) => new()
+    {
+        Id = id, Name = name, CurrentHp = 10, MaxHp = 10, IsPc = true, SystemStats = new Dnd5eExtension(), CampaignName = campaign,
+    };
+
+    private async Task<(CampaignTools Tools, string Campaign, string FirstId, string SecondId)> StartTwoPcsAsync()
+    {
+        var tools = CreateTools();
+        var a = "chars/a_" + Guid.NewGuid();
+        var b = "chars/b_" + Guid.NewGuid();
+        var campaign = "camp_" + Guid.NewGuid();
+        using (var session = _store.OpenAsyncSession())
+        {
+            await session.StoreAsync(DyingCandidate(a, "Alice", campaign), TestContext.Current.CancellationToken);
+            await session.StoreAsync(DyingCandidate(b, "Bob", campaign), TestContext.Current.CancellationToken);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var start = await tools.StartCombat("loc_" + Guid.NewGuid(), [a, b], campaignName: campaign);
+        Assert.True(start.Success, start.Summary);
+        var first = start.Data!.ActiveTurnId!;
+        return (tools, campaign, first, first == a ? b : a);
+    }
+
+    private async Task SetAsync(string id, Action<Character> change)
+    {
+        using var session = _store.OpenAsyncSession();
+        var character = await session.LoadAsync<Character>(id, TestContext.Current.CancellationToken);
+        change(character);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task NextTurn_DyingPc_GetsATurn_WithNoActions_AndADeathSavePrompt()
+    {
+        var (tools, campaign, _, second) = await StartTwoPcsAsync();
+        await SetAsync(second, c => { c.CurrentHp = 0; c.DeathSaves = new DeathSaveTally(); });
+
+        var next = await tools.NextTurn(campaignName: campaign);
+
+        Assert.True(next.Success, next.Summary);
+        Assert.Equal(second, next.Data!.ActiveTurnId);
+        Assert.Equal(1, next.Data.Round);
+        Assert.Contains("DEATH SAVE DUE", next.Summary);
+        Assert.Contains("death_save", next.Summary);
+        var budget = next.Data.Combatants.Single(c => c.CharacterId == second).ActionBudget;
+        Assert.Equal(1, budget[CombatTools.DeathSaveDueKey]);
+        using (var session = _store.OpenAsyncSession())
+        {
+            var dying = await session.LoadAsync<Character>(second, TestContext.Current.CancellationToken);
+            Assert.Contains(dying.SystemStats!.StatusEffects, e => e.EffectKey == HitPointState.DownedEffectKey);
+        }
+
+        Assert.All(budget.Where(kv => kv.Key != CombatTools.DeathSaveDueKey), kv => Assert.Equal(0, kv.Value));
+    }
+
+    [Fact]
+    public async Task NextTurn_DyingPcsTurn_DoesNotFireTheTurnStartEffectsOfTheCombatantAfterIt()
+    {
+        var tools = CreateTools();
+        var campaign = "camp_" + Guid.NewGuid();
+        var ids = new[] { "chars/a_", "chars/b_", "chars/c_" }.Select(p => p + Guid.NewGuid()).ToArray();
+        using (var session = _store.OpenAsyncSession())
+        {
+            foreach (var id in ids)
+            {
+                await session.StoreAsync(DyingCandidate(id, id, campaign), TestContext.Current.CancellationToken);
+            }
+
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var start = await tools.StartCombat("loc_" + Guid.NewGuid(), ids, campaignName: campaign);
+        Assert.True(start.Success, start.Summary);
+        var order = start.Data!.Combatants.Select(c => c.CharacterId).ToList();
+        await SetAsync(order[1], c => { c.CurrentHp = 0; c.DeathSaves = new DeathSaveTally(); });
+        await SetAsync(order[2], c => c.SystemStats!.StatusEffects.Add(
+            new StatusEffect { Name = "Until my turn", Category = "Buff", ExpiresAtOwnTurnStart = true }));
+
+        var next = await tools.NextTurn(campaignName: campaign);
+
+        Assert.Equal(order[1], next.Data!.ActiveTurnId);
+        using var check = _store.OpenAsyncSession();
+        var third = await check.LoadAsync<Character>(order[2], TestContext.Current.CancellationToken);
+        Assert.Contains(third.SystemStats!.StatusEffects, e => e.Name == "Until my turn");
+    }
+
+    [Fact]
+    public async Task NextTurn_StablePc_IsSkipped()
+    {
+        var (tools, campaign, first, second) = await StartTwoPcsAsync();
+        await SetAsync(second, c => { c.CurrentHp = 0; c.DeathSaves = new DeathSaveTally { Stable = true }; });
+
+        var next = await tools.NextTurn(campaignName: campaign);
+
+        Assert.True(next.Success, next.Summary);
+        Assert.Equal(first, next.Data!.ActiveTurnId);
+        Assert.Equal(2, next.Data.Round);
+        Assert.DoesNotContain("DEATH SAVE DUE", next.Summary);
+    }
+
+    [Fact]
+    public async Task NextTurn_DeadPc_IsSkipped()
+    {
+        var (tools, campaign, first, second) = await StartTwoPcsAsync();
+        await SetAsync(second, c => { c.CurrentHp = 0; c.Death = new DeathRecord { Day = 1 }; });
+
+        var next = await tools.NextTurn(campaignName: campaign);
+
+        Assert.Equal(first, next.Data!.ActiveTurnId);
+        Assert.Equal(2, next.Data.Round);
+    }
+
+    [Fact]
+    public async Task NextTurn_NpcAtZero_IsSkipped_EvenWhenDyingLooking()
+    {
+        var (tools, campaign, first, second) = await StartTwoPcsAsync();
+        await SetAsync(second, c => { c.CurrentHp = 0; c.IsPc = false; });
+
+        var next = await tools.NextTurn(campaignName: campaign);
+
+        Assert.Equal(first, next.Data!.ActiveTurnId);
+        Assert.Equal(2, next.Data.Round);
+    }
+
+    [Fact]
+    public async Task NextTurn_OnlyDyingPcsLeft_EndsTheCombat_InsteadOfLooping()
+    {
+        var (tools, campaign, first, second) = await StartTwoPcsAsync();
+        await SetAsync(first, c => { c.CurrentHp = 0; c.DeathSaves = new DeathSaveTally(); });
+        await SetAsync(second, c => { c.CurrentHp = 0; c.DeathSaves = new DeathSaveTally(); });
+
+        var turn = await tools.NextTurn(campaignName: campaign); // the other dying PC takes its death-save turn
+        Assert.True(turn.Success, turn.Summary);
+        Assert.Equal(1, turn.Data!.Round);
+
+        var end = await tools.NextTurn(campaignName: campaign);
+
+        Assert.False(end.Success);
+        Assert.Equal("CombatEnded", end.Error);
+    }
+
     [Fact]
     public async Task NextTurn_EveryoneDead_EndsCombatOrFails()
     {

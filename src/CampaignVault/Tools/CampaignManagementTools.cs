@@ -4,6 +4,7 @@ using CampaignVault.Data;
 using CampaignVault.Data.Templates;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
+using CampaignVault.Rulesets.Bootstrap;
 using CampaignVault.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -284,7 +285,7 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
         [Description("commit_schema: one $type.")] string? type = null,
         [Description("help: topic.")] string? topic = null,
-        [Description("spells: class, e.g. 'Wizard'.")] string? className = null,
+        [Description("spells, level_up: class, e.g. 'Wizard'.")] string? className = null,
         [Description("spells: level (0 = cantrip).")] int? level = null,
         [Description("Name search (spells, creatures, items): all words must match, typo-tolerant, best first.")] string? query = null,
         [Description("items: item category; commit_schema: Combat|Narrative|World|PlotThread.")] string? category = null,
@@ -371,7 +372,7 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
                         "kind:'level_up' requires characterId (e.g. 'chars/hero-123').",
                         toolName: "lookup");
                 }
-                return Box(await GetPendingLevelUpChoices(characterId, campaignName));
+                return Box(await GetPendingLevelUpChoices(characterId, campaignName, className));
             case "items":
                 return Box(await GetItemDefinitions(campaignName, itemNameQuery, itemCategory?.Trim(), itemTag, offset, limit));
             case "item_tags":
@@ -446,7 +447,8 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
 
     internal Task<ToolResult<PendingLevelUpChoicesResponse>> GetPendingLevelUpChoices(
         string characterId,
-        string campaignName)
+        string campaignName,
+        string? classGained = null)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
@@ -466,7 +468,20 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
 
             var currentLevel = XpThresholdCalculator.GetCurrentLevel(character);
             var targetLevel = currentLevel + 1;
-            var className = DetermineClassForLevelUp(character);
+
+            // Which class gains the level: the one named (a 5e class not on the sheet is a new class, taken at its level 1),
+            // else the only class. A multiclass character has to say.
+            var gain = ClassGainedResolver.Resolve(character, system, classGained);
+            if (gain.Error is not null)
+            {
+                return new ToolResult<PendingLevelUpChoicesResponse>(
+                    false, Error: ToolErrors.InvalidArgument, Summary: $"{gain.Error} Pass it as className.");
+            }
+
+            var className = gain.ClassName is { } named
+                ? Dnd5eClassProfileResolver.CanonicalClass(named) ?? named
+                : DetermineClassForLevelUp(character);
+            var classTarget = gain.ClassName is null ? targetLevel : gain.CurrentLevel + 1;
 
             var response = new PendingLevelUpChoicesResponse
             {
@@ -477,23 +492,26 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
                 System = system,
             };
 
-            var levelDef = progressionProvider.GetLevelDefinition(system, className, targetLevel);
+            var levelDef = progressionProvider.GetLevelDefinition(system, className, classTarget);
             if (levelDef == null)
             {
-                response.Summary = $"No authored progression data for {className} at level {targetLevel} ({system}). "
+                response.Summary = $"No authored progression data for {className} at level {classTarget} ({system}). "
                     + "Narrate the level-up choices yourself and commit a 'level_up' change with 'choices' describing them.";
                 return new ToolResult<PendingLevelUpChoicesResponse>(true, response, response.Summary);
             }
 
             // The class's features and choices at the new level, plus those of the options it picked (a subclass's).
             var found = progressionProvider.TryGetProgression(system, className, out var progression);
-            var picked = CharacterClassFeatures.Picked(character.SystemStats, multiclass: true, progression?.ClassName);
+            // A class taken for the first time has no earlier picks.
+            var picked = gain.IsNew
+                ? (_, _) => Enumerable.Empty<string>()
+                : CharacterClassFeatures.Picked(character.SystemStats, multiclass: true, progression?.ClassName);
             var features = found
-                ? [.. progression!.FeaturesUpTo(targetLevel, picked).Where(f => f.Level == targetLevel).Select(f => f.Feature)]
+                ? [.. progression!.FeaturesUpTo(classTarget, picked).Where(f => f.Level == classTarget).Select(f => f.Feature)]
                 : levelDef.Features;
             var choices = found
-                ? [.. progression!.ChoicesUpTo(targetLevel, picked).Where(c => c.Level == targetLevel)]
-                : levelDef.Choices.Select(c => new GainedChoice(targetLevel, c, null)).ToList();
+                ? [.. progression!.ChoicesUpTo(classTarget, picked).Where(c => c.Level == classTarget)]
+                : levelDef.Choices.Select(c => new GainedChoice(classTarget, c, null)).ToList();
             response.Features =
             [
                 .. features.Select(f =>
@@ -514,7 +532,7 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
                 })
             ];
 
-            response.Slots = levelUpPlanner.Plan(character, system) is { } plan
+            response.Slots = levelUpPlanner.Plan(character, system, classGained) is { } plan
                 ? [.. plan.Slots.Select(LevelUpPlanner.Describe)]
                 : [];
 

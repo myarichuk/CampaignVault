@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core) by Paizo Inc., ORC License. The summary is our own wording.
+name: off-guard
+system: pf2e
+durationType: Manual
+mechanicalSummary: -2 circumstance penalty to AC. Several sources of off-guard do not stack.
+moodHint: distracted, exposed
+immunities: []
+suppresses: []
+effects:
+  - { kind: bonus, on: ac, value: -2, bonusType: circumstance }

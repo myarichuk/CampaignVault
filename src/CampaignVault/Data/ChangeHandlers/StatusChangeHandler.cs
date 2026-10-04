@@ -1,5 +1,7 @@
 using System.Linq;
 using CampaignVault.Models;
+using CampaignVault.Data.Templates;
+using CampaignVault.Rulesets;
 using CampaignVault.Services;
 
 namespace CampaignVault.Data.ChangeHandlers;
@@ -98,6 +100,14 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
             };
         }
 
+        if (ImmuneBy(character.SystemStats, effect) is { } blocker)
+        {
+            var refusal = $"{character.Name} is immune to '{effect.Name}' (from {blocker}); not applied.";
+            context.RecordMessage($"WARNING: {refusal}");
+            context.RecordFailure();
+            return ChangeHandlerResult.Failure(refusal);
+        }
+
         // Same effect from both origins in one batch (the LLM restates the status a spell's ruleset_action
         // already auto-applied, or vice versa) collapses to one effect instead of stacking or failing the
         // batch. The engine's copy wins: it carries the mechanics. Deliberate stacking from a single origin
@@ -143,7 +153,82 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
         var category = string.IsNullOrWhiteSpace(effect.Category) ? string.Empty : $" ({effect.Category})";
         await LogStatusEventAsync(context, character, $"{character.Name} gained status '{effect.Name}'{category}.");
 
+        await ApplyConditionConsequencesAsync(ctx, character, effect, ct);
+
         return ChangeHandlerResult.Ok;
+    }
+
+    private static string SystemOf(Character character) =>
+        character.SystemStats is not null && RulesetSystemResolver.TryFromStats(character.SystemStats, out var system) ? system! : "";
+
+    /// <summary>
+    /// What a condition does to the bearer the moment it lands: a lowered hit point maximum pulls current HP down to it
+    /// (exhaustion 4), and a <c>death</c> effect at its level kills (exhaustion 6), whichever way the level got there.
+    /// </summary>
+    private async Task ApplyConditionConsequencesAsync(ChangeContext ctx, Character character, StatusEffect effect, CancellationToken ct)
+    {
+        var cap = ConditionMechanics.EffectiveMaxHp(character, _conditionProvider);
+        if (character.MaxHp > 0 && character.CurrentHp > cap)
+        {
+            character.CurrentHp = cap;
+            ctx.RecordMessage($"{character.Name}'s hit point maximum is now {cap} ({effect.Name}); current HP lowered to match.");
+        }
+
+        // A grappler who can no longer act lets go.
+        if (ConditionMechanics.TryResolve(_conditionProvider.GetConditionsForSystem(SystemOf(character)), effect, out var def, out var level)
+            && def.EffectsAt(level).Any(e => e.Kind == ConditionEffectKinds.BlocksActions))
+        {
+            var found = new Dictionary<string, Character>(ctx.Characters);
+            foreach (var relation in character.SystemStats!.EngagementRelations
+                         .Where(r => string.Equals(r.Verb, EngagementMutationHelper.GrapplingVerb, StringComparison.OrdinalIgnoreCase)).ToList())
+            {
+                if (!found.ContainsKey(relation.TargetId) && ctx.Session is not null)
+                {
+                    var loaded = await ctx.Session.LoadAsync<Character>(relation.TargetId, ct);
+                    if (loaded is not null)
+                    {
+                        ctx.RegisterNewCharacter(loaded);
+                        found[loaded.Id] = loaded;
+                    }
+                }
+            }
+
+            var released = EngagementMutationHelper.ReleaseHeldBy(character, id => found.GetValueOrDefault(id));
+            if (released.Count > 0)
+                ctx.RecordMessage($"{character.Name} is {effect.Name} and lets go of {string.Join(", ", released)}.");
+        }
+
+        if (character.IsDead || ConditionMechanics.Fatal(character, _conditionProvider) is not { } fatal)
+            return;
+
+        await DeathChangeHandler.DieAsync(
+            new DeathChange { CharacterId = character.Id, Cause = fatal.Definition.Name }, character, ctx, ct);
+    }
+
+    /// <summary>
+    /// The name of an active condition that makes the character immune to <paramref name="incoming"/> (its definition's
+    /// <c>immunities</c>), or null. Matching ignores case, spaces and punctuation, against the incoming condition's definition
+    /// name and its own name.
+    /// </summary>
+    private string? ImmuneBy(SystemExtension stats, StatusEffect incoming)
+    {
+        if (stats.StatusEffects.Count == 0 || !RulesetSystemResolver.TryFromStats(stats, out var system))
+            return null;
+
+        var holder = new Character { SystemStats = stats };
+        var names = new HashSet<string> { StatusEffectModifierProvider.Normalize(incoming.Name) };
+        if (!string.IsNullOrWhiteSpace(incoming.ConditionName))
+            names.Add(StatusEffectModifierProvider.Normalize(incoming.ConditionName));
+        if (ConditionMechanics.TryResolve(_conditionProvider.GetConditionsForSystem(system!), incoming, out var def, out _))
+            names.Add(StatusEffectModifierProvider.Normalize(def.Name));
+
+        foreach (var active in ConditionMechanics.Active(holder, _conditionProvider, system))
+        {
+            if (active.Definition.Immunities.Any(i => names.Contains(StatusEffectModifierProvider.Normalize(i))))
+                return active.Definition.Name;
+        }
+
+        return null;
     }
 
     // Status effects (restrained, poisoned, etc.) often gate what actions are legal, so their history

@@ -101,6 +101,10 @@ public class Pf2eExtension : SystemExtension
     [JsonPropertyName("spellDc")]
     public int? SpellDc { get; set; }
 
+    [Description("Spell attack modifier override. Omit to auto-derive (spell DC - 10) at bootstrap.")]
+    [JsonPropertyName("spellAttackBonus")]
+    public int? SpellAttackBonus { get; set; }
+
     [Description("Proficiency rank in spellcasting (class DC), used to derive spellDc. Auto-derived from level (Trained at 1, Expert at 7, Master at 15) if omitted.")]
     [JsonPropertyName("spellcastingProficiency")]
     public Pf2eProficiencyRank? SpellcastingProficiency { get; set; }

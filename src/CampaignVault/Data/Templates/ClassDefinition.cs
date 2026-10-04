@@ -21,11 +21,19 @@ public record ClassDefinition : RulesetTemplate
     /// <summary>5e: the smaller set a character gets when it multiclasses into this class (not its starting class).</summary>
     public ProficiencyGrants? MulticlassProficiencies { get; init; }
 
+    /// <summary>
+    /// 5e: what a character needs before taking its first level in this class (SRD 5.1, "Multiclassing"). Each inner list is
+    /// a requirement and any one ability in it satisfies it, so <c>[[Strength, Dexterity]]</c> is "Strength 13 or Dexterity
+    /// 13" and <c>[[Dexterity], [Wisdom]]</c> is "Dexterity 13 and Wisdom 13". Empty: no requirement.
+    /// </summary>
+    public List<List<string>> MulticlassRequires { get; init; } = [];
+
     public static ClassDefinition Merge(ClassDefinition child, ClassDefinition parent) =>
         child with
         {
             Proficiencies = child.Proficiencies ?? parent.Proficiencies,
             MulticlassProficiencies = child.MulticlassProficiencies ?? parent.MulticlassProficiencies,
+            MulticlassRequires = child.MulticlassRequires.Count > 0 ? child.MulticlassRequires : parent.MulticlassRequires,
             System = !string.IsNullOrEmpty(child.System) ? child.System : parent.System,
             HitDie = child.HitDie ?? parent.HitDie,
             CasterType = child.CasterType ?? parent.CasterType,

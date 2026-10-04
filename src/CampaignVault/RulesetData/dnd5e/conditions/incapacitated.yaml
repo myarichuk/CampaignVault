@@ -6,3 +6,5 @@ durationType: Timed
 mechanicalSummary: Cannot take actions or reactions
 immunities: []
 suppresses: []
+effects:
+  - { kind: blocksActions }

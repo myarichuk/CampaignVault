@@ -124,8 +124,9 @@ Cooldown: one successful interrupt per location per in-game day. Do not use duri
 | `characterId` | Required character ID |
 | `levelsGained` | Positive integer (default 1) |
 | `hpMode` (5e) | average, rolled — override for this level gain |
-| `healToMatch` | Boolean — if true, increase `currentHp` by the same amount as `maxHp` gain |
-| `classGained` (5e multiclass) | Which class gained the level (e.g. `"Wizard"`) — sets hit die for HP gain |
+| `healToMatch` | Boolean, default true — current HP rises by the max HP gain; send false to leave it |
+| `classGained` | Which class gained the level (e.g. `"Wizard"`): its hit die, choices and sheet entry. Required for a multiclass character. A 5e class not on the sheet is added at level 1 if the character has 13 in its key abilities (and the current class's) |
+| `overridePrerequisites` (5e) | Boolean — the DM allows the multiclass anyway; recorded in the commit messages |
 | `reason` | Optional narrative milestone text logged in commit summary |
 | `choices` | `{ key: chosenOptionId }` from `lookup kind:'level_up'` (e.g. `subclass`, `fightingStyle`, `asiOrFeat`) — appended to the character's level-up choice history, never overwrites earlier picks |
 | `abilityScoreIncreases` (5e only) | `{ Ability: amount }` for an ASI, e.g. `{ "Strength": 2 }` or `{ "Strength": 1, "Dexterity": 1 }` |

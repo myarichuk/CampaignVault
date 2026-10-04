@@ -45,11 +45,12 @@ internal static class RulesetDataTestHelper
         CampaignDocumentKeys? keys = null,
         CharacterBootstrapOrchestrator? bootstrap = null)
     {
-        var (_, _, _, _, initializer) = CreateServices();
+        var (_, classes, _, _, initializer) = CreateServices();
         return new LevelUpChangeHandler(
             keys ?? new CampaignDocumentKeys(),
             bootstrap ?? BootstrapTestHelper.CreateOrchestrator(),
-            initializer);
+            initializer,
+            classes: classes);
     }
 
     public static ConditionDefinitionProvider CreateConditionProvider() =>

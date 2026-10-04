@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core) by Paizo Inc., ORC License. The summary is our own wording.
+name: wounded
+system: pf2e
+durationType: Manual
+mechanicalSummary: 'Seriously injured: gaining dying while wounded raises the dying value by the wounded value; becoming wounded again when dying ends. Ends when Treat Wounds restores Hit Points or the creature is fully healed and rests 10 minutes.'
+moodHint: battered
+immunities: []
+suppresses: []
+# Not data: it changes the dying value (a counter, not a roll modifier).

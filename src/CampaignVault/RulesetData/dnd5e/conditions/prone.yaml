@@ -6,3 +6,7 @@ durationType: Manual
 mechanicalSummary: Attack rolls have disadvantage; melee attackers have advantage; ranged attackers have disadvantage; stand up costs half speed
 immunities: []
 suppresses: []
+effects:
+  - { kind: disadvantage, on: attack }
+  - { kind: advantage, on: attack, scope: againstSelf, range: melee }
+  - { kind: disadvantage, on: attack, scope: againstSelf, range: ranged }

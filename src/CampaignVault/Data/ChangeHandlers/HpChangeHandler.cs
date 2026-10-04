@@ -1,13 +1,15 @@
 using System.Linq;
 using CampaignVault.Events;
 using CampaignVault.Models;
+using CampaignVault.Rulesets;
+using CampaignVault.Services;
 
 namespace CampaignVault.Data.ChangeHandlers;
 
 /// <summary>
 /// Handles HpChange using the pre-loaded character (safe pattern).
 /// </summary>
-public sealed class HpChangeHandler(IRollService rollService) : IWorldChangeHandler
+public sealed class HpChangeHandler(IRollService rollService, ConditionDefinitionProvider? conditions = null) : IWorldChangeHandler
 {
     private readonly IRollService _rollService = rollService ?? throw new ArgumentNullException(nameof(rollService));
 
@@ -57,130 +59,47 @@ public sealed class HpChangeHandler(IRollService rollService) : IWorldChangeHand
             return ChangeHandlerResult.Failure(deadMsg);
         }
 
-        var damageTaken = hp.Delta < 0 ? -hp.Delta : 0;
-        var hpBefore = character.CurrentHp;
-        character.CurrentHp = Math.Clamp(character.CurrentHp + hp.Delta, 0, character.MaxHp);
-        ctx.RecordMessage($"HP adjusted for {hp.CharacterId} by {hp.Delta} (now {character.CurrentHp}/{character.MaxHp})");
-
-        // Published on requested damage, not actual loss: a body already at 0 HP can still be hit (death
-        // saves in 5e, an astral projector's abandoned body, ...).
-        if (damageTaken > 0)
+        var attackerId = FindAttackerId(ctx, character.Id);
+        if (hp.Delta < 0)
         {
-            var actorId = FindAttackerId(ctx, character.Id);
-            ctx.Publish(CoreEvents.CharacterDamaged, new Dictionary<string, object?>
-            {
-                [CoreEvents.Fields.CharacterId] = character.Id,
-                [CoreEvents.Fields.Amount] = damageTaken,
-                [CoreEvents.Fields.HpLost] = hpBefore - character.CurrentHp,
-                [CoreEvents.Fields.CurrentHp] = character.CurrentHp,
-                [CoreEvents.Fields.MaxHp] = character.MaxHp,
-                [CoreEvents.Fields.ActorId] = actorId
-            });
-
-            if (hpBefore > 0 && character.CurrentHp == 0)
-            {
-                ctx.Publish(CoreEvents.CharacterDowned, new Dictionary<string, object?>
-                {
-                    [CoreEvents.Fields.CharacterId] = character.Id,
-                    [CoreEvents.Fields.MaxHp] = character.MaxHp,
-                    [CoreEvents.Fields.ActorId] = actorId
-                });
-                await LapseMinionsAsync(ctx, character, boundOnly: false, ct);
-            }
+            await DamageApplication.ApplyAsync(
+                character, -hp.Delta, hp.Critical, attackerId, new ContextDamageSink(ctx), _rollService, announceHp: true, ct);
+            return ChangeHandlerResult.Ok;
         }
 
-        var killed = await ApplyDyingRulesAsync(ctx, character, hp.Delta, hpBefore, damageTaken, ct);
-
-        // Concentration break check: DC = max(10, half damage taken), save vs DC (CON for 5e, Fortitude for PF2e).
-        if (!killed && damageTaken > 0 && character.SystemStats?.StatusEffects != null)
+        // Healing (or a zero delta): temporary hit points are not restored, and rising above 0 ends the death saves.
+        var hadTally = character.DeathSaves != null;
+        var transition = HitPointState.Set(character, character.CurrentHp + hp.Delta, ConditionMechanics.EffectiveMaxHp(character, conditions));
+        ctx.RecordMessage($"HP adjusted for {hp.CharacterId} by {hp.Delta} (now {character.CurrentHp}/{character.MaxHp})");
+        if (transition.Wounded is { } wounded)
         {
-            var concentration = ConcentrationRules.Find(character.SystemStats.StatusEffects);
-            if (concentration != null)
-            {
-                var dc = Math.Max(10, (int)Math.Ceiling(damageTaken / 2.0f));
-                var (saveMod, saveLabel) = GetConcentrationSaveModifier(character.SystemStats);
-                var outcome = await _rollService.RollAsync(
-                    new RollRequest { Tag = "concentration", Expression = "1d20", Bonus = saveMod }, ct);
+            ctx.RecordMessage($"{character.Name} is conscious again; dying ends and they are now wounded {wounded}.");
+        }
 
-                if (outcome.Result < dc)
-                {
-                    character.SystemStats.StatusEffects.Remove(concentration);
-                    ctx.RecordMessage(
-                        $"Concentration broken for {hp.CharacterId}: {damageTaken} damage (DC {dc}), {saveLabel} save {outcome.Result} failed.");
-                    await LapseMinionsAsync(ctx, character, boundOnly: true, ct);
-                }
-                else
-                {
-                    ctx.RecordMessage(
-                        $"Concentration held for {hp.CharacterId}: {damageTaken} damage (DC {dc}), {saveLabel} save {outcome.Result} succeeded.");
-                }
-            }
+        if (hp.Delta > 0 && hadTally && character.CurrentHp > 0 && HitPointState.UsesDeathSaves(character))
+        {
+            ctx.RecordMessage($"{character.Name} is conscious again; death saves cleared.");
         }
 
         return ChangeHandlerResult.Ok;
     }
 
-    /// <summary>
-    /// 5e dying rules for player characters only (NPC death stays an explicit <c>death</c> commit): massive damage
-    /// kills outright, damage at 0 HP adds a death-save failure, reaching 0 starts the tally, healing clears it.
-    /// Returns true when this damage killed the character.
-    /// </summary>
-    private static async Task<bool> ApplyDyingRulesAsync(
-        ChangeContext ctx, Character character, int delta, int hpBefore, int damageTaken, CancellationToken ct)
+    /// <summary>The handler's context as a <see cref="DamageApplication"/> sink.</summary>
+    private sealed class ContextDamageSink(ChangeContext ctx) : IDamageSink
     {
-        if (!character.IsPc || character.SystemStats is not Dnd5eExtension)
-        {
-            return false;
-        }
+        public void Message(string text) => ctx.RecordMessage(text);
 
-        if (delta > 0)
-        {
-            if (character.CurrentHp > 0 && character.DeathSaves != null)
-            {
-                character.DeathSaves = null;
-                ctx.RecordMessage($"{character.Name} is conscious again; death saves cleared.");
-            }
-            return false;
-        }
+        public void Publish(string topic, Dictionary<string, object?> data) => ctx.Publish(topic, data);
 
-        if (damageTaken <= 0)
-        {
-            return false;
-        }
+        public Task LapseMinionsAsync(Character caster, bool boundOnly, CancellationToken ct) =>
+            HpChangeHandler.LapseMinionsAsync(ctx, caster, boundOnly, ct);
 
-        var overflow = damageTaken - hpBefore;
-        if (overflow >= character.MaxHp)
-        {
-            await DeathChangeHandler.DieAsync(
-                new DeathChange { CharacterId = character.Id, Cause = "massive damage", KillerId = FindAttackerId(ctx, character.Id) },
-                character, ctx, ct);
-            return true;
-        }
+        public async Task<RollResolution> ResolveRollAsync(RollQuery query, int baseBonus, CancellationToken ct) =>
+            ctx.ResolveRollModifiers(query with { Options = await ctx.GetSystemOptionsAsync() }, baseBonus);
 
-        if (hpBefore > 0)
-        {
-            if (character.CurrentHp == 0)
-            {
-                character.DeathSaves = new DeathSaveTally();
-                ctx.RecordMessage($"{character.Name} is down at 0 HP and dying: roll death saves with {{\"$type\":\"death_save\",\"characterId\":\"{character.Id}\"}} each turn.");
-            }
-            return false;
-        }
-
-        // Already at 0 HP: each hit is a failed death save (a stable body becomes unstable again).
-        var tally = character.DeathSaves ??= new DeathSaveTally();
-        tally.Stable = false;
-        tally.Failures++;
-        ctx.RecordMessage($"{character.Name} takes damage at 0 HP: death save failure ({tally.Failures}/3).");
-        if (tally.Failures < 3)
-        {
-            return false;
-        }
-
-        await DeathChangeHandler.DieAsync(
-            new DeathChange { CharacterId = character.Id, Cause = "failed death saves", KillerId = FindAttackerId(ctx, character.Id) },
-            character, ctx, ct);
-        return true;
+        public Task DieAsync(Character character, string cause, string? killerId, CancellationToken ct) =>
+            DeathChangeHandler.DieAsync(
+                new DeathChange { CharacterId = character.Id, Cause = cause, KillerId = killerId }, character, ctx, ct);
     }
 
     /// <summary>

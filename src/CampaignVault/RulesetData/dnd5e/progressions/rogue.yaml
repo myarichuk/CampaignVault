@@ -73,6 +73,8 @@ levels:
     features:
       - name: "Evasion"
         description: "Dex save for half damage: take none on success, half on failure."
+        effects:
+          - { kind: evasion }
   8:
     proficiencyBonus: 3
     features:

@@ -7,3 +7,6 @@ mechanicalSummary: Disadvantage on attack rolls and ability checks
 moodHint: nauseated, ill
 immunities: []
 suppresses: []
+effects:
+  - { kind: disadvantage, on: attack }
+  - { kind: disadvantage, on: check }

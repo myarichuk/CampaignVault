@@ -79,7 +79,7 @@ public static class CastingComponentGate
             : new SpellComponents(custom.Verbal ?? false, custom.Somatic ?? false, custom.Material ?? false);
     }
 
-    private static string NormalizeSlug(string name) =>
+    internal static string NormalizeSlug(string name) =>
         name.Trim().ToLowerInvariant().Replace(' ', '_').Replace('-', '_');
 
     /// <summary>Every feat slug the character knows, regardless of which system-specific list it lives in.</summary>

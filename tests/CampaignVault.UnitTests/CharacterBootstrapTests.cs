@@ -487,7 +487,7 @@ public class CharacterBootstrapTests : IClassFixture<RavenDBFixture>
         Assert.Equal(16, stats.Constitution);
         Assert.Equal(17, stats.Strength);
         // Average d10 (6) + the new Constitution modifier (+3): the improvement counted for this level's hit points.
-        Assert.Equal(28 + 6 + 3, hild.MaxHp);
+        Assert.Equal(28 + (6 + 3) + 3, hild.MaxHp); // the level at the new modifier, plus the three earlier levels' +1 each
     }
 
     [Fact]

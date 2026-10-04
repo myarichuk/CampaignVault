@@ -11,3 +11,5 @@ aliases: [warlock]
 skillChoices: { count: 2, from: [Arcana, Deception, History, Intimidation, Investigation, Nature, Religion] }
 proficiencies: { armor: [light], weapons: [simple] }
 multiclassProficiencies: { armor: [light], weapons: [simple] }
+# Needs 13 in each requirement (a list is "any of these") to take a first level here, and to leave the current class.
+multiclassRequires: [[Charisma]]

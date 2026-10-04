@@ -20,6 +20,16 @@ public static class RollKinds
     public const string Save = "save";
     public const string Initiative = "initiative";
 
+    /// <summary>
+    /// A concentration check after damage (0.17.0). <see cref="RollQuery.Subject"/> is the save's ability ("constitution",
+    /// "fortitude"). Core's own layers treat it as a save, so conditions and status modifiers count; a plugin provider asks for
+    /// this kind to grant advantage (a War Caster-style feat) without touching ordinary saves.
+    /// </summary>
+    public const string ConcentrationSave = "concentration_save";
+
+    /// <summary>A 5e death saving throw (0.17.0). No subject. Core treats it as a save, so a Bless-style bonus counts.</summary>
+    public const string DeathSave = "death_save";
+
     /// <summary>Movement in feet per round; the "bonus" is feet, not a d20 modifier.</summary>
     public const string Speed = "speed";
 }
@@ -41,11 +51,21 @@ public sealed record RollQuery(
     IReadOnlyDictionary<string, string> Options);
 
 /// <summary>One provider's say on a roll: a numeric bonus and/or advantage, and a reason the player will read.</summary>
-public sealed record RollModifier(string Source, int Bonus, AdvantageEffect Advantage, string Reason);
+public sealed record RollModifier(string Source, int Bonus, AdvantageEffect Advantage, string Reason)
+{
+    /// <summary>
+    /// The roll fails automatically (paralyzed against a Strength or Dexterity save). Honored by saves; the roll is still made
+    /// and shown, but its result doesn't matter. Added in 0.17.0, so it is init-only and old providers are unaffected.
+    /// </summary>
+    public bool AutoFail { get; init; }
+}
 
 /// <summary>What the pipeline made of a roll: the final bonus, the net advantage, and the reasons in order.</summary>
 public sealed record RollResolution(int Bonus, AdvantageEffect Advantage, IReadOnlyList<string> Notes)
 {
+    /// <summary>True when any provider said the roll fails automatically (see <see cref="RollModifier.AutoFail"/>).</summary>
+    public bool AutoFail { get; init; }
+
     public static RollResolution Unchanged(int bonus, AdvantageEffect advantage = AdvantageEffect.None) => new(bonus, advantage, []);
 }
 

@@ -1,0 +1,24 @@
+# Source: Pathfinder 2e Remastered (Player Core) by Paizo Inc., ORC License. The summary is our own wording.
+name: stupefied
+system: pf2e
+durationType: Timed
+mechanicalSummary: 'Valued: a status penalty equal to the value to Intelligence-, Wisdom- and Charisma-based rolls and DCs: Will saves and those skills. Casting a spell is disrupted unless a flat check of 5 plus the value succeeds.'
+moodHint: dazed
+immunities: []
+suppresses: []
+effects:
+  - { kind: bonus, on: save, value: -1, bonusType: status, perLevel: true, subject: Will }
+  - { kind: bonus, on: check, value: -1, bonusType: status, perLevel: true, subject: Arcana }
+  - { kind: bonus, on: check, value: -1, bonusType: status, perLevel: true, subject: Crafting }
+  - { kind: bonus, on: check, value: -1, bonusType: status, perLevel: true, subject: Occultism }
+  - { kind: bonus, on: check, value: -1, bonusType: status, perLevel: true, subject: Society }
+  - { kind: bonus, on: check, value: -1, bonusType: status, perLevel: true, subject: Medicine }
+  - { kind: bonus, on: check, value: -1, bonusType: status, perLevel: true, subject: Nature }
+  - { kind: bonus, on: check, value: -1, bonusType: status, perLevel: true, subject: Religion }
+  - { kind: bonus, on: check, value: -1, bonusType: status, perLevel: true, subject: Survival }
+  - { kind: bonus, on: check, value: -1, bonusType: status, perLevel: true, subject: Perception }
+  - { kind: bonus, on: check, value: -1, bonusType: status, perLevel: true, subject: Deception }
+  - { kind: bonus, on: check, value: -1, bonusType: status, perLevel: true, subject: Diplomacy }
+  - { kind: bonus, on: check, value: -1, bonusType: status, perLevel: true, subject: Intimidation }
+  - { kind: bonus, on: check, value: -1, bonusType: status, perLevel: true, subject: Performance }
+# Not data: the spell-disruption flat check, spell attack modifiers and Lore skills.

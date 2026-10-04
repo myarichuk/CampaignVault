@@ -48,7 +48,11 @@ public record CharacterDetailView(
     /// <summary>Full dirt marks, only where the caller asked for full detail (get_entity, fullDetailCharacterId).</summary>
     List<DirtMark>? Dirt = null,
     /// <summary>Compact piercing line ("gold stud at ear lobe left, iron ring at nose septum"); null when none. Full list on get_entity via Character.Piercings.</summary>
-    string? Piercings = null)
+    string? Piercings = null,
+    /// <summary>Temporary hit points on top of <see cref="CurrentHp"/>; null when none.</summary>
+    int? TempHp = null,
+    /// <summary>What granted <see cref="TempHp"/> (a spell, a feature); null when none or unnamed.</summary>
+    string? TempHpSource = null)
 {
     /// <param name="includeCombatDetail">Whether to include Needs/SystemStats — the mechanical slice a
     /// DM only needs once a roll or combat is actually in play. Default true for every caller except
@@ -81,7 +85,9 @@ public record CharacterDetailView(
         includeCombatDetail ? CampaignVault.Rulesets.SpeedRules.Describe(c.SystemStats) : null,
         includeDirtDetail ? null : SoilHelpers.Summarize(c.Dirt),
         includeDirtDetail && c.Dirt is { Count: > 0 } ? c.Dirt : null,
-        PiercingHelpers.Summarize(c.Piercings));
+        PiercingHelpers.Summarize(c.Piercings),
+        c.TempHp is > 0 ? c.TempHp : null,
+        c.TempHp is > 0 ? c.TempHpSource : null);
 }
 
 public class NpcContextView

@@ -1,6 +1,7 @@
 using CampaignVault.Models;
 using CampaignVault.Services;
 using CampaignVault.Rulesets;
+using CampaignVault.Rulesets.Bootstrap;
 
 namespace CampaignVault.Data.Pressure.Contributors;
 
@@ -46,12 +47,17 @@ public sealed class XpThresholdReachedPressureContributor : IPressureContributor
                 var xpRequired = XpThresholdCalculator.GetXpForLevel(activeSystem, nextLevel, progression, customThresholds);
                 var xpSurplus = xp - xpRequired;
 
+                // The class as the sheet names it ("Human Fighter 5" is Fighter); a multiclass character has to pick one.
+                var classes = CharacterClassResolver.ResolveClassLevels(character)
+                    .Select(e => Dnd5eClassProfileResolver.CanonicalClass(e.Class) is { } known ? char.ToUpperInvariant(known[0]) + known[1..] : e.Class)
+                    .ToList();
+                var suggestedClass = classes.FirstOrDefault() ?? "Fighter";
                 var suggestedCommit = $$"""
                     {
                         "$type": "level_up",
                         "characterId": "{{character.Id}}",
                         "levelsGained": 1,
-                        "classGained": "{{character.ClassLevel?.Split('/')[0]?.Split(' ')[0] ?? "Fighter"}}",
+                        "classGained": "{{suggestedClass}}",
                         "reason": "Reached XP threshold for level {{nextLevel}}"
                     }
                     """;
@@ -60,6 +66,11 @@ public sealed class XpThresholdReachedPressureContributor : IPressureContributor
                     $"(needed {xpRequired} XP). Call lookup kind:'level_up' characterId:'{character.Id}' " +
                     "to see its 'slots' (subclass, feat, ability improvement, PF2e boosts and skill increase) to talk through with the player, " +
                     "then commit level_up with their answers as 'picks' (slot id → option ids). If the player is at the Unity client they may already be choosing.";
+
+                if (classes.Count > 1)
+                {
+                    message += $" {character.Name} has more than one class: set classGained to the one that gains the level ({string.Join(", ", classes)}).";
+                }
 
                 if (xpSurplus > 0)
                 {

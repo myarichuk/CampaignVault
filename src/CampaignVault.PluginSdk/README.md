@@ -20,6 +20,40 @@ CampaignVault install, and restart the host.
 See [PLUGINS.md](https://github.com/myarichuk/CampaignVault/blob/master/PLUGINS.md) in
 the main repository for the full plugin architecture, trust model, and quick-start guide.
 
+## 0.17.0
+
+- **Damage pipeline** (remediation plan phases 1 and 2). `HpChange.Critical` (optional; the engine sets it on a critical hit,
+  so a hit at 0 HP records two death-save failures), `Character.TempHp` and `Character.TempHpSource`, the `grant_temp_hp`
+  commit (`TempHpGrant`: temporary hit points absorb damage first, don't stack, are cleared by a long rest),
+  `FeatEffectKinds.Evasion`, `SystemExtension.BaseArmorClass` and `UnarmoredArmorClass.AllowsShield`. Resistance and
+  `damageReduction` effects now apply on save damage and to PF2e, and one resolver (`DamageResolver`) applies stat-block
+  and feat mitigation once. Old payloads and stored documents behave as before.
+- **Concentration and death-save rolls** (remediation plan phase 4). `RollKinds.ConcentrationSave` (subject "constitution" or
+  "fortitude") and `RollKinds.DeathSave` (no subject): the engine now rolls both through the roll pipeline. Core's own layers
+  (statuses, conditions, willpower) read them as saves; a plugin provider that matches only `RollKinds.Save` does not see them,
+  so an "all saves" aura must answer the new kinds too, and a War Caster-style feat answers `ConcentrationSave` alone. Before
+  this release neither roll went through providers, so nothing that worked changes. A player character at 0 HP now carries an
+  engine Unconscious status (effect key `engine:downed`) and Prone, so `ActionBlock` stops it acting.
+- **Level-up and multiclass** (remediation plan phase 5). `LevelUpChange.OverridePrerequisites` (the DM's recorded override
+  of the 5e multiclass requirements) and a new default: `LevelUpChange.HealToMatch` is now `true`, so current HP rises with
+  max HP unless a payload sends `false` (payloads that omit it change behavior; the SRD gives the new hit points as
+  current). `LevelUpChange.ClassGained` is required for a character with more than one class, and a 5e class the character
+  lacks is added at level 1. The class YAML `multiclassRequires` (a list of requirements, each a list of abilities of
+  which one needs 13) feeds the check; a plugin class without it has none. Max HP now follows a Constitution modifier
+  change for the levels already taken.
+- **PF2e correctness** (remediation plan phase 6). `Pf2eExtension.SpellAttackBonus` (nullable; derived as the spell DC minus 10 at
+  bootstrap, so an existing caster with a stored DC gets it on the next bootstrap run, and a spell action rolls it instead of
+  a weapon's numbers). A PF2e player character now has dying, wounded and doomed: reaching 0 HP gives dying 1 (2 from a
+  critical hit) plus the wounded value, and the `death_save` commit rolls the PF2e recovery check for them (flat d20 against
+  DC 10 + dying). They are statuses named "Dying 2", "Wounded 1", "Doomed 1" (condition keys `dying`, `wounded`, `doomed`).
+  PF2e no longer rolls the 5e Constitution concentration save when damage lands. A PF2e spell attack counts toward the
+  multiple attack penalty and an `agile` weapon tag makes it -4/-8.
+- **Condition mechanics** (remediation plan phase 3). `RollModifier.AutoFail` and `RollResolution.AutoFail` (init-only, so
+  old providers are unaffected): a roll that fails whatever the dice show, honored by saves. Core now reads conditions from
+  their YAML `effects` (advantage, disadvantage, auto-fail saves, speed, bonuses) through its own provider, so a plugin's
+  provider no longer has to re-implement prone or paralyzed. Attack rolls carry a `melee` or `ranged` tag, and the DM's
+  `assert` flags are passed as tags.
+
 ## 0.16.0
 
 - **Option prerequisites** (`ChoiceOption.Prerequisite`, `ClassOptionDefinition.Prerequisite`, `OptionPrerequisite`): a

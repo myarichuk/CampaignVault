@@ -6,3 +6,4 @@ durationType: Timed
 mechanicalSummary: Auto-fail hearing checks; immune to thunder damage that requires hearing
 immunities: []
 suppresses: []
+# Not data: the effect is "automatically fails ability checks that require hearing", a fact about the check, not the roll kind.

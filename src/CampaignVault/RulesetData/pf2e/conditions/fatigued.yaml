@@ -3,7 +3,10 @@ name: fatigued
 system: pf2e
 durationType: UntilLongRest
 isSurvivalExhaustion: true
-mechanicalSummary: Cannot use exploration or downtime activities that require exertion; penalty to checks from fatigue
+mechanicalSummary: "-1 status penalty to AC and saving throws; cannot use exploration activities while traveling. Recovered by a full night's rest."
 moodHint: weary, drained
 immunities: []
 suppresses: []
+effects:
+  - { kind: bonus, on: ac, value: -1, bonusType: status }
+  - { kind: bonus, on: save, value: -1, bonusType: status }

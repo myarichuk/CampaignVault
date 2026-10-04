@@ -14,6 +14,9 @@ namespace CampaignVault.Tools;
 [McpServerToolType]
 public class CombatTools : CampaignToolBase, IMcpServerTool
 {
+    /// <summary>Action budget marker on a dying player character's turn: the only thing they do is the death save.</summary>
+    public const string DeathSaveDueKey = "deathSaveDue";
+
     private readonly IRulesetModuleSelector _rulesetSelector;
     private readonly IInteractionModeSelector? _modeSelector;
     private readonly IEnumerable<IPluginTraitsUpgrader> _traitsUpgraders;
@@ -82,6 +85,13 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
         List<string> messages) =>
         MinionLapse.LapseCasterMinionsAsync(session, loaded, caster, concentrationOnly, messages);
 
+    /// <summary>The in-world day a death during turn advancement is recorded on (0 when the clock isn't set yet).</summary>
+    private async Task<int> TickDayAsync(IAsyncDocumentSession session, string campaign)
+    {
+        var time = await session.LoadAsync<CampaignTime>(_keys.StateTime(campaign));
+        return time is null ? 0 : (int)time.TotalDaysElapsed;
+    }
+
     internal Task<ToolResult<CombatEncounterView>> StartCombat(
         [Description("The location ID where combat is happening.")]
         string locationId,
@@ -136,7 +146,8 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                     abandonedTickEvents.AddRange(await DelayedTickProcessor.ProcessAsync(
                         abandoned, _rollService, abandonedMessages,
                         onConcentrationBroken: c => LapseCasterMinionsAsync(session, oldCharacters, c, true, abandonedMessages),
-                        onDowned: c => LapseCasterMinionsAsync(session, oldCharacters, c, false, abandonedMessages)));
+                        onDowned: c => LapseCasterMinionsAsync(session, oldCharacters, c, false, abandonedMessages),
+                        currentDay: () => TickDayAsync(session, effective)));
                     if (abandoned.SystemStats?.StatusEffects != null)
                     {
                         var stale = abandoned.SystemStats.StatusEffects.Where(e => e.ExpiresAtRound.HasValue).ToList();
@@ -316,12 +327,13 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
             // its combat turn. It stays in the encounter and can still be targeted.
             var heldElsewhere = await FindExclusivelyHeldAsync(session, effective);
 
-            // Find next who hasn't acted and is alive
+            // Find next who hasn't acted and is alive. A dying player character (0 HP, not stable, not dead) still gets
+            // a turn: the death save.
             CombatantState? GetNextAliveUnacted() => encounter.Combatants.FirstOrDefault(c =>
                 !c.HasActedThisRound &&
                 !heldElsewhere.ContainsKey(c.CharacterId) &&
                 characters.TryGetValue(c.CharacterId, out var character) && character != null &&
-                character.CurrentHp > 0);
+                (character.CurrentHp > 0 || HitPointState.IsDying(character)));
 
             bool AnyoneAlive() => encounter.Combatants.Any(c =>
                 characters.TryGetValue(c.CharacterId, out var character) && character != null &&
@@ -350,17 +362,20 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                 .Where(c => !string.Equals(c.CharacterId, encounter.ActiveTurnId, StringComparison.OrdinalIgnoreCase))
                 .Where(c => !c.HasActedThisRound && !heldElsewhere.ContainsKey(c.CharacterId))
                 .Select(c => c.CharacterId)
-                .FirstOrDefault(id => characters.TryGetValue(id, out var upcoming) && upcoming != null && upcoming.CurrentHp > 0);
+                .FirstOrDefault(id => characters.TryGetValue(id, out var upcoming) && upcoming != null
+                                      && (upcoming.CurrentHp > 0 || HitPointState.IsDying(upcoming)));
             if (upcomingId != null && characters.TryGetValue(upcomingId, out var upcomingCharacter) && upcomingCharacter != null)
             {
                 tickEvents.AddRange(await DelayedTickProcessor.ProcessAsync(
                     upcomingCharacter, _rollService, expiredMessages,
                     onConcentrationBroken: c => LapseCasterMinionsAsync(session, characters, c, true, expiredMessages),
-                    onDowned: c => LapseCasterMinionsAsync(session, characters, c, false, expiredMessages)));
+                    onDowned: c => LapseCasterMinionsAsync(session, characters, c, false, expiredMessages),
+                        currentDay: () => TickDayAsync(session, effective)));
             }
 
             var next = GetNextAliveUnacted();
             var startedNewRound = false;
+            Character? dyingTurn = null;
 
             if (next == null)
             {
@@ -415,8 +430,9 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                     tickEvents.AddRange(await DelayedTickProcessor.ProcessAsync(
                         wrapped, _rollService, expiredMessages,
                         onConcentrationBroken: c => LapseCasterMinionsAsync(session, characters, c, true, expiredMessages),
-                        onDowned: c => LapseCasterMinionsAsync(session, characters, c, false, expiredMessages)));
-                    if (wrapped.CurrentHp <= 0)
+                        onDowned: c => LapseCasterMinionsAsync(session, characters, c, false, expiredMessages),
+                        currentDay: () => TickDayAsync(session, effective)));
+                    if (wrapped.CurrentHp <= 0 && !HitPointState.IsDying(wrapped))
                     {
                         // No acted-flag: the HP filter already skips the corpse on re-pick, and an
                         // unmarked corpse healed later this round stays pickable (legacy convention).
@@ -436,6 +452,18 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
             {
                 var freshBudget = module.Combat.GetTurnActionBudget(nextCharacter);
                 next.ActionBudget = new Dictionary<string, int>(freshBudget);
+                if (HitPointState.IsDying(nextCharacter))
+                {
+                    HitPointState.SyncDowned(nextCharacter); // a PC downed before the engine flagged them gets the status now
+                    // An empty budget means unlimited actions, so a dying turn zeroes every key the ruleset uses.
+                    foreach (var key in next.ActionBudget.Keys.ToList())
+                    {
+                        next.ActionBudget[key] = 0;
+                    }
+
+                    next.ActionBudget[DeathSaveDueKey] = 1;
+                    dyingTurn = nextCharacter;
+                }
             }
             await session.StoreAsync(encounter, encounter.Id);
 
@@ -449,6 +477,12 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
             {
                 summary += " Skipped (held by an exclusive mode): " +
                            string.Join(", ", skipped.Select(h => $"{h.Key} in '{h.Value}'")) + ".";
+            }
+            if (dyingTurn != null)
+            {
+                var check = Pf2eDying.Applies(dyingTurn) ? "RECOVERY CHECK" : "DEATH SAVE";
+                summary += $" {check} DUE: {dyingTurn.Name} is dying at 0 HP and has no actions this turn; roll it with "
+                    + $"{{\"$type\":\"death_save\",\"characterId\":\"{dyingTurn.Id}\"}} (or adjudicate something else through the normal action path).";
             }
             if (expiredMessages.Count > 0)
             {
@@ -500,7 +534,8 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                 tickEvents.AddRange(await DelayedTickProcessor.ProcessAsync(
                     character, _rollService, expiredMessages,
                     onConcentrationBroken: c => LapseCasterMinionsAsync(session, characters, c, true, expiredMessages),
-                    onDowned: c => LapseCasterMinionsAsync(session, characters, c, false, expiredMessages)));
+                    onDowned: c => LapseCasterMinionsAsync(session, characters, c, false, expiredMessages),
+                        currentDay: () => TickDayAsync(session, effective)));
 
                 if (character.SystemStats?.StatusEffects != null)
                 {

@@ -1038,7 +1038,8 @@ public class Dnd5eRulesetResolverTests
 
         var output = await resolver.ResolveAsync(CreateContext(actor, merc), action, TestContext.Current.CancellationToken);
 
-        Assert.Equal([-4, -3], output.Mutations.OfType<HpChange>().Select(m => m.Delta));
+        // One hit is one HpChange: the rider joins the weapon's damage (the dying rules count hits, not parts).
+        Assert.Equal([-7], output.Mutations.OfType<HpChange>().Select(m => m.Delta));
         Assert.Contains("Rider: +3 fire", output.Result.Narrative);
     }
 

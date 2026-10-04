@@ -1,0 +1,12 @@
+# Source: Pathfinder 2e Remastered (Player Core) by Paizo Inc., ORC License. The summary is our own wording.
+name: dying
+system: pf2e
+durationType: Manual
+mechanicalSummary: 'Bleeding out: unconscious. Dying 4 is death. A recovery check at the start of each turn; damage raises it by 1 (2 from a critical hit). Doomed lowers the dying value that kills.'
+moodHint: "at death's door"
+immunities: []
+suppresses: []
+effects:
+  - { kind: blocksActions }
+  - { kind: implies, subject: unconscious }
+# The dying and wounded counters are rules of the damage pipeline (the plan's PF2e dying phase), not roll modifiers.

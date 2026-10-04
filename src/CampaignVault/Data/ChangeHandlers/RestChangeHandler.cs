@@ -1,11 +1,14 @@
 using CampaignVault.Events;
 using CampaignVault.Models;
+using CampaignVault.Rulesets;
 using CampaignVault.Services;
 
 namespace CampaignVault.Data.ChangeHandlers;
 
 public class RestChangeHandler : IWorldChangeHandler
 {
+    private const string HitDicePool = "hit_dice";
+
     private readonly EncounterResolver _resolver;
     private readonly ConditionDefinitionProvider _conditionProvider;
 
@@ -120,6 +123,15 @@ public class RestChangeHandler : IWorldChangeHandler
             if (restType == RestType.LongRest)
             {
                 await ClearUntilLongRestConditionsAsync(rc.CharacterId, character, ctx, ct);
+                RestoreHitPoints(character, ctx);
+                await RecoverHitDiceAsync(character, ctx, ct);
+                RecoverPf2eDyingCounters(character, ctx);
+                if (character.TempHp is > 0)
+                {
+                    ctx.RecordMessage($"{character.Name}'s {character.TempHp} temporary HP fade after the long rest.");
+                    character.TempHp = null;
+                    character.TempHpSource = null;
+                }
             }
 
             // Recover eligible resource pools immediately — don't wait for the next advance_world.
@@ -161,6 +173,15 @@ public class RestChangeHandler : IWorldChangeHandler
             var recoverySummary = recoveryNarratives.Count > 0
                 ? "Resource pools recovered immediately."
                 : "No resource pools were eligible to recover.";
+            if (restType == RestType.LongRest)
+            {
+                recoverySummary += $" Hit points {character.CurrentHp}/{character.MaxHp}.";
+            }
+            else if (restType == RestType.ShortRest && HasHitDice(character))
+            {
+                recoverySummary += " A short rest heals nothing by itself: to spend hit dice, commit a resource change on hit_dice (delta -1 each) " +
+                    "plus an HP change of the die roll and the Constitution modifier.";
+            }
 
             return new ChangeHandlerResult(true,
                 $"Rest completed safely. {hoursRested} hours passed ({restType} rest). {recoverySummary}");
@@ -177,6 +198,109 @@ public class RestChangeHandler : IWorldChangeHandler
             }
 
             return restChange.IntendedHours;
+        }
+    }
+
+    /// <summary>
+    /// A long rest heals. 5e: to the hit point maximum in force (exhaustion 4 lowers it). PF2e: a night's rest gives back the
+    /// Constitution modifier (at least 1) times the level, not everything (Player Core, Rest). A character who is dying, or dead,
+    /// is not healed: the dying rules decide that first.
+    /// </summary>
+    private void RestoreHitPoints(Character character, ChangeContext ctx)
+    {
+        if (character.MaxHp <= 0 || character.IsDead)
+        {
+            return;
+        }
+
+        if (HitPointState.IsDying(character))
+        {
+            ctx.RecordMessage($"{character.Name} is dying: a rest heals nothing until they are stabilized or healed.");
+            return;
+        }
+
+        var cap = ConditionMechanics.EffectiveMaxHp(character, _conditionProvider);
+        var target = character.SystemStats is Pf2eExtension pf2e
+            ? character.CurrentHp + Math.Max(1, pf2e.ConstitutionMod) * Math.Max(1, pf2e.Level ?? 1)
+            : cap;
+        if (character.CurrentHp >= Math.Min(target, cap))
+        {
+            return;
+        }
+
+        var before = character.CurrentHp;
+        var transition = HitPointState.Set(character, target, cap);
+        ctx.RecordMessage($"{character.Name} regains {character.CurrentHp - before} hit points from the long rest (now {character.CurrentHp}/{character.MaxHp}).");
+        if (transition.Wounded is { } wounded)
+        {
+            ctx.RecordMessage($"{character.Name} is conscious again; dying ends and they are now wounded {wounded}.");
+        }
+    }
+
+    private static bool HasHitDice(Character character) =>
+        character.SystemStats is Dnd5eExtension && character.SystemStats.ResourcePools?.ContainsKey(HitDicePool) == true;
+
+    /// <summary>5e: a long rest regains half the total hit dice, at least one. The pool has no recovery of its own, so this is the only place they come back.</summary>
+    private async Task RecoverHitDiceAsync(Character character, ChangeContext ctx, CancellationToken ct)
+    {
+        if (!HasHitDice(character) || character.IsDead)
+        {
+            return;
+        }
+
+        var pool = character.SystemStats!.ResourcePools![HitDicePool];
+        var regain = Math.Min(pool.Max - pool.Current, Math.Max(1, pool.Max / 2));
+        if (regain <= 0)
+        {
+            return;
+        }
+
+        await ctx.Dispatcher.DispatchMutationAsync(ctx, new ResourceChange
+        {
+            CharacterId = character.Id,
+            PoolName = HitDicePool,
+            Delta = regain,
+            Reason = "Long rest: half the hit dice (at least one)"
+        }, ct);
+        ctx.RecordMessage($"{character.Name} regains {regain} hit {(regain == 1 ? "die" : "dice")} from the long rest.");
+    }
+
+    /// <summary>The 5e long rest reduces exhaustion only when the character has also eaten and drunk (SRD, Resting). Lacking them means starving or parched, the same severe line the deprivation rule uses (a character who is merely peckish has had some). The needs are read before the rest's own hours accrue.</summary>
+    private static string? MissingSustenance(Character character)
+    {
+        var needs = character.Needs?.ActiveNeeds;
+        if (needs is null || character.SystemStats is not Dnd5eExtension)
+        {
+            return null;
+        }
+
+        var hungry = needs.GetValueOrDefault("hunger") >= SurvivalThresholds.SevereHunger;
+        var thirsty = needs.GetValueOrDefault("thirst") >= SurvivalThresholds.SevereThirst;
+        return (hungry, thirsty) switch
+        {
+            (true, true) => "food or drink",
+            (true, false) => "food",
+            (false, true) => "drink",
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// PF2e: a character back at full hit points loses wounded after resting (Player Core: wounded ends when fully healed and
+    /// rested 10 minutes). The rest heals first, so wounded ends only for one who is back at maximum. Doomed is a stacking
+    /// until-long-rest condition, so the generic long-rest decrement already lowers it.
+    /// </summary>
+    private static void RecoverPf2eDyingCounters(Character character, ChangeContext ctx)
+    {
+        if (!Pf2eDying.Applies(character))
+        {
+            return;
+        }
+
+        if (Pf2eDying.Get(character, Pf2eDying.Wounded) > 0 && character.CurrentHp >= character.MaxHp)
+        {
+            Pf2eDying.Set(character, Pf2eDying.Wounded, 0);
+            ctx.RecordMessage($"{character.Name} is at full hit points and rested: wounded ends.");
         }
     }
 
@@ -200,8 +324,17 @@ public class RestChangeHandler : IWorldChangeHandler
 
         // Stacking conditions (e.g. dnd5e exhaustion) decrement by one level per long rest
         // instead of fully clearing — see ConditionDefinition.IsStacking.
+        var missing = MissingSustenance(character);
         foreach (var effect in ConditionExpiryEvaluator.CollectLongRestDecrements(character, _conditionProvider))
         {
+            if (missing is not null)
+            {
+                context.RecordMessage(
+                    $"'{effect.Name}' on {character.Name} stays: a long rest only lowers it when they have also had {missing}. " +
+                    "Feed or water them, then rest again.");
+                continue;
+            }
+
             if (!ConditionExpiryEvaluator.TryParseStackLevel(effect.Name, out var level))
             {
                 context.RecordMessage(
@@ -253,6 +386,10 @@ public class RestChangeHandler : IWorldChangeHandler
             ExpiresAtDay = source.ExpiresAtDay,
             ExpiresAtRound = source.ExpiresAtRound,
             RecoveryHint = source.RecoveryHint,
-            AppliedBy = source.AppliedBy
+            AppliedBy = source.AppliedBy,
+            EffectKey = source.EffectKey,
+            EffectTier = source.EffectTier,
+            ExpiresAtOwnTurnStart = source.ExpiresAtOwnTurnStart,
+            PendingDamage = source.PendingDamage
         };
 }

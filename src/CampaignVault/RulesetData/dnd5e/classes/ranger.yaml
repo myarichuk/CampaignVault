@@ -10,3 +10,5 @@ aliases: [ranger]
 skillChoices: { count: 3, from: [Animal Handling, Athletics, Insight, Investigation, Nature, Perception, Stealth, Survival] }
 proficiencies: { armor: [light, medium, shields], weapons: [simple, martial] }
 multiclassProficiencies: { armor: [light, medium, shields], weapons: [simple, martial] }
+# Needs 13 in each requirement (a list is "any of these") to take a first level here, and to leave the current class.
+multiclassRequires: [[Dexterity], [Wisdom]]

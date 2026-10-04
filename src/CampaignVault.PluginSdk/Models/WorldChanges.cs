@@ -61,6 +61,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(PiercingChange), "piercing")]
 [JsonDerivedType(typeof(DeathChange), "death")]
 [JsonDerivedType(typeof(DeathSaveChange), "death_save")]
+[JsonDerivedType(typeof(TempHpGrant), "grant_temp_hp")]
 [JsonDerivedType(typeof(XpGrantChange), "xp_grant")]
 [JsonDerivedType(typeof(NpcInitiativeNudge), "npc_initiative_nudge")]
 [JsonDerivedType(typeof(ModeTransitionChange), "mode_transition")]
@@ -193,9 +194,14 @@ public class HpChange : WorldChange
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = null!;
 
-    [Description("Delta to apply to CurrentHp. Positive = heal/gain, negative = damage/loss. Use small values for normal hits, larger for big effects.")]
+    [Description("Delta to apply to CurrentHp. Positive = heal/gain, negative = damage/loss. Use small values for normal hits, larger for big effects. Temporary HP (False Life): use grant_temp_hp, not a heal.")]
     [JsonPropertyName("delta")]
     public int Delta { get; set; }
+
+    [Description("Set by the engine when the damage came from a critical hit: a creature already at 0 HP takes two death save failures from it, not one. Leave it out otherwise.")]
+    [JsonPropertyName("critical")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Critical { get; set; }
 }
 
 /// <summary>Move/transfer an existing item to a new holder (character, location, or another container item).</summary>
@@ -367,19 +373,41 @@ public class DeathChange : WorldChange
 
 /// <summary>
 /// One 5e death saving throw for a player character at 0 HP. The engine rolls the d20 unless a roll is supplied
-/// (an in-person roll). Three failures kill via the same path as <see cref="DeathChange"/>.
+/// (an in-person roll). Three failures kill via the same path as <see cref="DeathChange"/>. For a PF2e player character it
+/// is the recovery check: a flat d20 against DC 10 + dying.
 /// </summary>
 [CommitCategory("Combat")]
-[Description("Roll one D&D 5e death saving throw for a PC at 0 HP (engine rolls d20; or pass roll). 10+ success, <10 failure, nat 1 = two failures, nat 20 = back at 1 HP. 3 successes = stable, 3 failures = dead. Damage at 0 HP already adds a failure via hp; massive damage kills outright.")]
+[Description("Roll a PC's death save at 0 HP (engine rolls d20; or pass roll). 5e: 10+ success, nat 1 = two failures, nat 20 = back at 1 HP, 3 successes stable, 3 failures dead. PF2e: recovery check, flat d20 vs DC 10 + dying; moves dying by -2/-1/+1/+2 (nat 20/1 shift a step), dying 4 = dead. Damage at 0 HP already counts via hp.")]
 public class DeathSaveChange : WorldChange
 {
-    [Description("Character ID making the save (must be a 5e PC at 0 HP).")]
+    [Description("Character ID making the save (a 5e PC at 0 HP, or a PF2e PC who is dying).")]
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = null!;
 
     [Description("Optional d20 value (1-20) rolled elsewhere. Omit to let the engine roll.")]
     [JsonPropertyName("roll")]
     public int? Roll { get; set; }
+}
+
+/// <summary>
+/// Temporary hit points from any source (a spell like False Life, a feat, a class feature, an item). They take damage before
+/// hit points, are not restored by healing, and do not stack: a new grant replaces the old only when larger.
+/// </summary>
+[CommitCategory("Combat")]
+[Description("Grant temporary hit points (False Life, a feature, an item). They absorb damage before HP, heal can't restore them, and they don't stack: the larger of old and new stays. A long rest clears them.")]
+public class TempHpGrant : WorldChange
+{
+    [Description("Character ID receiving the temporary hit points.")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = null!;
+
+    [Description("How many temporary hit points the source gives (positive).")]
+    [JsonPropertyName("amount")]
+    public int Amount { get; set; }
+
+    [Description("What grants them (e.g. 'False Life'), shown on the sheet. Optional.")]
+    [JsonPropertyName("source")]
+    public string? Source { get; set; }
 }
 
 /// <summary>
@@ -823,7 +851,7 @@ public class AttributeChange : WorldChange
     [JsonPropertyName("characterId")]
     public string CharacterId { get; set; } = null!;
 
-    [Description("Name of the attribute. Common examples: 'willpower', 'temperature', 'morale', 'corruption', 'reputation', 'fear', 'exhaustion_level' (D&D 5e mechanical exhaustion, 1-6 scale — distinct from narrative tiredness set via 'need' commits). Invent others that fit the story.")]
+    [Description("Name of the attribute. Common examples: 'willpower', 'temperature', 'morale', 'corruption', 'reputation', 'fear', 'exhaustion_level' (legacy; D&D 5e exhaustion is the 'Exhaustion N' status, which the engine enforces). Invent others that fit the story.")]
     [JsonPropertyName("attribute")]
     public string Attribute { get; set; } = null!;
 
@@ -1166,13 +1194,17 @@ public class LevelUpChange : WorldChange
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public HitPointDerivationMode? HpMode { get; set; }
 
-    [Description("If true, also increase currentHp by the same amount as MaxHp gain (full heal on level). Default false.")]
+    [Description("Current HP rises by the same amount as the max HP gain (the SRD gives the new hit points as current too). Default true; send false to leave current HP alone.")]
     [JsonPropertyName("healToMatch")]
-    public bool HealToMatch { get; set; }
+    public bool HealToMatch { get; set; } = true;
 
-    [Description("For multiclass PCs: which class gained the level (e.g. 'Wizard', 'Fighter'). Determines hit die for HP gain.")]
+    [Description("Which class gains the level (e.g. 'Wizard', 'Fighter'): its hit die, its choices, its entry on the sheet. Required when the character has more than one class. A 5e class the character doesn't have yet is taken as a new class at level 1 (multiclassing), if the character meets the class's requirements (13 in its key abilities, and in the current class's).")]
     [JsonPropertyName("classGained")]
     public string? ClassGained { get; set; }
+
+    [Description("DM override for multiclassing: take a new class even though the character lacks the 13 in a key ability the SRD asks for. The override and what was unmet are recorded in the commit messages. Default false.")]
+    [JsonPropertyName("overridePrerequisites")]
+    public bool OverridePrerequisites { get; set; }
 
     [Description("Optional narrative reason logged in the commit summary (e.g. 'defeated the goblin chief', 'milestone after clearing the mine').")]
     [JsonPropertyName("reason")]

@@ -268,7 +268,10 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         // Ability modifier, level + proficiency and item bonuses come from the sheet unless the caller states the number.
         var actorChar = context.Characters[action.CharacterId];
-        var derived = DerivedAttack.Pf2e(actorChar, actorStats, action, hasExplicitBonus, action.Parameters.ContainsKey("damageBonus") || DerivedAttack.HasInlineModifier(action.Parameters.GetValueOrDefault("damageDice")));
+        var isSpellAttack = action.ActionType == RulesetActionType.Spell;
+        var derived = isSpellAttack
+            ? DerivedAttack.Pf2eSpell(actorStats, action, hasExplicitBonus)
+            : DerivedAttack.Pf2e(actorChar, actorStats, action, hasExplicitBonus, action.Parameters.ContainsKey("damageBonus") || DerivedAttack.HasInlineModifier(action.Parameters.GetValueOrDefault("damageDice")));
         attackBonus += derived.ToHit;
         var bareWarning = derived.Note + acFold.Suffix;
 
@@ -287,7 +290,9 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         {
             // Strikes already made this turn (stamped by TryConsumeActionSlot) plus this action's own position in targetIds.
             var prior = action.Parameters.TryGetValue(PriorStrikesParameter, out var priorRaw) && int.TryParse(priorRaw, out var p) ? p : 0;
-            attackBonus -= Math.Min(prior + attackIndex, 2) * 5;
+            // An agile weapon takes -4 and -8 instead of -5 and -10 (a spell attack carries no weapon, so no agile).
+            var step = !isSpellAttack && WeaponProfile.Read(action).Agile ? 4 : 5;
+            attackBonus -= Math.Min(prior + attackIndex, 2) * step;
         }
 
         var attackFold = await FoldAsync(
@@ -324,7 +329,9 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         // Rogue precision damage: caller says the target is off-guard (sneakAttack: true); a critical doubles it with the rest.
         var sneakNote = "";
         var sneakDice = CombatFeatureRules.Pf2eSneakAttackDice(actorChar, actorStats.Level ?? 0);
-        if (sneakDice > 0 && action.Parameters.TryGetValue("sneakAttack", out var sneakRaw) && bool.TryParse(sneakRaw, out var sneakYes) && sneakYes)
+        var calledOffGuard = action.Parameters.TryGetValue("sneakAttack", out var sneakRaw) && bool.TryParse(sneakRaw, out var sneakYes) && sneakYes;
+        // The caller's flag stays the DM's override; a target that really is off-guard (prone, grabbed, paralyzed...) qualifies by itself.
+        if (!isSpellAttack && sneakDice > 0 && (calledOffGuard || Pipeline.HasCondition(target, System, "off-guard")))
         {
             var sneakRoll = await _rollService.RollAsync(new RollRequest { Tag = "sneakAttack", Expression = $"{sneakDice}d6", Mechanic = DiceMechanic.Standard }, ct);
             finalDamage += sneakRoll.Result;
@@ -336,19 +343,15 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             finalDamage *= 2;
         }
 
-        var damageType = action.DamageType ?? "Physical";
-
-        var drKey = targetStats.DamageResistances.Keys.FirstOrDefault(k => string.Equals(k, damageType, StringComparison.OrdinalIgnoreCase));
-        var flatDr = drKey != null && targetStats.DamageResistances.TryGetValue(drKey, out var dr) ? dr : 0;
-
-        if (targetStats.DamageModifiers.TryGetValue(damageType, out var multiplier))
+        var targetEffects = action.FeatEffects.GetValueOrDefault(targetId) ?? [];
+        var dealtNotes = new List<string>();
+        finalDamage = DamageResolver.Resolve(finalDamage, action.DamageType ?? "Physical", targetStats, targetEffects, action, DamageOrdering.Pf2e, dealtNotes);
+        if (dealtNotes.Count > 0)
         {
-            finalDamage = (int)Math.Floor(finalDamage * multiplier);
+            bareWarning += $" ({string.Join("; ", dealtNotes)})";
         }
 
-        finalDamage = Math.Max(0, finalDamage - flatDr);
-
-        mutations.Add(new HpChange { CharacterId = targetId, Delta = -finalDamage });
+        mutations.Add(new HpChange { CharacterId = targetId, Delta = -finalDamage, Critical = degree == Pf2eDegreeOfSuccess.CriticalSuccess });
 
         return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage. ({degree}) Attack {attackRoll.Result} vs AC {ac}.{sneakNote}{bareWarning}");
     }
@@ -451,7 +454,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
             if (success)
             {
-                EngagementMutationHelper.ApplyGrappleSuccess(action.CharacterId, targetId, mutations);
+                EngagementMutationHelper.ApplyGrappleSuccess(action.CharacterId, targetId, mutations, EngagementMutationHelper.GrabbedCondition);
             }
 
             var resultSuffix = success ? " Target is now grabbed." : string.Empty;
@@ -482,7 +485,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
             if (success)
             {
-                EngagementMutationHelper.ApplyGrappleEscape(action.CharacterId, targetId, mutations);
+                EngagementMutationHelper.ApplyGrappleEscape(action.CharacterId, targetId, mutations, EngagementMutationHelper.GrabbedCondition);
             }
 
             var resultSuffix = success ? " Actor breaks free." : string.Empty;
@@ -537,9 +540,9 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         var outcome = await _rollService.RollAsync(new RollRequest { Tag = "save", Expression = "1d20", Bonus = bonus, Mechanic = saveFold.Mechanic }, ct);
 
-        var degree = CalculateDegreeOfSuccess(outcome, dc);
+        var degree = saveFold.AutoFail ? Pf2eDegreeOfSuccess.CriticalFailure : CalculateDegreeOfSuccess(outcome, dc);
 
-        var damage = await TryApplyPf2eSaveDamageAsync(action, action.CharacterId, degree, mutations, ct);
+        var damage = await TryApplyPf2eSaveDamageAsync(action, action.CharacterId, actorStats, degree, new SaveDamageRoll(), mutations, ct);
         var damageMsg = damage > 0 ? $" Took {damage} damage." : string.Empty;
         return ResolverResult.Ok($"{action.ActionName} ({saveName}): {degree}. Rolled {outcome.Result} vs DC {dc}.{damageMsg} {outcome.Summary}{saveFold.Suffix}");
     }
@@ -564,6 +567,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         var saveName = action.Parameters.GetValueOrDefault("save", "Reflex");
         var narratives = new List<string>();
+        var rolledDamage = new SaveDamageRoll();
 
         foreach (var targetId in targets)
         {
@@ -589,8 +593,8 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
                 Mechanic = spellSaveFold.Mechanic,
             }, ct);
 
-            var degree = CalculateDegreeOfSuccess(outcome, dc);
-            var damage = await TryApplyPf2eSaveDamageAsync(action, targetId, degree, mutations, ct);
+            var degree = spellSaveFold.AutoFail ? Pf2eDegreeOfSuccess.CriticalFailure : CalculateDegreeOfSuccess(outcome, dc);
+            var damage = await TryApplyPf2eSaveDamageAsync(action, targetId, targetStats, degree, rolledDamage, mutations, ct);
             narratives.Add(
                 $"{action.ActionName} vs {target.Name}: {degree} ({saveName} {outcome.Result} vs DC {dc})"
                 + (damage > 0 ? $" — {damage} damage." : "."));
@@ -620,43 +624,59 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
     private async Task<int> TryApplyPf2eSaveDamageAsync(
         RulesetAction action,
         string targetId,
+        Pf2eExtension targetStats,
         Pf2eDegreeOfSuccess degree,
+        SaveDamageRoll rolled,
         List<WorldChange> mutations,
         CancellationToken ct)
     {
-        if (!action.Parameters.TryGetValue("damageDice", out var damageDice))
+        if (!rolled.IsRolled)
+        {
+            rolled.IsRolled = true;
+            if (action.Parameters.TryGetValue("damageDice", out var damageDice))
+            {
+                var damageBonus = 0;
+                if (action.Parameters.TryGetValue("damageBonus", out var db))
+                {
+                    DamageResolver.TryParseBonus(db, out damageBonus);
+                }
+
+                // One roll per cast: each target scales the same number by its own degree of success.
+                var damageRoll = await _rollService.RollAsync(new RollRequest
+                {
+                    Tag = "spell-damage",
+                    Expression = damageDice,
+                    Bonus = damageBonus,
+                    Mechanic = DiceMechanic.Standard,
+                }, ct);
+                rolled.Packets = [new DamagePacket(damageRoll.Result, action.DamageType, Primary: true)];
+            }
+        }
+
+        if (rolled.Packets.Count == 0)
         {
             return 0;
         }
 
-        var damageBonus = 0;
-        if (action.Parameters.TryGetValue("damageBonus", out var db))
-        {
-            int.TryParse(db, out damageBonus);
-        }
+        var halfOnSave = !(action.Parameters.TryGetValue("halfOnSave", out var halfStr) && (halfStr == "false" || halfStr == "0"));
+        var scaled = rolled.Packets
+            .Select(p => p with
+            {
+                Amount = degree switch
+                {
+                    Pf2eDegreeOfSuccess.CriticalFailure => p.Amount * 2,
+                    Pf2eDegreeOfSuccess.Failure => p.Amount,
+                    Pf2eDegreeOfSuccess.Success => halfOnSave ? (int)Math.Floor(p.Amount / 2.0) : p.Amount,
+                    _ => 0,
+                },
+            })
+            .ToList();
 
-        var damageRoll = await _rollService.RollAsync(new RollRequest
-        {
-            Tag = "spell-damage",
-            Expression = damageDice,
-            Bonus = damageBonus,
-            Mechanic = DiceMechanic.Standard,
-        }, ct);
-
-        var damage = degree switch
-        {
-            Pf2eDegreeOfSuccess.CriticalFailure => damageRoll.Result * 2,
-            Pf2eDegreeOfSuccess.Failure => damageRoll.Result,
-            Pf2eDegreeOfSuccess.Success => action.Parameters.TryGetValue("halfOnSave", out var halfStr)
-                                             && (halfStr == "false" || halfStr == "0")
-                ? damageRoll.Result
-                : (int)Math.Floor(damageRoll.Result / 2.0),
-            _ => 0,
-        };
-
+        var targetEffects = action.FeatEffects.GetValueOrDefault(targetId) ?? [];
+        var damage = DamageResolver.Resolve(scaled, targetStats, targetEffects, action, DamageOrdering.Pf2e).Total;
         if (damage > 0)
         {
-            mutations.Add(new HpChange { CharacterId = targetId, Delta = -damage });
+            mutations.Add(new HpChange { CharacterId = targetId, Delta = -damage, Critical = degree == Pf2eDegreeOfSuccess.CriticalFailure });
         }
 
         return damage;
@@ -723,7 +743,9 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         state.ActionBudget["actions"] -= cost;
 
         // Multiple attack penalty across separate actions: remember Strikes this turn; the resolver reads the count back.
-        if (action.ActionType == RulesetActionType.Attack)
+        // A spell that rolls an attack counts too; a save spell does not.
+        if (action.ActionType == RulesetActionType.Attack
+            || (action.ActionType == RulesetActionType.Spell && SpellResolutionHelper.InferMode(action) == SpellResolutionMode.Attack))
         {
             var made = state.ActionBudget.GetValueOrDefault(StrikesMade);
             action.Parameters[PriorStrikesParameter] = made.ToString();

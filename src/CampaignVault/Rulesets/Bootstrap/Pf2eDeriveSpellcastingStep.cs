@@ -40,29 +40,19 @@ public sealed class Pf2eDeriveSpellcastingStep(ClassDefinitionProvider? classPro
 
         stats.SpellcastingAbility ??= ability;
 
-        var abilityMod = ability.ToLower() switch
-        {
-            "strength" => stats.StrengthMod,
-            "dexterity" => stats.DexterityMod,
-            "constitution" => stats.ConstitutionMod,
-            "intelligence" => stats.IntelligenceMod,
-            "wisdom" => stats.WisdomMod,
-            "charisma" => stats.CharismaMod,
-            _ => 0
-        };
-
-        var proficiencyRank = stats.SpellcastingProficiency ?? Pf2eProficiencyRank.Trained;
-
-        var proficiencyBonus = proficiencyRank == Pf2eProficiencyRank.Untrained
-            ? 0
-            : level + (int)proficiencyRank;
-
-        var spellDc = 10 + abilityMod + proficiencyBonus;
+        var spellDc = ComputeSpellDc(stats, level, ability);
 
         var changed = false;
         if (!stats.SpellDc.HasValue)
         {
             stats.SpellDc = spellDc;
+            changed = true;
+        }
+
+        // A spell attack is the same number as the DC without the 10 (Player Core: spell attack modifier and spell DC share one formula).
+        if (!stats.SpellAttackBonus.HasValue)
+        {
+            stats.SpellAttackBonus = stats.SpellDc!.Value - 10; // a stated DC carries over
             changed = true;
         }
 
@@ -74,8 +64,31 @@ public sealed class Pf2eDeriveSpellcastingStep(ClassDefinitionProvider? classPro
         return new BootstrapStepResult
         {
             StepName = "pf2e.derive_spellcasting",
-            Message = $"Set spellcasting ({stats.SpellcastingAbility}) on {context.Character.Name}: spellDc={stats.SpellDc} (level {level}, {proficiencyRank} proficiency).",
+            Message = $"Set spellcasting ({stats.SpellcastingAbility}) on {context.Character.Name}: spellDc={stats.SpellDc}, spellAttackBonus={stats.SpellAttackBonus} (level {level}, {stats.SpellcastingProficiency ?? Pf2eProficiencyRank.Trained} proficiency).",
         };
+    }
+
+    /// <summary>10 + the casting ability's modifier + proficiency (level + rank; nothing when untrained). Null when the sheet has no casting ability or level.</summary>
+    public static int? ComputeSpellDc(Pf2eExtension stats) =>
+        stats.Level is >= 1 && !string.IsNullOrWhiteSpace(stats.SpellcastingAbility)
+            ? ComputeSpellDc(stats, stats.Level.Value, stats.SpellcastingAbility)
+            : null;
+
+    private static int ComputeSpellDc(Pf2eExtension stats, int level, string ability)
+    {
+        var abilityMod = ability.ToLower() switch
+        {
+            "strength" => stats.StrengthMod,
+            "dexterity" => stats.DexterityMod,
+            "constitution" => stats.ConstitutionMod,
+            "intelligence" => stats.IntelligenceMod,
+            "wisdom" => stats.WisdomMod,
+            "charisma" => stats.CharismaMod,
+            _ => 0
+        };
+
+        var rank = stats.SpellcastingProficiency ?? Pf2eProficiencyRank.Trained;
+        return 10 + abilityMod + (rank == Pf2eProficiencyRank.Untrained ? 0 : level + (int)rank);
     }
 
     private string? ClassSpellcastingAbility(Character character)

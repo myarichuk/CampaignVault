@@ -6,3 +6,8 @@ durationType: Timed
 mechanicalSummary: Incapacitated; cannot move; can speak only falteringly; auto-fail STR/DEX saves; attackers have advantage
 immunities: []
 suppresses: [incapacitated]
+effects:
+  - { kind: blocksActions }
+  - { kind: speed, set: 0 }
+  - { kind: autoFailSave, abilities: [Strength, Dexterity] }
+  - { kind: advantage, on: attack, scope: againstSelf }

@@ -75,20 +75,25 @@ public sealed class Dnd5eDeriveHitPointsStep(
             return null;
         }
 
-        if (context.LevelsGained > 0
-            && !string.IsNullOrWhiteSpace(context.ClassGained)
-            && Dnd5eClassProfileResolver.TryResolveHitDie(context.ClassGained, out var gainedDie))
+        // The hit die is the gaining class's: the same answer the planner and the class-level sync use.
+        var gained = ClassGainedResolver.Resolve(context.Character, RulesetSystem.Dnd5e, context.ClassGained);
+        if (gained.ClassName is not null && Dnd5eClassProfileResolver.TryResolveHitDie(gained.ClassName, out var gainedDie))
         {
             dieSides = gainedDie;
         }
-        else if (classLevels.Count > 0)
+
+        // One hit die per level gained (rolled mode rolls each); what features and feats give is already the difference
+        // between the two levels, so it is added once for the whole jump.
+        var dieGain = 0;
+        var perLevel = new List<int>();
+        for (var i = 0; i < Math.Max(1, context.LevelsGained); i++)
         {
-            dieSides = Dnd5eClassProfileResolver.TryResolveHitDie(classLevels[^1].Class, out var lastDie)
-                ? lastDie
-                : dieSides;
+            var one = await ComputeLevelGainAsync(dieSides, conMod, mode, ct);
+            perLevel.Add(one);
+            dieGain += one;
         }
 
-        var gain = await ComputeLevelGainAsync(dieSides, conMod, mode, ct)
+        var gain = dieGain
             + CharacterClassFeatures.HpBonus(context.Character, RulesetSystem.Dnd5e, progressions, level + context.LevelsGained)
             - CharacterClassFeatures.HpBonus(context.Character, RulesetSystem.Dnd5e, progressions, level)
             + CharacterFeats.HpBonus(context.Character, RulesetSystem.Dnd5e, feats, level + context.LevelsGained)
@@ -101,7 +106,8 @@ public sealed class Dnd5eDeriveHitPointsStep(
         {
             StepName = Name,
             Message =
-                $"Level gain: +{gain} HP for {context.Character.Name} (now {context.Character.MaxHp} MaxHp, L{stats.Level}).",
+                $"Level gain: +{gain} HP for {context.Character.Name} (now {context.Character.MaxHp} MaxHp, L{stats.Level})."
+                + (perLevel.Count > 1 ? $" Per level: {string.Join(", ", perLevel.Select(g => $"+{g}"))}." : ""),
         };
     }
 

@@ -1,0 +1,9 @@
+# Source: Pathfinder 2e Remastered (Player Core) by Paizo Inc., ORC License. The summary is our own wording.
+name: slowed
+system: pf2e
+durationType: Timed
+mechanicalSummary: 'Valued: regains that many fewer actions at the start of each turn.'
+moodHint: sluggish
+immunities: []
+suppresses: []
+# Not data: an action-economy rule (the turn flow, not a roll).

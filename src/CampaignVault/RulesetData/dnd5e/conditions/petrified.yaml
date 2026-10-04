@@ -6,3 +6,8 @@ durationType: Manual
 mechanicalSummary: Transformed into stone; incapacitated; auto-fail STR/DEX saves; resistance to all damage; immune to poison/disease
 immunities: []
 suppresses: [incapacitated]
+effects:
+  - { kind: blocksActions }
+  - { kind: speed, set: 0 }
+  - { kind: autoFailSave, abilities: [Strength, Dexterity] }
+  - { kind: advantage, on: attack, scope: againstSelf }

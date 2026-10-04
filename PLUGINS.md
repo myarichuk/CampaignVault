@@ -567,6 +567,7 @@ aliases: [fighter]
 skillChoices: { count: 2, from: [Acrobatics, Athletics, Perception] }
 proficiencies: { armor: [light, medium, heavy, shields], weapons: [simple, martial] }    # 5e, starting class
 multiclassProficiencies: { armor: [light, medium, shields], weapons: [simple, martial] } # 5e, a later class
+multiclassRequires: [[Strength, Dexterity]]  # 5e: 13 in each inner list's abilities (any one of them) to take a first level here, and to leave this class
 ```
 
 **5e proficiencies.** `proficiencies:` (here, on a class feature, a race or a feat) takes
@@ -770,8 +771,9 @@ steps+:
   | `advantage`, `disadvantage` | `on: attack\|check\|save` | rolls with it (`subject` narrows); any of each cancels (5e) |
   | `extraDamage` | `dice: 1d8`, optional `damageType` | rolled on a hit and again on a critical hit (5e attacks) |
   | `critRange` | `value: 19` | a natural d20 at or above it is a critical hit (the lowest wins) |
-  | `resistance` | `damageType` | damage of that type to the character is halved (5e attacks) |
-  | `damageReduction` | `value`, optional `damageType` | damage to the character drops by that much, before resistance (5e attacks) |
+  | `resistance` | `damageType` | damage of that type to the character is halved, once however many sources grant it (attacks and saves) |
+  | `damageReduction` | `value`, optional `damageType` | damage to the character drops by that much, before resistance (attacks and saves) |
+  | `evasion` | none | a Dexterity save for half damage: none on a success, half on a failure (5e) |
   | `initiativeBonus` | `value` | adds to the character's initiative |
   | `speedBonus` | `value` (feet) | adds to the character's speed |
   | `passiveBonus` | `value`, optional `subject: Investigation` | adds to passive Perception (or passive Investigation) |
@@ -927,6 +929,29 @@ gold: 15                                  # starts the gold pool
 
 The character builder gives a new character its background's equipment on commit (not again when the same draft id is
 committed), and the gold fills its `gold` pool, which otherwise starts empty.
+
+### Condition effects (`conditions/*.yaml`)
+
+A condition's mechanics are data. `effects:` is a list in the vocabulary below; `levels:` (stacking conditions such as
+exhaustion) maps a level to extra effects, cumulative: a creature at level 3 has the effects of levels 1 to 3. A creature's
+status matches a condition by its `conditionName`, else by its name ignoring case and punctuation, with a trailing number as
+the level ("Exhaustion 3", "Frightened 2"). `immunities` refuses the named conditions on a bearer; `suppresses` turns the named
+conditions off while this one is active (unconscious suppresses prone).
+
+| `kind` | Fields | What it does |
+|---|---|---|
+| `advantage`, `disadvantage` | `on` (attack, check, save), `subject`, `range` (melee, ranged), `requiresTag` | On the bearer's rolls; with `scope: againstSelf`, on attacks made against the bearer. `requiresTag: sourceInSight` needs the DM's `assert` on the roll. |
+| `bonus` | `on` (attack, check, save, ac), `value`, `perLevel`, `bonusType` (status, circumstance, untyped), `subject`, `range` | A number (PF2e). Of one bonus type only the worst penalty and best bonus count. |
+| `autoFailSave` | `abilities` | The bearer fails saves of those abilities (the roll is shown, its result is ignored). |
+| `autoCrit` | `scope: againstSelf`, `range: melee` | A hit on the bearer from within reach is a critical hit. |
+| `speed` | `set` (feet, 0 stops) or `multiplier` | Combat movement can reach 0; travel keeps a 5 ft floor so a captive can still be moved. |
+| `maxHpMultiplier` | `multiplier` | An effective cap on hit points (exhaustion 4); the stored maximum is untouched. |
+| `death` | | The bearer dies when the condition reaches this level (exhaustion 6). |
+| `blocksActions` | | Read by the action gate. |
+| `implies` | `subject` | Counts as having another condition (PF2e: prone implies off-guard, which Sneak Attack checks). |
+
+Not everything fits: a condition whose effect names a relation (charmed: "can't attack the charmer") or a rule outside the
+roll (PF2e slowed and stunned lose actions) stays prose with a note in its file.
 
 ### Feat Definition (5e)
 
@@ -1498,5 +1523,5 @@ Deferred capabilities (not yet implemented):
 
 ---
 
-**Last updated:** engine 0.16.0 — option `prerequisite` (class level, earlier pick); engine 0.15.0 — effect kinds `initiativeBonus`, `speedBonus`, `passiveBonus` and `damageReduction`; engine 0.14.0 — `ProficiencyGrants` (5e armor, weapon and tool proficiencies on classes and features; weapon proficiency gates the attack bonus), pool `maxFrom`, `die`/`dieByLevel`, `recoveryByLevel`, `grantedOnly` and feature-granted `pools`, subclass `spellcasting` and spell `school`; engine 0.13.0 — character creation contracts (`ICharacterCreation`, `IRecipeValidator`, `CharacterDraft`, `CreationOption.Values`), `FeatEffect`/`RulesetTemplate.Requires`, `SpellRepertoire`, explicit death; engine 0.11.0 — `IRollModifierProvider`/`RollQuery`/`RollModifier` (what buffs, conditions, willpower and plugin rules do to rolls; `IChangeContext.ResolveRollModifiers` for plugin rolls), `SystemExtension.WillpowerDrained` and willpower that matters (charm, fear, compulsion and mental saves; rest restores what was drained), `SpellDefinition.tags`, effective speed (`Speed` modifiers now slow travel and show on cards, plus a context line for chases); engine 0.10.0 — `IWorldTimeObserver`/`TimeAdvance` (plugin time hook), `apply_effect` (clamped, expiring, non-stacking buffs/debuffs; `persistent` for curses and auras), the consequence beat (`consequences`, `consequenceCooldownHours`, `consequenceMaxPerDay` options), `tether` (subject → anchor with break DC), ammunition (`ammoType`, `ammoPerShot`, `fireModes`, `mode`), and weapon bursts that fan out round-robin over targets; engine 0.9.0 — `ActorActionAttribute` and `ActionBlock` (the host refuses a marked verb, and core attack/spell/item-use actions, from an actor who is incapacitated, stunned, paralyzed, petrified, unconscious or carries a `BlocksAllActions` status; whoever applies such a status must give it an exit); engine 0.8.0 — public `EngineOnlyAttribute`, `plugin.json` `systems`, `IModeStateMachine.TryAddParticipant`/`TryRemoveParticipant` and `core.mode_joined.v1`/`core.mode_left.v1` (host handling of `mode_transition` join/leave and `systems` lands after the SDK publish); engine 0.7.0 — `IPluginCampaignOptionsUpgrader`, `IContextTurn.Config`/`Time`/`LoadCharacterAsync`, `playerOnlyModeIds`, owner-managed pools, host-enforced mode action slots
+**Last updated:** engine 0.17.0 — damage pipeline (`HpChange.Critical`, `Character.TempHp`, `grant_temp_hp`, `evasion` effect kind), condition mechanics (`RollModifier.AutoFail`), concentration and death-save rolls (`RollKinds.ConcentrationSave`, `RollKinds.DeathSave`); engine 0.16.0 — option `prerequisite` (class level, earlier pick); engine 0.15.0 — effect kinds `initiativeBonus`, `speedBonus`, `passiveBonus` and `damageReduction`; engine 0.14.0 — `ProficiencyGrants` (5e armor, weapon and tool proficiencies on classes and features; weapon proficiency gates the attack bonus), pool `maxFrom`, `die`/`dieByLevel`, `recoveryByLevel`, `grantedOnly` and feature-granted `pools`, subclass `spellcasting` and spell `school`; engine 0.13.0 — character creation contracts (`ICharacterCreation`, `IRecipeValidator`, `CharacterDraft`, `CreationOption.Values`), `FeatEffect`/`RulesetTemplate.Requires`, `SpellRepertoire`, explicit death; engine 0.11.0 — `IRollModifierProvider`/`RollQuery`/`RollModifier` (what buffs, conditions, willpower and plugin rules do to rolls; `IChangeContext.ResolveRollModifiers` for plugin rolls), `SystemExtension.WillpowerDrained` and willpower that matters (charm, fear, compulsion and mental saves; rest restores what was drained), `SpellDefinition.tags`, effective speed (`Speed` modifiers now slow travel and show on cards, plus a context line for chases); engine 0.10.0 — `IWorldTimeObserver`/`TimeAdvance` (plugin time hook), `apply_effect` (clamped, expiring, non-stacking buffs/debuffs; `persistent` for curses and auras), the consequence beat (`consequences`, `consequenceCooldownHours`, `consequenceMaxPerDay` options), `tether` (subject → anchor with break DC), ammunition (`ammoType`, `ammoPerShot`, `fireModes`, `mode`), and weapon bursts that fan out round-robin over targets; engine 0.9.0 — `ActorActionAttribute` and `ActionBlock` (the host refuses a marked verb, and core attack/spell/item-use actions, from an actor who is incapacitated, stunned, paralyzed, petrified, unconscious or carries a `BlocksAllActions` status; whoever applies such a status must give it an exit); engine 0.8.0 — public `EngineOnlyAttribute`, `plugin.json` `systems`, `IModeStateMachine.TryAddParticipant`/`TryRemoveParticipant` and `core.mode_joined.v1`/`core.mode_left.v1` (host handling of `mode_transition` join/leave and `systems` lands after the SDK publish); engine 0.7.0 — `IPluginCampaignOptionsUpgrader`, `IContextTurn.Config`/`Time`/`LoadCharacterAsync`, `playerOnlyModeIds`, owner-managed pools, host-enforced mode action slots
 **Plugin API version:** 1.4 (adds the 0.8.0 contracts above; 1.3 added `IPluginCampaignOptionsUpgrader` and the 0.7.0 hooks above; 1.2 added `IPluginTraitsUpgrader`; 1.1 added `IInteractionMode`/`IModeStateMachine`/`IWorldChangeObserver`; `IRulesetModule` surface unchanged from 1.0)

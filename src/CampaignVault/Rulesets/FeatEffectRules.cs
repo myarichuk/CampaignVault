@@ -304,6 +304,7 @@ internal static class FeatEffectRules
         "extradamage" => $"+{e.Dice}{(string.IsNullOrWhiteSpace(e.DamageType) ? "" : " " + e.DamageType)}",
         "critrange" => $"crit on {e.Value}-20",
         "resistance" => $"resist {e.DamageType}",
+        "evasion" => "evasion",
         _ => Signed(e.Value),
     };
 
@@ -357,6 +358,20 @@ internal static class FeatEffectRules
         return OfKind(targetEffects, FeatEffectKinds.Resistance).Any(a =>
             NamesType(a.Effect, damageType)
             && (!IsConditional(a.Effect) || action is not null && Applies(a, action, weapon, asserted, notes ?? [])));
+    }
+
+    /// <summary>
+    /// Whether the target's effects give evasion for this save: on a Dexterity save that allows half damage, none on a
+    /// success and half on a failure. Conditions on the effect hold for <paramref name="action"/> like any other.
+    /// </summary>
+    public static bool HasEvasion(IReadOnlyList<ActiveFeatEffect> targetEffects, string? saveName, RulesetAction action, List<string> notes)
+    {
+        if (!string.Equals(saveName, "Dexterity", StringComparison.OrdinalIgnoreCase) && !string.Equals(saveName, "Dex", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var weapon = WeaponProfile.Read(action);
+        var asserted = Asserted(action);
+        return OfKind(targetEffects, FeatEffectKinds.Evasion).Any(a => Applies(a, action, weapon, asserted, notes));
     }
 
     private static bool IsConditional(FeatEffect e) => e.Assert.Count > 0 || e.Toggle is not null || e.Weapon.Count > 0;

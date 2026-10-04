@@ -6,7 +6,11 @@ using CampaignVault.Services;
 namespace CampaignVault.Rulesets.Creation;
 
 /// <summary>The class gaining a level, the level it reaches in it, and the choices that level asks for.</summary>
-public sealed record LevelUpPlan(string ClassName, int ClassLevel, int CharacterLevel, IReadOnlyList<LevelChoiceSlot> Slots, string? ProgressionClass = null);
+public sealed record LevelUpPlan(string ClassName, int ClassLevel, int CharacterLevel, IReadOnlyList<LevelChoiceSlot> Slots, string? ProgressionClass = null)
+{
+    /// <summary>The character takes its first level in this class (5e multiclassing).</summary>
+    public bool IsNewClass { get; init; }
+}
 
 /// <summary>
 /// A level-up for an existing character, using the slots the builder uses (<see cref="LevelChoiceSlots"/>): which choices
@@ -21,25 +25,26 @@ public sealed class LevelUpPlanner(CreationSources sources, ProgressionDefinitio
     private const int PartialBoostFrom = 4;
 
     /// <summary>
-    /// The slots of the next level of the class gaining it (<paramref name="classGained"/>, else the first class), or null
+    /// The slots of the next level of the class gaining it (<paramref name="classGained"/>; a class the character lacks starts at its level 1, and none named means the only class), or null
     /// without a progression. <paramref name="picks"/> (by slot id) add the slots a pick asks for: a feat's own choices.
     /// </summary>
     public LevelUpPlan? Plan(Character character, string system, string? classGained = null, IReadOnlyDictionary<string, List<string>>? picks = null)
     {
-        var entries = CharacterClassResolver.ResolveClassLevels(character);
-        if (entries.Count == 0)
+        var gain = ClassGainedResolver.Resolve(character, system, classGained);
+        if (gain.Error is not null || gain.ClassName is null)
             return null;
 
-        var entry = classGained is { Length: > 0 } && entries.FirstOrDefault(e => e.Class.Contains(classGained, StringComparison.OrdinalIgnoreCase)) is { } named
-            ? named
-            : entries[0];
-        var progression = Progression(system, entry.Class);
+        var progression = Progression(system, gain.ClassName);
         if (progression is null)
             return null;
 
-        var classLevel = entry.Level + 1;
+        // A class the character is only now taking has no earlier picks: records of its other classes never count for it.
+        var classLevel = gain.CurrentLevel + 1;
         var level = XpThresholdCalculator.GetCurrentLevel(character) + 1;
-        var recorded = CharacterClassFeatures.Picked(character.SystemStats, entries.Count > 1, progression.ClassName);
+        var classCount = CharacterClassResolver.ResolveClassLevels(character).Count;
+        var recorded = gain.IsNew
+            ? (_, _) => Enumerable.Empty<string>()
+            : CharacterClassFeatures.Picked(character.SystemStats, classCount > 1, progression.ClassName);
         IEnumerable<string> Picked(int at, string key) =>
             at == classLevel && picks?.GetValueOrDefault($"{at}.{key}") is { } now ? now : recorded(at, key);
         var slots = LevelChoiceSlots.For(
@@ -48,7 +53,7 @@ public sealed class LevelUpPlanner(CreationSources sources, ProgressionDefinitio
             .Where(s => s.Level == classLevel)
             .Select(slot => PowersOf(character, system).Aggregate(slot, RecipeCharacterCreation.NarrowedBy))
             .ToList();
-        return new LevelUpPlan(entry.Class, classLevel, level, slots, progression.ClassName);
+        return new LevelUpPlan(gain.ClassName, classLevel, level, slots, progression.ClassName) { IsNewClass = gain.IsNew };
     }
 
     /// <summary>

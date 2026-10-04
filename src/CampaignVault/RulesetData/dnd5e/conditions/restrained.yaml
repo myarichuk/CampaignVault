@@ -6,3 +6,8 @@ durationType: Manual
 mechanicalSummary: Speed becomes 0; attack rolls have disadvantage; attackers have advantage; DEX saves have disadvantage
 immunities: []
 suppresses: []
+effects:
+  - { kind: speed, set: 0 }
+  - { kind: disadvantage, on: attack }
+  - { kind: disadvantage, on: save, subject: Dexterity }
+  - { kind: advantage, on: attack, scope: againstSelf }

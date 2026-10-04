@@ -6,3 +6,5 @@ durationType: Manual
 mechanicalSummary: Speed becomes 0; ends if grappler is incapacitated or creature is moved outside grapple reach
 immunities: []
 suppresses: []
+effects:
+  - { kind: speed, set: 0 }

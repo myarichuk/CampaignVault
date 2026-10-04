@@ -1,0 +1,12 @@
+# Source: Pathfinder 2e Remastered (Player Core) by Paizo Inc., ORC License. The summary is our own wording.
+name: drained
+system: pf2e
+durationType: UntilLongRest
+isStacking: true
+mechanicalSummary: "Valued: a status penalty equal to the value to Constitution-based rolls and DCs (Fortitude saves). Also loses Hit Points and maximum Hit Points equal to level times the value. Decreases by 1 each full night's rest."
+moodHint: depleted
+immunities: []
+suppresses: []
+effects:
+  - { kind: bonus, on: save, value: -1, bonusType: status, perLevel: true, subject: Fortitude }
+# The lost Hit Points and maximum are applied by the DM when the condition lands; they are not a roll modifier.

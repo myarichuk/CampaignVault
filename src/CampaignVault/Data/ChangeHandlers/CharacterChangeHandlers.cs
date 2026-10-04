@@ -110,7 +110,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
 
             if (cc.CurrentHp.HasValue)
             {
-                existing.CurrentHp = Math.Clamp(cc.CurrentHp.Value, 0, existing.MaxHp);
+                HitPointState.Set(existing, cc.CurrentHp.Value);
             }
 
             if (cc.ClassLevel != null)
@@ -153,6 +153,7 @@ public class CharacterCreateHandler : IWorldChangeHandler
             // Upsert, not Create: the character already had its race/ancestry bonuses applied once.
             await ApplyBootstrapAsync(existing, activeSystemForExisting, cc.MaxHp, cc.CurrentHp, null,
                 BootstrapTrigger.Upsert, ctx, ct);
+            HitPointState.SyncDowned(existing); // bootstrap may have rewritten the hit points after the override above
 
             // Reinitialize resource pools if needed (in case level/class changed)
             var campaignConfigExisting = !string.IsNullOrEmpty(ctx.CampaignName)
@@ -354,14 +355,20 @@ public class LevelUpChangeHandler : IWorldChangeHandler
     private readonly CharacterBootstrapOrchestrator _bootstrap;
     private readonly ResourcePoolInitializer _poolInitializer;
     private readonly LevelUpPlanner? _planner;
+    private readonly ClassDefinitionProvider? _classes;
+    private readonly ProgressionDefinitionProvider? _progressions;
 
     public LevelUpChangeHandler(
         CampaignDocumentKeys keys,
         CharacterBootstrapOrchestrator bootstrap,
         ResourcePoolInitializer poolInitializer,
-        LevelUpPlanner? planner = null)
+        LevelUpPlanner? planner = null,
+        ClassDefinitionProvider? classes = null,
+        ProgressionDefinitionProvider? progressions = null)
     {
         _planner = planner;
+        _classes = classes;
+        _progressions = progressions;
         _keys = keys ?? throw new ArgumentNullException(nameof(keys));
         _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
         _poolInitializer = poolInitializer ?? throw new ArgumentNullException(nameof(poolInitializer));
@@ -416,9 +423,47 @@ public class LevelUpChangeHandler : IWorldChangeHandler
 
         var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(ctx, _keys, ct);
 
+        // Which class gains the level: one answer for the planner, the hit die and the class entries. A class the character
+        // lacks is a new one (5e multiclassing), which needs its requirements met or the DM's recorded override.
+        var gain = ClassGainedResolver.Resolve(character, activeSystem, levelUp.ClassGained);
+        if (gain.Error is not null)
+        {
+            return ChangeHandlerResult.Failure(gain.Error);
+        }
+
+        if (gain.IsNew)
+        {
+            var unmet = ClassGainedResolver.UnmetPrerequisites(character, gain, _classes, activeSystem);
+            if (unmet.Count > 0 && !levelUp.OverridePrerequisites)
+            {
+                return ChangeHandlerResult.Failure(
+                    $"{character.Name} can't multiclass into {gain.ClassName}: {string.Join(" ", unmet)} "
+                    + "Nothing was changed. If the DM allows it anyway, send the level_up again with overridePrerequisites: true.");
+            }
+
+            if (unmet.Count > 0)
+            {
+                ctx.RecordMessage($"DM override: {character.Name} takes {gain.ClassName} without meeting its multiclass requirements. {string.Join(" ", unmet)}");
+            }
+        }
+
+        var classGained = gain.ClassName ?? levelUp.ClassGained;
+        if (gain.IsNew)
+        {
+            // Before the level is counted, while the entries still hold the levels the character has now.
+            ClassGainedResolver.EnsureStructuredEntries(character);
+        }
+
+        // What the scores and gear give now, measured before the picks and the level change them (see LevelUpDerivedStats).
+        var equipment = new SessionEquipmentAccess(ctx.Session);
+        var conModBefore = LevelUpDerivedStats.ConstitutionModifier(character);
+        var armorClassBefore = LevelUpDerivedStats.ArmorClassOf(character);
+        var derivedArmorClassBefore = await LevelUpDerivedStats.DerivedArmorClassAsync(character, equipment, _progressions, ct);
+        var spellsBefore = LevelUpDerivedStats.SnapshotPf2eSpellcasting(character);
+
         // The picks go in before the level's hit points are derived, so a Constitution improvement counts for them.
         var pickMessages = new List<string>();
-        var plan = _planner?.Plan(character, activeSystem, levelUp.ClassGained, levelUp.Picks);
+        var plan = _planner?.Plan(character, activeSystem, classGained, levelUp.Picks);
         if (levelUp.Picks is { Count: > 0 } picks)
         {
             if (levelUp.LevelsGained != 1)
@@ -447,16 +492,19 @@ public class LevelUpChangeHandler : IWorldChangeHandler
                 + "none were given in 'picks', so they aren't applied. Ask the player (lookup kind:'level_up' lists the options) and commit them as picks.");
         }
 
+        // Legacy ability score increases go in with the picks, so the level's hit points and armor class see them too.
+        ApplyLevelUpAbilityIncreases(character, levelUp, ctx);
+
         var previousMax = character.MaxHp;
         var report = await _bootstrap.ApplyLevelGainAsync(new BootstrapContext
         {
             Character = character,
             ActiveSystem = activeSystem,
             LevelsGained = levelUp.LevelsGained,
-            ClassGained = levelUp.ClassGained,
+            ClassGained = classGained,
             HpModeOverride = levelUp.HpMode,
             Trigger = BootstrapTrigger.LevelUp,
-            EquipmentAccess = new SessionEquipmentAccess(ctx.Session),
+            EquipmentAccess = equipment,
             CampaignName = ctx.CampaignName,
         }, ct);
 
@@ -478,9 +526,40 @@ public class LevelUpChangeHandler : IWorldChangeHandler
                 + "and the campaign active ruleset supports level_up.");
         }
 
-        if (levelUp.HealToMatch && character.MaxHp > previousMax)
+        // Constitution that rose or fell raises or lowers the hit points of the levels already taken too.
+        if (hpStepRan)
         {
-            character.CurrentHp += character.MaxHp - previousMax;
+            var retro = LevelUpDerivedStats.ApplyRetroactiveConstitution(character, conModBefore, currentLevel);
+            if (retro != 0)
+            {
+                ctx.RecordMessage(
+                    $"Constitution modifier {conModBefore:+#;-#;+0} → {LevelUpDerivedStats.ConstitutionModifier(character):+#;-#;+0}: "
+                    + $"{retro:+#;-#} max HP across the {currentLevel} earlier level(s).");
+            }
+        }
+
+        // Armor class follows the scores (and, in PF2e, the level): by the amount the formula moved.
+        if (character.SystemStats is not null)
+        {
+            var derivedAfter = await LevelUpDerivedStats.DerivedArmorClassAsync(character, equipment, _progressions, ct);
+            if (derivedAfter != derivedArmorClassBefore)
+            {
+                var armorClass = armorClassBefore + (derivedAfter - derivedArmorClassBefore);
+                LevelUpDerivedStats.SetArmorClass(character, armorClass);
+                ctx.RecordMessage($"Armor class {armorClassBefore} → {armorClass}.");
+            }
+        }
+
+        // A PF2e caster's spell DC and attack rise with the level (and the casting ability), so a stated number moves by the same amount.
+        if (LevelUpDerivedStats.ApplyPf2eSpellcastingDelta(character, spellsBefore) is { } spellNote)
+        {
+            ctx.RecordMessage(spellNote);
+        }
+
+        // A dead or downed character isn't brought back by a level: only one still on their feet gets the new hit points.
+        if (levelUp.HealToMatch && character.MaxHp > previousMax && character.Death is null && character.CurrentHp > 0)
+        {
+            HitPointState.Set(character, character.CurrentHp + (character.MaxHp - previousMax));
         }
 
         var campaignConfig = !string.IsNullOrEmpty(ctx.CampaignName)
@@ -500,6 +579,11 @@ public class LevelUpChangeHandler : IWorldChangeHandler
         }
 
         ApplyLevelUpChoices(character, levelUp, ctx);
+
+        if (gain.IsNew)
+        {
+            ctx.RecordMessage($"{character.Name} takes a first level in {gain.ClassName}: now {character.ClassLevel}.");
+        }
 
         return ChangeHandlerResult.Ok;
     }
@@ -524,6 +608,14 @@ public class LevelUpChangeHandler : IWorldChangeHandler
                     Value = value,
                 });
             }
+        }
+    }
+
+    private static void ApplyLevelUpAbilityIncreases(Character character, LevelUpChange levelUp, IChangeContext context)
+    {
+        if (character.SystemStats is null)
+        {
+            return;
         }
 
         if (levelUp.AbilityScoreIncreases is { Count: > 0 } increases)

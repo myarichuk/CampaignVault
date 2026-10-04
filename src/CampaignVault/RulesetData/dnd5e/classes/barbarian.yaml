@@ -10,3 +10,5 @@ aliases: [barbarian]
 skillChoices: { count: 2, from: [Animal Handling, Athletics, Intimidation, Nature, Perception, Survival] }
 proficiencies: { armor: [light, medium, shields], weapons: [simple, martial] }
 multiclassProficiencies: { armor: [shields], weapons: [simple, martial] }
+# Needs 13 in each requirement (a list is "any of these") to take a first level here, and to leave the current class.
+multiclassRequires: [[Strength]]

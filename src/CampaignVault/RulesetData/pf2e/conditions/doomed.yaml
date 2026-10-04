@@ -1,0 +1,10 @@
+# Source: Pathfinder 2e Remastered (Player Core) by Paizo Inc., ORC License. The summary is our own wording.
+name: doomed
+system: pf2e
+durationType: UntilLongRest
+isStacking: true
+mechanicalSummary: 'Valued: death comes sooner. The dying value that kills is 4 minus the doomed value. Decreases by 1 each full night''s rest.'
+moodHint: marked
+immunities: []
+suppresses: []
+# Not data: it moves the dying threshold (a counter), which the damage and recovery-check rules read directly.

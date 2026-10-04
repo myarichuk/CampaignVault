@@ -7,3 +7,5 @@ mechanicalSummary: Cannot attack or target the charmer with harmful abilities or
 moodHint: infatuated, compelled
 immunities: []
 suppresses: []
+# Not data: the effects name the charmer ("can't attack the charmer", "charmer has advantage on social checks"), a relation a
+# condition definition can't hold. The DM applies them from the summary above.

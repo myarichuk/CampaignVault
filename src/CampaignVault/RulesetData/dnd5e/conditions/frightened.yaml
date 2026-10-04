@@ -3,7 +3,11 @@
 name: frightened
 system: dnd5e
 durationType: Manual
-mechanicalSummary: Disadvantage on attack rolls and ability checks while source is in sight; cannot move toward source
+mechanicalSummary: "Disadvantage on attack rolls and ability checks while the source is in sight (pass assert: sourceInSight on the roll; the engine cannot see sight lines); cannot move toward the source"
 moodHint: terrified
 immunities: []
 suppresses: []
+effects:
+  # While the source of fear is in sight: the DM passes `assert: sourceInSight` on the roll.
+  - { kind: disadvantage, on: attack, requiresTag: sourceInSight }
+  - { kind: disadvantage, on: check, requiresTag: sourceInSight }
