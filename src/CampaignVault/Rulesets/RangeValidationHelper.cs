@@ -25,6 +25,9 @@ internal static class RangeValidationHelper
         BandOrder.Select((band, index) => (band, index))
                  .ToDictionary(x => x.band, x => x.index, StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>What a range check found: a refusal, or a disadvantage the attack takes (long range, a ranged attack with a hostile within Touch).</summary>
+    internal readonly record struct RangeOutcome(string? Error, string? DisadvantageReason);
+
     /// <summary>
     /// Validates that all targets of an attack/spell are within range.
     /// Only gates ActionType.Attack and ActionType.Spell.
@@ -35,72 +38,123 @@ internal static class RangeValidationHelper
     /// <returns>True if validation passes (or does not apply); false if a target is out of range.</returns>
     public static bool Validate(RulesetAction action, IChangeContext context, out string? errorReason)
     {
-        errorReason = null;
+        errorReason = Evaluate(action, context).Error;
+        return errorReason is null;
+    }
 
+    /// <summary>
+    /// The full range check (M-80). Parameters, all bands: <c>range</c> is the normal maximum (for an area spell, how far the
+    /// origin point may be from the caster); <c>longRange</c> lets a target beyond <c>range</c> be hit with disadvantage;
+    /// <c>minRange</c> refuses a target closer than it; <c>aoeRadius</c> is the area's reach from <c>originId</c>.
+    /// A 5e ranged weapon attack with a hostile character within Touch of the attacker has disadvantage. Every check
+    /// passes when no position is recorded.
+    /// </summary>
+    public static RangeOutcome Evaluate(RulesetAction action, IChangeContext context)
+    {
         if (action.ActionType != RulesetActionType.Attack && action.ActionType != RulesetActionType.Spell)
         {
-            return true;
+            return default;
         }
 
-        var maxBand = action.Parameters.TryGetValue("aoeRadius", out var aoeBand)
-            ? aoeBand
-            : (action.Parameters.TryGetValue("range", out var singleBand) ? singleBand : null);
+        var p = action.Parameters;
+        var hasAoe = p.TryGetValue("aoeRadius", out var aoeBand);
+        p.TryGetValue("range", out var rangeBand);
+        p.TryGetValue("longRange", out var longBand);
+        p.TryGetValue("minRange", out var minBand);
 
-        if (maxBand is null)
+        var originId = p.TryGetValue("originId", out var origin) ? origin : action.CharacterId;
+        context.Characters.TryGetValue(action.CharacterId, out var caster);
+
+        // The area's origin point: it has its own range from the caster, separate from the radius around it.
+        if (hasAoe && rangeBand is not null && !string.Equals(originId, action.CharacterId, StringComparison.OrdinalIgnoreCase)
+            && BandRank.TryGetValue(rangeBand, out var originMax)
+            && BandBetween(context, action.CharacterId, originId) is { } originBand
+            && BandRank.TryGetValue(originBand, out var originRank) && originRank > originMax)
         {
-            return true;
+            return new RangeOutcome($"The origin '{originId}' is {originBand} from {action.CharacterId}, out of {rangeBand} range.", null);
         }
 
-        var originId = action.Parameters.TryGetValue("originId", out var origin) ? origin : action.CharacterId;
+        var maxBand = hasAoe ? aoeBand : rangeBand;
+        string? disadvantage = null;
 
-        if (!context.Characters.TryGetValue(originId, out var originCharacter))
+        if (maxBand is not null && BandRank.TryGetValue(maxBand, out var maxRank))
         {
-            return true;
-        }
-
-        if (!BandRank.TryGetValue(maxBand, out var maxRank))
-        {
-            return true;
-        }
-
-        var originPositions = new Dictionary<string, SpatialPosition>();
-        if (originCharacter.SystemStats?.SpatialPositions != null)
-        {
-            foreach (var p in originCharacter.SystemStats.SpatialPositions)
+            var longRank = !hasAoe && longBand is not null && BandRank.TryGetValue(longBand, out var lr) ? lr : -1;
+            foreach (var targetId in action.TargetIds)
             {
-                originPositions.TryAdd(p.TargetId, p);
-            }
-        }
-
-        foreach (var targetId in action.TargetIds)
-        {
-            SpatialPosition? pos = originPositions.TryGetValue(targetId, out var originPos) ? originPos : null;
-
-            if (pos is null)
-            {
-                if (context.Characters.TryGetValue(targetId, out var targetCharacter) && targetCharacter?.SystemStats?.SpatialPositions != null)
+                var measuredFrom = hasAoe ? originId : action.CharacterId;
+                if (!context.Characters.ContainsKey(measuredFrom) || BandBetween(context, measuredFrom, targetId) is not { } band
+                    || !BandRank.TryGetValue(band, out var targetRank))
                 {
-                    pos = targetCharacter.SystemStats.SpatialPositions.FirstOrDefault(p => p.TargetId == originId);
+                    continue;
+                }
+
+                if (targetRank > maxRank)
+                {
+                    if (longRank >= targetRank)
+                    {
+                        disadvantage = $"{targetId} is {band}, beyond normal {maxBand} range (long range)";
+                        continue;
+                    }
+
+                    return new RangeOutcome($"Target '{targetId}' is {band} from {measuredFrom}, out of {(longRank >= 0 ? longBand : maxBand)} range.", null);
+                }
+
+                if (!hasAoe && minBand is not null && BandRank.TryGetValue(minBand, out var minRank) && targetRank < minRank)
+                {
+                    return new RangeOutcome($"Target '{targetId}' is {band} from {measuredFrom}, closer than this attack's {minBand} minimum range.", null);
                 }
             }
+        }
 
-            if (pos is null)
+        if (disadvantage is null && caster is not null && IsRangedWeaponAttack(action, caster)
+            && HostileAtTouch(context, caster) is { } adjacent)
+        {
+            disadvantage = $"{adjacent} is hostile and within Touch of {caster.Name}";
+        }
+
+        return new RangeOutcome(null, disadvantage);
+    }
+
+    private static bool IsRangedWeaponAttack(RulesetAction action, Character caster) =>
+        action.ActionType == RulesetActionType.Attack
+        && caster.SystemStats is Dnd5eExtension
+        && action.Parameters.TryGetValue("weaponTags", out var raw)
+        && raw.Split(',', StringSplitOptions.TrimEntries).Contains("ranged", StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The name of a living hostile character recorded at Touch from <paramref name="caster"/> (the other side of the PC/NPC line), or null.</summary>
+    private static string? HostileAtTouch(IChangeContext context, Character caster)
+    {
+        var casterSide = caster.IsPc || caster.IsPartyCompanion;
+        foreach (var other in context.Characters.Values)
+        {
+            if (other is null || other.Id == caster.Id || other.IsDead || other.CurrentHp <= 0
+                || (other.IsPc || other.IsPartyCompanion) == casterSide)
             {
                 continue;
             }
 
-            if (!BandRank.TryGetValue(pos.DistanceBand, out var targetRank))
+            if (string.Equals(BandBetween(context, caster.Id, other.Id), SpatialDistanceBand.Touch, StringComparison.OrdinalIgnoreCase))
             {
-                continue;
-            }
-
-            if (targetRank > maxRank)
-            {
-                errorReason = $"Target '{targetId}' is {pos.DistanceBand} from {originId}, out of {maxBand} range.";
-                return false;
+                return other.Name;
             }
         }
 
-        return true;
+        return null;
+    }
+
+    /// <summary>The recorded distance band between two characters, from either side's record, or null when none is recorded.</summary>
+    private static string? BandBetween(IChangeContext context, string fromId, string toId)
+    {
+        if (context.Characters.TryGetValue(fromId, out var from)
+            && from?.SystemStats?.SpatialPositions?.FirstOrDefault(x => x.TargetId == toId) is { } a)
+        {
+            return a.DistanceBand;
+        }
+
+        return context.Characters.TryGetValue(toId, out var to)
+            && to?.SystemStats?.SpatialPositions?.FirstOrDefault(x => x.TargetId == fromId) is { } b
+            ? b.DistanceBand
+            : null;
     }
 }

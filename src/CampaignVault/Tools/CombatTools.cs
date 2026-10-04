@@ -391,7 +391,6 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                 foreach (var c in encounter.Combatants)
                 {
                     c.HasActedThisRound = false;
-                    c.ReactionAvailable = true;
                 }
                 next = GetNextAliveUnacted(); // Retrieve the first alive person again
 
@@ -452,6 +451,7 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
             {
                 var freshBudget = module.Combat.GetTurnActionBudget(nextCharacter);
                 next.ActionBudget = new Dictionary<string, int>(freshBudget);
+                next.ReactionAvailable = true; // M-81: a reaction comes back at the start of their own turn, not at the round wrap
                 if (HitPointState.IsDying(nextCharacter))
                 {
                     HitPointState.SyncDowned(nextCharacter); // a PC downed before the engine flagged them gets the status now

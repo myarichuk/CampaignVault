@@ -158,6 +158,9 @@ namespace CampaignVault.UnityClient.Flows
                 double level = p.GetNumber("level", p.GetNumber("Level", -1));
                 if (level >= 0 && string.IsNullOrEmpty(member.ClassLevel)) { member.ClassLevel = "Level " + level; }
                 CollectStrings(p, "conditions", "Conditions", member.Conditions);
+                // 5e: the death-save tally of a downed player character ("Death saves 1 of 3, 2 failed", "Stable").
+                string deathSaves = p.GetStringAny(new[] { "deathSaves", "DeathSaves" }, string.Empty);
+                if (deathSaves.Length > 0) { member.Conditions.Insert(0, deathSaves); }
                 CollectStrings(p, "equipped", "Equipped", member.Equipped);
                 CollectStrings(p, "carried", "Carried", member.Carried);
                 CollectStrings(p, "keyMemories", "KeyMemories", member.KeyMemories);
@@ -233,6 +236,9 @@ namespace CampaignVault.UnityClient.Flows
             cur = -1;
             max = -1;
             if (string.IsNullOrEmpty(text)) { return; }
+            // "12/20 (+3 temp)": the temp hit points ride after the pair and are not part of it.
+            int paren = text.IndexOf('(');
+            if (paren >= 0) { text = text.Substring(0, paren); }
             string[] parts = text.Split('/');
             if (parts.Length != 2) { return; }
             double c;

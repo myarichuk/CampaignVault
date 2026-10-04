@@ -93,7 +93,8 @@ internal static class WeaponParameterResolver
     /// Special conventions for range/AoE:
     /// - Weapon.Properties["range"] should be a SpatialDistanceBand constant (Touch/Close/Near/Far/Distant).
     ///   It flows into action.Parameters["range"], which RangeValidationHelper uses to gate single-target attacks.
-    /// - For AoE spells, use action.Parameters["aoeRadius"] (instead of range) + action.Parameters["originId"] (defaults to CharacterId).
+    /// - Optional action.Parameters["longRange"] (disadvantage band) and ["minRange"] (closest allowed band).
+    /// - For AoE spells, use action.Parameters["aoeRadius"] + action.Parameters["originId"] (defaults to CharacterId); range then limits the origin point.
     /// - Range/AoE gating is only active if the ruleset's ICombatRuleset.EnforcesRange is true.
     /// </summary>
     public static void ApplyWeaponItemProperties(RulesetAction action, Item weapon)

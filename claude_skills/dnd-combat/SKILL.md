@@ -93,7 +93,9 @@ Before resolving a `Spell` action, check whether the caster can actually supply 
 
 When *you* apply a status effect (Gagged, Bound, silence zone, etc.) that should block a component, tag it so the engine catches it on later turns: set `BlocksVerbalComponents`, `BlocksSomaticComponents`, `BlocksMaterialComponents`, or `BlocksAllActions` (any nonzero value) in that status effect's `statModifiers` (lifting feat/effect uses the matching `Waives*` key). A `[SpellcastingBlocked]` rejection is a legitimate outcome — narrate why, don't retry around it.
 
-Casting also spends the slot — commit `{ "$type": "resource", "characterId": "chars/wizard", "poolName": "spell_slots_3", "delta": -1 }` in the same batch. Overspend hard-fails; narrate the fizzle and let the player pick another.
+Casting also spends the slot — commit `{ "$type": "resource", "characterId": "chars/wizard", "poolName": "spell_slots_3", "delta": -1 }` in the same batch. A leveled cast with no slot spend in the batch is refused, as is a spell that isn't on the caster's cantrip, prepared or known list, and overspend hard-fails; narrate the fizzle and let the player pick another. Rituals, innate or racial spells, focus spells and scroll or wand casts skip both checks: set `parameters.ritual`, `innate`, `focus` or `item` to `true`.
+
+A 5e concentration spell puts the Concentration status on its caster itself; don't commit one by hand.
 
 ## Restraint that isn't a grapple
 
@@ -104,10 +106,21 @@ Holding someone down after the fight, tying them, escorting a prisoner: commit i
 
 ## Status Effects
 
-A condition the engine didn't apply itself is a `status`; ending it is `status_remove`:
+The engine applies a condition when an action causes it (a failed save, a grapple, 0 HP: Unconscious and Prone, an Exhaustion level). One it didn't apply, such as a zone's effect or a curse, is a `status`; ending it is `status_remove`:
 ```json
-{ "$type": "status", "characterId": "chars/wizard", "status": "Concentration" }
+{ "$type": "status", "characterId": "chars/wizard", "status": "Cursed" }
 ```
+
+## Range
+
+`range` is the normal maximum band, `longRange` lets a farther target be hit with disadvantage, and `minRange` refuses a closer one. A ranged weapon attack with a living hostile within Touch of the attacker has disadvantage. An area spell's `range` limits its origin point (measured from the caster); `aoeRadius` is measured from the origin. Nothing is checked until positions are recorded. The engine sets the disadvantage; don't also pass it.
+
+## Down, dying and rest
+
+- At 0 HP a PC gets Unconscious and Prone from the engine, and the turn-start notice says a death save is due: commit `{ "$type": "death_save", "characterId": "..." }`, or adjudicate something else (a stabilising spell, a revive). Nothing rolls on its own.
+- Temporary HP comes from `grant_temp_hp`, not a heal; the larger value wins and it fades on a long rest.
+- A long rest restores HP and hit dice, and lowers exhaustion by one level when the character has eaten and drunk. Don't hand-commit `hp` for it.
+- A reaction is spent until the combatant's own next turn starts.
 
 ## Checklist
 

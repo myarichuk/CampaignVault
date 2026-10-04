@@ -99,7 +99,9 @@ public record PartySessionView(
     int MemoryCount,
     List<string>? KeyMemories,
     /// <summary>The campaign's XP rule says this player character has earned the next level (the client offers its level-up menu).</summary>
-    bool LevelUpReady = false)
+    bool LevelUpReady = false,
+    /// <summary>5e: the death-save tally of a downed player character, e.g. "Death saves: 1 success, 2 failures" or "Stable"; null otherwise (PF2e's dying and wounded are statuses).</summary>
+    string? DeathSaves = null)
 {
     /// <summary>Needs at or above this value are surfaced; lower ones are ambient and left to take_turn.</summary>
     public const float HighNeedThreshold = 60f;
@@ -146,7 +148,20 @@ public record PartySessionView(
             carried.Count > 0 ? carried : null,
             highNeeds.Count > 0 ? highNeeds : null,
             memories.Count,
-            keyMemories.Count > 0 ? keyMemories : null);
+            keyMemories.Count > 0 ? keyMemories : null,
+            DeathSaves: DeathSaveSummary(c));
+    }
+
+    private static string? DeathSaveSummary(Character c)
+    {
+        if (c.DeathSaves is not { } tally || c.IsDead || c.CurrentHp > 0)
+        {
+            return null;
+        }
+
+        return tally.Stable
+            ? "Stable"
+            : $"Death saves: {tally.Successes} of 3, {tally.Failures} failed";
     }
 }
 

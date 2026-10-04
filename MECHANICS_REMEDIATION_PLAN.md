@@ -755,7 +755,21 @@ Tests: new `RangeValidationTests.cs` (no test file for `RangeValidationHelper` w
 **M-81 Reaction reset.** Move the `ReactionAvailable = true` reset from the round wrap to each combatant's turn start
 (`CombatTools.cs:376-380`). Tests: `CombatToolsTests.cs`.
 
+**Phase 9 status (2026-10-04).** M-80 and M-81 built. M-80: `RangeValidationHelper.Evaluate` adds `longRange` (disadvantage),
+`minRange` (refusal), ranged-weapon-with-hostile-at-Touch disadvantage (5e, living characters on the other PC/NPC side, from the
+recorded positions), and an `aoeRadius` check that measures the radius from the origin and the caster-to-origin distance against
+`range`. `RulesetActionHandler` turns the disadvantage into `AdvantageState` (it cancels an advantage). M-81: the reaction resets
+in the next-turn pick, not at the round wrap. Tests: `RangeValidationTests` (10), one in `CombatToolsTests`.
+
 ### Phase 10: client, prompts, docs
+
+**Phase 10 status (2026-10-04).** M-90: `start_session` party entries carry `deathSaves` (5e, downed PC only: "Death saves: 1 of 3, 2 failed" or
+"Stable"); the Unity party frame shows it as a chip, PF2e dying and wounded already arrive as status names. `ParseHp` ignored a
+`(+N temp)` suffix wrongly and dropped the bar; fixed, with an EditMode test. M-91: `dnd-combat` and `pf2e-combat` skills and both
+`recommended-system-prompt` variants (default, opencode) updated (slot pairing, concentration, dying, long rest, range, reactions,
+temp HP). `ToolCallExamples` gets the slot-pairing rule. `DmHelpManual` is unchanged: it sits 8 characters under its 15,000 cap
+(`GuidanceCorpusTests`). `RULES_GAPS.md` has a Done entry. The narrative prompt is untouched (no combat rules there).
+
 
 **M-90 Unity client.** The grep of `UnityClient/Assets/CampaignVault/Scripts` found HP fractions and the level-up
 overlay but no death-save or condition handling. Add the death-save tally to the party frame and condition chips from
@@ -850,6 +864,8 @@ Tests were located by file name and `grep`, not run. Names used in this plan wer
 the old behavior before changing it (M-00).
 
 ## 10. Phase 11: verification gate
+
+**Phase 11 status (2026-10-04).** Host solution built (0 errors); the five plugin projects under `plugins/` built one at a time (0 errors each); `scripts/pack-pluginsdk.sh` packed PluginSdk 0.17.0. Unit suite 2590 total, 0 failed, 2 skipped (the two rate-limit tests in `CampaignToolsTests`). Unity EditMode 345/345. Integration suite not run (no Docker). Awaiting Michael's confirmation.
 
 1. One build at a time, no overlap, no background builds, no wakeup polling. If the SDK changed (§7a): build the host,
    then each plugin project under `plugins/`, sequentially, then `scripts/pack-pluginsdk.sh`. If a build hangs, stop and

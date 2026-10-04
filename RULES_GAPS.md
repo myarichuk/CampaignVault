@@ -30,8 +30,8 @@ Rules content and features left out on purpose, or deferred. Each entry says why
 
 ## Planned
 
-- **Mechanics gaps found in the 2026-10 code review (planned: see MECHANICS_REMEDIATION_PLAN.md).** Not built yet;
-  each has a ticket in the plan.
+- **Mechanics gaps found in the 2026-10 code review (see MECHANICS_REMEDIATION_PLAN.md).** The fixes below are built
+  (the plan's phases 2 to 9); each bullet lists what is still not done.
   - Spell bookkeeping (built, M-60 to M-62): a leveled cast is refused unless its slot spend is in the same commit and the spell
     is on the caster's cantrip, prepared or known list; a 5e concentration spell marks its caster as concentrating. The campaign
     option `spellBookkeeping=warn` relaxes the refusals. The action parameters `ritual`, `innate`, `focus` and `item` skip them. Not
@@ -53,7 +53,11 @@ Rules content and features left out on purpose, or deferred. Each entry says why
     them), plugin classes outside the twelve SRD names (no hit die), and Pathfinder, which multiclasses through archetype
     feats (a `classGained` the character lacks is refused). Legacy level-up records with no class name match every class
     of a multiclass character.
-  - Range checks only a maximum band: no ranged-in-melee disadvantage or long-range penalty (F28, M-80).
+  - Range (built, M-80): `range` is the normal maximum band, `longRange` lets a farther target be hit with disadvantage, `minRange`
+    refuses a closer one, and a 5e ranged weapon attack with a living hostile (the other side of the PC/NPC line) recorded within
+    Touch has disadvantage. An area spell checks its origin point against `range` and the targets against `aoeRadius` from the origin.
+    Everything passes when no position is recorded. Not done: reach weapons, PF2e's range increments, and a hostile found only among
+    the characters the action loaded.
 
 - **Scripted effects (not built, on purpose).** The effect vocabulary now covers numeric bonuses, advantage,
   extra damage dice, critical range, resistance, flat damage reduction, evasion, and initiative, speed and passive bonuses. A sandboxed script (Jint: no host access, a time and memory cap)
@@ -63,6 +67,12 @@ Rules content and features left out on purpose, or deferred. Each entry says why
   effect records the vocabulary uses, never something the DM homebrews.
 
 ## Done since the first draft
+
+- **Mechanics review fixes (2026-10).** The engine owns what it can compute and the prompts say so: long-rest healing,
+  hit dice and exhaustion, 0 HP (Unconscious, Prone, 5e death saves, PF2e dying and wounded), temporary HP, spell slot
+  pairing, spell repertoire and concentration, range bands, and the reaction reset. The Unity party frame shows a downed
+  PC's death-save tally and still draws the HP bar when temp HP is appended to the hit points. The DM prompts, the combat
+  skills and the help manual no longer ask the model to hand-apply these.
 
 - **Homebrew feats and spells in the builder.** A campaign's own feats and spells join its builder (tagged homebrew),
   next to its homebrew subclasses, ancestries and powers. Picking a deity, patron or lineage now refreshes the class

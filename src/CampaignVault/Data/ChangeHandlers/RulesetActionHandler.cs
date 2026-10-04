@@ -188,9 +188,17 @@ public sealed class RulesetActionHandler(
         // Pre-check: range/AoE validation (only if the ruleset enforces it)
         if (module.Combat.EnforcesRange)
         {
-            if (!RangeValidationHelper.Validate(action, ctx, out var rangeError))
+            var range = RangeValidationHelper.Evaluate(action, ctx);
+            if (range.Error is { } rangeError)
             {
                 return ChangeHandlerResult.Failure($"[OutOfRange] {rangeError}");
+            }
+
+            if (range.DisadvantageReason is { } why)
+            {
+                // A disadvantage from range cancels an advantage the caller already set; the two leave a plain roll.
+                action.AdvantageState = action.AdvantageState == AdvantageState.Advantage ? AdvantageState.None : AdvantageState.Disadvantage;
+                action.Parameters["rangeNote"] = $"Disadvantage: {why}.";
             }
         }
 

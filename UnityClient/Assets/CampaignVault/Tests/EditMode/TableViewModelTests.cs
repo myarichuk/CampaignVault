@@ -6,6 +6,7 @@ using UnityEngine.UIElements;
 using CampaignVault.UnityClient.AI;
 using CampaignVault.UnityClient.App;
 using CampaignVault.UnityClient.Flows;
+using CampaignVault.UnityClient.Json;
 using CampaignVault.UnityClient.UI.Mvvm;
 using CampaignVault.UnityClient.UI.Table;
 
@@ -157,6 +158,18 @@ namespace CampaignVault.UnityClient.Tests
             journal.Days = "abc";
             Assert.AreEqual("abc", journal.Days, "what's typed stays as typed");
             codex.Dispose();
+        }
+
+        [Test]
+        public void ThePartyDigest_KeepsTheHpBar_WithTempHp_AndLeadsWithTheDeathSaves()
+        {
+            var digest = SessionDigest.FromResult(JsonValue.Parse(
+                "{\"party\":[{\"id\":\"chars/a\",\"name\":\"Ana\",\"isPc\":true,\"hp\":\"12/20 (+3 temp)\",\"conditions\":[\"Prone\"],"
+                + "\"deathSaves\":\"Death saves: 1 of 3, 2 failed\"}]}"));
+            var member = digest.Party.Single();
+            Assert.AreEqual(12, member.CurHp);
+            Assert.AreEqual(20, member.MaxHp);
+            CollectionAssert.AreEqual(new[] { "Death saves: 1 of 3, 2 failed", "Prone" }, member.Conditions);
         }
     }
 }

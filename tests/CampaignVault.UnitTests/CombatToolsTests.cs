@@ -242,6 +242,38 @@ public class CombatToolsTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task NextTurn_RestoresReactionAtTheCombatantsOwnTurnStart_NotAtTheRoundWrap()
+    {
+        var (tools, campaign, first, second) = await StartTwoPcsAsync();
+        var key = new CampaignDocumentKeys().CombatCurrent(campaign);
+        async Task<bool> ReactionOf(string id)
+        {
+            using var session = _store.OpenAsyncSession();
+            var encounter = await session.LoadAsync<CombatEncounter>(key, TestContext.Current.CancellationToken);
+            return encounter.Combatants.Single(c => c.CharacterId == id).ReactionAvailable;
+        }
+
+        using (var session = _store.OpenAsyncSession())
+        {
+            var encounter = await session.LoadAsync<CombatEncounter>(key, TestContext.Current.CancellationToken);
+            foreach (var c in encounter.Combatants)
+            {
+                c.ReactionAvailable = false; // both reacted in round 1
+            }
+
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        await tools.NextTurn(campaignName: campaign); // the second combatant's turn begins
+        Assert.True(await ReactionOf(second));
+        Assert.False(await ReactionOf(first)); // theirs is still spent until their own turn comes round
+
+        var wrap = await tools.NextTurn(campaignName: campaign); // round 2, the first combatant's turn
+        Assert.Equal(2, wrap.Data!.Round);
+        Assert.True(await ReactionOf(first));
+    }
+
+    [Fact]
     public async Task NextTurn_DyingPc_GetsATurn_WithNoActions_AndADeathSavePrompt()
     {
         var (tools, campaign, _, second) = await StartTwoPcsAsync();

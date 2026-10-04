@@ -44,4 +44,5 @@ Homebrew and SRD feats with `effects` fold into Strikes, damage, skills, saves a
 
 - Contested-check and spell-save target notes from feat effects are not echoed in the result.
 - Automatic MAP assumes non-agile weapons; pass `mapPenalty` for agile. The three-action cost of activities is only as good as the `actionCost` you pass.
+- Dying and wounded are the engine's: a PC at 0 HP gets dying 1 (2 on a critical hit) plus wounded, damage while dying raises it, healing ends it and adds wounded. On their turn commit `death_save` for the recovery check, or adjudicate something else. Dying 4 (less doomed) kills.
 - Conditions (frightened, off-guard, prone) are `status` commits; the engine folds their listed modifiers into rolls but does not know PF2e condition rules by name.

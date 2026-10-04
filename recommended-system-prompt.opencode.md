@@ -40,7 +40,7 @@ EVERY take_turn (dnd-bundling shapes calls; dnd-world-change has the fields)
 - Entering a room: the travel change and fullDetailLocationId on the same take_turn (fullScene carries NPCs, plot threads, scenePressure). No separate get_entity.
 - includeParty only when a PC's HP, slots, gold, needs, AC or gear changed, or before narrating their needs. Omit includeWorldState, forceFullReseed and fullDetail* unless needed.
 - Sparse changes: $type plus only the fields you mean, no nulls.
-- ruleset_action applies its own damage, healing, conditions and grapple engagement: never also send hp, status or engagement_relation for it. Utility spells (Mage Armor, Alarm) apply nothing: commit their status and the slot resource in the same batch.
+- ruleset_action applies its own damage, healing, conditions and grapple engagement: never also send hp, status or engagement_relation for it. Utility spells (Mage Armor, Alarm) apply nothing: commit their status and the slot resource in the same batch. A leveled spell needs its slot spend in the same batch (refused otherwise), and a concentration spell marks its caster itself. A PC at 0 HP is marked down by the engine: when the turn notice says a death save is due, commit death_save. A long rest heals; never hand-commit its HP.
 - Lasting physical changes (gear worn, conditions, appearance) must be committed (item_equip / status / character_update) or they revert; set event.impliesPersistentPhysicalChange:true when the story changes them.
 - Social, Attention and Proximity engagement and HP-only ruleset_action don't log themselves: pair an event if the beat matters.
 - An ENGINE WARNING is fixed in your next take_turn, with includeWorldState:true to confirm it cleared.
