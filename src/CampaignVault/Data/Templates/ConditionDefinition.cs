@@ -69,8 +69,8 @@ public enum ConditionDurationType
     /// <summary>
     /// Spell/ability concentration. Does not auto-expire by day or rest; breaks on damage
     /// (CON save vs max(10, half damage)) or when casting another concentration effect —
-    /// see HpChangeHandler/StatusChangeHandler, which key off StatusEffect.Name containing
-    /// "Concentration" rather than this enum value (no shipped condition YAML uses it yet).
+    /// see ConcentrationRules, which keys off a StatusEffect's conditionName "concentration"
+    /// (or, for statuses stored earlier, a name starting "Concentration") rather than this enum value.
     /// </summary>
     Concentration,
 

@@ -1,10 +1,11 @@
 using System.Text;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
+using CampaignVault.Services;
 
 namespace CampaignVault.Data.ChangeHandlers;
 
-public sealed class ItemEquipHandler : IWorldChangeHandler
+public sealed class ItemEquipHandler(ProgressionDefinitionProvider? progressions = null) : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is ItemEquip;
 
@@ -112,7 +113,7 @@ public sealed class ItemEquipHandler : IWorldChangeHandler
         item.IsEquipped = true;
         item.LastUpdated = DateTime.UtcNow;
 
-        await ArmorParameterResolver.ApplyAsync(character, ctx, ct);
+        await ArmorParameterResolver.ApplyAsync(character, ctx, ct, progressions);
         ctx.RecordMessage(DerivedStatsMessage.Build(character));
 
         return ChangeHandlerResult.Ok;
@@ -218,7 +219,7 @@ public sealed class ItemEquipHandler : IWorldChangeHandler
     }
 }
 
-public sealed class ItemUnequipHandler : IWorldChangeHandler
+public sealed class ItemUnequipHandler(ProgressionDefinitionProvider? progressions = null) : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is ItemUnequip;
 
@@ -279,7 +280,7 @@ public sealed class ItemUnequipHandler : IWorldChangeHandler
         item.IsEquipped = false;
         item.LastUpdated = DateTime.UtcNow;
 
-        await ArmorParameterResolver.ApplyAsync(character, ctx, ct);
+        await ArmorParameterResolver.ApplyAsync(character, ctx, ct, progressions);
         ctx.RecordMessage(DerivedStatsMessage.Build(character));
 
         return ChangeHandlerResult.Ok;

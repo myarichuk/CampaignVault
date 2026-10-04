@@ -12,11 +12,18 @@ public sealed class Dnd5eDeriveDefenseStep(ProgressionDefinitionProvider? progre
     public string Name => "dnd5e.derive_defense";
 
     public bool CanApply(BootstrapContext context) =>
-        context.Character.SystemStats is Dnd5eExtension stats && stats.ArmorClass == 10;
+        context.Character.SystemStats is Dnd5eExtension;
 
     public async Task<BootstrapStepResult?> ApplyAsync(BootstrapContext context, CancellationToken ct = default)
     {
         var stats = (Dnd5eExtension)context.Character.SystemStats;
+        if (stats.ArmorClass != 10)
+        {
+            // A stated armor class is the stat block's own: keep it as the floor for the unarmored recompute.
+            stats.BaseArmorClass ??= stats.ArmorClass;
+            return null;
+        }
+
         var hints = new List<string>();
 
         var equippedItems = context.EquipmentAccess is not null
@@ -25,13 +32,13 @@ public sealed class Dnd5eDeriveDefenseStep(ProgressionDefinitionProvider? progre
 
         if (equippedItems.Count > 0)
         {
-            ArmorParameterResolver.Apply(context.Character, equippedItems);
+            ArmorParameterResolver.Apply(context.Character, equippedItems, progressions);
         }
         else
         {
             var dexMod = stats.GetAbilityModifier(stats.Dexterity);
             var feature = CharacterClassFeatures.UnarmoredArmorClass(
-                context.Character, RulesetSystem.Dnd5e, progressions, a => stats.GetAbilityModifier(Score(stats, a)));
+                context.Character, RulesetSystem.Dnd5e, progressions, a => stats.GetAbilityModifier(Dnd5eExtension.AbilityScore(stats, a)));
             stats.ArmorClass = Math.Max(10 + dexMod, feature ?? 0);
 
             hints.Add(
@@ -51,15 +58,4 @@ public sealed class Dnd5eDeriveDefenseStep(ProgressionDefinitionProvider? progre
             LlmHints = hints,
         };
     }
-
-    private static int Score(Dnd5eExtension stats, string ability) => ability.ToLowerInvariant() switch
-    {
-        "strength" => stats.Strength,
-        "dexterity" => stats.Dexterity,
-        "constitution" => stats.Constitution,
-        "intelligence" => stats.Intelligence,
-        "wisdom" => stats.Wisdom,
-        "charisma" => stats.Charisma,
-        _ => 10,
-    };
 }

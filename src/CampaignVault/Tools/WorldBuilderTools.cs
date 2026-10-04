@@ -15,15 +15,18 @@ public class WorldBuilderTools : CampaignToolBase, IMcpServerTool
 {
     private readonly CharacterBootstrapOrchestrator _bootstrap;
     private readonly ResourcePoolInitializer? _poolInitializer;
+    private readonly ProgressionDefinitionProvider? _progressions;
 
     public WorldBuilderTools(
         CampaignRepository repository,
         CampaignDocumentKeys keys,
         CharacterBootstrapOrchestrator bootstrap,
         ResourcePoolInitializer? poolInitializer = null,
-        ILogger<WorldBuilderTools>? logger = null)
+        ILogger<WorldBuilderTools>? logger = null,
+        ProgressionDefinitionProvider? progressions = null)
         : base(repository, keys, logger)
     {
+        _progressions = progressions;
         _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
         _poolInitializer = poolInitializer;
     }
@@ -232,7 +235,7 @@ public class WorldBuilderTools : CampaignToolBase, IMcpServerTool
     /// batch (and the item index hasn't caught up either). Once items are in, re-derive AC/warmth/movement
     /// for each character that just had armor put on or taken off here.
     /// </summary>
-    private static async Task ApplyArmorFromBatchItemsAsync(WorldBuildBatch batch, IAsyncDocumentSession s)
+    private async Task ApplyArmorFromBatchItemsAsync(WorldBuildBatch batch, IAsyncDocumentSession s)
     {
         if (batch.Items is not { Count: > 0 })
         {
@@ -273,7 +276,7 @@ public class WorldBuilderTools : CampaignToolBase, IMcpServerTool
                 .Where(i => !batchIds.Contains(i.Id))
                 .Concat(batchItems.Where(i => i.HolderId == wearerId && i.IsEquipped))
                 .ToList();
-            ArmorParameterResolver.Apply(wearer, equipped);
+            ArmorParameterResolver.Apply(wearer, equipped, _progressions);
         }
     }
 

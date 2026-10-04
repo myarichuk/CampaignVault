@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
+using CampaignVault.Services;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using Xunit;
@@ -278,5 +281,80 @@ public class ArmorParameterResolverTests
         Assert.Contains("ENGINE WARNING", message);
         // First-match tie-break: piece1 (heavy) wins, dex capped at 0.
         Assert.Equal(10, stats.ArmorClass);
+    }
+
+    private static ProgressionDefinitionProvider Progressions() =>
+        new(Path.Combine(Path.GetTempPath(), "cv_armor_progressions_" + Guid.NewGuid()), typeof(ProgressionDefinitionProvider).Assembly);
+
+    private static Character ClassCharacter(string classLevel, Dnd5eExtension stats) =>
+        new() { Id = "chars/hero", Name = "Hero", ClassLevel = classLevel, SystemStats = stats };
+
+    private static Item MakeShield(int acBonus = 2) => new()
+    {
+        Id = "items/shield",
+        Name = "Shield",
+        HolderId = "chars/hero",
+        CoreCategory = ItemCategories.Armor,
+        EquipZones = [EquipZones.OffHand],
+        EquipLayer = EquipLayers.Held,
+        IsEquipped = true,
+        Properties = new Dictionary<string, object> { ["acBonus"] = acBonus.ToString() },
+    };
+
+    [Fact]
+    public void Apply_UnarmoredBarbarian_KeepsUnarmoredDefense_WithAShield_AndAfterUnequipping()
+    {
+        var stats = new Dnd5eExtension { Dexterity = 14, Constitution = 16, Level = 1 };
+        var barbarian = ClassCharacter("Barbarian 1", stats);
+
+        ArmorParameterResolver.Apply(barbarian, [], Progressions());
+        Assert.Equal(15, stats.ArmorClass); // 10 + 2 + 3
+
+        ArmorParameterResolver.Apply(barbarian, [MakeShield()], Progressions());
+        Assert.Equal(17, stats.ArmorClass); // a barbarian keeps it with a shield
+    }
+
+    [Fact]
+    public void Apply_UnarmoredMonk_LosesUnarmoredDefenseOnlyWhileCarryingAShield()
+    {
+        var stats = new Dnd5eExtension { Dexterity = 16, Wisdom = 20, Level = 1 };
+        var monk = ClassCharacter("Monk 1", stats);
+
+        ArmorParameterResolver.Apply(monk, [], Progressions());
+        Assert.Equal(18, stats.ArmorClass); // 10 + 3 + 5
+
+        ArmorParameterResolver.Apply(monk, [MakeShield()], Progressions());
+        Assert.Equal(15, stats.ArmorClass); // 10 + 3 + 2: the formula no longer applies, the shield counts
+
+        ArmorParameterResolver.Apply(monk, [], Progressions());
+        Assert.Equal(18, stats.ArmorClass);
+    }
+
+    [Fact]
+    public void Apply_BodyArmor_IgnoresUnarmoredDefense()
+    {
+        var stats = new Dnd5eExtension { Dexterity = 10, Constitution = 20, Level = 1 };
+        var barbarian = ClassCharacter("Barbarian 1", stats);
+
+        ArmorParameterResolver.Apply(barbarian, [MakeEquipped("items/mail", EquipZones.Torso, EquipLayers.Armor, acBonus: 6, armorType: "heavy")], Progressions());
+
+        Assert.Equal(16, stats.ArmorClass);
+    }
+
+    [Fact]
+    public void Apply_StatBlockArmorClass_IsTheFloorWhenNothingArmorLikeIsWorn()
+    {
+        var stats = new Dnd5eExtension { Dexterity = 10, ArmorClass = 15, BaseArmorClass = 15 };
+        var creature = MakeCharacter(stats);
+        var ring = MakeEquipped("items/ring", EquipZones.Ring, EquipLayers.Base);
+
+        ArmorParameterResolver.Apply(creature, [ring]);
+        Assert.Equal(15, stats.ArmorClass); // not 10 + Dex
+
+        ArmorParameterResolver.Apply(creature, [MakeEquipped("items/mail", EquipZones.Torso, EquipLayers.Armor, acBonus: 4, armorType: "heavy")]);
+        Assert.Equal(14, stats.ArmorClass); // worn armor replaces the stat block's
+
+        ArmorParameterResolver.Apply(creature, []);
+        Assert.Equal(15, stats.ArmorClass); // unequipping returns to the base, not 10 + Dex
     }
 }

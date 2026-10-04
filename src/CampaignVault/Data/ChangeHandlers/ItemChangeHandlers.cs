@@ -5,7 +5,7 @@ using CampaignVault.Services;
 
 namespace CampaignVault.Data.ChangeHandlers;
 
-public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorldChangeHandler
+public class ItemUpdateHandler(ILocalEmbeddingService embeddingService, ProgressionDefinitionProvider? progressions = null) : IWorldChangeHandler
 {
     private const double ItemDetailSemanticMatchThreshold = 0.86;
 
@@ -143,7 +143,7 @@ public class ItemUpdateHandler(ILocalEmbeddingService embeddingService) : IWorld
 
             if (wearer != null)
             {
-                await ArmorParameterResolver.ApplyAsync(wearer, ctx, ct);
+                await ArmorParameterResolver.ApplyAsync(wearer, ctx, ct, progressions);
                 ctx.RecordMessage(DerivedStatsMessage.Build(wearer));
             }
         }

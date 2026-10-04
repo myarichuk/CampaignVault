@@ -407,6 +407,13 @@ public class LevelUpChangeHandler : IWorldChangeHandler
                 $"level_up applies only to player characters (isPc: true) or party companions (isPartyCompanion: true). '{levelUp.CharacterId}' is neither.");
         }
 
+        var currentLevel = XpThresholdCalculator.GetCurrentLevel(character);
+        if (currentLevel + levelUp.LevelsGained > LevelUpStatusReader.MaxLevel)
+        {
+            return ChangeHandlerResult.Failure(
+                $"{character.Name} is level {currentLevel}; {levelUp.LevelsGained} more level(s) would pass the level cap of {LevelUpStatusReader.MaxLevel}.");
+        }
+
         var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(ctx, _keys, ct);
 
         // The picks go in before the level's hit points are derived, so a Constitution improvement counts for them.

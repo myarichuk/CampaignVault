@@ -173,6 +173,9 @@ public record UnarmoredArmorClass
 {
     public int Base { get; init; } = 10;
     public List<string> Abilities { get; init; } = [];
+
+    /// <summary>False when the formula stops applying while a shield is carried (the monk's).</summary>
+    public bool AllowsShield { get; init; } = true;
 }
 
 /// <summary>A feature a character has at its level: the class's own, or one an option it picked gives (<see cref="From"/>).</summary>

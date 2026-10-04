@@ -126,11 +126,16 @@ public static class CharacterClassFeatures
     public static int HpBonus(Character character, string system, ProgressionDefinitionProvider? progressions, int characterLevel) =>
         Features(character, system, progressions).Sum(f => f.Feature.HpPerLevel) * characterLevel;
 
-    /// <summary>The best unarmored armor class a feature gives, or null when none does.</summary>
+    /// <summary>
+    /// The best unarmored armor class a feature gives, or null when none does. A formula that doesn't allow a shield
+    /// is skipped while <paramref name="carriesShield"/>.
+    /// </summary>
     public static int? UnarmoredArmorClass(
-        Character character, string system, ProgressionDefinitionProvider? progressions, Func<string, int> abilityModifier)
+        Character character, string system, ProgressionDefinitionProvider? progressions, Func<string, int> abilityModifier,
+        bool carriesShield = false)
     {
-        var formulas = Features(character, system, progressions).Select(f => f.Feature.UnarmoredArmorClass).OfType<UnarmoredArmorClass>().ToList();
+        var formulas = Features(character, system, progressions).Select(f => f.Feature.UnarmoredArmorClass).OfType<UnarmoredArmorClass>()
+            .Where(f => f.AllowsShield || !carriesShield).ToList();
         return formulas.Count == 0 ? null : formulas.Max(f => f.Base + f.Abilities.Sum(abilityModifier));
     }
 

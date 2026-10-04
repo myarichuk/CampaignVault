@@ -1,9 +1,10 @@
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
+using CampaignVault.Services;
 
 namespace CampaignVault.Data.ChangeHandlers;
 
-public sealed class ItemTransferHandler : IWorldChangeHandler
+public sealed class ItemTransferHandler(ProgressionDefinitionProvider? progressions = null) : IWorldChangeHandler
 {
     public bool ShouldHandle(WorldChange change) => change is ItemTransfer;
 
@@ -131,14 +132,14 @@ public sealed class ItemTransferHandler : IWorldChangeHandler
             {
                 if (ctx.Characters.TryGetValue(previousHolderId, out var previousHolder))
                 {
-                    await ArmorParameterResolver.ApplyAsync(previousHolder, ctx, ct);
+                    await ArmorParameterResolver.ApplyAsync(previousHolder, ctx, ct, progressions);
                 }
                 else
                 {
                     var prevChar = await ctx.Session.LoadAsync<Character>(previousHolderId, ct);
                     if (prevChar != null)
                     {
-                        await ArmorParameterResolver.ApplyAsync(prevChar, ctx, ct);
+                        await ArmorParameterResolver.ApplyAsync(prevChar, ctx, ct, progressions);
                         ctx.RegisterNewCharacter(prevChar);
                     }
                 }

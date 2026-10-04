@@ -94,7 +94,7 @@ public sealed class HpChangeHandler(IRollService rollService) : IWorldChangeHand
         // Concentration break check: DC = max(10, half damage taken), save vs DC (CON for 5e, Fortitude for PF2e).
         if (!killed && damageTaken > 0 && character.SystemStats?.StatusEffects != null)
         {
-            var concentration = character.SystemStats.StatusEffects.FirstOrDefault(e => e.Name.Contains("Concentration", StringComparison.OrdinalIgnoreCase));
+            var concentration = ConcentrationRules.Find(character.SystemStats.StatusEffects);
             if (concentration != null)
             {
                 var dc = Math.Max(10, (int)Math.Ceiling(damageTaken / 2.0f));

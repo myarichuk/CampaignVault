@@ -1,5 +1,6 @@
 using CampaignVault.Data.ChangeHandlers;
 using CampaignVault.Models;
+using CampaignVault.Services;
 
 namespace CampaignVault.Rulesets;
 
@@ -24,11 +25,12 @@ namespace CampaignVault.Rulesets;
 public static class ArmorParameterResolver
 {
     /// <summary>Loads the character's equipped items via ChangeContext, applies the resolved AC/warmth/movement modifier, and records any diagnostic messages.</summary>
-    public static async Task ApplyAsync(Character character, ChangeContext context, CancellationToken ct = default)
+    public static async Task ApplyAsync(
+        Character character, ChangeContext context, CancellationToken ct = default, ProgressionDefinitionProvider? progressions = null)
     {
         character.LastUpdated = DateTime.UtcNow;
         var equippedItems = await ItemHolderQueryHelper.GetEquippedItemsAsync(context, character.Id, ct: ct);
-        var messages = Apply(character, equippedItems);
+        var messages = Apply(character, equippedItems, progressions);
         foreach (var message in messages)
         {
             context.RecordMessage(message);
@@ -40,9 +42,12 @@ public static class ArmorParameterResolver
     /// Returns any diagnostic messages (ENGINE WARNING / NARRATIVE PROMPT) produced while resolving
     /// dex-cap ambiguity; empty when nothing is ambiguous (the common case, byte-identical to prior behavior).
     /// </summary>
-    public static List<string> Apply(Character character, IReadOnlyList<Item> equippedItems)
+    public static List<string> Apply(
+        Character character, IReadOnlyList<Item> equippedItems, ProgressionDefinitionProvider? progressions = null)
     {
         var (acBonus, dexCap, warmth, movementModifier, messages) = ComputeContributions(equippedItems);
+        var wearsBodyArmor = equippedItems.Any(IsBodyArmor);
+        var carriesShield = equippedItems.Any(IsShield);
 
         switch (character.SystemStats)
         {
@@ -50,7 +55,17 @@ public static class ArmorParameterResolver
             {
                 var dexMod = dnd5e.GetAbilityModifier(dnd5e.Dexterity);
                 var effectiveDex = dexCap.HasValue ? Math.Min(dexMod, dexCap.Value) : dexMod;
-                dnd5e.ArmorClass = 10 + effectiveDex + acBonus;
+                if (wearsBodyArmor)
+                {
+                    dnd5e.ArmorClass = 10 + effectiveDex + acBonus;
+                    break;
+                }
+
+                // No body armor: the best of 10 + Dexterity, a class feature's formula (Unarmored Defense) and the stat block's
+                // own AC; a shield and other AC items add on top.
+                var feature = CharacterClassFeatures.UnarmoredArmorClass(
+                    character, RulesetSystem.Dnd5e, progressions, a => dnd5e.GetAbilityModifier(Dnd5eExtension.AbilityScore(dnd5e, a)), carriesShield);
+                dnd5e.ArmorClass = Math.Max(10 + dexMod, Math.Max(feature ?? 0, dnd5e.BaseArmorClass ?? 0)) + acBonus;
                 break;
             }
             case Pf2eExtension pf2e:
@@ -59,7 +74,8 @@ public static class ArmorParameterResolver
                     ? 0
                     : pf2e.Level.Value + (int)pf2e.AcProficiency;
                 var effectiveDex = dexCap.HasValue ? Math.Min(pf2e.DexterityMod, dexCap.Value) : pf2e.DexterityMod;
-                pf2e.ArmorClass = 10 + effectiveDex + proficiencyBonus + acBonus;
+                var derived = 10 + effectiveDex + proficiencyBonus;
+                pf2e.ArmorClass = (wearsBodyArmor ? derived : Math.Max(derived, pf2e.BaseArmorClass ?? 0)) + acBonus;
                 break;
             }
         }
@@ -100,7 +116,7 @@ public static class ArmorParameterResolver
 
         foreach (var item in equippedItems)
         {
-            var isShield = item.EquipLayer == EquipLayers.Held && item.EquipZones.Contains(EquipZones.OffHand, StringComparer.OrdinalIgnoreCase);
+            var isShield = IsShield(item);
             var stacksWithArmor = TryGetProperty(item, "stacksWithArmor", out var stacksRaw)
                                    && stacksRaw.Equals("true", StringComparison.OrdinalIgnoreCase);
 
@@ -170,6 +186,12 @@ public static class ArmorParameterResolver
             $"using '{fallback.Name}' for the dex-cap by default. Set Properties[\"dexCapSource\"]=\"true\" on the piece that should govern it via world_build/item_update.");
         return fallback;
     }
+
+    private static bool IsShield(Item item) =>
+        item.EquipLayer == EquipLayers.Held && item.EquipZones.Contains(EquipZones.OffHand, StringComparer.OrdinalIgnoreCase);
+
+    private static bool IsBodyArmor(Item item) =>
+        item.EquipLayer == EquipLayers.Armor && item.EquipZones.Contains(EquipZones.Torso, StringComparer.OrdinalIgnoreCase);
 
     private static bool TryGetProperty(Item item, string key, out string value)
     {

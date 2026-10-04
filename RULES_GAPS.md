@@ -30,6 +30,21 @@ Rules content and features left out on purpose, or deferred. Each entry says why
 
 ## Planned
 
+- **Mechanics gaps found in the 2026-10 code review (planned: see MECHANICS_REMEDIATION_PLAN.md).** Not built yet;
+  each has a ticket in the plan.
+  - Conditions are text only: no advantage, disadvantage, auto-fail, speed or crit effects (F6, M-20 to M-23). Their
+    `Immunities` and `Suppresses` are parsed but never read (F7, M-24).
+  - Exhaustion exists in two disconnected forms (a status and the `exhaustion_level` attribute), has no mechanics and no
+    death at level 6 (F8, M-25).
+  - Temporary hit points don't exist (F18, M-15).
+  - A spell action neither spends a slot nor checks known or prepared spells, and a cast never applies concentration
+    (F19, M-60 to M-62).
+  - Grapple applies only an engagement relation: no Grappled condition, and it doesn't end when the grappler is
+    incapacitated or moves away (F25, M-27).
+  - Speed is floored at 5 ft, so "speed 0" can't be expressed (F26, M-26).
+  - Range checks only a maximum band: no ranged-in-melee disadvantage or long-range penalty (F28, M-80).
+  - Evasion isn't modelled (F29, M-14).
+
 - **Scripted effects (not built, on purpose).** The effect vocabulary now covers numeric bonuses, advantage,
   extra damage dice, critical range, resistance, flat damage reduction, and initiative, speed and passive bonuses. A sandboxed script (Jint: no host access, a time and memory cap)
   could express the rest. We hold off because a script is code: it can't be validated, previewed or tagged the way

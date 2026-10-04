@@ -32,6 +32,10 @@ internal sealed record DerivedAttack(int ToHit, int Damage, string Note)
     public static bool HasInlineModifier(string? damageDice) =>
         damageDice is not null && System.Text.RegularExpressions.Regex.IsMatch(damageDice, @"\d\s*[+-]\s*\d+\s*$");
 
+    /// <summary>"1d8+3" becomes "1d8": a critical hit doubles the dice, never a flat modifier.</summary>
+    public static string DiceOnly(string dice) =>
+        System.Text.RegularExpressions.Regex.Replace(dice, @"\s*[+-]\s*\d+\s*$", "");
+
     public static DerivedAttack Dnd5e(
         Character actor, Dnd5eExtension stats, RulesetAction action, bool explicitBonus, bool explicitDamageBonus)
     {

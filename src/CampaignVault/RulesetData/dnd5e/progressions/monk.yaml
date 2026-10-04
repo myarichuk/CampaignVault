@@ -11,7 +11,7 @@ levels:
     features:
       - name: "Unarmored Defense"
         description: "AC = 10 + Dex mod + Wis mod (unarmored, no shield)."
-        unarmoredArmorClass: { base: 10, abilities: [Dexterity, Wisdom] }
+        unarmoredArmorClass: { base: 10, abilities: [Dexterity, Wisdom], allowsShield: false }
       - name: "Martial Arts"
         description: "Dex for unarmed/monk weapons. 1d4 damage (scales). Bonus action unarmed strike."
   2:

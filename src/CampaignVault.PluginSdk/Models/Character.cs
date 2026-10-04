@@ -358,6 +358,14 @@ public class SystemExtension
     public float WarmthRating { get; set; } = 0f;
 
     /// <summary>
+    /// The armor class a creature has with no body armor equipped, when its stat block states one (natural armor, a
+    /// monster's listed AC). Recorded once at creation. <see cref="Rulesets.ArmorParameterResolver"/> uses it as the floor
+    /// when nothing armor-like is worn, so equipping a ring doesn't drop a stat-block AC to 10 + Dexterity. Null: derive.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("baseArmorClass")]
+    public int? BaseArmorClass { get; set; }
+
+    /// <summary>
     /// Engine-computed cache of movement modifier from currently equipped items' Properties["speedModifier"].
     /// Negative = movement penalty, positive = movement bonus. LLM assigns based on narrative context.
     /// Recomputed by ArmorParameterResolver alongside ArmorClass/WarmthRating on every

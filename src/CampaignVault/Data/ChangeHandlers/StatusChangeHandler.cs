@@ -125,10 +125,10 @@ public sealed class StatusChangeHandler : IWorldChangeHandler
 
         // A character can only concentrate on one effect at a time — casting a new
         // concentration effect breaks whatever it was previously concentrating on.
-        if (effect.Name.Contains("Concentration", StringComparison.OrdinalIgnoreCase))
+        if (ConcentrationRules.IsConcentration(effect))
         {
             var broken = character.SystemStats.StatusEffects
-                .Where(e => e.Name.Contains("Concentration", StringComparison.OrdinalIgnoreCase))
+                .Where(ConcentrationRules.IsConcentration)
                 .ToList();
             foreach (var priorEffect in broken)
             {

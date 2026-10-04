@@ -374,7 +374,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             bonusSource = " [bonus supplied by caller; sheet modifier not added]";
         }
 
-        var checkFold = await FoldAsync(context, context.Characters[action.CharacterId], RollKinds.Check, skillName, bonus, action).ConfigureAwait(false);
+        var checkFold = await FoldAsync(context, context.Characters[action.CharacterId], RollKinds.Check, skillName, bonus, action, GetMechanicFromAction(action)).ConfigureAwait(false);
         bonus = checkFold.Bonus;
 
         var relationshipLabel = "neutral";
@@ -391,7 +391,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             }
         }
 
-        var outcome = await _rollService.RollAsync(new RollRequest { Tag = "skill", Expression = "1d20", Bonus = bonus, Mechanic = GetMechanicFromAction(action) }, ct);
+        var outcome = await _rollService.RollAsync(new RollRequest { Tag = "skill", Expression = "1d20", Bonus = bonus, Mechanic = checkFold.Mechanic }, ct);
 
         var degree = CalculateDegreeOfSuccess(outcome, dc);
         var relationshipSuffix = relationshipBonus != 0 ? $" ({relationshipLabel})" : "";
@@ -429,7 +429,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         {
             var skillName = action.Parameters.GetValueOrDefault("skill", "Athletics");
             var bonus = GetSkillOrAbilityBonus(actorStats, skillName);
-            var grabFold = await FoldAsync(context, context.Characters[action.CharacterId], RollKinds.Check, skillName, bonus, action).ConfigureAwait(false);
+            var grabFold = await FoldAsync(context, context.Characters[action.CharacterId], RollKinds.Check, skillName, bonus, action, GetMechanicFromAction(action)).ConfigureAwait(false);
             bonus = grabFold.Bonus;
 
             var fortDc = 10 + GetSavingThrowBonus(targetStats, "Fortitude");
@@ -443,7 +443,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
                 Tag = "grapple",
                 Expression = "1d20",
                 Bonus = bonus,
-                Mechanic = GetMechanicFromAction(action)
+                Mechanic = grabFold.Mechanic
             }, ct);
 
             var degree = CalculateDegreeOfSuccess(outcome, fortDc);
@@ -462,7 +462,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         {
             var skillName = action.Parameters.GetValueOrDefault("skill", "Athletics");
             var actorBonus = GetSkillOrAbilityBonus(actorStats, skillName);
-            var escapeFold = await FoldAsync(context, context.Characters[action.CharacterId], RollKinds.Check, skillName, actorBonus, action).ConfigureAwait(false);
+            var escapeFold = await FoldAsync(context, context.Characters[action.CharacterId], RollKinds.Check, skillName, actorBonus, action, GetMechanicFromAction(action)).ConfigureAwait(false);
             actorBonus = escapeFold.Bonus;
 
             var grapplerBonus = GetSkillOrAbilityBonus(targetStats, skillName);
@@ -474,7 +474,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
                 Tag = "escape",
                 Expression = "1d20",
                 Bonus = actorBonus,
-                Mechanic = GetMechanicFromAction(action)
+                Mechanic = escapeFold.Mechanic
             }, ct);
 
             var degree = CalculateDegreeOfSuccess(outcome, escapeDc);
@@ -493,7 +493,8 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         var targetSkill = action.Parameters.GetValueOrDefault("targetSkill", actorSkill);
 
         var actorRollBonus = GetSkillOrAbilityBonus(actorStats, actorSkill);
-        actorRollBonus = (await FoldAsync(context, context.Characters[action.CharacterId], RollKinds.Check, actorSkill, actorRollBonus, action).ConfigureAwait(false)).Bonus;
+        var actorFold = await FoldAsync(context, context.Characters[action.CharacterId], RollKinds.Check, actorSkill, actorRollBonus, action, GetMechanicFromAction(action), target).ConfigureAwait(false);
+        actorRollBonus = actorFold.Bonus;
 
         var relationshipLabel = "neutral";
         var relationshipBonus = 0;
@@ -508,10 +509,11 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         }
 
         var targetRollBonus = GetSkillOrAbilityBonus(targetStats, targetSkill);
-        targetRollBonus = (await FoldAsync(context, target, RollKinds.Check, targetSkill, targetRollBonus, action).ConfigureAwait(false)).Bonus;
+        var targetFold = await FoldAsync(context, target, RollKinds.Check, targetSkill, targetRollBonus, other: context.Characters[action.CharacterId]).ConfigureAwait(false);
+        targetRollBonus = targetFold.Bonus;
 
-        var actorRoll = await _rollService.RollAsync(new RollRequest { Tag = "actor", Expression = "1d20", Bonus = actorRollBonus, Mechanic = GetMechanicFromAction(action) }, ct);
-        var targetRoll = await _rollService.RollAsync(new RollRequest { Tag = "target", Expression = "1d20", Bonus = targetRollBonus, Mechanic = DiceMechanic.Standard }, ct);
+        var actorRoll = await _rollService.RollAsync(new RollRequest { Tag = "actor", Expression = "1d20", Bonus = actorRollBonus, Mechanic = actorFold.Mechanic }, ct);
+        var targetRoll = await _rollService.RollAsync(new RollRequest { Tag = "target", Expression = "1d20", Bonus = targetRollBonus, Mechanic = targetFold.Mechanic }, ct);
 
         var actorWins = actorRoll.Result > targetRoll.Result;
         var resultStr = actorWins ? "Actor Wins" : "Target Wins";
@@ -576,14 +578,15 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             }
 
             var bonus = GetSavingThrowBonus(targetStats, saveName);
-            bonus = (await FoldAsync(context, target, RollKinds.Save, saveName, bonus, action).ConfigureAwait(false)).Bonus;
+            var spellSaveFold = await FoldAsync(context, target, RollKinds.Save, saveName, bonus, action, GetMechanicFromAction(action)).ConfigureAwait(false);
+            bonus = spellSaveFold.Bonus;
 
             var outcome = await _rollService.RollAsync(new RollRequest
             {
                 Tag = "spell-save",
                 Expression = "1d20",
                 Bonus = bonus,
-                Mechanic = GetMechanicFromAction(action),
+                Mechanic = spellSaveFold.Mechanic,
             }, ct);
 
             var degree = CalculateDegreeOfSuccess(outcome, dc);
@@ -664,10 +667,16 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         var stats = character.SystemStats as Pf2eExtension ?? new Pf2eExtension();
         var percKey = stats.SkillModifiers.Keys.FirstOrDefault(k => string.Equals(k, "Perception", StringComparison.OrdinalIgnoreCase));
         var initBonus = percKey != null && stats.SkillModifiers.TryGetValue(percKey, out var perc) ? perc : stats.WisdomMod;
-        initBonus = Pipeline.Resolve(
-            new RollQuery(RollKinds.Initiative, null, [], character, null, System, new Dictionary<string, string>()), initBonus).Bonus;
+        var initiative = Pipeline.Resolve(
+            new RollQuery(RollKinds.Initiative, null, [], character, null, System, new Dictionary<string, string>()), initBonus);
+        initBonus = initiative.Bonus;
         
-        var request = new RollRequest { Tag = "initiative", Expression = "1d20", Bonus = initBonus, Mechanic = DiceMechanic.Standard };
+        var request = new RollRequest { Tag = "initiative", Expression = "1d20", Bonus = initBonus, Mechanic = initiative.Advantage switch
+        {
+            AdvantageEffect.Advantage => DiceMechanic.Advantage,
+            AdvantageEffect.Disadvantage => DiceMechanic.Disadvantage,
+            _ => DiceMechanic.Standard,
+        } };
         var outcome = await _rollService.RollAsync(request, ct);
         
         // Use result + bonus as secondary tie-breaker
@@ -694,12 +703,16 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         }
 
         var cost = 1;
-        if (action.Parameters.TryGetValue("actionCost", out var costStr) && !int.TryParse(costStr, out cost))
+        if (action.Parameters.TryGetValue("actionCost", out var costStr) && !int.TryParse(costStr, global::System.Globalization.NumberStyles.Integer, global::System.Globalization.CultureInfo.InvariantCulture, out cost))
         {
             errorReason = $"Invalid actionCost value '{costStr}'.";
             return false;
         }
-        cost = Math.Max(1, cost);
+        if (cost < 0)
+        {
+            errorReason = $"Invalid actionCost value '{costStr}': it can't be negative.";
+            return false;
+        }
 
         if (!state.ActionBudget.TryGetValue("actions", out var remaining) || remaining < cost)
         {

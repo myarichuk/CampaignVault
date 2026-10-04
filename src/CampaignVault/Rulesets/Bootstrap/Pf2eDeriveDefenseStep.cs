@@ -7,11 +7,18 @@ public sealed class Pf2eDeriveDefenseStep : IBootstrapStep
     public string Name => "pf2e.derive_defense";
 
     public bool CanApply(BootstrapContext context) =>
-        context.Character.SystemStats is Pf2eExtension stats && stats.ArmorClass == 10;
+        context.Character.SystemStats is Pf2eExtension;
 
     public async Task<BootstrapStepResult?> ApplyAsync(BootstrapContext context, CancellationToken ct = default)
     {
         var stats = (Pf2eExtension)context.Character.SystemStats;
+        if (stats.ArmorClass != 10)
+        {
+            // A stated armor class is the stat block's own: keep it as the floor for the unarmored recompute.
+            stats.BaseArmorClass ??= stats.ArmorClass;
+            return null;
+        }
+
         var hints = new List<string>();
 
         var equippedItems = context.EquipmentAccess is not null

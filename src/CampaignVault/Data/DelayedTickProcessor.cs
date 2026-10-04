@@ -105,8 +105,7 @@ internal static class DelayedTickProcessor
             return;
         }
 
-        var concentration = character.SystemStats.StatusEffects
-            .FirstOrDefault(e => e.Name.Contains("Concentration", StringComparison.OrdinalIgnoreCase));
+        var concentration = ConcentrationRules.Find(character.SystemStats.StatusEffects);
         if (concentration is null)
         {
             return;

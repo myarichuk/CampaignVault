@@ -98,6 +98,18 @@ public class Dnd5eExtension : SystemExtension
     [JsonPropertyName("spells")]
     public SpellRepertoire Spells { get; set; } = new();
 
+    /// <summary>An ability's score by name ("Dexterity"); 10 for a name it doesn't know.</summary>
+    public static int AbilityScore(Dnd5eExtension stats, string ability) => ability.ToLowerInvariant() switch
+    {
+        "strength" => stats.Strength,
+        "dexterity" => stats.Dexterity,
+        "constitution" => stats.Constitution,
+        "intelligence" => stats.Intelligence,
+        "wisdom" => stats.Wisdom,
+        "charisma" => stats.Charisma,
+        _ => 10,
+    };
+
     public int GetAbilityModifier(int score)
     {
         return (int)Math.Floor((score - 10) / 2.0);

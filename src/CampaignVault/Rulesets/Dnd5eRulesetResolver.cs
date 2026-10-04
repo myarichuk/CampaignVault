@@ -312,7 +312,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var critMsg = "";
         if (isCrit)
         {
-            var critDmg = await _rollService.RollAsync(new RollRequest { Tag = "critDamage", Expression = damageDice, Mechanic = DiceMechanic.Standard }, ct);
+            var critDmg = await _rollService.RollAsync(new RollRequest { Tag = "critDamage", Expression = DerivedAttack.DiceOnly(damageDice), Mechanic = DiceMechanic.Standard }, ct);
             finalDamage += critDmg.Result;
             critMsg = $" CRITICAL HIT! Added {critDmg.Result} extra damage.";
         }
@@ -335,7 +335,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         {
             var rolled = (await _rollService.RollAsync(new RollRequest { Tag = "extraDamage", Expression = extra.Dice, Mechanic = DiceMechanic.Standard }, ct)).Result;
             if (isCrit)
-                rolled += (await _rollService.RollAsync(new RollRequest { Tag = "extraDamageCrit", Expression = extra.Dice, Mechanic = DiceMechanic.Standard }, ct)).Result;
+                rolled += (await _rollService.RollAsync(new RollRequest { Tag = "extraDamageCrit", Expression = DerivedAttack.DiceOnly(extra.Dice), Mechanic = DiceMechanic.Standard }, ct)).Result;
             var type = extra.DamageType ?? action.DamageType;
             var dealt = ApplyTargetDamageReduction(rolled, targetStats, type);
             dealt = FeatEffectRules.ResistsDamage(targetEffects, type, action) ? dealt / 2 : dealt;
@@ -1326,8 +1326,20 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             ? ts_name
             : isGrapple ? "Athletics" : actorSkill;
 
-        var actorBonus = GetSkillOrAbilityBonus(actorStats, actorSkill)
-            + JackOfAllTradesBonus(context.Characters[action.CharacterId], actorStats, actorSkill);
+        int actorBonus;
+        if (action.Parameters.TryGetValue("bonus", out var suppliedActorBonus))
+        {
+            // Same as a skill check: a caller-stated bonus replaces the sheet's (and Jack of All Trades).
+            if (!int.TryParse(suppliedActorBonus, out actorBonus))
+            {
+                return ResolverResult.Fail("InvalidParameter", $"Error: invalid bonus value '{suppliedActorBonus}'.");
+            }
+        }
+        else
+        {
+            actorBonus = GetSkillOrAbilityBonus(actorStats, actorSkill)
+                + JackOfAllTradesBonus(context.Characters[action.CharacterId], actorStats, actorSkill);
+        }
         var actorChar = context.Characters[action.CharacterId];
         var actorFold = await FoldAsync(
             context, actorChar, RollKinds.Check, actorSkill, actorBonus, action, GetMechanicFromAction(action), target).ConfigureAwait(false);
@@ -1619,10 +1631,16 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     {
         var stats = character.SystemStats as Dnd5eExtension ?? new Dnd5eExtension();
         var dexMod = stats.GetAbilityModifier(stats.Dexterity) + JackOfAllTradesBonus(character, stats, "Dexterity");
-        dexMod = Pipeline.Resolve(
-            new RollQuery(RollKinds.Initiative, null, [], character, null, System, new Dictionary<string, string>()), dexMod).Bonus;
+        var initiative = Pipeline.Resolve(
+            new RollQuery(RollKinds.Initiative, null, [], character, null, System, new Dictionary<string, string>()), dexMod);
+        dexMod = initiative.Bonus;
         
-        var request = new RollRequest { Tag = "initiative", Expression = "1d20", Bonus = dexMod, Mechanic = DiceMechanic.Standard };
+        var request = new RollRequest { Tag = "initiative", Expression = "1d20", Bonus = dexMod, Mechanic = initiative.Advantage switch
+        {
+            AdvantageEffect.Advantage => DiceMechanic.Advantage,
+            AdvantageEffect.Disadvantage => DiceMechanic.Disadvantage,
+            _ => DiceMechanic.Standard,
+        } };
         var outcome = await _rollService.RollAsync(request, ct);
         
         // Use result + bonus as secondary tie-breaker (e.g. 15 roll + 2 mod = 15.1)
