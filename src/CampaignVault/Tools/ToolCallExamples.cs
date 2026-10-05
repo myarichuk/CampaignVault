@@ -503,7 +503,7 @@ internal static class ToolCallExamples
                             "newActivity": "Leaning on the bar, listening to the innkeeper"
                           }
                         ],
-                        "narrative": "Valen ordered ale and exchanged news with the innkeeper."
+                        "narrative": "Valen ordered ale and the innkeeper traded him news of the road: the toll bridge is watched now, and a wool caravan went missing at the ford."
                       },
                       "campaignName": "dragon-heist"
                     }

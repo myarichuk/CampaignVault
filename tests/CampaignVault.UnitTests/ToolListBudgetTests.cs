@@ -20,10 +20,13 @@ namespace CampaignVault.Tests;
 /// </summary>
 public class ToolListBudgetTests(ITestOutputHelper output)
 {
-    private const int ToolListCharBudget = 21_000;
+    // +100 (21_000 → 21_100) for take_turn's narrative field: a log entry with content, not a one-sentence summary
+    // (NARRATION_LENGTH_PLAN.md, D2). Deliberate, not a regression.
+    private const int ToolListCharBudget = 21_100;
     // Raised from 13_000 for take_turn's includeCombatDetail parameter + descriptions:
     // deliberate surface growth, not a regression. Keep the tripwire tight — bump in 100s, not 1000s.
-    private const int PlayCharBudget = 13_100;
+    // 13_100 → 13_200 for the same narrative wording.
+    private const int PlayCharBudget = 13_200;
     private const int BuildCharBudget = 12_500;
 
     private static McpServerOptions BuildOptions()

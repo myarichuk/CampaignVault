@@ -27,8 +27,8 @@ public class TakeTurnRequest
     public WorldChange[]? Changes { get; set; }
 
     [Description(
-        "One-sentence vault LOG entry, required with Changes; omit for pure queries. Not your prose to the player: " +
-        "write the scene separately, even for a miss.")]
+        "Vault LOG entry (~500 chars), required with Changes; omit for pure queries. 1-2 plain sentences: who did what, " +
+        "what was found or said, what changed. The record, not the scene: write the scene separately, at full length.")]
     [JsonPropertyName("narrative")]
     public string? Narrative { get; set; }
 
@@ -228,6 +228,9 @@ public class TurnResult
     [Description("Monotonically increasing counter, bumped once per committed take_turn mutation for this campaign (never on pure-query calls). " +
         "Not currently used for gap detection server-side — informational, for logging/debugging state sync issues.")]
     public long WorldSequence { get; set; }
+
+    [Description("Read just before writing the scene; a client with a separate storyteller ignores it.")]
+    public string? SceneCue { get; set; }
 
 }
 

@@ -25,7 +25,8 @@ public class ResponseBudgetTests : IClassFixture<RavenDBFixture>
     // ~120-char synthetic cards; realistic cards are ~700. Ceilings leave ~15-25% headroom.
     private const int ArrivalCeiling = 3300;
     private const int FirstContactBeatCeiling = 1900;
-    private const int RepeatBeatCeiling = 450;
+    // 450 before the scene cue (~150 chars, NARRATION_LENGTH_PLAN.md L4) joined every committed result.
+    private const int RepeatBeatCeiling = 530;
     private const int AfterRestCeiling = 2000;
 
     private static readonly JsonSerializerOptions WireOptions = new()

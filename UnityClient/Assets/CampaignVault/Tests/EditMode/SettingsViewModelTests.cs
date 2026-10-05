@@ -62,7 +62,7 @@ namespace CampaignVault.UnityClient.Tests
             Assert.IsTrue(settings.Tabs[SettingsViewModel.PluginsTab].Active);
             Assert.IsFalse(settings.Tabs[0].Active);
             settings.Show(99);
-            Assert.AreEqual(SettingsViewModel.AdvancedTab, settings.Tab, "out of range clamps to the last tab");
+            Assert.AreEqual(settings.Tabs.Count - 1, settings.Tab, "out of range clamps to the last tab");
             settings.Dispose();
         }
 

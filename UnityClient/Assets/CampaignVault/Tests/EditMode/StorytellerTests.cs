@@ -37,7 +37,7 @@ namespace CampaignVault.UnityClient.Tests
             StringAssert.Contains("- Mirelle is still limping.", text);
             StringAssert.DoesNotContain("never shown", text);
             StringAssert.DoesNotContain("{", text);
-            StringAssert.EndsWith("Write the scene.", text);
+            StringAssert.EndsWith(Storyteller.SceneRequest, text);
         }
 
         [Test]
@@ -68,6 +68,53 @@ namespace CampaignVault.UnityClient.Tests
             string text = brief.Build("Go.");
             Assert.LessOrEqual(text.Length, Storyteller.MaxBriefChars);
             Assert.AreEqual(1, text.Split(new[] { "same line" }, System.StringSplitOptions.None).Length - 1);
+        }
+
+        [Test]
+        public void Brief_ClosesWithAWordTarget_NotABareInstruction()
+        {
+            StringAssert.Contains("350 to 600 words", Storyteller.SceneRequest);
+            StringAssert.Contains("senses, bodies and speech", Storyteller.SceneRequest);
+            var quiet = new TurnBrief();
+            StringAssert.EndsWith(Storyteller.SceneRequest, quiet.Build("I nod."));
+            StringAssert.EndsWith(Storyteller.PlainSceneRequest, quiet.Build("I nod.", Storyteller.MaxBriefChars, false));
+        }
+
+        [Test]
+        public void Brief_WhenTrimmed_StillEndsOnTheRequest()
+        {
+            var brief = new TurnBrief();
+            for (int i = 0; i < 40; i++)
+            {
+                brief.Add("take_turn", Args("{\"narrative\":\"" + new string('y', 300) + i + "\"}"), "{\"success\":true,\"data\":{}}", true);
+            }
+            string text = brief.Build("Go.");
+            Assert.LessOrEqual(text.Length, Storyteller.MaxBriefChars);
+            StringAssert.EndsWith(Storyteller.SceneRequest, text);
+        }
+
+        [Test]
+        public void Brief_KeepsFiveHundredCharactersOfTheLogLine()
+        {
+            var brief = new TurnBrief();
+            string line = new string('z', 480);
+            brief.Add("take_turn", Args("{\"narrative\":\"" + line + "\"}"), "{\"success\":true,\"data\":{}}", true);
+            StringAssert.Contains(line, brief.Build("Go."));
+        }
+
+        [Test]
+        public void TheExemplar_IsALongSceneWithNoNamesToCopy()
+        {
+            Assert.GreaterOrEqual(Storyteller.WordCount(Storyteller.ExemplarScene), 250);
+            Assert.GreaterOrEqual(Storyteller.WordCount(Storyteller.ExemplarScene), Storyteller.MinReplayWords * 2);
+            Assert.AreEqual(3, Storyteller.WordCount("It's a  day."), "apostrophes stay inside a word");
+        }
+
+        [Test]
+        public void LoopContract_AsksForSpecifics_AndTellsTheLoopToIgnoreTheSceneCue()
+        {
+            StringAssert.Contains("500 characters", Storyteller.LoopContract);
+            StringAssert.Contains("sceneCue", Storyteller.LoopContract);
         }
 
         [TestCase("DONE", true)]

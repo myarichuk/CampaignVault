@@ -22,6 +22,53 @@ namespace CampaignVault.UnityClient.AI
         public const int MaxPassageChars = 6000;
         public const string ScenePrefix = "[The scene as narrated last turn]\n";
         public const string PlayerMarker = "\n\n[Player]\n";
+        /// <summary>A replayed scene under this many words is not shown back to the storyteller: it would teach the next one to be as thin.</summary>
+        public const int MinReplayWords = 120;
+
+        /// <summary>
+        /// What the brief ends on (NARRATION_LENGTH_PLAN.md, D1): the last words read before the scene carry the length and the manner.
+        /// A word count, because a paragraph count is met with one-sentence paragraphs.
+        /// </summary>
+        public const string SceneRequest =
+            "Write the scene: three to five full paragraphs, roughly 350 to 600 words (six to eight paragraphs, up to about 900 words, when the beat is tense). " +
+            "Show what happened through the senses, bodies and speech instead of summarizing it, give each new thing its texture, and keep the clipped log voice of this brief out of the prose.";
+
+        /// <summary>The plain closing line the storyteller got before the remedies; the measurer's baseline.</summary>
+        public const string PlainSceneRequest = "Write the scene.";
+
+        /// <summary>
+        /// A pinned example exchange at the head of the storyteller's messages (D4): models copy earlier assistant turns far more than
+        /// system text. It is a dialogue beat on purpose, since the skill's own examples are a search and a chase, and it carries no
+        /// names a model could copy into the story.
+        /// </summary>
+        public const string ExemplarPlayer = "I ask the ferryman whether anyone crossed after dark.";
+
+        public const string ExemplarScene =
+            "The ferryman doesn't look up at once. He finishes coiling the wet rope around his forearm, elbow to palm, the loops slapping heavy and dark against his sleeve, " +
+            "and only when the last turn is tucked does he lift his head and let his eyes travel over your cloak, your boots, the bow at your shoulder, in that order, like a man pricing a horse. " +
+            "The river sucks at the pilings behind him. Somewhere on the far bank a dog starts barking and thinks better of it.\n\n" +
+            "\u201cAfter dark?\u201d He says it flatly, to the rope rather than to you, and then spits over the side of the landing and watches the spit turn in the current until it is gone. " +
+            "\u201cI'm not the one to ask. I sleep like the dead, me. Always have.\u201d\n\n" +
+            "His thumb has found the knot at his belt and is worrying it, round and round, a thick yellow nail picking at hemp that doesn't need picking. " +
+            "When you stay quiet and let the silence stretch he glances at the lantern hanging from its hook beside the shed, unlit, its glass freshly wiped, and then away from it so fast that the looking becomes its own answer.\n\n" +
+            "\u201cThere's a toll-house on the north bank,\u201d he offers at last, too brightly, \u201cif it's crossings you want to hear about. Clerk keeps a book. Writes everything down, that one.\u201d " +
+            "He gives a short laugh with no breath behind it. \u201cEverything he's paid to.\u201d\n\n" +
+            "The wind lifts the loose end of the mooring line and lays it down again across the planks, damp and quiet, a hand's breadth from your boot. " +
+            "Behind the shed, where the reeds grow thickest, something small and heavy slips into the water and does not come up.";
+
+        public static int WordCount(string text)
+        {
+            if (string.IsNullOrEmpty(text)) { return 0; }
+            int words = 0;
+            bool inWord = false;
+            foreach (char c in text)
+            {
+                bool letter = char.IsLetterOrDigit(c) || c == '\'' || c == '\u2019';
+                if (letter && !inWord) { words++; }
+                inWord = letter;
+            }
+            return words;
+        }
 
         /// <summary>Appended to the loop's system prompt (before the CAMPAIGN line) in two-pass mode.</summary>
         public const string LoopContract =
@@ -30,8 +77,9 @@ namespace CampaignVault.UnityClient.AI
             "A separate storyteller then writes the scene from what you committed, so you don't narrate, and you don't need the dnd-narration skill: " +
             "the NARRATION section above is the storyteller's job, not yours.\n" +
             "When the state is committed (or when nothing needed committing, as in plain conversation), reply with the single word DONE.\n" +
-            "The storyteller only knows what the tools returned and the one-line narrative you pass to take_turn, so put what happens in that line: " +
-            "who does what, what is found, what an NPC says or decides.\n" +
+            "The storyteller only knows what the tools returned and the narrative line you pass to take_turn, so put the concrete content of the beat in that line " +
+            "(up to about 500 characters): who does what, each thing found with its quality, what an NPC says or decides, in their own words where the words matter.\n" +
+            "Ignore the sceneCue field in take_turn results: it is for clients without a storyteller, and you do not write the scene.\n" +
             "If the player spoke out of character (a rules question, a request about the game itself), answer them in plain words, starting with " +
             OocPrefix + " and that answer is shown as is.";
 
@@ -48,7 +96,8 @@ namespace CampaignVault.UnityClient.AI
             "below shows.\n\n" +
             "Everything the brief says happened, happened; show it rather than report it. Where the brief is thin, you may add sensory texture, " +
             "weather, light, sound and smell, the body language of the people present, and dialogue that fits what the brief tells you about them. " +
-            "You may not add outcomes the brief doesn't support: no extra loot, no wounds nobody rolled, no NPC who isn't there.\n\n" +
+            "You may not add outcomes the brief doesn't support: no extra loot, no wounds nobody rolled, no NPC who isn't there. " +
+            "The brief's lines are log notes, clipped on purpose: they are material for the scene, not its style.\n\n" +
             "This client shows every roll as a card beside your text, so the prose carries no numbers, DCs, or the words success and failure. " +
             "Where the guide mentions the engine or the log, that part has already happened here.\n\n" +
             "Reply with the scene and nothing else: no headings, no notes to the player, no summary of the state.";
@@ -225,7 +274,7 @@ namespace CampaignVault.UnityClient.AI
                 Push(_failed, Storyteller.Cap(env.GetString("summary", env.GetString("error", "a change was rejected")), 200));
                 return;
             }
-            if (narrative.Length > 0) { Push(_committed, Storyteller.Cap(narrative, 400)); }
+            if (narrative.Length > 0) { Push(_committed, Storyteller.Cap(narrative, 500)); }
             foreach (var roll in SegmentSplitter.ExtractRolls(resultText))
             {
                 var r = roll.Roll;
@@ -344,7 +393,7 @@ namespace CampaignVault.UnityClient.AI
         }
 
         /// <summary>The storyteller's final user message: the player's words, then what happened.</summary>
-        public string Build(string playerText, int maxChars = Storyteller.MaxBriefChars)
+        public string Build(string playerText, int maxChars = Storyteller.MaxBriefChars, bool remedies = true)
         {
             var sb = new StringBuilder();
             sb.Append("The player says:\n").Append((playerText ?? string.Empty).Trim()).Append('\n');
@@ -360,11 +409,12 @@ namespace CampaignVault.UnityClient.AI
             Section(sb, "Keep in mind", _reminders);
             Section(sb, "Attempted but not applied (don't narrate these as done)", _failed);
             if (sb.Length == headerLength) { sb.Append("\nNothing was committed this turn: this is conversation or a moment in the scene.\n"); }
-            sb.Append("\nWrite the scene.");
+            string request = remedies ? Storyteller.SceneRequest : Storyteller.PlainSceneRequest;
+            sb.Append('\n').Append(request);
             string text = sb.ToString();
             if (text.Length > maxChars)
             {
-                text = text.Substring(0, maxChars - 40) + "\n… (brief trimmed)\n\nWrite the scene.";
+                text = text.Substring(0, Math.Max(0, maxChars - request.Length - 24)) + "\n… (brief trimmed)\n\n" + request;
             }
             return text;
         }

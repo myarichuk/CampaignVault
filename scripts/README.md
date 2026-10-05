@@ -259,3 +259,14 @@ the "Grok Web" section of `INSTALLATION.md` for the upload flow. Replaces the ol
 `measure/prose_stats.py` reads a transcript exported from the Unity client (F12 Inspector →
 EXPORT TRANSCRIPT) and reports prose statistics per turn, or compares two runs.
 `measure/narration-beats.md` is the fixed 8-beat script to play for those runs.
+
+The Unity client plays that script itself in debug and editor builds: **Settings → MEASURE** (compiled out of
+release builds). It runs the eight beats on a throwaway campaign and a second server of its own, once as the client
+plays (tool loop, then a separate storyteller) and once as a web connector would (one model does tools and scene),
+optionally with the narration remedies off for a baseline, and compares word counts, paragraphs, sentence length
+and stacked fragments. Each run saves a report with every scene verbatim and a `*.transcript.md` that
+`prose_stats.py` reads (`<app data>/MeasureRig/Reports`). It makes real model calls with the active provider.
+
+`measure/stage_baseline.py --ref <git ref> [--server]` stages an older commit's prompts, skills (and server) into the
+client's `StreamingAssets`, so the panel can measure the old guidance for a baseline; `--ref WORKTREE --server`
+restores the files on disk. (The old commit itself has no MEASURE panel, so it can't be run from a checkout.)

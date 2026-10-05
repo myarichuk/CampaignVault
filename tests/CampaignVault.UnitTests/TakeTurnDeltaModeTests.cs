@@ -2354,6 +2354,38 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
         Assert.Equal(1, anotherPureQuery.Data!.WorldSequence);
     }
 
+    [Fact]
+    public async Task SceneCue_RidesOnACommittedBeat_AndNeverOnAPureQuery()
+    {
+        var slug = NewSlug("scenecue");
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
+
+        var locId = $"locations/{slug}-hub";
+        var pcId = $"chars/{slug}-pc";
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            var cs = _fixture.CreateCampaignSession(session, slug);
+            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Hub" });
+            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var pureQuery = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
+        Assert.Null(pureQuery.Data!.SceneCue);
+
+        var mutation = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new NeedChange { CharacterId = pcId, Need = "hunger", Delta = 5 }],
+            Narrative = "PC grows hungry.",
+        }, slug);
+        Assert.True(mutation.Success, mutation.Summary);
+        Assert.Contains("350 to 600 words", mutation.Data!.SceneCue);
+        Assert.Contains("senses, bodies and speech", mutation.Data.SceneCue);
+    }
+
     /// <summary>
     /// Regression guard for the NeedDescriptors token-budget fix: the reference-text descriptor
     /// dictionary on Scenes[].PresentNPCs (only shape that carries it — NpcSummaryView/Npcs[] has no

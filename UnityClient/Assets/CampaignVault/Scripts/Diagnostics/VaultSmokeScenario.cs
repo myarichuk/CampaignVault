@@ -81,6 +81,9 @@ namespace CampaignVault.UnityClient.Diagnostics
             yield return _c.SearchWorld("Smoke");
             Check("search-world", _s.SearchError.Length == 0, _s.SearchError.Length > 0 ? _s.SearchError : _s.SearchResults.Count + " hits");
 
+            // 6b. A committing take_turn ends with the scene cue (and fails here when the staged server is older than the client).
+            yield return SceneCueCheck(slug);
+
             // 7. Token-efficient prompt: skills are indexed, not inlined.
             string prompt = _s.Prompts.BuildSystemPrompt();
             int skills;
@@ -105,7 +108,23 @@ namespace CampaignVault.UnityClient.Diagnostics
             Check("delete-campaign", goneLocally && _s.CampaignSlug.Length == 0, "listed=" + !goneLocally + " active=" + _s.CampaignSlug);
         }
 
-        private IEnumerator Onboard(string name)
+        private IEnumerator SceneCueCheck(string slug)
+        {
+            JsonValue request;
+            JsonValue.TryParse("{\"changes\":[{\"$type\":\"event\",\"summary\":\"The barkeep nods at " + HeroName + ".\",\"category\":\"Discovery\",\"involved\":[\"" + HeroId + "\"]}],"
+                + "\"narrative\":\"The barkeep nods at " + HeroName + " and slides a mug across the counter.\"}", out request);
+            var args = JsonValue.NewObject();
+            args.ObjectValue["request"] = request;
+            args.ObjectValue["campaignName"] = JsonValue.FromString(slug);
+            McpOutcome<ToolPayload> result = null;
+            yield return _s.Mcp.CallToolData(_s.Config, "play", "take_turn", args, delegate (McpOutcome<ToolPayload> o) { result = o; });
+            string cue = result != null && result.Ok ? result.Data.Data.GetString("sceneCue", string.Empty) : string.Empty;
+            Check("take-turn-scene-cue", cue.Contains("350 to 600 words"),
+                result != null && result.Ok ? "sceneCue: " + (cue.Length > 0 ? cue : "(missing: is the staged server older than this client?)") : (result != null ? result.ErrorMessage : "no response"));
+        }
+
+        /// <summary>Walks onboarding to a finished campaign, answering whatever the server asks (the debug measurer reuses it).</summary>
+        public IEnumerator Onboard(string name)
         {
             yield return _c.BeginOnboarding(name, string.Empty, "Dnd5e");
             var ob = _s.Onboarding;
@@ -150,6 +169,12 @@ namespace CampaignVault.UnityClient.Diagnostics
             string batch = "{\"locations\":[{\"id\":\"locations/smoke-inn\",\"name\":\"Smoke Inn\"}],"
                 + "\"characters\":[{\"id\":\"" + HeroId + "\",\"name\":\"" + HeroName + "\",\"isPc\":true,\"currentLocationId\":\"locations/smoke-inn\"}],"
                 + "\"items\":[{\"id\":\"items/smoke-blade\",\"name\":\"" + BladeName + "\",\"holderId\":\"" + HeroId + "\"}]}";
+            yield return SeedBatch(slug, batch);
+        }
+
+        /// <summary>One world_build batch (its JSON) into the campaign; the outcome is a seed-world check.</summary>
+        public IEnumerator SeedBatch(string slug, string batch)
+        {
             JsonValue batchValue;
             JsonValue.TryParse(batch, out batchValue);
             var args = JsonValue.NewObject();

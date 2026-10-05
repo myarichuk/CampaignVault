@@ -1,0 +1,81 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- MeasurePage (debug and editor builds): plays the eight-beat script on a scratch world and compares the DM's scenes. -->
+    <ui:VisualElement>
+        <cv:VaultCard title="NARRATION MEASURER">
+            <ui:Label text="Plays the same eight player lines twice with the active provider: as this client plays (a tool loop, then a separate storyteller) and as a web connector would (one model, tools and scene together). Then it counts words, paragraphs, sentence length and stacked fragments in the scenes." class="cv-body cv-muted" />
+            <ui:Label name="measure-provider" class="cv-body cv-form__status">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Provider" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label name="measure-warning" class="cv-body cv-muted cv-form__status">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Warning" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <cv:VaultSwitch name="measure-remedies" text="Narration remedies on (off records a baseline)">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="Remedies" binding-mode="TwoWay" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Idle" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </cv:VaultSwitch>
+            <ui:VisualElement class="cv-row cv-form__actions">
+                <cv:VaultButton name="measure-passes" icon="refresh" class="cv-btn--ghost">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="CyclePasses" binding-mode="ToTarget" />
+                        <ui:DataBinding property="label" data-source-path="PassesLabel" binding-mode="ToTarget" />
+                        <cv:ClassBinding property="cls-hidden" data-source-path="Idle" class-name="cv-hidden" invert="true" />
+                    </Bindings>
+                </cv:VaultButton>
+                <cv:VaultButton name="measure-storyteller" label="RUN STORYTELLER" icon="d20" class="cv-btn--primary">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="RunStoryteller" binding-mode="ToTarget" />
+                        <cv:ClassBinding property="cls-hidden" data-source-path="Idle" class-name="cv-hidden" invert="true" />
+                    </Bindings>
+                </cv:VaultButton>
+                <cv:VaultButton name="measure-connector" label="RUN CONNECTOR" icon="d20" class="cv-btn--primary">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="RunConnector" binding-mode="ToTarget" />
+                        <cv:ClassBinding property="cls-hidden" data-source-path="Idle" class-name="cv-hidden" invert="true" />
+                    </Bindings>
+                </cv:VaultButton>
+                <cv:VaultButton name="measure-both" label="RUN BOTH" icon="d20" class="cv-btn--primary">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="RunBoth" binding-mode="ToTarget" />
+                        <cv:ClassBinding property="cls-hidden" data-source-path="Idle" class-name="cv-hidden" invert="true" />
+                    </Bindings>
+                </cv:VaultButton>
+                <cv:VaultButton name="measure-stop" label="STOP" icon="stop" class="cv-btn--danger">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="Stop" binding-mode="ToTarget" />
+                        <cv:ClassBinding property="cls-hidden" data-source-path="Busy" class-name="cv-hidden" invert="true" />
+                    </Bindings>
+                </cv:VaultButton>
+                <cv:VaultButton name="measure-clear" label="CLEAR FILES" icon="trash" class="cv-btn--ghost">
+                    <Bindings>
+                        <ui:DataBinding property="command" data-source-path="ClearFiles" binding-mode="ToTarget" />
+                        <cv:ClassBinding property="cls-hidden" data-source-path="Idle" class-name="cv-hidden" invert="true" />
+                    </Bindings>
+                </cv:VaultButton>
+            </ui:VisualElement>
+            <ui:Label name="measure-status" class="cv-body cv-form__status">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Status" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+        </cv:VaultCard>
+        <cv:VaultCard title="RESULTS">
+            <ui:Label name="measure-result" class="cv-body">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Result" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label name="measure-report" class="cv-body cv-muted">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="ReportPath" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label text="Each run also saves a report with every scene verbatim, and a transcript that scripts/measure/prose_stats.py reads. Read the scenes: the numbers support a judgement, they don't make it." class="cv-body cv-muted" />
+        </cv:VaultCard>
+    </ui:VisualElement>
+</ui:UXML>

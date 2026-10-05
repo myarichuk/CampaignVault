@@ -200,7 +200,9 @@ namespace CampaignVault.UnityClient.Tests
             JsonValue request;
             JsonValue.TryParse(body, out request);
             var messages = request.GetArray("messages");
-            int users = messages.Count(m => m.GetString("role", string.Empty) == "user");
+            // The storyteller's pinned exemplar is a user message too, but not one of the player's turns.
+            int users = messages.Count(m => m.GetString("role", string.Empty) == "user"
+                && !m.GetString("content", string.Empty).Contains(CampaignVault.UnityClient.AI.Storyteller.ExemplarPlayer));
             var last = messages.Count > 0 ? messages[messages.Count - 1] : JsonValue.Null;
             bool storyteller = request.Get("tools").Kind != JsonKind.Array;
             string reply;
@@ -209,7 +211,9 @@ namespace CampaignVault.UnityClient.Tests
                 _storytellerSawJson |= messages.Any(m => m.GetString("role", string.Empty) == "tool")
                     || last.GetString("content", string.Empty).Contains("{\"");
                 string clean = _storytellerSawJson ? " (storyteller saw JSON)" : " (clean brief)";
-                reply = users == 1
+                // Which turn this is comes from the player's line in the brief: a one-line scene is no longer replayed to the storyteller.
+                bool firstTurn = !last.GetString("content", string.Empty).Contains("I order a drink");
+                reply = firstTurn
                     ? Prose("The common room of the Smoke Inn is quiet tonight. (smoke-mock)" + clean)
                     : Prose((_loopSawCompaction ? "The barkeep pours. (history compacted)" : "The barkeep pours. (history NOT compacted)") + clean);
             }

@@ -11,7 +11,7 @@ This skill is only about the prose written after a beat has been committed. What
 
 ## The voice we want
 
-Write the scene the way a good novel would, in the second person and the present tense: "you kneel", "you see". Sentences carry several clauses and more than one sense at once; the player should be able to smell the room, feel the weight in their hands, and know where everyone stands without being handed a list of facts. A typical beat runs three to five full paragraphs, and a tense one (a fight, a chase, a confrontation) runs six to eight. The length comes from what is new this beat, described properly, and never from repeating what the player already knows.
+Write the scene the way a good novel would, in the second person and the present tense: "you kneel", "you see". Sentences carry several clauses and more than one sense at once; the player should be able to smell the room, feel the weight in their hands, and know where everyone stands without being handed a list of facts. A typical scene runs 350 to 600 words in three to five full paragraphs, and a tense one (a fight, a chase, a confrontation) runs 600 to 900 words in six to eight. A paragraph holds several sentences; a one-line paragraph does not count toward the length. The length comes from what is new this beat, described properly, and never from repeating what the player already knows.
 
 The two passages below show the register. Read them before writing, and aim for their density and rhythm rather than their content.
 
@@ -47,12 +47,53 @@ What this does well:
 - A miss gets the same care as a hit: what the body did, what the world did in answer, and where that leaves everyone. The failure is shown in the physical event (the jump, the hatchet under the foot), never announced.
 - The thief is a person, glimpsed in one sharp detail, and the scene leaves a new thing behind (the snagged strap) that the player can choose to follow.
 
+### Example: a combat round
+
+The player shot a bandit crossing a courtyard (a hit, not enough to drop him); their companion, a shieldman, charged a second bandit and missed.
+
+> The string hums against your fingers and the arrow is already gone, a grey streak across the courtyard that takes the nearer bandit high in the shoulder with a wet thud you can hear from forty paces. He spins with the force of it, mouth open on a shout that comes out as a cough, his blade clattering away over the cobbles; he claps a hand to the shaft and staggers sideways into the well-rope, which swings and sets the bucket knocking against the stones. The next arrow is already between your fingers, the fletching smooth and a little damp from your palm.
+>
+> Beside you the shieldman has gone forward at a heavy run, boots pounding, shield high, and he meets the second bandit at the stable door with a crash of wood on iron. His swing is a long, honest one and the bandit simply isn't there: a quick step back, a crooked grin, and the blade bites a pale scar out of the doorpost instead, splinters spraying over both their shoulders. The answer comes in low and fast, and you see the shieldman take it on the rim with his teeth bared, rocked back a pace, still on his feet.
+>
+> Across the yard the wounded man has stopped shouting. He is looking at the woman in the grey coat on the gatehouse steps, and she has not moved or raised her voice, but he lets go of the arrow and pulls himself upright as if someone had tugged a string along his spine.
+
+What this does well:
+
+- A hit and a miss are both physical events with a cause and a consequence: the shoulder, the spin, the swinging rope; the step back, the scarred doorpost. The dice never appear.
+- Each combatant gets their own beat, so nobody is furniture, and the round ends on a new pressure (the woman on the steps), not on a request for the next action.
+
+### Example: a guarded answer
+
+The player asked a gate captain to let them into the city after curfew; the persuasion roll failed.
+
+> The captain does not answer at once. He lets the lantern hiss for a moment, a big man gone soft at the middle, his breastplate rubbed bright by someone who is not him, and looks past your shoulder at the dark road as though the answer were out there waiting for him to read it. "After the bell," he says at last, and each word comes out placed, like coins on a counter, "the gate is shut. That is not a thing I decided. That is a thing that was decided before my father had this post."
+>
+> You let a beat pass, and your offer hangs between you in the cold. He shifts his weight and the leather of his belt creaks; one hand drifts to the pommel of a sword he has clearly never drawn in anger and settles there the way a man settles a hand on a dog. "Coin won't open it," he adds, quieter, and it comes a little too quick, a little too eager to have been said already. "Come at dawn. Honest folk come at dawn."
+>
+> Behind him, in the arch of the guardhouse, a younger guard has stopped pretending to sharpen his spear. He is watching the captain, not you, with the expression of someone who has seen this man take coin before.
+
+What this does well:
+
+- The refusal is a person: his posture, his belt, the hand on the sword, the line that arrives too quickly. The failed roll shows as a closed door with a crack in it, never as the word "failure".
+- Everyone who speaks is quoted in their own cadence, and the scene leaves the player something to act on (the watching guard) without telling them to.
+
 ## New things get full detail; unchanged state gets nothing
 
 - **New** is anything that arrived or changed this beat: an item found, a person met, a place entered for the first time, what a roll did, lore recalled, a wound taken. Describe it completely. Listing each found item with its texture is not a status dump; it is the reward for the search.
 - **Unchanged** is the kit the player already carries, their hit points and spell slots, the quests they have, the room they have stood in for three beats, the weather that hasn't turned. Leave it out. If an old detail matters again, mention it once through what it does now (the strap cuts into a shoulder that is already bruised).
 - A place the player knows gets one new detail per mention, not a fresh tour.
 - A new session does not recite the campaign so far. Begin with where the PC is and what their body feels.
+
+## Show, don't tell
+
+Put on the page what can be seen, heard, touched or done, and let the player draw the conclusion. Four patterns carry most of it:
+
+- **A feeling is a body doing something.** Not that she is frightened, but that she keeps the table between you and her while her thumbnail works at a split in the wood.
+- **Skill is what the work looks like.** Not that the lock was picked easily, but the pick turning in two quick quarter-moves, the tumblers giving one after another like beads sliding on a string, and the job finished before the footsteps reach the corner.
+- **A roll's result is a physical event.** A miss is the arrow skipping off the flagstones and singing away into the dark; a hard success is the hand finding the one loose stone out of forty.
+- **Knowledge arrives as detail.** A character who knows the road names what only someone who walked it would know: which bridge floods in spring, which inn waters the ale.
+
+The same goes for the engine's verdicts and the tracked needs: the scene carries the event they point to, and the label stays in the log.
 
 ## Rolls
 
@@ -107,7 +148,7 @@ An NPC knows their own memories, the plot threads tied to them, public reputatio
 
 ## The scene is not the log
 
-`take_turn`'s `narrative` field is a one-sentence log entry, and the engine's replies are written in that same clipped register. Neither is the scene. When several results stack up (a fight, a chase, a run of checks), it is tempting to write in their voice: short stacked fragments, captions, lists of state, a sentence that could sit under a photograph. That is the most common way narration fails, even when every fact is right. Write full sentences with a body in them, like the examples, and leave the log voice in the log.
+`take_turn`'s `narrative` field is a log entry of a sentence or two, and the engine's replies are written in that same clipped register. Neither is the scene. When several results stack up (a fight, a chase, a run of checks), it is tempting to write in their voice: short stacked fragments, captions, lists of state, a sentence that could sit under a photograph. That is the most common way narration fails, even when every fact is right. Write full sentences with a body in them, like the examples, and leave the log voice in the log.
 
 Rules questions go in one out-of-character line above a visible break, never inside the scene. The PC is always "you", never "you" in one sentence and their name in the next.
 

@@ -34,6 +34,16 @@ namespace CampaignVault.UnityClient.AI
         public const int CompactedArgumentChars = 400;
         public const int CompactedResultChars = 280;
 
+        /// <summary>
+        /// Replaces the single-pass client note (null keeps it). The measurer sets it to empty to play the prompt as a web connector
+        /// sees it: no "cards" note, so the model writes its roll block above the scene.
+        /// </summary>
+        public string SinglePassNoteOverride;
+        /// <summary>
+        /// The storyteller's length target, pinned exemplar and word-floor filter (NARRATION_LENGTH_PLAN.md, L5). On by default;
+        /// the debug measurer turns it off to record a baseline.
+        /// </summary>
+        public bool NarrationRemedies = true;
         public ByokSettings Byok;
         public VaultClientConfig Vault;
         public McpClient Mcp;
@@ -266,7 +276,7 @@ namespace CampaignVault.UnityClient.AI
                 userMessage = RoleMessage("user", twoPass ? Storyteller.LoopUserMessage(LastPassage, cleanPlayer) : cleanPlayer);
                 _history.Add(userMessage);
                 TrimToBudget();
-                string systemPrompt = twoPass ? Prompts.BuildSystemPrompt(Storyteller.LoopContract) : Prompts.BuildSystemPrompt(Storyteller.SinglePassNote);
+                string systemPrompt = twoPass ? Prompts.BuildSystemPrompt(Storyteller.LoopContract) : Prompts.BuildSystemPrompt(SinglePassNoteOverride ?? Storyteller.SinglePassNote);
 
                 for (int turn = 0; turn < MaxToolIterations; turn++)
                 {
@@ -699,12 +709,19 @@ namespace CampaignVault.UnityClient.AI
             if (!Prompts.TryLoadSkill("dnd-narration", out skill)) { skill = string.Empty; }
             var messages = JsonValue.NewArray();
             messages.ArrayValue.Add(RoleMessage("system", Storyteller.NarrationSystemPrompt(skill, PcCard, Prompts.CampaignLine())));
+            if (NarrationRemedies)
+            {
+                messages.ArrayValue.Add(RoleMessage("user", "The player says:\n" + Storyteller.ExemplarPlayer));
+                messages.ArrayValue.Add(RoleMessage("assistant", Storyteller.ExemplarScene));
+            }
             foreach (var passage in _passages)
             {
+                // A thin scene replayed as an assistant turn becomes the style of the next one.
+                if (NarrationRemedies && Storyteller.WordCount(passage.Value) < Storyteller.MinReplayWords) { continue; }
                 messages.ArrayValue.Add(RoleMessage("user", "The player says:\n" + passage.Key));
                 messages.ArrayValue.Add(RoleMessage("assistant", passage.Value));
             }
-            messages.ArrayValue.Add(RoleMessage("user", brief.Build(playerText)));
+            messages.ArrayValue.Add(RoleMessage("user", brief.Build(playerText, Storyteller.MaxBriefChars, NarrationRemedies)));
             return messages;
         }
 

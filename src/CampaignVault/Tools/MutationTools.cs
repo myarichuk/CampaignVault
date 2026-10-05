@@ -1035,7 +1035,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
         {
             return ToolArgumentErrors.Missing<TurnResult>(
                 "narrative",
-                "Provide a short summary of what happened for the event log when Changes are provided.",
+                "Provide an event log entry when Changes are provided: one or two plain sentences saying who did what, what was found or said, and what changed.",
                 toolName: "take_turn");
         }
 
@@ -1082,6 +1082,7 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
         result.EntityCollisions = commitResult.EntityCollisions;
         result.CommittedIds = commitResult.CommittedIds;
         result.NarrativeReminder = commitResult.NarrativeReminder;
+        result.SceneCue = SceneCue.Text;
         result.PhysicalStateNudges = commitResult.PhysicalStateNudges is { Count: > 0 } nudges ? nudges : null;
         // Plugin faults need no field of their own: each one is already a "PLUGIN FAULT ..." line in Summary.
         ctx.AppliedChanges = [.. changes, .. commitResult.ReactionChanges, .. commitResult.AmbientDeltas];

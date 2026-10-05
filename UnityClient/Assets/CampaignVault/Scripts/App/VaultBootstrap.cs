@@ -20,6 +20,9 @@ namespace CampaignVault.UnityClient.App
         public VaultAppState State { get; private set; }
         public VaultController Controller { get; private set; }
 
+        /// <summary>A second composition that must not start the embedded server by itself (the debug measurer runs its own).</summary>
+        public bool SkipAutostart;
+
         private void Awake() { Initialize(null); }
 
         /// <summary>Idempotent. Tests call it directly (edit mode runs no Awake) with in-memory prefs.</summary>
@@ -89,6 +92,7 @@ namespace CampaignVault.UnityClient.App
                 GetOrAdd<VaultSmokeRunner>().Run(this, smokeUrl);
                 yield break;
             }
+            if (SkipAutostart) { yield break; }
             yield return Controller.AutostartEmbedded();
         }
 

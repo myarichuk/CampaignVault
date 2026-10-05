@@ -7,7 +7,7 @@ metadata:
 
 # World Change
 
-Every in-play change goes through `take_turn`: a `changes[]` array plus a one-sentence `narrative` for the campaign log. The response carries fresh summaries of every entity it touched, so no re-query is needed. New entities are created with `world_build`, never through `take_turn`.
+Every in-play change goes through `take_turn`: a `changes[]` array plus a `narrative` log entry (one or two plain sentences with the beat's concrete content: who did what, what was found or said, what changed). The scene itself is written separately, at full length. The response carries fresh summaries of every entity it touched, so no re-query is needed. New entities are created with `world_build`, never through `take_turn`.
 
 ## Which skill owns what
 

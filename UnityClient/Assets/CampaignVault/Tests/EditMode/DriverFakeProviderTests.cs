@@ -572,6 +572,7 @@ namespace CampaignVault.UnityClient.Tests
         public IEnumerator TwoPass_ScenesFlowToNextTurns_OnlyNewestLoopMessageCarriesOne()
         {
             TwoPass();
+            _driver.NarrationRemedies = false; // the pinned exemplar and the thin-scene filter have their own tests
             for (int i = 1; i <= 3; i++)
             {
                 int n = i;
@@ -660,6 +661,7 @@ namespace CampaignVault.UnityClient.Tests
         public IEnumerator RestorePassages_FeedsTheStorytellerAfterARestart()
         {
             TwoPass();
+            _driver.NarrationRemedies = false;
             _driver.RestorePassages(new List<KeyValuePair<string, string>>
             {
                 new KeyValuePair<string, string>("I knock.", "The door opens a crack."),
@@ -667,6 +669,49 @@ namespace CampaignVault.UnityClient.Tests
             Assert.AreEqual("The door opens a crack.", _driver.LastPassage);
             var messages = _driver.BuildNarrationMessages("I push in.", new TurnBrief()).ArrayValue;
             Assert.IsTrue(messages.Any(m => m.GetString("role", null) == "assistant" && m.GetString("content", null) == "The door opens a crack."));
+            yield break;
+        }
+
+        private static string Words(int n)
+        {
+            return string.Join(" ", Enumerable.Repeat("lantern", n).ToArray()) + ".";
+        }
+
+        [UnityTest]
+        public IEnumerator Remedies_PinTheExemplarFirst_AndSkipThinReplayedScenes()
+        {
+            TwoPass();
+            string full = Words(150);
+            _driver.RestorePassages(new List<KeyValuePair<string, string>>
+            {
+                new KeyValuePair<string, string>("I knock.", "The door opens a crack."),
+                new KeyValuePair<string, string>("I push in.", full),
+            });
+            var messages = _driver.BuildNarrationMessages("I look around.", new TurnBrief()).ArrayValue;
+            var roles = messages.Select(m => m.GetString("role", null)).ToArray();
+            CollectionAssert.AreEqual(new[] { "system", "user", "assistant", "user", "assistant", "user" }, roles,
+                "system, the pinned exemplar pair, the one full replayed scene, then the brief");
+            StringAssert.Contains(Storyteller.ExemplarPlayer, Content(messages[1]));
+            Assert.AreEqual(Storyteller.ExemplarScene, Content(messages[2]));
+            Assert.AreEqual(full, Content(messages[4]));
+            Assert.IsFalse(messages.Any(m => Content(m) == "The door opens a crack."), "a thin scene is not shown back");
+            StringAssert.EndsWith(Storyteller.SceneRequest, Content(messages[messages.Count - 1]));
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator RemediesOff_RecordsTheBaseline_NoExemplarNoFilterPlainClosing()
+        {
+            TwoPass();
+            _driver.NarrationRemedies = false;
+            _driver.RestorePassages(new List<KeyValuePair<string, string>>
+            {
+                new KeyValuePair<string, string>("I knock.", "The door opens a crack."),
+            });
+            var messages = _driver.BuildNarrationMessages("I look around.", new TurnBrief()).ArrayValue;
+            Assert.AreEqual(4, messages.Count, "system, the replayed scene pair, the brief");
+            Assert.IsFalse(messages.Any(m => Content(m) == Storyteller.ExemplarScene));
+            StringAssert.EndsWith(Storyteller.PlainSceneRequest, Content(messages[messages.Count - 1]));
             yield break;
         }
 

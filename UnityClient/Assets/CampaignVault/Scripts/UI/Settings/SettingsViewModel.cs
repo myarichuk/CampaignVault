@@ -26,8 +26,15 @@ namespace CampaignVault.UnityClient.UI.Settings
         public const int PluginsTab = 4;
         public const int AdvancedTab = 5;
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        /// <summary>Debug and editor builds only (the narration measurer); always the last tab, so the indices above hold.</summary>
+        public const int MeasureTab = 6;
+        private static readonly string[] Names = { "DUNGEON MASTER", "SERVER", "EMBEDDED", "TABLE FEEL", "PLUGINS", "ADVANCED", "MEASURE" };
+        private static readonly string[] Icons = { "skill", "server", "seal", "spark", "plugins", "settings", "d20" };
+#else
         private static readonly string[] Names = { "DUNGEON MASTER", "SERVER", "EMBEDDED", "TABLE FEEL", "PLUGINS", "ADVANCED" };
         private static readonly string[] Icons = { "skill", "server", "seal", "spark", "plugins", "settings" };
+#endif
 
         private readonly ViewModel[] _pages;
         private ViewModel _page;
@@ -43,6 +50,9 @@ namespace CampaignVault.UnityClient.UI.Settings
                 new FeelPage(state, controller),
                 new PluginsPage(state, controller, confirm),
                 new AdvancedPage(state, controller, closeAndSetup),
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                new MeasurePage(state, controller),
+#endif
             };
             Tabs = new List<TabViewModel>();
             for (int i = 0; i < Names.Length; i++)

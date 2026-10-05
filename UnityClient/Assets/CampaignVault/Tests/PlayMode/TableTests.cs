@@ -171,6 +171,15 @@ namespace CampaignVault.UnityClient.PlayTests
             Assert.AreEqual(string.Empty, s.PluginsError);
             Assert.Greater(s.Plugins.Count, 0, "the scratch server's bundled plugins are listed");
             yield return Snap("n6-settings-plugins");
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            // L3: the debug measurer tab (it is compiled out of release builds).
+            ui.OpenSettings(SettingsOverlay.MeasureTab);
+            yield return WaitFor(delegate { return ui.Root.Q("measure-both") != null; }, 10f);
+            Assert.IsNotNull(ui.Root.Q("measure-storyteller"), "run storyteller");
+            Assert.IsNotNull(ui.Root.Q("measure-connector"), "run connector");
+            Assert.IsNotNull(ui.Root.Q("measure-remedies"), "the baseline switch");
+            yield return Snap("l3-settings-measure");
+#endif
             while (ui.Overlays.CloseTop()) { }
             ui.OpenSetup();
             yield return Snap("p6-setup");

@@ -109,6 +109,19 @@ unity test . --mode PlayMode --timeout 480    # the real UI, rendered to PNGs
 - Integration tests skip themselves when no server is staged for the
   platform, and never touch the player's prefs, provider file or campaigns.
 
+## Narration measurer (debug builds)
+
+Settings → **MEASURE** exists only in the Editor and in Development builds (`UNITY_EDITOR || DEVELOPMENT_BUILD`); a
+release build has no such tab and no measurer code (`MeasureTests.ReleaseBuilds_ContainNoMeasurerCode` guards the
+source; an actual release build is the only proof of the compile). It plays the eight-beat script from
+`scripts/measure/narration-beats.md` through the real chat driver with the active provider, on a throwaway campaign
+and a second embedded server (own data folder under app data, `MeasureRig/`; the first run unpacks a copy of the
+server). Two modes: **Storyteller** (the client's two calls per turn) and **Connector** (one model does tools and
+scene, with the web connectors' prompt). The switch "Narration remedies on" turns the storyteller's word target,
+pinned exemplar and thin-scene filter off to record a baseline. It makes real model calls (cost!), never touches the
+player's campaigns, prefs or provider file (the active profile is copied in memory), and saves a report and a
+`prose_stats.py`-readable transcript per run under `MeasureRig/Reports`. See `NARRATION_LENGTH_PLAN.md`.
+
 ## Smoke-test a build
 
 The player has a built-in end-to-end check (`-vault-smoke`) that runs the same

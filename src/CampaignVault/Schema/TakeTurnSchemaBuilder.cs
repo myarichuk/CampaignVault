@@ -34,7 +34,7 @@ internal static class TakeTurnSchemaBuilder
             ["narrative"] = new JsonObject
             {
                 ["type"] = "string",
-                ["description"] = "One-sentence summary, stored as the event log entry (truncated at ~500 chars)."
+                ["description"] = "Event log entry, 1-2 plain sentences: who did what, what was found or said, what changed (~500 chars). The record, not the scene."
             },
             ["minutesElapsed"] = new JsonObject
             {

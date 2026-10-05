@@ -10,6 +10,9 @@ namespace CampaignVault.UnityClient.UI
     {
         public const int PluginsTab = SettingsViewModel.PluginsTab;
         public const int AdvancedTab = SettingsViewModel.AdvancedTab;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public const int MeasureTab = SettingsViewModel.MeasureTab;
+#endif
 
         private readonly VaultAppState _state;
         private readonly VaultController _controller;

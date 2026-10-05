@@ -68,7 +68,7 @@ internal static partial class McpToolErrorFilter
             ("take_turn", "changes") =>
                 "Pass an array of world-change objects in request.changes; each item needs a '$type' field (e.g. event, hp, activity). Consult your dnd-* skills for verbs, or call lookup(kind: \"commit_schema\", type: \"<$type>\") for one type's fields.",
             ("take_turn", "narrative") =>
-                "Provide a short summary of what happened for the event log (required when changes are present).",
+                "Provide an event log entry: one or two plain sentences saying who did what, what was found or said, and what changed (required when changes are present).",
             ("get_entity", "entityId") =>
                 "Pass an exact entity ID with its type prefix (chars/, locations/, factions/, quests/, items/, plot-threads/). Use search_world to find IDs.",
             ("search_world", "query") or ("recall_history", "query") =>

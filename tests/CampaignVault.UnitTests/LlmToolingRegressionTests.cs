@@ -225,6 +225,47 @@ public class LlmToolingRegressionTests
         }
     }
 
+    // Length is asked for in words, near where the prose is written, and the log field never reads as the scene's template
+    // (NARRATION_LENGTH_PLAN.md, D1/D2).
+    [Theory]
+    [InlineData("recommended-system-prompt.md")]
+    [InlineData("recommended-system-prompt.narrative.md")]
+    [InlineData("recommended-system-prompt.opencode.md")]
+    [InlineData("claude_skills/dnd-narration/SKILL.md")]
+    public void NarrationSurfaces_AskForLengthInWords_AndShowDontTell(string file)
+    {
+        var text = File.ReadAllText(Path.Combine(FindRepoRoot(), file));
+        Assert.Contains("350", text);
+        Assert.Contains("600", text);
+        Assert.Contains("show, don't tell", text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("recommended-system-prompt.md")]
+    [InlineData("recommended-system-prompt.narrative.md")]
+    [InlineData("recommended-system-prompt.opencode.md")]
+    public void Prompts_EndOnTheSceneStep_AndDoNotCallNarrativeOneSentence(string file)
+    {
+        var text = File.ReadAllText(Path.Combine(FindRepoRoot(), file));
+        Assert.Contains("LAST STEP OF EVERY BEAT", text);
+        Assert.Contains("sceneCue", text);
+        Assert.DoesNotContain("one log sentence", text, StringComparison.OrdinalIgnoreCase);
+        // The closing section is the last thing in the prompt body.
+        var body = text[text.IndexOf("```text", StringComparison.Ordinal)..];
+        Assert.True(body.LastIndexOf("LAST STEP OF EVERY BEAT", StringComparison.Ordinal) > body.LastIndexOf("OTHER TOOLS", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void TakeTurnNarrativeField_IsALogEntry_NotAOneSentenceSummary()
+    {
+        var description = typeof(TakeTurnRequest).GetProperty(nameof(TakeTurnRequest.Narrative))!
+            .GetCustomAttributes(typeof(System.ComponentModel.DescriptionAttribute), false)
+            .Cast<System.ComponentModel.DescriptionAttribute>().Single().Description;
+        Assert.DoesNotContain("One-sentence", description, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("not the scene", description, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("full length", description, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public void RegisteredToolSchema_UnderChattynessCap()
     {

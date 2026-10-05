@@ -114,6 +114,7 @@ public class GuidanceExampleTests
     [InlineData("NARRATION")]
     [InlineData("SESSIONS")]
     [InlineData("TOOL HYGIENE")]
+    [InlineData("LAST STEP OF EVERY BEAT")]
     public void PromptVariants_ShareTheCoreSections(string heading)
     {
         var root = FindRepoRoot();
