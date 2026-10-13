@@ -289,8 +289,12 @@ public class TravelChangeHandler : IWorldChangeHandler
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    // Housekeeping only: the sweep's grace-period eviction still covers them.
+                    // Housekeeping only: the sweep's grace-period eviction still covers them,
+                    // but say so on the record -- otherwise the travel succeeds while the
+                    // transients silently stay behind.
                     ctx.Logger.LogWarning(ex, "Could not evict transients left at {Location}", fromLocationId);
+                    ctx.RecordMessage(
+                        $"NOTE: transients left at {fromLocationId} could not be moved on with the party; the cleanup sweep will handle them.");
                 }
             }
 

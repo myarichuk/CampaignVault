@@ -31,6 +31,36 @@ public partial class MutationTools : CampaignToolBase, IMcpServerTool
     private static readonly ConcurrentDictionary<string, RateLimiter> CommitRateLimiters = new(StringComparer.OrdinalIgnoreCase);
     private static readonly ConcurrentDictionary<string, long> RateLimiterLastSeenTicks = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Evicted limiters wait here before disposal: another thread may still hold the reference
+    /// returned by an earlier <see cref="GetRateLimiter"/> call and be mid-acquire, and disposing under
+    /// it throws ObjectDisposedException. Parked limiters are disposed once older than
+    /// <see cref="RateLimiterQuarantine"/> (leases are sub-second; eviction only happens past 256
+    /// campaigns, so the park stays tiny).</summary>
+    private static readonly ConcurrentQueue<(RateLimiter Limiter, long RetiredTicks)> RetiredRateLimiters = new();
+    private static readonly TimeSpan RateLimiterQuarantine = TimeSpan.FromMinutes(5);
+
+    private static void RetireRateLimiter(RateLimiter limiter)
+    {
+        RetiredRateLimiters.Enqueue((limiter, DateTime.UtcNow.Ticks));
+        DrainRetiredRateLimiters(quarantineOnly: true);
+    }
+
+    private static void DrainRetiredRateLimiters(bool quarantineOnly)
+    {
+        var now = DateTime.UtcNow.Ticks;
+        while (RetiredRateLimiters.TryPeek(out _))
+        {
+            if (!RetiredRateLimiters.TryDequeue(out var retired))
+                break;
+            if (quarantineOnly && new TimeSpan(now - retired.RetiredTicks) < RateLimiterQuarantine)
+            {
+                RetiredRateLimiters.Enqueue(retired);
+                break;
+            }
+            retired.Limiter.Dispose();
+        }
+    }
+
     internal static int RateLimiterCount => CommitRateLimiters.Count;
 
     /// <summary>At or below this many commit tokens, take_turn reports rateLimitTokensRemaining.</summary>
@@ -52,6 +82,7 @@ public partial class MutationTools : CampaignToolBase, IMcpServerTool
                 removed.Dispose();
             }
         }
+        DrainRetiredRateLimiters(quarantineOnly: false);
     }
 
     private static RateLimiter GetRateLimiter(string campaignName)
@@ -95,7 +126,7 @@ public partial class MutationTools : CampaignToolBase, IMcpServerTool
                 CommitRateLimiters.TryRemove(key, out var removed))
             {
                 RateLimiterLastSeenTicks.TryRemove(key, out _);
-                removed.Dispose();
+                RetireRateLimiter(removed);
             }
         }
 
@@ -133,7 +164,7 @@ public partial class MutationTools : CampaignToolBase, IMcpServerTool
             if (CommitRateLimiters.TryRemove(oldestKey, out var removed))
             {
                 RateLimiterLastSeenTicks.TryRemove(oldestKey, out _);
-                removed.Dispose();
+                RetireRateLimiter(removed);
             }
             else
             {

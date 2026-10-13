@@ -51,8 +51,12 @@ public static class HomebrewTemplates
     }
 
     /// <summary>The document id of a campaign's homebrew template; saving the same kind, system and name again replaces it.</summary>
-    public static string Id(string campaign, string kind, string system, string name) =>
-        $"homebrew/{campaign}/{HomebrewKinds.Canonical(kind)}/{system}/{Slug(name)}".ToLowerInvariant();
+    public static string Id(string campaign, string kind, string system, string name)
+    {
+        if (string.IsNullOrWhiteSpace(name) || Slug(name).Length == 0)
+            throw new ArgumentException($"Homebrew {kind} needs a name with letters or digits (got '{name}').", nameof(name));
+        return $"homebrew/{campaign}/{HomebrewKinds.Canonical(kind)}/{system}/{Slug(name)}".ToLowerInvariant();
+    }
 
     /// <summary>A template name as it appears in a document id: lower case, letters and digits, single dashes.</summary>
     public static string Slug(string name) =>

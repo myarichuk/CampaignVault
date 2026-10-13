@@ -8,6 +8,12 @@ namespace CampaignVault.AutofacModules;
 /// Loads plugin assemblies from flat <c>Plugins/*.dll</c> and nested <c>Plugins/*/*.dll</c> packages.
 /// Unifies <c>CampaignVault.PluginSdk</c> types onto <see cref="AssemblyLoadContext.Default"/> so
 /// plugin ALCs never bind a second Sdk copy. Skips shipping Sdk.dll beside plugins.
+///
+/// TRUST MODEL: plugin DLLs are unsigned and run fully trusted in-process with the server --
+/// a malicious or compromised plugin (or plugin folder) is arbitrary code execution by design,
+/// not a privilege escalation. Install plugins only from sources you trust, keep plugin folders
+/// operator-writable-only, and heed the absolute-path warnings below: a manifest that points
+/// RulesetDataRoots/SkillsPath outside its own package directory is worth a second look.
 /// </summary>
 internal static class PluginAssemblyLoader
 {
@@ -110,7 +116,7 @@ internal static class PluginAssemblyLoader
                 }
                 else if (package.Dlls.Count == 0)
                 {
-                    var roots = ResolveRulesetDataRoots(package.Directory, manifest);
+                    var roots = ResolveRulesetDataRoots(package.Directory, manifest, logger);
                     data.Add(new DataOnlyPlugin(manifest!, package.Directory, roots, manifest!.CampaignOptions));
                     loaded = true;
                     logger?.LogInformation(
@@ -193,8 +199,8 @@ internal static class PluginAssemblyLoader
             using var stream = File.OpenRead(dllPath);
             var assembly = alc.LoadFromStream(stream);
 
-            var roots = ResolveRulesetDataRoots(packageDir, manifest);
-            var skillsPath = ResolveSkillsPath(packageDir, manifest);
+            var roots = ResolveRulesetDataRoots(packageDir, manifest, logger);
+            var skillsPath = ResolveSkillsPath(packageDir, manifest, logger);
             string? skillsLogged = null;
             if (skillsPath != null && Directory.Exists(skillsPath))
             {
@@ -273,7 +279,7 @@ internal static class PluginAssemblyLoader
         return dlls;
     }
 
-    private static IReadOnlyList<string> ResolveRulesetDataRoots(string packageDir, PluginManifest? manifest)
+    private static IReadOnlyList<string> ResolveRulesetDataRoots(string packageDir, PluginManifest? manifest, ILogger? logger = null)
     {
         var roots = new List<string>();
         var configured = manifest?.RulesetDataRoots is { Count: > 0 }
@@ -282,6 +288,10 @@ internal static class PluginAssemblyLoader
 
         foreach (var rel in configured)
         {
+            if (Path.IsPathRooted(rel))
+                logger?.LogWarning(
+                    "Plugin manifest at '{PackageDir}' declares absolute ruleset data root '{Root}': honored, but absolute paths escape the package directory -- verify this plugin is trusted.",
+                    packageDir, rel);
             var full = Path.IsPathRooted(rel) ? rel : Path.GetFullPath(Path.Combine(packageDir, rel));
             if (Directory.Exists(full))
                 roots.Add(full);
@@ -290,9 +300,13 @@ internal static class PluginAssemblyLoader
         return roots;
     }
 
-    private static string? ResolveSkillsPath(string packageDir, PluginManifest? manifest)
+    private static string? ResolveSkillsPath(string packageDir, PluginManifest? manifest, ILogger? logger = null)
     {
         var rel = string.IsNullOrWhiteSpace(manifest?.SkillsPath) ? "./skills" : manifest!.SkillsPath!;
+        if (Path.IsPathRooted(rel))
+            logger?.LogWarning(
+                "Plugin manifest at '{PackageDir}' declares absolute skills path '{SkillsPath}': honored, but absolute paths escape the package directory -- verify this plugin is trusted.",
+                packageDir, rel);
         return Path.IsPathRooted(rel) ? rel : Path.GetFullPath(Path.Combine(packageDir, rel));
     }
 

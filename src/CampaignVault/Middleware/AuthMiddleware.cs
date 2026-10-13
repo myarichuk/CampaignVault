@@ -6,9 +6,10 @@ namespace CampaignVault.Middleware;
 /// <summary>
 /// Optional Bearer/X-API-Key Auth Middleware with timing-safe comparison.
 /// </summary>
-public class AuthMiddleware(RequestDelegate next, string bearerToken)
+public class AuthMiddleware(RequestDelegate next, string bearerToken, bool allowQueryToken = false)
 {
     private readonly byte[] _bearerTokenBytes = Encoding.UTF8.GetBytes(bearerToken);
+    private readonly bool _allowQueryToken = allowQueryToken;
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -34,9 +35,9 @@ public class AuthMiddleware(RequestDelegate next, string bearerToken)
         {
             authorized = true;
         }
-        // Query string fallback (for clients like Grok Web custom connectors that cannot set custom headers)
-        // SECURITY NOTE: Query parameters are logged in many places. Only use ?token= when header-based auth is not possible.
-        else if (TimingSafeEquals(context.Request.Query["token"].ToString(), bearerToken))
+        // Opt-in query string fallback for header-less clients (see AUTH_ALLOW_QUERY_TOKEN in Program.cs).
+        // Off by default: query parameters land in logs, history, and referers.
+        else if (_allowQueryToken && TimingSafeEquals(context.Request.Query["token"].ToString(), bearerToken))
         {
             authorized = true;
         }

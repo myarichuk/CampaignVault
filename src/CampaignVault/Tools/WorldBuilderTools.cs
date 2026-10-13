@@ -126,7 +126,13 @@ public class WorldBuilderTools : CampaignToolBase, IMcpServerTool
             var existedBefore = false;
             try
             {
-                var id = HomebrewTemplates.Id(effective, items[i].Kind, system, HomebrewTemplates.Check(items[i].Kind, items[i].Yaml).Name ?? string.Empty);
+                // Surface Check problems before building the document id: the id builder only
+                // rejects empty slugs, while Check carries the actionable refusal reason (missing
+                // name, unknown kind, unreadable YAML) that callers assert on.
+                var (checkedName, checkProblems) = HomebrewTemplates.Check(items[i].Kind, items[i].Yaml);
+                if (checkProblems.Count > 0)
+                    throw new ArgumentException("Homebrew not saved: " + string.Join(" ", checkProblems));
+                var id = HomebrewTemplates.Id(effective, items[i].Kind, system, checkedName!);
                 existedBefore = await s.Advanced.ExistsAsync(id);
                 saved = await _repository.UpsertHomebrewTemplateAsync(s, items[i], system, effective);
             }

@@ -183,9 +183,22 @@ public class SurvivalDeprivationRule : ISimulationRule
 
         if (definition.IsStacking)
         {
-            var currentLevel = existing != null && ConditionExpiryEvaluator.TryParseStackLevel(existing.Name, out var parsed)
-                ? parsed
-                : 0;
+            int currentLevel;
+            if (existing == null)
+            {
+                currentLevel = 0;
+            }
+            else if (!ConditionExpiryEvaluator.TryParseStackLevel(existing.Name, out var parsed))
+            {
+                // Keep the unreadable level instead of resetting it to 1: escalating from a
+                // guessed base would silently discard the real severity (mirrors RestChangeHandler).
+                narratives.Add($"[WARNING] Stacking condition '{existing.Name}' has no parseable numeric level; left unchanged.");
+                return;
+            }
+            else
+            {
+                currentLevel = parsed;
+            }
             // The table on the condition says where it ends (exhaustion: 6, death); levels past it add nothing.
             var newLevel = Math.Min(currentLevel + levelsGained, definition.MaxLevel ?? int.MaxValue);
 

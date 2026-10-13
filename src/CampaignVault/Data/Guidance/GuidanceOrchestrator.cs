@@ -1,4 +1,5 @@
 using CampaignVault.Plugins;
+using Microsoft.Extensions.Logging;
 using CampaignVault.Data.Pressure;
 using CampaignVault.Models;
 
@@ -15,15 +16,21 @@ internal sealed class GuidanceOrchestrator : IGuidanceOrchestrator
     private readonly IEnumerable<IGuidanceContributor> _contributors;
     private readonly IEnumerable<IPluginGuidanceContributor> _pluginContributors;
     private readonly CampaignDocumentKeys _keys;
+    private readonly ILogger<GuidanceOrchestrator>? _logger;
+
+    /// <summary>Contributors skipped by the last <see cref="CollectAsync"/> call (best-effort).</summary>
+    public int SkippedContributorCount { get; private set; }
 
     public GuidanceOrchestrator(
         IEnumerable<IGuidanceContributor> contributors,
         IEnumerable<IPluginGuidanceContributor> pluginContributors,
-        CampaignDocumentKeys keys)
+        CampaignDocumentKeys keys,
+        ILogger<GuidanceOrchestrator>? logger = null)
     {
         _contributors = contributors;
         _pluginContributors = pluginContributors;
         _keys = keys;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyList<GuidanceHint>> CollectAsync(
@@ -41,6 +48,7 @@ internal sealed class GuidanceOrchestrator : IGuidanceOrchestrator
                 _keys.StateGuidance(ctx.CampaignName));
         }
 
+        SkippedContributorCount = 0;
         var contributed = new List<GuidanceHint>();
 
         foreach (var contributor in _contributors
@@ -52,9 +60,12 @@ internal sealed class GuidanceOrchestrator : IGuidanceOrchestrator
                 var result = await contributor.EvaluateAsync(ctx, ct);
                 contributed.AddRange(result);
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently skip failed contributors to prevent guidance collection from breaking tool responses
+                // A failing contributor must not break the tool response, but it must not vanish
+                // silently either: log who failed and count it (see SkippedContributorCount).
+                SkippedContributorCount++;
+                _logger?.LogWarning(ex, "Guidance contributor {Contributor} failed and was skipped.", contributor.GetType().FullName);
             }
         }
 
@@ -154,9 +165,12 @@ internal sealed class GuidanceOrchestrator : IGuidanceOrchestrator
                         Source = source
                     }));
             }
-            catch
+            catch (Exception ex)
             {
-                // Same policy as core contributors: a failing plugin must not break the tool response.
+                // Same policy as core contributors: a failing plugin must not break the tool
+                // response, but the failure is logged and counted instead of swallowed.
+                SkippedContributorCount++;
+                _logger?.LogWarning(ex, "Plugin guidance contributor {Contributor} failed and was skipped.", contributor.GetType().FullName);
             }
         }
 

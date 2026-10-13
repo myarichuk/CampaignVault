@@ -95,6 +95,24 @@ public class SurvivalDeprivationRuleTests
     }
 
     [Fact]
+    public async Task ApplyAsync_UnparseableStackingLevel_WarnsAndKeepsExisting()
+    {
+        var stats = new Dnd5eExtension
+        {
+            Attributes = { ["deprivation_streak_thirst"] = 0.5f },
+            StatusEffects = [new StatusEffect { Name = "Exhaustion", ConditionName = "exhaustion", Category = "Condition" }],
+        };
+        var character = MakeCharacter(stats, thirst: 95f);
+
+        // Default water tolerance is 1 day; 0.5 -> 1.5 crosses the boundary once.
+        var result = await RunRule(character, daysPassed: 1);
+
+        Assert.Empty(result.Deltas.OfType<StatusRemove>());
+        Assert.Empty(result.Deltas.OfType<StatusChange>());
+        Assert.Contains(result.NarrativeEvents, n => n.Contains("left unchanged"));
+    }
+
+    [Fact]
     public async Task ApplyAsync_Pf2eFatigued_IsAppliedOnceAndNotReapplied()
     {
         var stats = new Pf2eExtension

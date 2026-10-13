@@ -14,6 +14,12 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
         PropertyNameCaseInsensitive = true
     };
 
+    /// <summary>Fail-closed bound on a full-campaign pull. The v1 proto has no pagination, so an
+    /// unbounded pull lets one large campaign DoS the server (memory + full-JSON CPU). Over the cap
+    /// the call fails visibly with ResourceExhausted instead of truncating silently (truncation would
+    /// corrupt the client's sync state). Full pagination needs a proto change.</summary>
+    internal const int MaxEntitiesPerResponse = 10000;
+
     private readonly CampaignDocumentKeys _keys = keys;
 
     public override async Task<CampaignListResponse> GetCampaigns(EmptyRequest request, ServerCallContext context)
@@ -38,13 +44,16 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
     {
         var response = new EntityListResponse();
         var campaignName = request.CampaignName;
+        var remainingBudget = MaxEntitiesPerResponse;
 
         using var session = documentStore.OpenAsyncSession();
         
         var characters = await session.Query<Character, Character_Search>()
             .Where(c => c.CampaignName == campaignName)
             .Customize(x => x.WaitForNonStaleResults())
+            .Take(remainingBudget + 1)
             .ToListAsync();
+        remainingBudget -= characters.Count;
         foreach (var c in characters)
         {
             response.Entities.Add(new EntityItem
@@ -58,7 +67,9 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
         var locations = await session.Query<Location, Location_Search>()
             .Where(l => l.CampaignName == campaignName)
             .Customize(x => x.WaitForNonStaleResults())
+            .Take(remainingBudget + 1)
             .ToListAsync();
+        remainingBudget -= locations.Count;
         foreach (var l in locations)
         {
             response.Entities.Add(new EntityItem
@@ -72,7 +83,9 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
         var quests = await session.Query<Quest, Quest_Search>()
             .Where(q => q.CampaignName == campaignName)
             .Customize(x => x.WaitForNonStaleResults())
+            .Take(remainingBudget + 1)
             .ToListAsync();
+        remainingBudget -= quests.Count;
         foreach (var q in quests)
         {
             response.Entities.Add(new EntityItem
@@ -86,7 +99,9 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
         var factions = await session.Query<Faction, Faction_Search>()
             .Where(f => f.CampaignName == campaignName)
             .Customize(x => x.WaitForNonStaleResults())
+            .Take(remainingBudget + 1)
             .ToListAsync();
+        remainingBudget -= factions.Count;
         foreach (var f in factions)
         {
             response.Entities.Add(new EntityItem
@@ -100,7 +115,9 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
         var lore = await session.Query<Lore, Lore_Search>()
             .Where(l => l.CampaignName == campaignName)
             .Customize(x => x.WaitForNonStaleResults())
+            .Take(remainingBudget + 1)
             .ToListAsync();
+        remainingBudget -= lore.Count;
         foreach (var l in lore)
         {
             response.Entities.Add(new EntityItem
@@ -114,7 +131,9 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
         var rumors = await session.Query<Rumor, Rumor_Search>()
             .Where(r => r.CampaignName == campaignName)
             .Customize(x => x.WaitForNonStaleResults())
+            .Take(remainingBudget + 1)
             .ToListAsync();
+        remainingBudget -= rumors.Count;
         foreach (var r in rumors)
         {
             response.Entities.Add(new EntityItem
@@ -127,7 +146,9 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
 
         var events = await session.Query<Event>()
             .Where(e => e.CampaignName == campaignName)
+            .Take(remainingBudget + 1)
             .ToListAsync();
+        remainingBudget -= events.Count;
         foreach (var e in events)
         {
             response.Entities.Add(new EntityItem
@@ -140,7 +161,9 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
 
         var items = await session.Query<Item>()
             .Where(i => i.CampaignName == campaignName)
+            .Take(remainingBudget + 1)
             .ToListAsync();
+        remainingBudget -= items.Count;
         foreach (var i in items)
         {
             response.Entities.Add(new EntityItem
@@ -154,7 +177,9 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
         var creatures = await session.Query<CustomCreature, CustomCreature_Search>()
             .Where(cc => cc.CampaignName == campaignName)
             .Customize(x => x.WaitForNonStaleResults())
+            .Take(remainingBudget + 1)
             .ToListAsync();
+        remainingBudget -= creatures.Count;
         foreach (var cc in creatures)
         {
             response.Entities.Add(new EntityItem
@@ -168,7 +193,9 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
         var plotThreads = await session.Query<PlotThread, PlotThread_Search>()
             .Where(pt => pt.CampaignName == campaignName)
             .Customize(x => x.WaitForNonStaleResults())
+            .Take(remainingBudget + 1)
             .ToListAsync();
+        remainingBudget -= plotThreads.Count;
         foreach (var pt in plotThreads)
         {
             response.Entities.Add(new EntityItem
@@ -177,6 +204,12 @@ public class CampaignSyncService(IDocumentStore documentStore, CampaignDocumentK
                 Type = "plotthread",
                 Content = JsonSerializer.Serialize(pt)
             });
+        }
+
+        if (response.Entities.Count > MaxEntitiesPerResponse)
+        {
+            throw new RpcException(new Status(StatusCode.ResourceExhausted,
+                $"Campaign '{campaignName}' exceeds the {MaxEntitiesPerResponse}-entity sync pull limit. Split the campaign or wait for paginated sync support."));
         }
 
         return response;

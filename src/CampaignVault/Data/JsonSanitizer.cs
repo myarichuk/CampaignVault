@@ -56,9 +56,13 @@ public static class JsonSanitizer
             {
                 kind = je.ValueKind;
             }
+            catch (ObjectDisposedException)
+            {
+                return HealDeadElement(je);
+            }
             catch (InvalidOperationException)
             {
-                return je.GetRawText(); // completely dead element
+                return HealDeadElement(je);
             }
 
             try
@@ -80,9 +84,13 @@ public static class JsonSanitizer
                     _ => je.GetRawText()
                 };
             }
+            catch (ObjectDisposedException)
+            {
+                return HealDeadElement(je);
+            }
             catch (InvalidOperationException)
             {
-                return je.GetRawText();
+                return HealDeadElement(je);
             }
         }
 
@@ -106,9 +114,50 @@ public static class JsonSanitizer
     }
 
     /// <summary>
+    /// Last-resort rendering of a dead element: raw JSON when the buffer survives, otherwise the
+    /// buffer-free ToString, otherwise null (nothing salvageable -- the caller drops the key).
+    /// </summary>
+    private static object? HealDeadElement(JsonElement element)
+    {
+        try
+        {
+            return element.GetRawText();
+        }
+        catch (ObjectDisposedException) { }
+        catch (InvalidOperationException) { }
+
+        try
+        {
+            return element.ToString();
+        }
+        catch (ObjectDisposedException) { }
+        catch (InvalidOperationException) { }
+
+        return null;
+    }
+
+    /// <summary>True for a live JSON null (a null heal is legitimate data, not a drop signal).</summary>
+    private static bool IsLiveNull(JsonElement element)
+    {
+        try
+        {
+            return element.ValueKind == JsonValueKind.Null;
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Sanitizes a dictionary in place (mutates the original). This is safer for Raven change tracking
     /// than replacing the whole dictionary reference on a tracked entity.
     /// </summary>
+
     public static IDictionary<string, object>? SanitizeDictionary(IDictionary<string, object>? source)
     {
         if (source == null || source.Count == 0)
@@ -130,11 +179,24 @@ public static class JsonSanitizer
         {
             try
             {
-                source[key] = SanitizeValue(badValue)!;
+                var healed = SanitizeValue(badValue);
+                if (healed is null && badValue is JsonElement element && !IsLiveNull(element))
+                {
+                    // A dead element with nothing salvageable: drop the key rather than
+                    // persisting a placeholder or throwing on the store path.
+                    System.Diagnostics.Debug.WriteLine($"JsonSanitizer: dropping unrecoverable key '{key}'.");
+                    source.Remove(key);
+                    continue;
+                }
+
+                source[key] = healed!;
             }
-            catch
+            catch (Exception ex)
             {
-                source[key] = badValue?.ToString() ?? "unsanitizable";
+                // Never persist ToString()/type-name garbage for values that fail to heal:
+                // drop the key and log it.
+                System.Diagnostics.Debug.WriteLine($"JsonSanitizer: dropping unsanitizable key '{key}': {ex.Message}");
+                source.Remove(key);
             }
         }
 

@@ -160,6 +160,13 @@ var dbPath = builder.Configuration["CAMPAIGN_DB_PATH"] ?? Path.Combine(AppContex
 // Auth is enabled only when the variable is present and non-empty (same behavior as before).
 var bearerToken = Environment.GetEnvironmentVariable("BEARER_TOKEN");
 
+// Query-string auth (?token=) is off unless explicitly enabled: URLs leak via logs, history,
+// and referers, while header auth (Authorization: Bearer / X-API-Key) always works. It exists
+// only for header-less clients (e.g. Grok Web custom connectors): set AUTH_ALLOW_QUERY_TOKEN=1
+// to allow it, and prefer header auth whenever possible.
+var allowQueryToken = string.Equals(
+    Environment.GetEnvironmentVariable("AUTH_ALLOW_QUERY_TOKEN"), "1", StringComparison.OrdinalIgnoreCase);
+
 // SECURITY: bindAny (any non-Development environment, or MCP_BIND_ANY=1) means the MCP endpoint
 // listens on 0.0.0.0. Refuse to start rather than silently serving that open with no auth — the only
 // exempt path is /health (see AuthMiddleware). Set BEARER_TOKEN, or run with
@@ -193,27 +200,46 @@ builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
 builder.Services.AddCampaignVaultToolSchemas();
 
 // CORS configuration (Issue #16 from code review)
-// - Default (or "*"): AllowAnyOrigin (current behavior, convenient for local MCP + LLM clients)
-// - Otherwise: comma-separated list of allowed origins (e.g. "https://app.example.com,https://dm.example.com")
+// - Explicit comma-separated list: those origins only (e.g. "https://app.example.com,https://dm.example.com")
+// - "*": AllowAnyOrigin, but only when auth is on (BEARER_TOKEN set). With auth off it falls back
+//   to the restrictive default below instead of letting any website drive an open server.
+// - Unset/empty: restrictive default -- no cross-origin browser access. Non-browser MCP clients
+//   (which never enforce CORS) are unaffected, so local loopback use keeps working.
 // Set via CORS_ALLOWED_ORIGINS environment variable for production deployments.
 var corsOrigins = Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS");
+var corsAllowAny = !string.IsNullOrWhiteSpace(corsOrigins)
+    && corsOrigins.Trim() == "*"
+    && !string.IsNullOrEmpty(bearerToken);
+if (!string.IsNullOrWhiteSpace(corsOrigins) && corsOrigins.Trim() == "*" && string.IsNullOrEmpty(bearerToken))
+{
+    Console.Error.WriteLine(
+        "WARNING: CORS_ALLOWED_ORIGINS='*' ignored because BEARER_TOKEN is unset (no auth). " +
+        "Falling back to restrictive CORS (no cross-origin browser access). Set BEARER_TOKEN to allow '*', " +
+        "or set CORS_ALLOWED_ORIGINS to an explicit origin list.");
+}
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        if (string.IsNullOrWhiteSpace(corsOrigins) || corsOrigins.Trim() == "*")
+        if (corsAllowAny)
         {
             policy.AllowAnyOrigin()
                 .AllowAnyHeader()
                 .AllowAnyMethod();
         }
-        else
+        else if (!string.IsNullOrWhiteSpace(corsOrigins) && corsOrigins.Trim() != "*")
         {
             var origins =
                 corsOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             policy.WithOrigins(origins)
                 .AllowAnyHeader()
                 .AllowAnyMethod();
+        }
+        else
+        {
+            // Restrictive default: emit no CORS allow headers, so browsers block
+            // cross-origin calls while non-browser MCP clients keep working.
+            policy.SetIsOriginAllowed(_ => false);
         }
     });
 });
@@ -310,7 +336,11 @@ app.UseMiddleware<McpResponseEscapingMiddleware>(mcpPorts);
 // Optional Bearer/X-API-Key Auth Middleware
 if (!string.IsNullOrEmpty(bearerToken))
 {
-    app.UseMiddleware<AuthMiddleware>(bearerToken);
+    if (allowQueryToken)
+    {
+        Console.Error.WriteLine("WARNING: AUTH_ALLOW_QUERY_TOKEN=1: bearer tokens in ?token= URLs may leak via logs/history. Prefer header auth.");
+    }
+    app.UseMiddleware<AuthMiddleware>(bearerToken, allowQueryToken);
 }
 
 foreach (var route in ToolProfiles.Routes)

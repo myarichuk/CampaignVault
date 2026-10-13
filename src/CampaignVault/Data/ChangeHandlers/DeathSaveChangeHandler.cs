@@ -105,6 +105,9 @@ public sealed class DeathSaveChangeHandler(IRollService rollService) : IWorldCha
         var roll = die + resolution.Bonus;
         var bonusNote = resolution.Bonus != 0 ? $" (d20 {die}{resolution.Bonus:+#;-#})" : "";
 
+        if (character.MaxHp <= 0)
+            return ChangeHandlerResult.Failure($"{id} has MaxHp {character.MaxHp}: a natural 20 cannot revive them at 1 HP. Set MaxHp > 0 to enable HP tracking.");
+
         if (die == 20)
         {
             HitPointState.Set(character, Math.Min(1, character.MaxHp));

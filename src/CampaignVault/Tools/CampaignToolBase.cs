@@ -43,7 +43,8 @@ public abstract class CampaignToolBase
     protected Task<ToolResult<T>> ExecuteForCampaignAsync<T>(
         string campaignName,
         Func<string, IAsyncDocumentSession, Task<ToolResult<T>>> action,
-        bool saveChanges = true)
+        bool saveChanges = true,
+        CancellationToken ct = default)
     {
         if (!TryGetEffectiveCampaign(campaignName, out var effective))
         {
@@ -58,10 +59,10 @@ public abstract class CampaignToolBase
         {
             using var homebrew = HomebrewScope.Enter(await _repository.GetHomebrewSnapshotAsync(session, effective));
             return await action(effective, session);
-        }, saveChanges);
+        }, saveChanges, ct);
     }
 
-    protected async Task<ToolResult<T>> ExecuteAsync<T>(Func<IAsyncDocumentSession, Task<ToolResult<T>>> action, bool saveChanges = true)
+    protected async Task<ToolResult<T>> ExecuteAsync<T>(Func<IAsyncDocumentSession, Task<ToolResult<T>>> action, bool saveChanges = true, CancellationToken ct = default)
     {
         int maxRetries = 2;
         int actionAttempt = 0;
@@ -112,7 +113,7 @@ public abstract class CampaignToolBase
             {
                 try
                 {
-                    await session.SaveChangesAsync();
+                    await session.SaveChangesAsync(ct);
                 }
                 catch (ConcurrencyException ex)
                 {

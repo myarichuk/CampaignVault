@@ -270,6 +270,16 @@ public class DeathSaveTests
     }
 
     [Fact]
+    public async Task Save_NatTwenty_WithNonPositiveMaxHp_FailsInsteadOfRevivingAtZero()
+    {
+        var pc = Pc(hp: 0, max: 0);
+        var result = await Save(pc, 20);
+
+        Assert.False(result.Success);
+        Assert.Equal(0, pc.CurrentHp);
+    }
+
+    [Fact]
     public async Task Save_RejectsConsciousNpcAndBadRoll()
     {
         var awake = Pc(hp: 5);

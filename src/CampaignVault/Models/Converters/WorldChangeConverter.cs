@@ -56,7 +56,39 @@ internal static class WorldChangeNormalizer
             return json;
         }
 
-        return json.Replace("\"statusremove\"", "\"status_remove\"", StringComparison.OrdinalIgnoreCase);
+        // Token-aware: only the $type discriminator value "statusremove" (any casing) becomes
+        // "status_remove". A raw string Replace would also rewrite narratives and property
+        // values that merely mention it.
+        JsonNode? node;
+        try
+        {
+            node = JsonNode.Parse(json);
+        }
+        catch
+        {
+            return json; // let the normal deserializer report the error
+        }
+
+        if (node is not JsonArray array)
+        {
+            return json;
+        }
+
+        var modified = false;
+        foreach (var item in array)
+        {
+            if (item is JsonObject obj
+                && obj.TryGetPropertyValue("$type", out var typeVal)
+                && typeVal is JsonValue val
+                && val.TryGetValue<string>(out var discriminator)
+                && discriminator.Equals("statusremove", StringComparison.OrdinalIgnoreCase))
+            {
+                obj["$type"] = "status_remove";
+                modified = true;
+            }
+        }
+
+        return modified ? array.ToJsonString() : json;
     }
 
     private static bool NeedsNormalization(JsonArray array)

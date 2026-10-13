@@ -2414,11 +2414,24 @@ public class CampaignRepository
                 .Select(p => p.EntityId)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Count();
-            if (integrityCount > 0) gaps.Add($"{integrityCount} characters with integrity warnings — see WorldPressure");
+            if (integrityCount > 0)
+            {
+                gaps.Add($"{integrityCount} characters with integrity warnings — see WorldPressure");
+                _logger.LogInformation(
+                    "Seed coverage: {IntegrityCount} characters with integrity warnings in campaign {Campaign}: {EntityIds}",
+                    integrityCount, effective, integrityItems
+                        .Where(p => p.GroupingKey.StartsWith("Character:Integrity", StringComparison.Ordinal))
+                        .Select(p => p.EntityId)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .Take(20)
+                        .ToList());
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            // Intentionally swallowed: seed coverage is advisory.
+            // Advisory only: never break kickoff, but a failed scan must be visible or corrupt
+            // documents go undetected.
+            _logger.LogWarning(ex, "Seed coverage integrity scan failed for campaign {Campaign}.", effective);
         }
 
         return new SeedCoverageSummary
