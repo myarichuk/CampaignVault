@@ -76,6 +76,9 @@ jobs:
           buildMethod: CampaignVault.UnityClient.Editor.BuildTools.${{ matrix.method }}
           customParameters: -vaultPrestagedServer
           versioning: None
+          # unity-builder@v6 downloads a separate game-ci CLI; unpinned it follows "latest" and its
+          # post-build check (needs "Build succeeded!" in the log, see BuildTools) can change under us.
+          cliVersion: v0.1.70
 
       - name: Package
         env:

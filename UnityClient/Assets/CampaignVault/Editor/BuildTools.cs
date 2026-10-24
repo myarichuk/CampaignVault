@@ -121,6 +121,10 @@ namespace CampaignVault.UnityClient.Editor
             {
                 throw new UnityEditor.Build.BuildFailedException("[Vault] Build failed for " + target + ": " + summary.result);
             }
+
+            // GameCI's validateBuild treats a run as failed unless the log carries this exact text
+            // (its own build script prints "Build succeeded" without the "!", which doesn't count).
+            Debug.Log("Build succeeded!");
         }
     }
 }
