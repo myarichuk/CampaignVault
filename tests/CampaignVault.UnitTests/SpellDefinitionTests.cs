@@ -183,7 +183,9 @@ public class SpellDefinitionTests
         Assert.Contains("wizard", detect.Classes, StringComparer.OrdinalIgnoreCase);
 
         Assert.True(pf2.TryGetValue("shield", out var shield));
-        Assert.True(shield.Concentration);
+        // The Remaster has no concentration: "concentrate" is an action trait, and Shield is a one-action cantrip.
+        Assert.False(shield.Concentration);
+        Assert.Equal("1 action", shield.CastingTime);
     }
 
     [Fact]

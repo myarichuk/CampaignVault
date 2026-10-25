@@ -64,6 +64,13 @@ public class CampaignConfig
     public bool GuidanceEnabled { get; set; } = true;
 
     /// <summary>
+    /// When true, a committed take_turn ends with a one-line scene cue for connector models that write the
+    /// scene themselves. A client with its own storyteller sets it false (campaign_update sceneCueEnabled).
+    /// Defaults to true.
+    /// </summary>
+    public bool SceneCueEnabled { get; set; } = true;
+
+    /// <summary>
     /// The number of in-game days a pressure nag is suppressed after being surfaced.
     /// Defaults to 1 (meaning it stays hidden for 1 day, then reappears if ignored).
     /// </summary>
@@ -477,6 +484,14 @@ public record ResourcePoolTemplate : RulesetTemplate
     /// <summary>For slot-based pools: map character level to max count. E.g., "1" -> 4, "2" -> 3 for spell slots.</summary>
     [JsonPropertyName("levelToMaxMap")]
     public Dictionary<string, int>? LevelToMaxMap { get; set; }
+
+    /// <summary>
+    /// A per-class table that replaces <see cref="LevelToMaxMap"/> for characters of that class, keyed by class slug then
+    /// class level (Channel Divinity: a cleric's uses grow at 6 and 18, a paladin's stay at one). The first listed class the
+    /// character has wins, sized by that class's level.
+    /// </summary>
+    [JsonPropertyName("classLevelToMaxMap")]
+    public Dictionary<string, Dictionary<string, int>>? ClassLevelToMaxMap { get; set; }
 
     /// <summary>
     /// When true, pool is only initialized via <see cref="FeatDefinition.ExtraPools"/>, not class/caster rules.

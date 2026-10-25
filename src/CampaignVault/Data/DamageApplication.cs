@@ -167,7 +167,13 @@ internal static class DamageApplication
 
         // Already at 0 HP: each hit is a failed death save (a stable body becomes unstable again), a critical hit two.
         var tally = character.DeathSaves ??= new DeathSaveTally();
-        tally.Stable = false;
+        if (tally.Stable)
+        {
+            // A stable creature that takes damage starts a fresh set of death saves (SRD "Stabilizing a Creature").
+            tally.Stable = false;
+            tally.Successes = 0;
+            tally.Failures = 0;
+        }
         tally.Failures += critical ? 2 : 1;
         sink.Message(
             $"{character.Name} takes {(critical ? "a critical hit" : "damage")} at 0 HP: "

@@ -97,9 +97,10 @@ internal static class CommitSchemaModel
                 var fieldDesc = pi.GetCustomAttribute<DescriptionAttribute>()?.Description;
 
                 IReadOnlyList<string>? enumValues = null;
-                if (pi.PropertyType.IsEnum)
+                var enumType = Nullable.GetUnderlyingType(pi.PropertyType) ?? pi.PropertyType;
+                if (enumType.IsEnum)
                 {
-                    enumValues = [.. Enum.GetNames(pi.PropertyType)];
+                    enumValues = [.. Enum.GetNames(enumType)];
                 }
 
                 var requiredHint = pi.GetCustomAttribute<CommitRequiredHintAttribute>()?.Hint;

@@ -86,7 +86,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
             var character = new Character
             {
                 Id = "chars/drizzzt",
-                Name = "Drizzt Do'Urden",
+                Name = "Dorrin Vael",
                 CampaignName = campaignSlug,
                 CurrentHp = 10,
                 MaxHp = 10
@@ -108,7 +108,7 @@ public class LazyLlmScenarios : IClassFixture<RavenDBFixture>
         var result = await tools.Commit(changes, "Attack hits", campaignSlug);
 
         Assert.False(result.Success);
-        Assert.Contains("Did you mean: chars/drizzzt (Drizzt Do'Urden)?", result.Summary);
+        Assert.Contains("Did you mean: chars/drizzzt (Dorrin Vael)?", result.Summary);
     }
 
     [Fact]

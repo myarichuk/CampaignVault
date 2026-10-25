@@ -18,18 +18,21 @@ public class OnboardingTools(
 {
     [ToolCategory("Campaign onboarding")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"ONBOARDING TOOL: Start a structured campaign onboarding session. Returns the first question to ask the user.
-This prevents hallucination by collecting user preferences through guided questions before auto-generating the campaign world.
-
-Example: start_campaign_onboarding('dragon-heist')")]
+    [Description("Guided Session 0: returns the first question to ask the player (resumable per slug). When to use it: lookup kind=help topic=onboarding.")]
     public Task<ToolResult<OnboardingStartResponse>> StartCampaignOnboarding(
         [Description(ToolParameterDescriptions.CampaignSlugRequired)]
-        string campaignName)
+        string campaignName,
+        [Description("true: back one question; its answer is dropped and returned as priorAnswer.")]
+        bool back = false)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) =>
         {
             // Check if onboarding already in progress
             var existingState = await _repository.GetOnboardingStateAsync(session, effective);
+            if (existingState != null && back)
+            {
+                return await StepBackAsync(session, effective, existingState);
+            }
             if (existingState != null)
             {
                 return new ToolResult<OnboardingStartResponse>(
@@ -79,12 +82,61 @@ Example: start_campaign_onboarding('dragon-heist')")]
         });
     }
 
+    /// <summary>
+    /// Back: the previously answered question comes up again with its answer cleared. Branching, the path and
+    /// the world-building flags are replayed from the answers that remain, so a skipped branch reopens if the
+    /// answer that closed it is the one withdrawn. The first question (the campaign name) is never revisited.
+    /// </summary>
+    private async Task<ToolResult<OnboardingStartResponse>> StepBackAsync(
+        Raven.Client.Documents.Session.IAsyncDocumentSession session, string effective, OnboardingState state)
+    {
+        var asked = OnboardingQuestionCatalog.GetQuestionsForPath(state);
+        var current = state.NextQuestion;
+        var answered = asked
+            .TakeWhile(q => current == null || q.Key != current.Key)
+            .Where(q => state.CollectedAnswers.ContainsKey(q.Key))
+            .ToList();
+        var previous = answered.LastOrDefault();
+        if (previous == null || previous.Key == OnboardingQuestionCatalog.CampaignName)
+        {
+            return new ToolResult<OnboardingStartResponse>(
+                false,
+                Error: "OnboardingNoPrevious",
+                Summary: "Nothing to go back to: the campaign name is fixed once the onboarding starts.");
+        }
+
+        var prior = state.CollectedAnswers[previous.Key]?.ToString();
+        state.CollectedAnswers.Remove(previous.Key);
+        state.SkippedQuestions = state.CollectedAnswers
+            .SelectMany(kv => OnboardingQuestionCatalog.ApplyBranchingRules(state, kv.Key, kv.Value))
+            .Distinct()
+            .ToList();
+        state.BranchingPath = DetermineBranchingPath(state);
+        state.WorldBuildingFlags.Clear();
+        foreach (var kvp in ExtractWorldBuildingFlags(state))
+        {
+            state.WorldBuildingFlags[kvp.Key] = kvp.Value;
+        }
+        state.IsComplete = false;
+        state.NextQuestion = OnboardingQuestionCatalog.GetNextQuestion(state);
+        state.CurrentQuestionIndex = Math.Max(0, state.CurrentQuestionIndex - 1);
+        await _repository.UpsertOnboardingStateAsync(session, state, effective);
+
+        return new ToolResult<OnboardingStartResponse>(
+            true,
+            new OnboardingStartResponse
+            {
+                State = state,
+                CurrentQuestion = state.NextQuestion,
+                PriorAnswer = prior,
+                Summary = $"Back to \"{state.NextQuestion?.Text}\". Its earlier answer is cleared; answer it again."
+            },
+            $"Onboarding for '{effective}' stepped back one question.");
+    }
+
     [ToolCategory("Campaign onboarding")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"ONBOARDING TOOL: Submit an answer to the current onboarding question.
-Returns the next question to ask, or 'ready_to_build' if onboarding is complete.
-
-Example: submit_onboarding_answer('dragon-heist', 'Dnd5e')")]
+    [Description("Answers the current onboarding question; returns the next one, or ready_to_build.")]
     public Task<ToolResult<OnboardingAnswerResponse>> SubmitOnboardingAnswer(
         [Description(ToolParameterDescriptions.CampaignSlugRequired)]
         string campaignName,
@@ -191,11 +243,7 @@ Example: submit_onboarding_answer('dragon-heist', 'Dnd5e')")]
 
     [ToolCategory("Campaign onboarding")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"ONBOARDING TOOL: Finalize onboarding — locks in campaign settings, does NOT seed the world.
-Creates/locks the campaign meta from the collected answers (system, tone, setting, factions, etc.).
-The response's SeedBrief lists the answers and next steps: create the PCs and seed the world with world_build, then start_session.
-
-Example: finalize_campaign_onboarding('dragon-heist')")]
+    [Description("Locks the campaign from the collected answers (no world seeding) and returns seedBrief: the answers and the next steps.")]
     public Task<ToolResult<OnboardingFinalizeResponse>> FinalizeCampaignOnboarding(
         [Description(ToolParameterDescriptions.CampaignSlugRequired)]
         string campaignName)
@@ -438,6 +486,8 @@ public class OnboardingStartResponse
 {
     public OnboardingState State { get; set; } = null!;
     public OnboardingQuestion? CurrentQuestion { get; set; }
+    /// <summary>back=true only: the answer the question had, so a client can offer it for editing.</summary>
+    public string? PriorAnswer { get; set; }
     public string Summary { get; set; } = null!;
 }
 

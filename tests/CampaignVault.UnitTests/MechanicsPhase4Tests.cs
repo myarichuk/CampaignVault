@@ -138,6 +138,31 @@ public class MechanicsPhase4Tests
     }
 
     [Fact]
+    public async Task Stabilise_ResetsTheTally_AndDamageStartsAFreshSet()
+    {
+        var pc = Pc(hp: 5);
+        await Hit(pc, -5);
+        pc.DeathSaves = new DeathSaveTally { Successes = 2, Failures = 2 };
+
+        await Save(pc, 15);
+        Assert.True(pc.DeathSaves!.Stable);
+        Assert.Equal(0, pc.DeathSaves.Successes);
+        Assert.Equal(0, pc.DeathSaves.Failures);
+
+        // Damage while stable: unstable again with one failure, the old successes gone.
+        await Hit(pc, -3);
+        Assert.False(pc.DeathSaves.Stable);
+        Assert.Equal(1, pc.DeathSaves.Failures);
+        Assert.Equal(0, pc.DeathSaves.Successes);
+
+        // One success is not enough to re-stabilise.
+        await Save(pc, 12);
+        Assert.False(pc.DeathSaves.Stable);
+        Assert.Equal(1, pc.DeathSaves.Successes);
+        Assert.False(pc.IsDead);
+    }
+
+    [Fact]
     public async Task Revive_LeavesNoFlag()
     {
         var pc = Pc(hp: 5);

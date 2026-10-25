@@ -27,9 +27,9 @@ public class GuidanceCorpusTests
 
         var totalChars = sections.Sum(s => (long)s.Length);
 
-        // After Phase 3.5 trim: ~11.6KB (12,040 chars)
-        // Target: < 15KB to leave headroom
-        Assert.True(totalChars < 15000, $"DmHelpManual total {totalChars} exceeds 15000 char limit");
+        // After Phase 3.5 trim: ~11.6KB (12,040 chars). 3e moved the /build tools' call examples here
+        // (paid only on lookup kind=help, instead of on every tools/list): 15,561. Cap raised to 16k.
+        Assert.True(totalChars < 16000, $"DmHelpManual total {totalChars} exceeds 16000 char limit");
     }
 
     [Fact]
@@ -54,13 +54,8 @@ public class GuidanceCorpusTests
         // Validate that claude_skills/* SKILL.md files only name tools in ToolCatalog.
         // This prevents the 41% dead-code scenario that plagued ToolCallExamples.
 
-        var skillsDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "claude_skills");
-        if (!Directory.Exists(skillsDir))
-        {
-            // Skills directory doesn't exist in test context; skip this validation
-            // in CI but ensure it runs locally if the repo structure changes.
-            return;
-        }
+        var skillsDir = Path.Combine(RepoPaths.Root, "claude_skills");
+        Assert.True(Directory.Exists(skillsDir), $"claude_skills not found at {skillsDir}");
 
         var liveTools = ToolCatalog.GetByCategory(null).Select(t => t.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var skillFiles = Directory.GetFiles(skillsDir, "SKILL.md", SearchOption.AllDirectories);
@@ -81,4 +76,53 @@ public class GuidanceCorpusTests
         }
     }
 
+    private const string WorldChangeSkill = "claude_skills/dnd-world-change/SKILL.md";
+    private const string RegenerateEnv = "CV_WRITE_SKILL_FIELDS";
+
+    /// <summary>
+    /// Golden file: the `## Fields` section of dnd-world-change is generated from CommitSchemaModel and
+    /// must match the server byte for byte. Set CV_WRITE_SKILL_FIELDS=1 and run this test to regenerate.
+    /// </summary>
+    [Fact]
+    public void WorldChangeSkill_FieldsSection_MatchesServer()
+    {
+        var path = Path.Combine(RepoPaths.Root, WorldChangeSkill);
+        var text = File.ReadAllText(path);
+        var expected = CampaignVault.Schema.CommitFieldReference.RenderSkillSection();
+
+        if (Environment.GetEnvironmentVariable(RegenerateEnv) == "1")
+        {
+            File.WriteAllText(path, CampaignVault.Schema.CommitFieldReference.ApplySkillSection(text));
+            text = File.ReadAllText(path);
+        }
+
+        Assert.True(expected.Length <= CampaignVault.Schema.CommitFieldReference.SkillSectionMaxChars,
+            $"generated Fields section is {expected.Length} chars; budget {CampaignVault.Schema.CommitFieldReference.SkillSectionMaxChars}");
+
+        var begin = text.IndexOf(CampaignVault.Schema.CommitFieldReference.SkillSectionBegin, StringComparison.Ordinal);
+        var end = text.IndexOf(CampaignVault.Schema.CommitFieldReference.SkillSectionEnd, StringComparison.Ordinal);
+        Assert.True(begin >= 0 && end > begin, $"{WorldChangeSkill} has no generated Fields section; run with {RegenerateEnv}=1");
+
+        var actual = text[begin..(end + CampaignVault.Schema.CommitFieldReference.SkillSectionEnd.Length)] + "\n";
+        Assert.True(expected == actual,
+            $"{WorldChangeSkill} Fields section is stale; run this test with {RegenerateEnv}=1 to regenerate.");
+
+        var staged = Path.Combine(RepoPaths.Root, "UnityClient", "Assets", "StreamingAssets", "CampaignVault", "skills", "dnd-world-change", "SKILL.md");
+        if (File.Exists(staged))
+        {
+            Assert.True(File.ReadAllText(staged) == text, "the staged Unity copy of dnd-world-change differs from claude_skills; copy it over.");
+        }
+    }
+
+    [Fact]
+    public void FieldReference_HotTierTypes_AreInlineAndOthersIndexed()
+    {
+        var section = CampaignVault.Schema.CommitFieldReference.RenderSkillSection();
+        Assert.Contains("**hp** —", section);
+        Assert.Contains("**ruleset_action** —", section);
+        Assert.Contains("characterId:string [req]", section);
+        Assert.Contains("Other types: ", section);
+        Assert.Contains("knowledge_update", section);
+        Assert.DoesNotContain("**knowledge_update**", section);
+    }
 }

@@ -123,10 +123,12 @@ public class TurnResult
         "on anything not covered by the delta, or pass forceFullReseed=true on the next call for a complete resync.")]
     public TurnMode Mode { get; set; } = TurnMode.Full;
 
-    [Description("True if a mutation was successfully committed; false if this was a query-only call or commit failed.")]
+    [Description("True if a mutation was successfully committed; absent on a query-only call.")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool Committed { get; set; }
 
-    [Description("Number of WorldChanges processed by the mutation (0 for query-only calls).")]
+    [Description("Number of WorldChanges processed by the mutation; absent on a query-only call.")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int ChangesProcessed { get; set; }
 
     [Description("Narrative summary of each change processed — includes randomized/computed combat outcomes (hit/miss, " +
@@ -225,9 +227,9 @@ public class TurnResult
         "Also useful to self-check your own narrative model against right now: if this doesn't match what you believe about the party, trust this.")]
     public string? PartyFingerprint { get; set; }
 
-    [Description("Monotonically increasing counter, bumped once per committed take_turn mutation for this campaign (never on pure-query calls). " +
-        "Not currently used for gap detection server-side — informational, for logging/debugging state sync issues.")]
-    public long WorldSequence { get; set; }
+    [Description("Player characters (and companions) whose XP now earns the next level. Sent when an xp_grant or level_up applied this turn and on full turns; absent otherwise. The client offers its level-up menu; the DM says a level is earned.")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? LevelUpReady { get; set; }
 
     [Description("Read just before writing the scene; a client with a separate storyteller ignores it.")]
     public string? SceneCue { get; set; }
@@ -279,9 +281,6 @@ public class EntityChangeDelta
 
     [Description("Character name, for display without a follow-up lookup.")]
     public string? Name { get; set; }
-
-    [Description("WorldChanges applied to this party member this turn — including the member's own applied movers from this call's Changes[] (a PartyDelta entry exists precisely to say 'this member moved'; NeedsMoved carries the live post-commit values as receipt). Only background engine-authored need/attribute tick noise stays filtered.")]
-    public List<WorldChange> Changes { get; set; } = [];
 
     [Description("P2-12: live need values for this member's needs that crossed the significance or cumulative-drift gates this turn (same ChangedNeedsKeys machinery as Npcs[] KnownNeeds filtering) — includes the caller's own applied NeedChange movers for this member, not just ambient drift. Null when no need moved enough to mention — an absent PartyDelta entry likewise means 'no party change worth surfacing', not 'no party'.")]
     public Dictionary<string, float>? NeedsMoved { get; set; }

@@ -254,4 +254,29 @@ public class ConditionDefinitionTests
 
         return rule.ApplyAsync(context, TestContext.Current.CancellationToken);
     }
+
+    // ── SRD 5.1 condition data ────────────────────────────────────────────────
+
+    [Fact]
+    public void Provider_Dnd5ePetrified_ResistsAllDamage_AndIsImmuneToPoisonAndDisease()
+    {
+        var conditions = Provider.GetConditionsForSystem(RulesetSystem.Dnd5e);
+
+        Assert.True(conditions.TryGetValue("petrified", out var def));
+        Assert.Contains(def!.Effects, e => string.Equals(e.Kind, "resistance", StringComparison.OrdinalIgnoreCase) && e.DamageType == "all");
+        Assert.Contains("poisoned", def.Immunities);
+        Assert.Contains("diseased", def.Immunities);
+    }
+
+    [Fact]
+    public void Provider_Dnd5eUnconscious_DoesNotSuppressProne()
+    {
+        // Prone's disadvantage on ranged attacks cancels unconscious's advantage into a straight roll (SRD 5.1);
+        // suppressing prone handed ranged attackers advantage.
+        var conditions = Provider.GetConditionsForSystem(RulesetSystem.Dnd5e);
+
+        Assert.True(conditions.TryGetValue("unconscious", out var def));
+        Assert.Contains("incapacitated", def!.Suppresses);
+        Assert.DoesNotContain("prone", def.Suppresses);
+    }
 }

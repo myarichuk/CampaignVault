@@ -66,6 +66,24 @@ public sealed class DeathSaveChangeHandler(IRollService rollService) : IWorldCha
         HitPointState.SyncDowned(character);
         var isPf2e = Pf2eDying.Applies(character);
         var tally = isPf2e ? new DeathSaveTally() : character.DeathSaves ??= new DeathSaveTally();
+        if (req.Stabilize == true)
+        {
+            if (isPf2e)
+                return ChangeHandlerResult.Failure($"{character.Name} follows the PF2e dying rules: there is no stabilize shortcut. Heal them, or let the recovery checks run.");
+            if (tally.Stable)
+            {
+                ctx.RecordMessage($"{character.Name} is already stable at 0 HP.");
+                return ChangeHandlerResult.Ok;
+            }
+
+            // Spare the Dying or a passed Medicine check: stable at 0 HP, the tally reset, no roll.
+            tally.Stable = true;
+            tally.Successes = 0;
+            tally.Failures = 0;
+            ctx.RecordMessage($"{character.Name} is stabilized at 0 HP, unconscious; no more death saves unless they take damage.");
+            return ChangeHandlerResult.Ok;
+        }
+
         if (tally.Stable)
         {
             ctx.RecordMessage($"{character.Name} is stable at 0 HP; no death save needed.");
@@ -120,7 +138,10 @@ public sealed class DeathSaveChangeHandler(IRollService rollService) : IWorldCha
             tally.Successes++;
             if (tally.Successes >= 3)
             {
+                // SRD "Stabilizing a Creature": the tally resets when the creature stabilizes.
                 tally.Stable = true;
+                tally.Successes = 0;
+                tally.Failures = 0;
                 ctx.RecordMessage($"{character.Name} death save: {roll}{bonusNote}, success (3/3). Stable at 0 HP, unconscious.");
             }
             else

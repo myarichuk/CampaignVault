@@ -399,10 +399,13 @@ internal static class FeatEffectRules
     }
 
     /// <summary>Whether the effect's damage type (one, or several comma-separated) includes this one.</summary>
-    private static bool NamesType(FeatEffect e, string? damageType) =>
-        !string.IsNullOrWhiteSpace(damageType)
-        && (e.DamageType ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Contains(damageType, StringComparer.OrdinalIgnoreCase);
+    private static bool NamesType(FeatEffect e, string? damageType)
+    {
+        if (string.IsNullOrWhiteSpace(damageType))
+            return false;
+        var named = (e.DamageType ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return named.Contains("all", StringComparer.OrdinalIgnoreCase) || named.Contains(damageType, StringComparer.OrdinalIgnoreCase);
+    }
 
     /// <summary>
     /// The effects a character has from its data alone, without a session: its class features and picked options, its race,

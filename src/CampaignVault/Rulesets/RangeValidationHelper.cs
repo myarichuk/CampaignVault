@@ -26,7 +26,8 @@ internal static class RangeValidationHelper
                  .ToDictionary(x => x.band, x => x.index, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>What a range check found: a refusal, or a disadvantage the attack takes (long range, a ranged attack with a hostile within Touch).</summary>
-    internal readonly record struct RangeOutcome(string? Error, string? DisadvantageReason);
+    /// <summary><paramref name="BandsBeyond"/>: how many distance bands past normal range the farthest target is (PF2e's per-increment penalty).</summary>
+    internal readonly record struct RangeOutcome(string? Error, string? DisadvantageReason, int BandsBeyond = 0);
 
     /// <summary>
     /// Validates that all targets of an attack/spell are within range.
@@ -76,6 +77,7 @@ internal static class RangeValidationHelper
 
         var maxBand = hasAoe ? aoeBand : rangeBand;
         string? disadvantage = null;
+        var bandsBeyond = 0;
 
         if (maxBand is not null && BandRank.TryGetValue(maxBand, out var maxRank))
         {
@@ -94,6 +96,7 @@ internal static class RangeValidationHelper
                     if (longRank >= targetRank)
                     {
                         disadvantage = $"{targetId} is {band}, beyond normal {maxBand} range (long range)";
+                        bandsBeyond = Math.Max(bandsBeyond, targetRank - maxRank);
                         continue;
                     }
 
@@ -113,14 +116,26 @@ internal static class RangeValidationHelper
             disadvantage = $"{adjacent} is hostile and within Touch of {caster.Name}";
         }
 
-        return new RangeOutcome(null, disadvantage);
+        return new RangeOutcome(null, disadvantage, bandsBeyond);
     }
 
-    private static bool IsRangedWeaponAttack(RulesetAction action, Character caster) =>
-        action.ActionType == RulesetActionType.Attack
-        && caster.SystemStats is Dnd5eExtension
-        && action.Parameters.TryGetValue("weaponTags", out var raw)
-        && raw.Split(',', StringSplitOptions.TrimEntries).Contains("ranged", StringComparer.OrdinalIgnoreCase);
+    /// <summary>A 5e ranged weapon attack, or a thrown weapon used at range (a dagger stabbed at Touch is a melee attack).</summary>
+    private static bool IsRangedWeaponAttack(RulesetAction action, Character caster)
+    {
+        if (action.ActionType != RulesetActionType.Attack || caster.SystemStats is not Dnd5eExtension
+            || !action.Parameters.TryGetValue("weaponTags", out var raw))
+        {
+            return false;
+        }
+
+        var tags = raw.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (tags.Contains("ranged", StringComparer.OrdinalIgnoreCase))
+            return true;
+        if (!tags.Contains("thrown", StringComparer.OrdinalIgnoreCase))
+            return false;
+        return action.Parameters.TryGetValue("range", out var band)
+            && !string.Equals(band, SpatialDistanceBand.Touch, StringComparison.OrdinalIgnoreCase);
+    }
 
     /// <summary>The name of a living hostile character recorded at Touch from <paramref name="caster"/> (the other side of the PC/NPC line), or null.</summary>
     private static string? HostileAtTouch(IChangeContext context, Character caster)
@@ -128,8 +143,10 @@ internal static class RangeValidationHelper
         var casterSide = caster.IsPc || caster.IsPartyCompanion;
         foreach (var other in context.Characters.Values)
         {
+            // SRD: the hostile must be able to see the attacker and not be incapacitated.
             if (other is null || other.Id == caster.Id || other.IsDead || other.CurrentHp <= 0
-                || (other.IsPc || other.IsPartyCompanion) == casterSide)
+                || (other.IsPc || other.IsPartyCompanion) == casterSide
+                || ActionBlock.IsBlocked(other, out _))
             {
                 continue;
             }

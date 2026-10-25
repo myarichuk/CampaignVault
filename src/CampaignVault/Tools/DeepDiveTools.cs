@@ -32,7 +32,9 @@ public class DeepDiveTools : CampaignToolBase, IMcpServerTool
         [Description("Locations: true if the party is here (keeps transient NPCs).")]
         bool partyPresent = false,
         [Description("Locations: full Description, after a response reported descriptionTruncated.")]
-        bool fullDescription = false)
+        bool fullDescription = false,
+        [Description("Characters: class feature rule text (names only otherwise).")]
+        bool includeCombatDetail = false)
     {
         if (string.IsNullOrWhiteSpace(entityId))
         {
@@ -51,7 +53,7 @@ public class DeepDiveTools : CampaignToolBase, IMcpServerTool
 
         if (id.StartsWith("chars/", StringComparison.OrdinalIgnoreCase))
         {
-            return Box(await _exploration.GetNpcContext(id, campaignName));
+            return Box(await _exploration.GetNpcContext(id, campaignName, includeCombatDetail));
         }
 
         if (id.StartsWith("locations/", StringComparison.OrdinalIgnoreCase))
@@ -86,7 +88,7 @@ public class DeepDiveTools : CampaignToolBase, IMcpServerTool
     private static ToolResult<object> Box<T>(ToolResult<T> r) =>
         new(r.Success, r.Data, r.Summary, r.Error, r.WorldPressure, r.RetryExample);
 
-    internal Task<ToolResult<Faction>> GetFactionContext(
+    internal Task<ToolResult<FactionDetailView>> GetFactionContext(
         [Description("Exact faction ID e.g. 'factions/thieves-guild' (use search_world first if unsure).")]
         string factionId,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
@@ -101,19 +103,17 @@ public class DeepDiveTools : CampaignToolBase, IMcpServerTool
                 var hint = suggestions.Any()
                     ? " Did you mean: " + string.Join(", ", suggestions.Select(s => $"{s.Id} ({s.Name})"))
                     : "";
-                return new ToolResult<Faction>(false, Error: "NotFound",
+                return new ToolResult<FactionDetailView>(false, Error: "NotFound",
                     Summary: $"Faction '{factionId}' not found.{hint} Use the exact ID from search_world.");
             }
 
             // Query associated plot threads
             var associatedThreads = await _repository.GetPlotThreadsReferencingEntityAsync(session, factionId, effective);
-            faction.AssociatedPlotThreads =
-            [
-                .. associatedThreads
-                    .Select(t => new PlotThreadMinimal(t.Id, t.Title, t.State, t.TensionLevel))
-            ];
+            var threads = associatedThreads
+                .Select(t => new PlotThreadMinimal(t.Id, t.Title, t.State, t.TensionLevel))
+                .ToList();
 
-            return new ToolResult<Faction>(true, faction,
+            return new ToolResult<FactionDetailView>(true, FactionDetailView.From(faction, threads),
                 $"Full faction context for {faction.Name} (campaign: {effective}).");
         }, saveChanges: false);
     }

@@ -88,12 +88,7 @@ public class CampaignManagementTools(
 
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"CAMPAIGN TOOL: Creates a new campaign with a slug and initial ruleset (locked immediately).
-Pass campaignName on subsequent calls.
-Slugs are canonicalized ('Dragon Heist' → dragon-heist).
-Available system ids: dnd5e, pf2e, narrative (plugins may add more)
-
-Example: create_campaign(""dragon-heist"", ""dnd5e"", ""Waterdeep: Dragon Heist"")")]
+    [Description("Creates a campaign with a slug and a locked ruleset. Pass the slug as campaignName afterwards. Guide and examples: lookup kind=help topic=onboarding.")]
     public Task<ToolResult<Campaign>> CreateCampaign(
         [Description(ToolParameterDescriptions.CampaignSlugRequired)]
         string name,
@@ -197,9 +192,7 @@ Example: create_campaign(""dragon-heist"", ""dnd5e"", ""Waterdeep: Dragon Heist"
 
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"CAMPAIGN TOOL: Lists all existing campaigns (campaigns/*/meta documents only).
-Useful for discovering existing worlds. Pass the slug as campaignName on subsequent calls. Read-only, no side effects
-— call it once to discover/confirm a slug, not repeatedly. A campaignName already known does not need re-discovery.")]
+    [Description("Lists campaigns (slug, display name, system). Read-only; call it once to find or confirm a slug.")]
     public Task<ToolResult<List<CampaignSummaryView>>> ListCampaigns()
     {
         return ExecuteAsync(async session =>
@@ -221,7 +214,7 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
 
     [ToolCategory("Campaign management")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description(@"CAMPAIGN TOOL: Irreversibly deletes a campaign and all its documents. Requires confirmName equal to the slug, else nothing happens and the confirmation string is returned. Example: delete_campaign(""dragon-heist"", ""dragon-heist"")")]
+    [Description("Irreversibly deletes a campaign and all its documents. Nothing happens unless confirmName equals the slug.")]
     public async Task<ToolResult<DeleteCampaignResult>> DeleteCampaign(
         [Description(ToolParameterDescriptions.CampaignSlugRequired)]
         string campaignName,
@@ -279,10 +272,10 @@ Useful for discovering existing worlds. Pass the slug as campaignName on subsequ
     [McpServerTool(UseStructuredContent = true)]
     [Description(
         "Reference lookup by kind. Rules: handbook, spells (query=name and/or className, level), creatures (query, levelMin/levelMax), items (query, category, tag), item_tags, level_up (characterId). Templates only; place live instances with world_build. " +
-        "Engine: commit_schema (type='<one $type>' = its fields; none = index), help (topic: onboarding, world-building, commit-enum, tools, take-turn-modes, sessions, faq). Responses already carry guidance: don't call speculatively.")]
+        "Engine: commit_schema (type='<one $type>' = its fields; none = index), help (topic: onboarding, world-building, commit-enum, tools, take-turn-modes, sessions, licensing, faq). Responses already carry guidance: don't call speculatively.")]
     public async Task<ToolResult<object>> Lookup(
         [Description("See tool description.")] string kind,
-        [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
+        [Description("Campaign slug. Not needed for kind=commit_schema or help.")] string? campaignName = null,
         [Description("commit_schema: one $type.")] string? type = null,
         [Description("help: topic.")] string? topic = null,
         [Description("spells, level_up: class, e.g. 'Wizard'.")] string? className = null,

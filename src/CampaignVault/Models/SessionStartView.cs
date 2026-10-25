@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Text.Json.Serialization;
 
 namespace CampaignVault.Models;
 
@@ -6,8 +7,8 @@ namespace CampaignVault.Models;
 /// Response of start_session — a flat-size kickoff: the model-authored handoff from the last
 /// end_session/checkpoint (or a capped server digest when there is none), campaign posture, time, open
 /// quests, and a compact engine-truth party roster. Deliberately does NOT carry recent events, full
-/// character sheets or the raw campaign document: those grew with every session played. The scene
-/// itself comes from the first take_turn (fullDetailLocationId).
+/// character sheets or the raw campaign document: those grew with every session played. The opening
+/// scene (the PC's location in full) rides along unless includeScene=false.
 /// </summary>
 public class SessionStartView
 {
@@ -17,7 +18,8 @@ public class SessionStartView
     [Description("Optional session title passed by the caller.")]
     public string? Title { get; set; }
 
-    [Description("True when an already-open session was resumed (e.g. after a reconnect) instead of opening a new one.")]
+    [Description("True when an already-open session was resumed (e.g. after a reconnect) instead of opening a new one; absent otherwise.")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool Resumed { get; set; }
 
     [Description("Your handoff from the last end_session (or checkpoint): storySoFar, lastSession, openThreads, npcsInPlay, partyIntent, tone. Narrative only — trust party/engine fields below over it. Fold storySoFar forward when you next call end_session.")]
@@ -43,31 +45,28 @@ public class SessionStartView
 
     [Description("Echo as clientPartyFingerprint on your first take_turn.")]
     public string PartyFingerprint { get; set; } = "";
+
+    [Description("The opening scene: the PC's location in full with the NPCs present, scene pressure and plot threads (what take_turn fullDetailLocationId returns). Absent with includeScene=false or when no PC has a location.")]
+    public SceneView? Scene { get; set; }
 }
 
 /// <summary>Campaign posture for start_session — the narrative-facing slice of the campaign meta document.
 /// Engine bookkeeping on that document (pressure cooldowns, initiative-surfaced state, commit counters)
-/// never goes on the wire.</summary>
+/// never goes on the wire, and neither does the roster: Party[] already carries every member with isPc.</summary>
 public record SessionCampaignView(
     string Slug,
     string DisplayName,
     string System,
-    bool IsSystemLocked,
     List<string>? NarrativeFocus,
     Dictionary<string, string>? SystemOptions,
-    IReadOnlyList<PartyMemberSummary> Pcs,
-    IReadOnlyList<PartyMemberSummary> Companions,
     CampaignEntryHint EntryHint)
 {
     public static SessionCampaignView From(Campaign campaign, CampaignPosture posture) => new(
         posture.Slug,
         posture.DisplayName,
         posture.System,
-        posture.IsSystemLocked,
         campaign.NarrativeFocus is { Count: > 0 } focus ? focus : null,
         campaign.SystemOptions is { Count: > 0 } options ? options : null,
-        posture.Pcs,
-        posture.Companions,
         posture.EntryHint);
 }
 
@@ -98,7 +97,8 @@ public record PartySessionView(
     Dictionary<string, int>? HighNeeds,
     int MemoryCount,
     List<string>? KeyMemories,
-    /// <summary>The campaign's XP rule says this player character has earned the next level (the client offers its level-up menu).</summary>
+    /// <summary>The campaign's XP rule says this player character has earned the next level (the client offers its level-up menu). Absent when false.</summary>
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     bool LevelUpReady = false,
     /// <summary>5e: the death-save tally of a downed player character, e.g. "Death saves: 1 success, 2 failures" or "Stable"; null otherwise (PF2e's dying and wounded are statuses).</summary>
     string? DeathSaves = null)

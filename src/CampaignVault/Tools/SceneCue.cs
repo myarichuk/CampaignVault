@@ -7,6 +7,6 @@ namespace CampaignVault.Tools;
 /// </summary>
 internal static class SceneCue
 {
-    public const string Text =
-        "Now write the scene: 350 to 600 words of full sentences, shown through the senses, bodies and speech. The fields above are bookkeeping, not the voice.";
+    /// <summary>At most 60 chars (D9): it rides on every committed beat.</summary>
+    public const string Text = "Now the scene: 350–600 words (600–900 tense), sensory prose.";
 }

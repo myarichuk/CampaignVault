@@ -134,8 +134,8 @@ internal static class NameSearchText
 
     /// <summary>
     /// Lower-cases, drops apostrophes, splits on every other non-alphanumeric character (so slugs like
-    /// <c>tiny_hut</c> and names like "Leomund's Tiny Hut" tokenise alike), and folds a plural/possessive
-    /// trailing "s" so "leomunds"/"leomund" and "huts"/"hut" agree.
+    /// <c>tiny_hut</c> and names like "Varro's Tiny Hut" tokenise alike), and folds a plural/possessive
+    /// trailing "s" so "varros"/"varro" and "huts"/"hut" agree.
     /// </summary>
     public static List<string> Tokenize(string? text)
     {

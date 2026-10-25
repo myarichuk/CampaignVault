@@ -214,20 +214,5 @@ public class GuidanceExampleTests
 
     private static string Clip(string s) => s.Length <= 240 ? s : s[..240] + "…";
 
-    private static string FindRepoRoot()
-    {
-        var dir = AppContext.BaseDirectory;
-        while (!string.IsNullOrEmpty(dir))
-        {
-            if (File.Exists(Path.Combine(dir, "CampaignVault.sln"))
-                || File.Exists(Path.Combine(dir, "src", "CampaignVault", "CampaignVault.csproj")))
-            {
-                return dir;
-            }
-
-            dir = Directory.GetParent(dir)?.FullName ?? string.Empty;
-        }
-
-        throw new InvalidOperationException("Could not locate repository root.");
-    }
+    private static string FindRepoRoot() => RepoPaths.Root;
 }

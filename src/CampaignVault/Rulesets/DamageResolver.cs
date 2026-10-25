@@ -166,6 +166,8 @@ internal static class DamageResolver
             damage += -flat;
         }
 
+        // PF2e resistance is a flat number: a feat's resistance with a value subtracts it; one without a value (an SRD-style
+        // "resistant" flag) still halves, the only reading that gives it any effect.
         var resistance = Math.Max(flat, 0) + featReduction;
         damage = Math.Max(0, damage - resistance);
         return featResists ? damage / 2 : damage;

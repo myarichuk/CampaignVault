@@ -111,19 +111,13 @@ public class NpcContextView
     public string? BehavioralSummary { get; set; }
 
     /// <summary>
-    /// All known needs for this NPC with their current values. The needs system is intentionally open-ended.
+    /// Campaign-wide need descriptors not already on the character's own Needs.NeedDescriptors (the live
+    /// values are Character.Needs.ActiveNeeds; nothing here repeats them).
     /// </summary>
-    public Dictionary<string, float> KnownNeeds { get; set; } = [];
-
-    /// <summary>
-    /// Human/LLM-readable descriptions for the needs (seeded by world-builder or previous LLM actions).
-    /// </summary>
-    public Dictionary<string, string> NeedDescriptors { get; set; } = [];
+    public Dictionary<string, string>? NeedDescriptors { get; set; }
 
     public double BehavioralTension { get; set; }
-    public TensionBreakdown? TensionComponents { get; set; }
     public List<InitiativeCandidate> ActiveInitiatives { get; set; } = [];
-    public List<MemoryNode> RelevantMemories { get; set; } = [];
     public List<ItemSummaryView>? Equipped { get; set; }
     public List<ItemSummaryView>? Carried { get; set; }
 

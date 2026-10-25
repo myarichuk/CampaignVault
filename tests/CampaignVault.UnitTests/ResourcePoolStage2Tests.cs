@@ -93,8 +93,9 @@ public class ResourcePoolStage2Tests
     {
         var actual = Provider.GetPoolsForSystem(RulesetSystem.Dnd5e);
 
-        // 9 spell slot levels + 11 other pools (including gold, hit_dice, pact_magic, second_wind); SRD only, so no superiority dice
-        Assert.Equal(20, actual.Count);
+        // 9 spell slot levels + 15 other pools (gold, hit_dice, pact_magic, second_wind, rage, lay_on_hands, arcane_recovery,
+        // indomitable...); SRD only, so no superiority dice
+        Assert.Equal(24, actual.Count);
         Assert.True(actual.ContainsKey("spell_slots_1"));
         Assert.True(actual.ContainsKey("font_of_magic"));
     }

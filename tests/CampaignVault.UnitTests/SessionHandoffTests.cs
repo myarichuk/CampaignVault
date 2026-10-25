@@ -274,8 +274,17 @@ public class SessionHandoffTests : IClassFixture<RavenDBFixture>
         Assert.Equal(["Thieves' Tools"], member.Carried);
         Assert.Equal(75, member.HighNeeds!["hunger"]);
         Assert.False(member.HighNeeds.ContainsKey("thirst"));
-        Assert.Contains($"fullDetailLocationId={lighthouse}", start.Summary);
+        Assert.NotNull(start.Data.Scene);
+        Assert.Equal(lighthouse, start.Data.Scene!.Location!.Id);
+        Assert.DoesNotContain(start.Data.Scene.PresentNPCs, n => n.IsPc);
+        Assert.Contains("'scene'", start.Summary);
+        Assert.DoesNotContain("fullDetailLocationId=", start.Summary);
         Assert.Equal($"{pcId}:4/10@{lighthouse}", start.Data.PartyFingerprint);
+
+        var bare = await session.StartSession(slug, includeScene: false);
+        Assert.True(bare.Success, bare.Summary);
+        Assert.Null(bare.Data!.Scene);
+        Assert.Contains($"fullDetailLocationId={lighthouse}", bare.Summary);
     }
 
     [Fact]

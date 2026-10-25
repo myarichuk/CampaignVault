@@ -8,7 +8,7 @@ public class NameSearchIndexTests
 {
     private static readonly string[] Names =
     [
-        "tiny_hut", "Leomund's Tiny Hut", "Tiny Servant", "Hut of Chickens", "Shutter Spell",
+        "tiny_hut", "Varro's Tiny Hut", "Tiny Servant", "Hut of Chickens", "Shutter Spell",
         "fireball", "Fire Shield", "Wall of Fire", "Firestorm", "magic_missile", "Magic Weapon",
         "Summon Fey", "Summon Undead", "Cure Wounds", "Mass Cure Wounds", "Bless", "Bane",
     ];
@@ -24,17 +24,17 @@ public class NameSearchIndexTests
 
         Assert.Equal(2, hits.Length);
         Assert.Contains("tiny_hut", hits);
-        Assert.Contains("Leomund's Tiny Hut", hits);
+        Assert.Contains("Varro's Tiny Hut", hits);
         Assert.DoesNotContain("Tiny Servant", hits);
         Assert.DoesNotContain("Hut of Chickens", hits);
         Assert.DoesNotContain("Shutter Spell", hits);
     }
 
     [Theory]
-    [InlineData("hut tiny", "Leomund's Tiny Hut")]
-    [InlineData("leomunds", "Leomund's Tiny Hut")]
-    [InlineData("LEOMUND'S TINY", "Leomund's Tiny Hut")]
-    [InlineData("tiny huts", "Leomund's Tiny Hut")]
+    [InlineData("hut tiny", "Varro's Tiny Hut")]
+    [InlineData("varros", "Varro's Tiny Hut")]
+    [InlineData("VARRO'S TINY", "Varro's Tiny Hut")]
+    [InlineData("tiny huts", "Varro's Tiny Hut")]
     [InlineData("magic mis", "magic_missile")]
     [InlineData("fireballs", "fireball")]
     [InlineData("firebal", "fireball")]

@@ -117,11 +117,14 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             return saveMod;
         }
 
+        // No recorded save: a trained save (level + 2) on the key ability, since every PF2e character is at least
+        // trained in all three. A raw ability name stays the bare modifier.
+        var trained = stats.Level is > 0 ? stats.Level.Value + (int)Pf2eProficiencyRank.Trained : 0;
         return name.ToLower() switch
         {
-            "fortitude" => stats.ConstitutionMod,
-            "reflex" => stats.DexterityMod,
-            "will" => stats.WisdomMod,
+            "fortitude" => stats.ConstitutionMod + trained,
+            "reflex" => stats.DexterityMod + trained,
+            "will" => stats.WisdomMod + trained,
             "strength" => stats.StrengthMod,
             "dexterity" => stats.DexterityMod,
             "constitution" => stats.ConstitutionMod,
@@ -252,7 +255,8 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         }
 
         var ac = targetStats.ArmorClass;
-        var acFold = await FoldAsync(context, target, RollKinds.ArmorClass, null, ac, action).ConfigureAwait(false);
+        var actorChar = context.Characters[action.CharacterId];
+        var acFold = await FoldAsync(context, target, RollKinds.ArmorClass, null, ac, action, other: actorChar).ConfigureAwait(false);
         ac = acFold.Bonus;
         if (action.Parameters.TryGetValue("ac", out var acStr) && int.TryParse(acStr, out var overrideAc))
         {
@@ -267,7 +271,6 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         }
 
         // Ability modifier, level + proficiency and item bonuses come from the sheet unless the caller states the number.
-        var actorChar = context.Characters[action.CharacterId];
         var isSpellAttack = action.ActionType == RulesetActionType.Spell;
         var derived = isSpellAttack
             ? DerivedAttack.Pf2eSpell(actorStats, action, hasExplicitBonus)
@@ -331,7 +334,14 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         var sneakDice = CombatFeatureRules.Pf2eSneakAttackDice(actorChar, actorStats.Level ?? 0);
         var calledOffGuard = action.Parameters.TryGetValue("sneakAttack", out var sneakRaw) && bool.TryParse(sneakRaw, out var sneakYes) && sneakYes;
         // The caller's flag stays the DM's override; a target that really is off-guard (prone, grabbed, paralyzed...) qualifies by itself.
-        if (!isSpellAttack && sneakDice > 0 && (calledOffGuard || Pipeline.HasCondition(target, System, "off-guard")))
+        // Player Core: only agile, finesse, ranged or unarmed attacks deal sneak attack damage; an unknown weapon is given the benefit.
+        var sneakWeapon = WeaponProfile.Read(action);
+        var sneakEligible = !sneakWeapon.Known || sneakWeapon.Agile || sneakWeapon.Finesse || sneakWeapon.Ranged;
+        if (!isSpellAttack && sneakDice > 0 && !sneakEligible && (calledOffGuard || Pipeline.HasCondition(target, System, "off-guard")))
+        {
+            sneakNote = " (no Sneak Attack: the weapon is not agile, finesse or ranged)";
+        }
+        if (!isSpellAttack && sneakDice > 0 && sneakEligible && (calledOffGuard || Pipeline.HasCondition(target, System, "off-guard")))
         {
             var sneakRoll = await _rollService.RollAsync(new RollRequest { Tag = "sneakAttack", Expression = $"{sneakDice}d6", Mechanic = DiceMechanic.Standard }, ct);
             finalDamage += sneakRoll.Result;
@@ -425,13 +435,17 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             return ResolverResult.Fail("IncompatibleRuleset", "Error: Target uses incompatible ruleset stats for current ActiveSystem.");
         }
 
-        var isGrapple = EngagementMutationHelper.IsGrappleAction(action);
         var isEscape = EngagementMutationHelper.IsEscapeGrappleAction(action);
+        var isGrapple = !isEscape && EngagementMutationHelper.IsGrappleAction(action);
+
+        // Grapple and Escape have the attack trait: they take and count toward the multiple attack penalty.
+        var mapPenalty = MultipleAttackPenalty(action);
+        var mapNote = mapPenalty < 0 ? $" MAP {mapPenalty}." : "";
 
         if (isGrapple)
         {
             var skillName = action.Parameters.GetValueOrDefault("skill", "Athletics");
-            var bonus = GetSkillOrAbilityBonus(actorStats, skillName);
+            var bonus = GetSkillOrAbilityBonus(actorStats, skillName) + mapPenalty;
             var grabFold = await FoldAsync(context, context.Characters[action.CharacterId], RollKinds.Check, skillName, bonus, action, GetMechanicFromAction(action)).ConfigureAwait(false);
             bonus = grabFold.Bonus;
 
@@ -452,24 +466,41 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             var degree = CalculateDegreeOfSuccess(outcome, fortDc);
             var success = degree is Pf2eDegreeOfSuccess.Success or Pf2eDegreeOfSuccess.CriticalSuccess;
 
-            if (success)
+            // Player Core: a critical success restrains, a success grabs, a critical failure drops any hold the actor already
+            // had and lets the target grab them or force them prone.
+            string resultSuffix;
+            switch (degree)
             {
-                EngagementMutationHelper.ApplyGrappleSuccess(action.CharacterId, targetId, mutations, EngagementMutationHelper.GrabbedCondition);
+                case Pf2eDegreeOfSuccess.CriticalSuccess:
+                    EngagementMutationHelper.ApplyGrappleSuccess(action.CharacterId, targetId, mutations, EngagementMutationHelper.RestrainedCondition);
+                    resultSuffix = " Target is now restrained (off-guard, can't act except to Escape).";
+                    break;
+                case Pf2eDegreeOfSuccess.Success:
+                    EngagementMutationHelper.ApplyGrappleSuccess(action.CharacterId, targetId, mutations, EngagementMutationHelper.GrabbedCondition);
+                    resultSuffix = " Target is now grabbed.";
+                    break;
+                case Pf2eDegreeOfSuccess.CriticalFailure:
+                    EngagementMutationHelper.ApplyGrappleEscape(targetId, action.CharacterId, mutations, EngagementMutationHelper.GrabbedCondition);
+                    resultSuffix = $" Critical failure: any hold on {target.Name} is lost, and {target.Name} may grab {context.Characters[action.CharacterId].Name} or force them prone (apply the status by hand).";
+                    break;
+                default:
+                    resultSuffix = string.Empty;
+                    break;
             }
 
-            var resultSuffix = success ? " Target is now grabbed." : string.Empty;
-            return ResolverResult.Ok($"{action.ActionName}: {degree}. Rolled {outcome.Result} vs Fortitude DC {fortDc}.{resultSuffix} {outcome.Summary}{grabFold.Suffix}");
+            return ResolverResult.Ok($"{action.ActionName}: {degree}. Rolled {outcome.Result} vs Fortitude DC {fortDc}.{resultSuffix}{mapNote} {outcome.Summary}{grabFold.Suffix}");
         }
 
         if (isEscape)
         {
+            // The escaper picks their best of unarmed attack, Acrobatics or Athletics; the DC is always the grappler's Athletics DC.
             var skillName = action.Parameters.GetValueOrDefault("skill", "Athletics");
-            var actorBonus = GetSkillOrAbilityBonus(actorStats, skillName);
+            var actorBonus = GetSkillOrAbilityBonus(actorStats, skillName) + mapPenalty;
             var escapeFold = await FoldAsync(context, context.Characters[action.CharacterId], RollKinds.Check, skillName, actorBonus, action, GetMechanicFromAction(action)).ConfigureAwait(false);
             actorBonus = escapeFold.Bonus;
 
-            var grapplerBonus = GetSkillOrAbilityBonus(targetStats, skillName);
-            grapplerBonus = (await FoldAsync(context, target, RollKinds.Check, skillName, grapplerBonus, action).ConfigureAwait(false)).Bonus;
+            var grapplerBonus = GetSkillOrAbilityBonus(targetStats, "Athletics");
+            grapplerBonus = (await FoldAsync(context, target, RollKinds.Check, "Athletics", grapplerBonus, action).ConfigureAwait(false)).Bonus;
             var escapeDc = 10 + grapplerBonus;
 
             var outcome = await _rollService.RollAsync(new RollRequest
@@ -489,7 +520,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             }
 
             var resultSuffix = success ? " Actor breaks free." : string.Empty;
-            return ResolverResult.Ok($"{action.ActionName}: {degree}. Rolled {outcome.Result} vs Escape DC {escapeDc}.{resultSuffix} {outcome.Summary}{escapeFold.Suffix}");
+            return ResolverResult.Ok($"{action.ActionName}: {degree}. Rolled {outcome.Result} vs Escape DC {escapeDc} (grappler's Athletics).{resultSuffix}{mapNote} {outcome.Summary}{escapeFold.Suffix}");
         }
 
         var actorSkill = action.Parameters.GetValueOrDefault("skill", "Athletics");
@@ -709,6 +740,58 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         return new Dictionary<string, int> { { "actions", 3 } };
     }
 
+    /// <summary>The multiple attack penalty an attack-trait action other than a Strike takes: -5 per prior attack this turn, to -10.</summary>
+    private static int MultipleAttackPenalty(RulesetAction action)
+    {
+        if (action.Parameters.TryGetValue("mapPenalty", out var mapStr) && int.TryParse(mapStr, out var mapVal))
+            return -Math.Abs(mapVal);
+        var prior = action.Parameters.TryGetValue(PriorStrikesParameter, out var priorRaw) && int.TryParse(priorRaw, out var p) ? p : 0;
+        return -Math.Min(prior, 2) * 5;
+    }
+
+    public const string RaisedShieldEffectKey = "pf2e:raised-shield";
+
+    /// <summary>
+    /// Raise a Shield (one action): the equipped shield's AC bonus applies until the start of the actor's next turn, as a
+    /// status effect the pipeline folds into AC. The shield gives nothing while lowered (ArmorParameterResolver leaves it
+    /// out of the static AC for pf2e).
+    /// </summary>
+    protected override async Task<ResolverResult?> TryResolveClassFeatureAsync(
+        RulesetAction action, IChangeContext context, Pf2eExtension stats, List<WorldChange> mutations, CancellationToken ct)
+    {
+        if (CombatFeatureRules.Norm(action.ActionName) is not ("raiseashield" or "raiseshield"))
+            return null;
+
+        var actor = context.Characters.GetValueOrDefault(action.CharacterId);
+        if (actor is null)
+            return ResolverResult.Fail("InvalidActor", "Error: the actor was not found.");
+        if (stats.StatusEffects.Any(e => e.EffectKey == RaisedShieldEffectKey))
+            return ResolverResult.Ok($"{actor.Name}'s shield is already raised until their next turn.");
+
+        var equipped = await ItemHolderQueryHelper.GetEquippedItemsAsync(context, action.CharacterId, ct: ct).ConfigureAwait(false);
+        var shield = equipped.FirstOrDefault(i =>
+            i.Tags.Contains("shield", StringComparer.OrdinalIgnoreCase)
+            || (i.EquipLayer == EquipLayers.Held && i.EquipZones.Contains(EquipZones.OffHand, StringComparer.OrdinalIgnoreCase)));
+        if (shield is null)
+            return ResolverResult.Fail("NoShield", $"Error: {actor.Name} has no shield equipped to raise.");
+
+        var acBonus = shield.Properties.TryGetValue("acBonus", out var raw) && int.TryParse(raw?.ToString(), out var parsed) ? parsed : 2;
+        mutations.Add(new StatusChange
+        {
+            CharacterId = action.CharacterId,
+            Effect = new StatusEffect
+            {
+                Name = "Raised Shield",
+                Category = "Buff",
+                EffectKey = RaisedShieldEffectKey,
+                StatModifiers = new Dictionary<string, float> { ["AC"] = acBonus },
+                ExpiresAtOwnTurnStart = true,
+                AppliedBy = "system/combat-resolver",
+            },
+        });
+        return ResolverResult.Ok($"{actor.Name} raises {shield.Name}: +{acBonus} AC until the start of their next turn.");
+    }
+
     private const string StrikesMade = "strikesMade";
     private const string PriorStrikesParameter = "priorStrikes";
 
@@ -745,7 +828,8 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         // Multiple attack penalty across separate actions: remember Strikes this turn; the resolver reads the count back.
         // A spell that rolls an attack counts too; a save spell does not.
         if (action.ActionType == RulesetActionType.Attack
-            || (action.ActionType == RulesetActionType.Spell && SpellResolutionHelper.InferMode(action) == SpellResolutionMode.Attack))
+            || (action.ActionType == RulesetActionType.Spell && SpellResolutionHelper.InferMode(action) == SpellResolutionMode.Attack)
+            || EngagementMutationHelper.IsGrappleAction(action) || EngagementMutationHelper.IsEscapeGrappleAction(action))
         {
             var made = state.ActionBudget.GetValueOrDefault(StrikesMade);
             action.Parameters[PriorStrikesParameter] = made.ToString();

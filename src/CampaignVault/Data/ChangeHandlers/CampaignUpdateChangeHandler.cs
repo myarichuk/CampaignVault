@@ -21,10 +21,10 @@ public sealed class CampaignUpdateChangeHandler(CampaignDocumentKeys keys) : IWo
         var ctx = (ChangeContext)context;
         var cu = (CampaignUpdateChange)change;
 
-        if (cu.NarrativeFocus is null && cu.EnabledModeIds is null && cu.SystemOptions is null)
+        if (cu.NarrativeFocus is null && cu.EnabledModeIds is null && cu.SystemOptions is null && cu.SceneCueEnabled is null)
         {
             return ChangeHandlerResult.Failure(
-                "campaign_update has nothing to apply — set narrativeFocus, enabledModeIds, and/or systemOptions.");
+                "campaign_update has nothing to apply — set narrativeFocus, enabledModeIds, systemOptions and/or sceneCueEnabled.");
         }
 
         if (ctx.Session == null)
@@ -126,6 +126,13 @@ public sealed class CampaignUpdateChangeHandler(CampaignDocumentKeys keys) : IWo
             }
 
             ctx.RecordMessage($"Merged SystemOptions: {string.Join(", ", written)}.");
+        }
+
+        if (cu.SceneCueEnabled is { } sceneCue)
+        {
+            var config = await EnsureConfigAsync(ctx, ct);
+            config.SceneCueEnabled = sceneCue;
+            ctx.RecordMessage(sceneCue ? "Scene cue on." : "Scene cue off for this campaign.");
         }
 
         return ChangeHandlerResult.Ok;

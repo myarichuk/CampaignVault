@@ -131,15 +131,17 @@ public class MechanicsPhase8Tests
     }
 
     [Fact]
-    public async Task LongRest_StableCharacterAtZero_WakesWithTheHealing()
+    public async Task LongRest_StableCharacterAtZero_ComesRoundAtOneHpWithoutTheRestsBenefit()
     {
+        // SRD: a long rest needs at least 1 HP at its start; a stable creature regains 1 HP after 1d4 hours on its own.
         var c = Fighter(0);
         c.DeathSaves = new DeathSaveTally { Stable = true };
 
-        await LongRestAsync(c);
+        var (_, summary, _) = await LongRestAsync(c);
 
-        Assert.Equal(40, c.CurrentHp);
+        Assert.Equal(1, c.CurrentHp);
         Assert.Null(c.DeathSaves);
+        Assert.Contains(summary, m => m.Contains("gives no other benefit", StringComparison.Ordinal));
     }
 
     [Fact]

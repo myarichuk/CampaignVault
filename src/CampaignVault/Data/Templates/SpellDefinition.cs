@@ -51,6 +51,25 @@ public record SpellDefinition : RulesetTemplate
     public bool? Concentration { get; init; }
     public string? CastingTime { get; init; }
 
+    /// <summary>
+    /// The action economy of <see cref="CastingTime"/>: <c>action</c>, <c>bonus</c> (dnd5e bonus action), <c>reaction</c>,
+    /// or <c>long</c> (a minute or more: not castable in one combat turn). The action handler stamps the matching budget
+    /// on a <c>ruleset_action</c> that doesn't say.
+    /// </summary>
+    public string? CastKind { get; init; }
+
+    /// <summary>pf2e only. Actions spent to cast (0 for a free action, 1–3); the handler's default for <c>parameters.actionCost</c>.</summary>
+    public int? ActionCost { get; init; }
+
+    /// <summary>For spell attacks: <c>melee</c> (touch) or <c>ranged</c>, so conditions treat them right (prone, paralyzed).</summary>
+    public string? AttackType { get; init; }
+
+    /// <summary>dnd5e only. Castable as a ritual (no slot, +10 minutes).</summary>
+    public bool? Ritual { get; init; }
+
+    /// <summary>pf2e only. The save is a basic save (crit success none, success half, failure full, crit failure double).</summary>
+    public bool? BasicSave { get; init; }
+
     /// <summary>Requires speech. dnd5e: literal Verbal component. pf2e: default true (Cast a Spell implies an incantation) unless the spell explicitly says otherwise.</summary>
     public bool? Verbal { get; init; }
 
@@ -163,6 +182,11 @@ public record SpellDefinition : RulesetTemplate
             School = child.School ?? parent.School,
             Concentration = child.Concentration ?? parent.Concentration,
             CastingTime = child.CastingTime ?? parent.CastingTime,
+            CastKind = child.CastKind ?? parent.CastKind,
+            ActionCost = child.ActionCost ?? parent.ActionCost,
+            AttackType = child.AttackType ?? parent.AttackType,
+            Ritual = child.Ritual ?? parent.Ritual,
+            BasicSave = child.BasicSave ?? parent.BasicSave,
             Classes = child.Classes.Count > 0 ? child.Classes : parent.Classes,
             Verbal = child.Verbal ?? parent.Verbal,
             Somatic = child.Somatic ?? parent.Somatic,

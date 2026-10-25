@@ -42,12 +42,31 @@ public static class ArmorParameterResolver
     /// Returns any diagnostic messages (ENGINE WARNING / NARRATIVE PROMPT) produced while resolving
     /// dex-cap ambiguity; empty when nothing is ambiguous (the common case, byte-identical to prior behavior).
     /// </summary>
+    /// <summary>Status effects the resolver itself owns (armor's stealth and check penalties); rebuilt on every call.</summary>
+    public const string StealthPenaltyEffectKey = "engine:armor-stealth";
+    public const string CheckPenaltyEffectKey = "engine:armor-check";
+
+    /// <summary>The dnd5e condition (RulesetData/dnd5e/conditions/noisy_armor.yaml) that gives disadvantage on Stealth.</summary>
+    public const string NoisyArmorCondition = "noisy_armor";
+
+    /// <summary>PF2e armor check penalty applies to Strength- and Dexterity-based skill checks.</summary>
+    private static readonly string[] Pf2eCheckPenaltySkills = ["Acrobatics", "Athletics", "Stealth", "Thievery"];
+
     public static List<string> Apply(
         Character character, IReadOnlyList<Item> equippedItems, ProgressionDefinitionProvider? progressions = null)
     {
-        var (acBonus, dexCap, warmth, movementModifier, messages) = ComputeContributions(equippedItems);
+        // PF2e: a shield gives AC only while raised (Raise a Shield puts a status effect on the bearer); it never sits in the static AC.
+        var shieldsContribute = character.SystemStats is not Pf2eExtension;
+        var (acBonus, dexCap, warmth, movementModifier, messages) = ComputeContributions(equippedItems, shieldsContribute);
         var wearsBodyArmor = equippedItems.Any(IsBodyArmor);
         var carriesShield = equippedItems.Any(IsShield);
+        var bodyArmor = equippedItems.FirstOrDefault(IsBodyArmor);
+
+        if (character.SystemStats is not null)
+        {
+            character.SystemStats.StatusEffects ??= [];
+            character.SystemStats.StatusEffects.RemoveAll(e => e.EffectKey is StealthPenaltyEffectKey or CheckPenaltyEffectKey);
+        }
 
         switch (character.SystemStats)
         {
@@ -55,6 +74,30 @@ public static class ArmorParameterResolver
             {
                 var dexMod = dnd5e.GetAbilityModifier(dnd5e.Dexterity);
                 var effectiveDex = dexCap.HasValue ? Math.Min(dexMod, dexCap.Value) : dexMod;
+
+                // SRD: heavy armor with a Strength minimum the wearer doesn't meet costs 10 feet of speed.
+                if (bodyArmor is not null && TryGetProperty(bodyArmor, "strMinimum", out var strMinRaw)
+                    && TryParseInt(strMinRaw, out var strMin) && dnd5e.Strength < strMin)
+                {
+                    movementModifier -= 10;
+                    messages.Add($"{character.Name}'s Strength {dnd5e.Strength} is below {bodyArmor.Name}'s minimum of {strMin}: speed reduced by 10 ft.");
+                }
+
+                // SRD: armor that imposes disadvantage on Stealth does so through a condition the roll pipeline reads.
+                var noisy = equippedItems.FirstOrDefault(i => TryGetProperty(i, "stealthDisadvantage", out var sd) && sd.Equals("true", StringComparison.OrdinalIgnoreCase));
+                if (noisy is not null)
+                {
+                    dnd5e.StatusEffects.Add(new StatusEffect
+                    {
+                        Name = "Noisy Armor",
+                        Category = "Condition",
+                        ConditionName = NoisyArmorCondition,
+                        EffectKey = StealthPenaltyEffectKey,
+                        AppliedBy = "system/armor",
+                        RecoveryHint = $"Disadvantage on Stealth checks while wearing {noisy.Name}.",
+                    });
+                }
+
                 if (wearsBodyArmor)
                 {
                     dnd5e.ArmorClass = 10 + effectiveDex + acBonus;
@@ -76,6 +119,33 @@ public static class ArmorParameterResolver
                 var effectiveDex = dexCap.HasValue ? Math.Min(pf2e.DexterityMod, dexCap.Value) : pf2e.DexterityMod;
                 var derived = 10 + effectiveDex + proficiencyBonus;
                 pf2e.ArmorClass = (wearsBodyArmor ? derived : Math.Max(derived, pf2e.BaseArmorClass ?? 0)) + acBonus;
+
+                // Player Core: the armor's check penalty applies to Strength- and Dexterity-based skills, and its speed penalty in
+                // full, unless the wearer's Strength modifier meets the armor's Strength value: then no check penalty and the
+                // speed penalty is 5 feet lighter.
+                if (bodyArmor is not null)
+                {
+                    var meetsStrength = TryGetProperty(bodyArmor, "strength", out var strRaw) && TryParseInt(strRaw, out var strNeed) && pf2e.StrengthMod >= strNeed;
+                    var checkPenalty = TryGetProperty(bodyArmor, "checkPenalty", out var cpRaw) && TryParseInt(cpRaw, out var cp) ? cp : 0;
+                    if (checkPenalty != 0 && !meetsStrength)
+                    {
+                        pf2e.StatusEffects.Add(new StatusEffect
+                        {
+                            Name = "Armor Check Penalty",
+                            Category = "Condition",
+                            EffectKey = CheckPenaltyEffectKey,
+                            AppliedBy = "system/armor",
+                            StatModifiers = Pf2eCheckPenaltySkills.ToDictionary(s => s, _ => (float)checkPenalty),
+                            RecoveryHint = $"{checkPenalty} to Acrobatics, Athletics, Stealth and Thievery while wearing {bodyArmor.Name}.",
+                        });
+                    }
+
+                    if (meetsStrength && movementModifier < 0)
+                    {
+                        movementModifier = Math.Min(0f, movementModifier + 5f);
+                    }
+                }
+
                 break;
             }
         }
@@ -86,7 +156,8 @@ public static class ArmorParameterResolver
         return messages;
     }
 
-    private static (int AcBonus, int? DexCap, float Warmth, float MovementModifier, List<string> Messages) ComputeContributions(IReadOnlyList<Item> equippedItems)
+    private static (int AcBonus, int? DexCap, float Warmth, float MovementModifier, List<string> Messages) ComputeContributions(
+        IReadOnlyList<Item> equippedItems, bool shieldsContribute = true)
     {
         var messages = new List<string>();
         var acBonus = 0;
@@ -98,7 +169,7 @@ public static class ArmorParameterResolver
         if (bodyArmor != null)
         {
             // Check for explicit numeric dexCap (PF2e style) first
-            if (TryGetProperty(bodyArmor, "dexCap", out var dexCapRaw) && int.TryParse(dexCapRaw, out var dexCapVal))
+            if (TryGetProperty(bodyArmor, "dexCap", out var dexCapRaw) && TryParseInt(dexCapRaw, out var dexCapVal))
             {
                 dexCap = dexCapVal;
             }
@@ -120,19 +191,19 @@ public static class ArmorParameterResolver
             var stacksWithArmor = TryGetProperty(item, "stacksWithArmor", out var stacksRaw)
                                    && stacksRaw.Equals("true", StringComparison.OrdinalIgnoreCase);
 
-            var contributesAc = item.EquipLayer == EquipLayers.Armor || isShield || stacksWithArmor;
+            var contributesAc = item.EquipLayer == EquipLayers.Armor || (isShield && shieldsContribute) || stacksWithArmor;
 
-            if (contributesAc && TryGetProperty(item, "acBonus", out var acRaw) && float.TryParse(acRaw, out var ac))
+            if (contributesAc && TryGetProperty(item, "acBonus", out var acRaw) && TryParseFloat(acRaw, out var ac))
             {
                 acBonus += (int)Math.Round(ac, MidpointRounding.AwayFromZero);
             }
 
-            if (TryGetProperty(item, "warmth", out var warmthRaw) && float.TryParse(warmthRaw, out var w))
+            if (TryGetProperty(item, "warmth", out var warmthRaw) && TryParseFloat(warmthRaw, out var w))
             {
                 warmth += w;
             }
 
-            if (TryGetProperty(item, "speedModifier", out var speedModifierRaw) && float.TryParse(speedModifierRaw, out var sm))
+            if (TryGetProperty(item, "speedModifier", out var speedModifierRaw) && TryParseFloat(speedModifierRaw, out var sm))
             {
                 movementModifier += sm;
             }
@@ -192,6 +263,15 @@ public static class ArmorParameterResolver
 
     private static bool IsBodyArmor(Item item) =>
         item.EquipLayer == EquipLayers.Armor && item.EquipZones.Contains(EquipZones.Torso, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Shipped YAML is invariant ("-10.0"); a value a client wrote under its own culture ("‎-10") still parses.</summary>
+    private static bool TryParseInt(string raw, out int value) =>
+        int.TryParse(raw, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out value)
+        || int.TryParse(raw, out value);
+
+    private static bool TryParseFloat(string raw, out float value) =>
+        float.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out value)
+        || float.TryParse(raw, out value);
 
     private static bool TryGetProperty(Item item, string key, out string value)
     {

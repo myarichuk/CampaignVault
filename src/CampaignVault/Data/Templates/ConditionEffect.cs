@@ -35,8 +35,11 @@ public static class ConditionEffectKinds
     /// <summary>The bearer counts as having the condition named in <c>subject</c> (PF2e: prone, grabbed and paralyzed imply off-guard).</summary>
     public const string Implies = "implies";
 
+    /// <summary>The bearer resists the damage types in <c>damageType</c> (comma-separated, or <c>all</c>): petrified resists everything.</summary>
+    public const string Resistance = "resistance";
+
     public static readonly IReadOnlyList<string> All =
-        [Advantage, Disadvantage, AutoFailSave, AutoCrit, Speed, BlocksActions, MaxHpMultiplier, Death, Bonus, Implies];
+        [Advantage, Disadvantage, AutoFailSave, AutoCrit, Speed, BlocksActions, MaxHpMultiplier, Death, Bonus, Implies, Resistance];
 }
 
 /// <summary>Whose rolls an effect touches.</summary>
@@ -70,6 +73,9 @@ public record ConditionEffect
 
     /// <summary>An attack-only gate: <c>melee</c> or <c>ranged</c>. Omit for either.</summary>
     public string? Range { get; init; }
+
+    /// <summary>resistance: the damage types resisted, comma-separated, or <c>all</c>.</summary>
+    public string? DamageType { get; init; }
 
     /// <summary>
     /// A roll tag the roll must carry for the effect to apply. The DM supplies tags through the action's <c>assert</c> parameter,

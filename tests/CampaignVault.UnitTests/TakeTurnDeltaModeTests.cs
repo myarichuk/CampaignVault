@@ -2318,43 +2318,6 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task WorldSequence_IncrementsOnlyOnCommittedMutations()
-    {
-        var slug = NewSlug("worldseq");
-        var repo = _fixture.CreateRepository();
-        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
-        await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
-
-        var locId = $"locations/{slug}-hub";
-        var pcId = $"chars/{slug}-pc";
-
-        using (var session = _fixture.Store.OpenAsyncSession())
-        {
-            var cs = _fixture.CreateCampaignSession(session, slug);
-            await repo.UpsertLocationAsync(cs, new LocationUpsertRequest { Id = locId, Name = "Hub" });
-            await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
-            { Id = pcId, Name = "PC", IsPc = true, CurrentLocationId = locId, MaxHp = 10, CurrentHp = 10 });
-            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
-        }
-
-        var pureQuery = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
-        Assert.True(pureQuery.Success, pureQuery.Summary);
-        Assert.Equal(0, pureQuery.Data!.WorldSequence);
-
-        var mutation = await tools.TakeTurn(new TakeTurnRequest
-        {
-            Changes = [new NeedChange { CharacterId = pcId, Need = "hunger", Delta = 5 }],
-            Narrative = "PC grows hungry.",
-            IncludeWorldState = true
-        }, slug);
-        Assert.True(mutation.Success, mutation.Summary);
-        Assert.Equal(1, mutation.Data!.WorldSequence);
-
-        var anotherPureQuery = await tools.TakeTurn(new TakeTurnRequest { IncludeWorldState = true }, slug);
-        Assert.Equal(1, anotherPureQuery.Data!.WorldSequence);
-    }
-
-    [Fact]
     public async Task SceneCue_RidesOnACommittedBeat_AndNeverOnAPureQuery()
     {
         var slug = NewSlug("scenecue");
@@ -2382,8 +2345,23 @@ public class TakeTurnDeltaModeTests : IClassFixture<RavenDBFixture>
             Narrative = "PC grows hungry.",
         }, slug);
         Assert.True(mutation.Success, mutation.Summary);
-        Assert.Contains("350 to 600 words", mutation.Data!.SceneCue);
-        Assert.Contains("senses, bodies and speech", mutation.Data.SceneCue);
+        Assert.Contains("350–600 words", mutation.Data!.SceneCue);
+        Assert.Contains("600–900", mutation.Data.SceneCue);
+        Assert.True(mutation.Data.SceneCue!.Length <= 60, mutation.Data.SceneCue);
+
+        var off = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new CampaignUpdateChange { SceneCueEnabled = false }, new NeedChange { CharacterId = pcId, Need = "hunger", Delta = 5 }],
+            Narrative = "The client takes over the scene.",
+        }, slug);
+        Assert.True(off.Success, off.Summary);
+        var quiet = await tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new NeedChange { CharacterId = pcId, Need = "hunger", Delta = 5 }],
+            Narrative = "PC grows hungrier.",
+        }, slug);
+        Assert.True(quiet.Success, quiet.Summary);
+        Assert.Null(quiet.Data!.SceneCue);
     }
 
     /// <summary>

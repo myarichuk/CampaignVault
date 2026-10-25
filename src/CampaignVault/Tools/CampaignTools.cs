@@ -129,7 +129,7 @@ public class CampaignTools(
         mutation.AdvanceWorld(narrative, ResolveCampaign(campaignName), days, resultingHour, hours);
 
     // --- Deep Dives ---
-    public Task<ToolResult<Faction>> GetFactionContext(string factionId,
+    public Task<ToolResult<FactionDetailView>> GetFactionContext(string factionId,
         string? campaignName = TestDefaultCampaignSlug) =>
         deepDive.GetFactionContext(factionId, ResolveCampaign(campaignName));
 

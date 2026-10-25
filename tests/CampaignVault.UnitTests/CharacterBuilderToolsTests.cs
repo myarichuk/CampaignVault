@@ -15,6 +15,38 @@ namespace CampaignVault.Tests;
 public class CharacterBuilderToolsTests(RavenDBFixture fixture) : IClassFixture<RavenDBFixture>
 {
     [Fact]
+    public async Task Choose_CarriesStepsOptionsAndPreview_InOneReply()
+    {
+        var slug = "builder-choose-" + Guid.NewGuid().ToString("N")[..8];
+        var builder = TestCampaignToolsFactory.CreateTool<CharacterBuilderTools>(fixture);
+
+        var chosen = await builder.CharacterBuilder("choose", CharacterCreationTests.Wizard(), slug, step: "skills");
+        Assert.True(chosen.Success, chosen.Summary);
+        var data = chosen.Data!;
+        Assert.NotNull(data.Steps);
+        Assert.Contains(data.Steps!, s => s.Key == "skills");
+        Assert.NotNull(data.Reads);
+        Assert.NotNull(data.Options);
+        Assert.NotEmpty(data.Options!);
+        Assert.NotNull(data.Character);
+        Assert.Empty(data.Errors);
+
+        var separately = await builder.CharacterBuilder("options", CharacterCreationTests.Wizard(), slug, step: "skills");
+        Assert.Equal(separately.Data!.Options!.Select(o => o.Id), data.Options!.Select(o => o.Id));
+        Assert.Equal(separately.Data.Count, data.Count);
+
+        var noStep = await builder.CharacterBuilder("choose", CharacterCreationTests.Wizard(), slug);
+        Assert.True(noStep.Success, noStep.Summary);
+        Assert.Null(noStep.Data!.Options);
+        Assert.NotNull(noStep.Data.Steps);
+        Assert.NotNull(noStep.Data.Character);
+
+        var gone = await builder.CharacterBuilder("choose", CharacterCreationTests.Wizard(), slug, step: "no-such-step");
+        Assert.True(gone.Success, "a step that dropped out of the recipe is not an error: the steps say so");
+        Assert.Null(gone.Data!.Options);
+    }
+
+    [Fact]
     public async Task Commit_MatchesWorldBuild_ForTheSameCharacter()
     {
         var slug = "builder-commit-" + Guid.NewGuid().ToString("N")[..8];

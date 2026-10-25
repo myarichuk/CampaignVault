@@ -34,12 +34,9 @@ internal static class SuggestedCommitExampleBuilder
                 $"[ {{ \"$type\": \"activity\", \"characterId\": \"{stuckCharacterId}\", \"newActivity\": \"Resolved the ambush and continued\", \"updateLocation\": false }}, {{ \"$type\": \"travel\", \"characterId\": \"{stuckCharacterId}\", \"destinationLocationId\": \"locations/actual-dest\", \"travelCostHoursOverride\": 4, \"encounterRiskModifier\": -30 }} ]");
         }
 
-        suggestedExamples.AddRange(
-            pressureItems
-                .Where(p => !string.IsNullOrWhiteSpace(p.SuggestedCommitJson))
-                .Select(p => p.SuggestedCommitJson!)
-                .Distinct());
-
+        // Each pressure item's SuggestedCommitJson already travels inline in its WorldPressure line
+        // (PressureManager.ToDisplayStrings), which is the copy that reaches the model on every turn;
+        // repeating it here doubled the wire cost of every suggestion.
         return suggestedExamples;
     }
 }

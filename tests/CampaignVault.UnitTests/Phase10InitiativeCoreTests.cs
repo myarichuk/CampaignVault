@@ -299,8 +299,8 @@ public class Phase10InitiativeCoreTests : IClassFixture<RavenDBFixture>
 
         var result = await tools.GetNpcContext(charId, "context-tension");
         Assert.True(result.Success);
-        Assert.NotNull(result.Data!.TensionComponents);
-        Assert.True(result.Data.BehavioralTension >= 0);
+        // The per-component breakdown is engine debug detail and no longer goes on the wire (3c).
+        Assert.True(result.Data!.BehavioralTension >= 0);
     }
 
     [Fact]

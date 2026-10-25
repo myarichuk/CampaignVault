@@ -1,5 +1,6 @@
 namespace CampaignVault.Models;
 
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
 public enum CampaignEntryHint
 {
     NewCampaign,

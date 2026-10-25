@@ -89,7 +89,7 @@ public partial class CharacterBuilderTools : CampaignToolBase, IMcpServerTool
     [McpServerTool(UseStructuredContent = true)]
     [Description("Character builder for player characters and companions, driven by the campaign ruleset's recipe. " +
                  "action=steps: the steps for draft.kind (pc|companion) and draft.level. action=options: what step offers for this draft. " +
-                 "action=preview: the derived sheet plus errors/warnings; nothing is saved. action=commit: creates the character via world_build " +
+                 "action=preview: the derived sheet plus errors/warnings; nothing is saved. action=choose: steps, options of step and preview at once. action=commit: creates the character via world_build " +
                  "(errors block it); send the returned id as draft.id to update instead of duplicating. " +
                  "draft.choices is keyed by step key: a string (pickOne), a string list (pickN), {method, scores} (abilityScores), {cantrips, known, prepared} (spells), " +
                  "{\"<level>.<choice>\": id or [ids]} (levelChoices; an ability score improvement is one ability for +2, two for +1 each, or one feat).")]
@@ -100,7 +100,7 @@ public partial class CharacterBuilderTools : CampaignToolBase, IMcpServerTool
         CharacterDraft draft,
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,
-        [Description("options only: the step key.")]
+        [Description("options / choose: the step key.")]
         string? step = null)
     {
         draft ??= new CharacterDraft();
@@ -109,9 +109,10 @@ public partial class CharacterBuilderTools : CampaignToolBase, IMcpServerTool
             "steps" => Read(campaignName, draft, system => StepsResult(system, draft)),
             "options" => Read(campaignName, draft, system => OptionsResult(system, draft, step)),
             "preview" => PreviewAsync(campaignName, draft),
+            "choose" => ChooseAsync(campaignName, draft, step),
             "commit" => CommitAsync(campaignName, draft),
             _ => Task.FromResult(new ToolResult<CharacterBuilderResult>(
-                false, Error: ToolErrors.InvalidArgument, Summary: $"Unknown action '{action}'. Use steps, options, preview or commit.")),
+                false, Error: ToolErrors.InvalidArgument, Summary: $"Unknown action '{action}'. Use steps, options, preview, choose or commit.")),
         };
     }
 
@@ -193,6 +194,43 @@ public partial class CharacterBuilderTools : CampaignToolBase, IMcpServerTool
             var summary = preview.Errors.Count == 0
                 ? "Preview ready; the draft can be committed."
                 : $"Preview with {preview.Errors.Count} error(s); fix them before commit.";
+            return new ToolResult<CharacterBuilderResult>(true, result, summary);
+        }, saveChanges: false);
+
+    /// <summary>
+    /// One round trip after a choice: the steps (a condition may have flipped), the options of the step the client
+    /// shows (when it still exists) and the preview. What used to be three calls per click.
+    /// </summary>
+    private Task<ToolResult<CharacterBuilderResult>> ChooseAsync(string campaignName, CharacterDraft draft, string? stepKey) =>
+        ExecuteForCampaignAsync(campaignName, async (effective, s) =>
+        {
+            var system = await SystemAsync(s, effective, draft);
+            var steps = StepsResult(system, draft);
+            var hasStep = !string.IsNullOrWhiteSpace(stepKey)
+                && steps.Steps!.Any(st => st.Key.Equals(stepKey, StringComparison.OrdinalIgnoreCase));
+            var options = hasStep ? OptionsResult(system, draft, stepKey) : null;
+            var preview = await _creation.PreviewAsync(system, draft);
+            var result = new CharacterBuilderResult
+            {
+                System = system,
+                Kind = draft.Kind,
+                Steps = steps.Steps,
+                Reads = steps.Reads,
+                StatBlocks = steps.StatBlocks,
+                MaxLevel = steps.MaxLevel,
+                Options = options?.Options,
+                Count = options?.Count,
+                GroupCounts = options?.GroupCounts,
+                Slots = options?.Slots,
+                Character = CharacterDetailView.From(preview.Character),
+                ClassFeatures = preview.ClassFeatures,
+                Errors = preview.Errors,
+                Warnings = preview.Warnings,
+                Notes = preview.Notes,
+            };
+            var summary = preview.Errors.Count == 0
+                ? "Steps, options and preview; the draft can be committed."
+                : $"Steps, options and preview with {preview.Errors.Count} error(s).";
             return new ToolResult<CharacterBuilderResult>(true, result, summary);
         }, saveChanges: false);
 

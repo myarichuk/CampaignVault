@@ -73,6 +73,9 @@ public static class EngagementMutationHelper
 
     public const string GrabbedCondition = "grabbed";
 
+    /// <summary>A PF2e grapple's critical success: restrained, which implies grabbed and off-guard.</summary>
+    public const string RestrainedCondition = "restrained";
+
     /// <summary>
     /// Ends every grapple <paramref name="grappler"/> holds: the relation on both sides and the Grappled or Grabbed condition it
     /// applied. Called when the grappler is incapacitated. Returns the names of those let go.
@@ -96,7 +99,8 @@ public static class EngagementMutationHelper
             target.SystemStats?.StatusEffects.RemoveAll(e =>
                 string.Equals(e.AppliedBy, grappler.Id, StringComparison.OrdinalIgnoreCase)
                 && (string.Equals(e.ConditionName, GrappledCondition, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(e.ConditionName, GrabbedCondition, StringComparison.OrdinalIgnoreCase)));
+                    || string.Equals(e.ConditionName, GrabbedCondition, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(e.ConditionName, RestrainedCondition, StringComparison.OrdinalIgnoreCase)));
             released.Add(target.Name);
         }
 

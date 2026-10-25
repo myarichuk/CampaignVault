@@ -379,10 +379,10 @@ internal static class ToolCallExamples
             return ($"Invalid arguments for '{toolName}': {details}", null);
         }
 
+        // The details already name the path, the $type and its fields (CommitBindingError); the retry
+        // template travels once, in retryExample, instead of being repeated inside the summary.
         var retry = example.BuildFullRequest();
-        var extra = example.DeserializationHint is { } hint ? $" {hint}" : "";
-        var summary =
-            $"Invalid arguments for '{toolName}': {details}.{extra} Retry with this exact tools/call body (replace placeholder values): {retry.GetRawText()}";
+        var summary = $"Invalid arguments for '{toolName}': {details.TrimEnd('.')}. A retry template is in retryExample.";
 
         return (summary, retry);
     }
@@ -392,7 +392,6 @@ internal static class ToolCallExamples
         public required string ToolName { get; init; }
         public IReadOnlyDictionary<string, string[]> Synonyms { get; init; } =
             new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
-        public string? DeserializationHint { get; init; }
         public required JsonObject ArgumentsTemplate { get; init; }
 
         public JsonElement BuildFullRequest()
@@ -460,24 +459,6 @@ internal static class ToolCallExamples
             ["take_turn"] = new ToolCallExample
             {
                 ToolName = "take_turn",
-                DeserializationHint =
-                    "🚨 *** CRITICAL CONSTRAINT: MUST HAVE EITHER CHANGES OR A REFRESH PARAM *** 🚨 You must pass EITHER (1) Changes with Narrative summary, OR (2) at least one refresh parameter like includeWorldState, includeParty, extraCharacterIds, extraLocationIds, fullDetailCharacterId, or fullDetailLocationId. Passing neither (empty no-op call) will be rejected. "
-                    + "🚨 *** REQUIRED: '$type' IS NOT OPTIONAL *** 🚨 EVERY SINGLE change object MUST include a '$type' field. If even ONE change lacks '$type', the entire batch will be rejected with a deserialization error. See WorldChange's own description for the full list of valid values. See examples for correct structure. "
-                    + "**Conversation events MUST include 'involved' field.** Other categories optional. Never put location IDs in 'involved'—use 'locationId' instead. "
-                    + "ITEM PICKUP/DROP/TRANSFER: $type item with itemId + toHolderId moves an EXISTING item to a new holder (character, location, or container item) — e.g. a PC picking up a coin off a location's visibleItems: {\"$type\": \"item\", \"itemId\": \"items/gold-coin\", \"toHolderId\": \"chars/lyra\"}. Do NOT just narrate a pickup in prose — always pair it with this change or the item stays owned by its old holder. "
-                    + "Crowd interrupt: $type scene_interrupt_check with locationId, characterId, optional riskModifier (-50..+50). "
-                    + "SPELLS: use actionType Spell + parameters.resolution (attack|save|check|utility|heal). "
-                    + "AoE saves: ONE ruleset_action with all targetIds — NOT per-target SavingThrow. "
-                    + "Fireball pattern: resolution save, dc, save, damageDice, halfOnSave true. "
-                    + "SUMMONS (animate dead, conjure X, ng_bind_shade): parameters slotLevel (else base slot), count (else strongest option, at most the slot's max), creature (else first kind), maxHp when the kind has no catalog stats; reassert true + targetIds retains raised minions instead of raising new ones. Minions act on the caster's turn via ordinary ruleset_action; dismiss with character_update clearMinionLink + controlsMinionIdsRemove on the caster. "
-                    + "Detect Magic: resolution check, dc, skill — no targetIds. "
-                    + "5e casters: bootstrap spellcastingAbility on systemStats; omit dc/bonus if spellSaveDc/spellAttackBonus derived. "
-                    + "RESOURCES: $type resource with poolName/delta/spellName spends spell slots/ki/focus points/gold; validates spell level, and a leveled Spell action with no slot spend in the same batch is refused (parameters ritual, innate, focus or item skip that and the repertoire check); spending below 0 HARD-FAILS the commit (\"Insufficient <pool> for <name>: has X, needs Y.\") — grants above max still clamp silently. Eligible pools recover immediately on rest completion, not on a later advance_world. "
-                    + "RUMORS: create with world_build (rumors[]: id, regionLocationId, subject, text); evolve an existing one with $type rumor (rumorId, newState). "
-                    + "WEAPON ATTACKS: omit parameters.bonus/damageBonus (derived from the sheet; passing them replaces the derived value). Flags: sneakAttack, offHand (no ability mod on damage without Two-Weapon Fighting), powerAttack (only if a recorded feat defines it), actionSurge, bonusAction, assert (comma-separated DM-judged feat conditions, e.g. \"allyNear\"; see take_turn featChecklist). "
-                    + "CLASS FEATURES: actionName \"Second Wind\" (Recovery) and \"Cunning Action\" with parameters.option dash|disengage|hide (hide needs dc) are bonus actions. Extra Attack: list one target per swing; the result warns on too many targets or a short attackCount. "
-                    + "Engine auto-applies hp from ruleset_action — no duplicate hp commits. "
-                    + "See lookup kind=help → Weapon attacks, class features and feats for details.",
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {
@@ -512,17 +493,6 @@ internal static class ToolCallExamples
             ["world_build"] = new ToolCallExample
             {
                 ToolName = "world_build",
-                DeserializationHint =
-                    "Each field is an optional array using the same shape as the matching upsert_* tool's entity payload "
-                    + "(locations[] entries mirror location_update's fields, characters[] mirror character_update's, etc.). "
-                    + "Dispatched in a fixed order: locations, factions, creatures/spells/feats, characters, items, quests, "
-                    + "plotThreads, lore, rumors, then needDescriptors — all in ONE call. Capped at 100 total entries; split "
-                    + "larger seeds into multiple calls. A validation failure on any entry rolls back the entire batch and "
-                    + "reports '{kind}[{index}]' — fix that entry and resend the full batch. Forward references to an "
-                    + "entity created later in the same batch are allowed (non-blocking warning only). "
-                    + "IMPORTANT: Combat NPCs MUST have systemStats.$system='dnd5e'/'pf2e' with abilities (strength, dexterity, etc.). "
-                    + "Add Attributes (morale, willpower, corruption, etc.) to enrich NPCs narratively and mechanically. "
-                    + "See lookup kind=help topic=world-building for a full copy-paste example.",
                 ArgumentsTemplate = JsonNode.Parse(
                     """
                     {

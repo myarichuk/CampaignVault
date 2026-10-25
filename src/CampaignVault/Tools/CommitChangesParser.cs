@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using CampaignVault.Models;
 using CampaignVault.Models.Converters;
 using CampaignVault.Plugins;
@@ -34,10 +33,16 @@ internal static class CommitChangesParser
         }
     }
 
+    /// <summary>
+    /// Strict on purpose: an unknown field name fails the batch with a message naming the field and the
+    /// type's real fields, instead of being dropped without a word (the tools/list stub advertises no
+    /// per-type fields, so a silent drop would be undiagnosable).
+    /// </summary>
     internal static JsonSerializerOptions CreateOptions() => new()
     {
         PropertyNameCaseInsensitive = true,
         AllowOutOfOrderMetadataProperties = true,
+        UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow,
         TypeInfoResolver = WorldChangeTypeRegistry.Instance.CreateTypeInfoResolver(),
     };
 
@@ -67,7 +72,6 @@ internal static class CommitChangesParser
                     return false;
                 }
 
-                text = NormalizeEngagementRelationActorId(text);
                 text = WorldChangeNormalizer.NormalizeChangesArray(text);
                 parsed = JsonSerializer.Deserialize<WorldChange[]>(text, Options);
                 return parsed is { Length: > 0 };
@@ -75,8 +79,7 @@ internal static class CommitChangesParser
 
             if (el.ValueKind == JsonValueKind.Array)
             {
-                var text = NormalizeEngagementRelationActorId(el.GetRawText());
-                text = WorldChangeNormalizer.NormalizeChangesArray(text);
+                var text = WorldChangeNormalizer.NormalizeChangesArray(el.GetRawText());
                 parsed = JsonSerializer.Deserialize<WorldChange[]>(text, Options);
                 return parsed is { Length: > 0 };
             }
@@ -87,51 +90,8 @@ internal static class CommitChangesParser
         catch (JsonException ex)
         {
             var source = el.ValueKind == JsonValueKind.Array ? el : default(JsonElement?);
-            error = ModelEnumErrorHints.Enrich(ex, source);
+            error = CommitBindingError.Describe(ex, source);
             return false;
         }
-    }
-
-    /// <summary>
-    /// LLMs occasionally send <c>actorId</c> instead of <c>characterId</c> on
-    /// <c>engagement_relation</c> entries (a common naming slip documented as a known
-    /// confusion point). Rename it before deserializing so the character isn't silently
-    /// dropped — the polymorphic WorldChange deserializer has no alias mechanism of its own.
-    /// </summary>
-    private static string NormalizeEngagementRelationActorId(string rawArrayJson)
-    {
-        if (!rawArrayJson.Contains("actorId", StringComparison.Ordinal) ||
-            !rawArrayJson.Contains("engagement_relation", StringComparison.Ordinal))
-        {
-            return rawArrayJson;
-        }
-
-        var node = JsonNode.Parse(rawArrayJson);
-        if (node is not JsonArray array)
-        {
-            return rawArrayJson;
-        }
-
-        foreach (var entry in array)
-        {
-            if (entry is not JsonObject obj)
-            {
-                continue;
-            }
-
-            var typeValue = obj.TryGetPropertyValue("$type", out var typeNode) ? typeNode?.GetValue<string>() : null;
-            if (typeValue != "engagement_relation")
-            {
-                continue;
-            }
-
-            if (!obj.ContainsKey("characterId") && obj.TryGetPropertyValue("actorId", out var actorIdNode))
-            {
-                obj.Remove("actorId");
-                obj["characterId"] = actorIdNode?.DeepClone();
-            }
-        }
-
-        return array.ToJsonString();
     }
 }

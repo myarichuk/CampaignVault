@@ -41,7 +41,7 @@ public class SurvivalDeprivationRule : ISimulationRule
     // Runs after NeedsAccumulationRule (35) and ClimateExposureRule (37), whose pre-tick readings it
     // consumes — same one-tick lag NeedsAccumulationRule itself accepts elsewhere, harmless at day
     // granularity.
-    public int Order => 38;
+    public int Order => 39; // after ResourceRecoveryRule (38): deprivation lands on the recovered state
 
     public virtual Task<RuleResult> ApplyAsync(SimulationContext context, CancellationToken ct = default)
     {
@@ -76,12 +76,19 @@ public class SurvivalDeprivationRule : ISimulationRule
                 continue;
             }
 
+            // SRD: a character can go without food for 3 + Constitution modifier days (minimum 1) before exhaustion.
+            var foodTolerance = character.SystemStats is Dnd5eExtension d5
+                ? Math.Max(1f, toleranceFood + d5.GetAbilityModifier(d5.Constitution))
+                : character.SystemStats is Pf2eExtension p2
+                    ? Math.Max(1f, toleranceFood + p2.ConstitutionMod)
+                    : toleranceFood;
+
             var hunger = character.Needs?.ActiveNeeds.GetValueOrDefault("hunger") ?? 0f;
             var thirst = character.Needs?.ActiveNeeds.GetValueOrDefault("thirst") ?? 0f;
             var temperature = character.SystemStats.Temperature;
 
             ProcessSignal(
-                character, "hunger", days, toleranceFood,
+                character, "hunger", days, foodTolerance,
                 severe: hunger >= SurvivalThresholds.SevereHunger,
                 recovered: hunger <= SurvivalThresholds.RecoveryHunger,
                 causeLabel: "prolonged hunger",

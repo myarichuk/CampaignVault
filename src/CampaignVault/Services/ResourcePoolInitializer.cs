@@ -187,6 +187,12 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
                 classProvider, out var levelForMax))
             return false;
 
+        if (TryResolveClassTable(template, classLevels, out var classLevel, out var classTable))
+        {
+            levelForMax = classLevel;
+            template = template with { LevelToMaxMap = classTable, MaxFrom = null };
+        }
+
         var maxValue = DeriveMaxValue(template, levelForMax, character, system, characterLevel);
         var existing = existingPools.GetValueOrDefault(poolName);
         if (template.OwnerManaged == true)
@@ -240,6 +246,33 @@ public class ResourcePoolInitializer : IRulesetDataInitializer
             ],
             _ => [],
         };
+
+    /// <summary>
+    /// A <see cref="ResourcePoolTemplate.ClassLevelToMaxMap"/> entry for a class the character has: that class's table,
+    /// sized by that class's level, replaces the shared table.
+    /// </summary>
+    private static bool TryResolveClassTable(
+        ResourcePoolTemplate template,
+        IReadOnlyList<ClassLevelEntry> classLevels,
+        out int classLevel,
+        out Dictionary<string, int>? table)
+    {
+        classLevel = 0;
+        table = null;
+        if (template.ClassLevelToMaxMap is not { Count: > 0 } byClass)
+            return false;
+
+        foreach (var (slug, levels) in byClass)
+        {
+            if (!CharacterClassResolver.HasClass(classLevels, slug))
+                continue;
+            classLevel = CharacterClassResolver.GetClassLevel(classLevels, slug);
+            table = levels;
+            return true;
+        }
+
+        return false;
+    }
 
     private static bool TryResolveLevelForPool(
         string poolName,

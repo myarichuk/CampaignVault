@@ -101,15 +101,22 @@ public class RestChangeHandler : IWorldChangeHandler
             // Mark the day when the rest was completed (for spell slot recovery)
             character.LastRestedDay = (int)time.TotalDaysElapsed;
 
-            // Infer or use explicit rest type for pool recovery
+            // Infer or use explicit rest type for pool recovery. SRD: a long rest is at least 8 hours; a shorter one
+            // declared as LongRest counts as a short rest.
             var restType = rc.RestType ?? (hoursRested >= 8 ? RestType.LongRest : RestType.ShortRest);
+            if (restType == RestType.LongRest && hoursRested < 8)
+            {
+                ctx.RecordMessage(
+                    $"NOTE: {character.Name} rested {hoursRested} hours; a long rest needs 8. This counts as a short rest.");
+                restType = RestType.ShortRest;
+            }
             character.LastRestType = restType;
             character.RestSequence = (character.RestSequence ?? 0) + 1;
 
             if (rc.SecurityModifier >= 100 && hoursRested >= 8)
             {
                 ctx.RecordMessage(
-                    "NOTE: a +100 shelter such as Leomund's Tiny Hut lasts 8 hours. It ends with this rest: narrate the " +
+                    "NOTE: a +100 shelter such as Tiny Hut lasts 8 hours. It ends with this rest: narrate the " +
                     "dome as gone, and give any further rest here a normal security modifier.");
             }
 
@@ -216,6 +223,15 @@ public class RestChangeHandler : IWorldChangeHandler
         if (HitPointState.IsDying(character))
         {
             ctx.RecordMessage($"{character.Name} is dying: a rest heals nothing until they are stabilized or healed.");
+            return;
+        }
+
+        // SRD: a character needs at least 1 hit point when the rest starts to benefit from it; a stable creature that is
+        // not healed regains 1 hit point after 1d4 hours, which the rest's eight cover.
+        if (character.CurrentHp <= 0 && HitPointState.UsesDeathSaves(character))
+        {
+            HitPointState.Set(character, Math.Min(1, character.MaxHp));
+            ctx.RecordMessage($"{character.Name} was stable at 0 HP when the rest began: they come round at 1 HP during it, but the rest itself gives no other benefit (a long rest needs at least 1 HP at its start).");
             return;
         }
 

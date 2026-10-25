@@ -35,18 +35,7 @@ internal static class CommitSchemaRegistry
                 ClipSummary(v.Summary), [], [], null, [], []))
     ];
 
-    internal static string ClipSummary(string summary)
-    {
-        var text = summary.Trim();
-        var stop = text.IndexOf(". ", StringComparison.Ordinal);
-        if (stop >= 0)
-            text = text[..(stop + 1)];
-        if (text.Length <= IndexSummaryMaxChars)
-            return text;
-
-        var cut = text.LastIndexOf(' ', IndexSummaryMaxChars);
-        return text[..(cut > 0 ? cut : IndexSummaryMaxChars)].TrimEnd(',', ';', ':', ' ') + "…";
-    }
+    internal static string ClipSummary(string summary) => CommitFieldReference.Clip(summary, IndexSummaryMaxChars);
 
     public static IReadOnlyList<CommitTypeSchema> GetAll(string? category = null, string? type = null)
     {
@@ -81,19 +70,7 @@ internal static class CommitSchemaRegistry
         ];
     }
 
-    // Enum-typed fields (e.g. event.category) carry their valid values inline, since the caller most
-    // likely to hit this lookup is the one that just got a bad-enum rejection and needs the real list.
-    // Conditionally-required fields also carry their RequiredHint (e.g. "Required if source=Witnessed/
-    // Experienced, else batch fails.") so this lookup doesn't disagree with the live take_turn schema,
-    // which always inlines that hint regardless of truncation/tier (see TakeTurnSchemaBuilder).
-    private static string FormatField(CommitFieldModel field)
-    {
-        var name = field.EnumValues is { Count: > 0 }
-            ? $"{field.JsonName} ({string.Join("|", field.EnumValues)})"
-            : field.JsonName;
-
-        return string.IsNullOrWhiteSpace(field.RequiredHint)
-            ? name
-            : $"{name} [{field.RequiredHint}]";
-    }
+    // One field per string, in the shared `name:type [req] (enum) {shape} — note` format (CommitFieldReference),
+    // so this lookup, the binding errors and the dnd-world-change skill never disagree.
+    private static string FormatField(CommitFieldModel field) => CommitFieldReference.FormatField(field);
 }

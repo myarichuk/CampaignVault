@@ -47,7 +47,7 @@ internal static class McpResponseCleaner
     // """ instead of the JSON-standard "\" — safe for embedding JSON inside HTML/JS, which
     // this response never is (it's a tool-call payload read by an LLM, never rendered as markup).
     // Relaxed escaping cuts ~6 wire bytes to ~2 per quote and keeps raw logs/payloads readable.
-    private static readonly JsonSerializerOptions ContentSerializerOptions = new()
+    internal static readonly JsonSerializerOptions ContentSerializerOptions = new()
     {
         WriteIndented = false,
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,

@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Text.Json;
 using CampaignVault.Schema;
@@ -22,12 +23,17 @@ public class ToolListBudgetTests(ITestOutputHelper output)
 {
     // +100 (21_000 → 21_100) for take_turn's narrative field: a log entry with content, not a one-sentence summary
     // (NARRATION_LENGTH_PLAN.md, D2). Deliberate, not a regression.
-    private const int ToolListCharBudget = 21_100;
+    // 3e (2026-10-15): hand-written schemas for lookup/combat/advance_world/create_campaign/start_session/get_entity,
+    // take_turn description cut to the essentials, /build examples moved to help: 21_364 → 17_332. Budgets lock it.
+    private const int ToolListCharBudget = 17_500;
     // Raised from 13_000 for take_turn's includeCombatDetail parameter + descriptions:
     // deliberate surface growth, not a regression. Keep the tripwire tight — bump in 100s, not 1000s.
     // 13_100 → 13_200 for the same narrative wording.
-    private const int PlayCharBudget = 13_200;
-    private const int BuildCharBudget = 12_500;
+    // 3e: /play 13_482 → 11_123, /build 12_455 → 10_099.
+    // Phase 5: start_campaign_onboarding gained back (one bool), character_builder gained action=choose:
+    // tools/list 17_332 → 17_466, /build 10_099 → 10_233.
+    private const int PlayCharBudget = 11_200;
+    private const int BuildCharBudget = 10_300;
 
     private static McpServerOptions BuildOptions()
     {
@@ -107,6 +113,58 @@ public class ToolListBudgetTests(ITestOutputHelper output)
         Assert.DoesNotContain("\"get_help\"", json);
         Assert.Contains("\"lookup\"", json);
     }
+
+    // D5: if TryGetPrimitive("take_turn") ever misses, the SDK ships TakeTurnRequest's reflection schema
+    // (~4k chars of dead descriptions) and only the char budget would notice. Pin the installed one.
+    [Fact]
+    public void TakeTurn_InstalledSchema_IsTheHandBuiltStub()
+    {
+        var takeTurn = BuildOptions().ToolCollection!.First(t => t.ProtocolTool.Name == "take_turn").ProtocolTool.InputSchema;
+        var changes = takeTurn.GetProperty("properties").GetProperty("request").GetProperty("properties").GetProperty("changes");
+
+        Assert.Equal(TakeTurnSchemaBuilder.StubChangesDescription, changes.GetProperty("description").GetString());
+        Assert.Equal(2, takeTurn.GetProperty("properties").EnumerateObject().Count());
+    }
+
+    // The hand-written schemas replace the reflection ones; the C# signatures still do the binding, so every
+    // advertised property must be a real parameter, every required one non-optional, and nothing may be missing.
+    [Fact]
+    public void HandWrittenSchemas_MatchTheirMethods()
+    {
+        var tools = BuildOptions().ToolCollection!;
+        foreach (var (name, schema) in McpSchemaInstaller.HandWrittenSchemas)
+        {
+            var tool = tools.First(t => t.ProtocolTool.Name == name);
+            Assert.Equal(schema.GetRawText(), tool.ProtocolTool.InputSchema.GetRawText());
+
+            var method = typeof(McpSchemaInstaller).Assembly.GetTypes()
+                .SelectMany(t => t.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.DeclaredOnly))
+                .Single(m => m.GetCustomAttributes(typeof(McpServerToolAttribute), false).Length > 0
+                             && ToolNameOf(m) == name);
+            var parameters = method.GetParameters().ToDictionary(p => p.Name!, StringComparer.Ordinal);
+
+            var advertised = schema.GetProperty("properties").EnumerateObject().Select(p => p.Name).ToList();
+            Assert.All(advertised, p => Assert.True(parameters.ContainsKey(p), $"{name}: schema property '{p}' is not a parameter"));
+
+            var required = schema.GetProperty("required").EnumerateArray().Select(e => e.GetString()!).ToHashSet();
+            foreach (var p in parameters.Values)
+            {
+                if (name == "end_session" && p.Name == "recapText") continue; // deprecated alias, deliberately hidden
+                Assert.True(advertised.Contains(p.Name!), $"{name}: parameter '{p.Name}' is missing from the schema");
+                if (!p.HasDefaultValue && !required.Contains(p.Name!) && !(name == "lookup" && p.Name == "campaignName"))
+                    Assert.Fail($"{name}: '{p.Name}' has no default but is not required in the schema");
+            }
+        }
+    }
+
+    private static string ToolNameOf(System.Reflection.MethodInfo m)
+    {
+        var attr = (McpServerToolAttribute)m.GetCustomAttributes(typeof(McpServerToolAttribute), false)[0];
+        return attr.Name ?? ToSnake(m.Name);
+    }
+
+    private static string ToSnake(string s) =>
+        string.Concat(s.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + char.ToLowerInvariant(c) : char.ToLowerInvariant(c).ToString()));
 
     // A stub that still ships $defs or an anyOf over every $type is a renamed dump, not a stub.
     [Fact]

@@ -4,6 +4,7 @@ using CampaignVault.Models;
 using CampaignVault.Tools;
 using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
+using ModelContextProtocol.Server;
 
 namespace CampaignVault.Middleware;
 
@@ -42,7 +43,7 @@ internal static partial class McpToolErrorFilter
             catch (Exception ex) when (TryUnwrapJsonException(ex, out var jsonEx))
             {
                 var toolName = request.Params?.Name ?? "unknown";
-                var enrichedMessage = ModelEnumErrorHints.Enrich(jsonEx, null);
+                var enrichedMessage = CommitBindingError.Describe(jsonEx, ChangesOf(request));
 
                 if (ToolCallExamples.TryGet(toolName, out _))
                 {
@@ -54,6 +55,22 @@ internal static partial class McpToolErrorFilter
                 return ToErrorResult($"Invalid arguments for '{toolName}': {enrichedMessage}", null);
             }
         });
+    }
+
+    /// <summary>The take_turn <c>request.changes</c> array as sent, so error paths (<c>$[2].x</c>) resolve to a $type.</summary>
+    private static JsonElement? ChangesOf(RequestContext<CallToolRequestParams> request)
+    {
+        if (request.Params?.Arguments is not { } args)
+            return null;
+
+        if (args.TryGetValue("request", out var req) && req.ValueKind == JsonValueKind.Object
+            && req.TryGetProperty("changes", out var changes) && changes.ValueKind == JsonValueKind.Array)
+            return changes;
+
+        if (args.TryGetValue("changes", out var direct) && direct.ValueKind == JsonValueKind.Array)
+            return direct;
+
+        return null;
     }
 
     internal static (string Summary, JsonElement? RetryExample) BuildMissingParamResponse(string toolName,
@@ -139,6 +156,9 @@ internal static partial class McpToolErrorFilter
         var payload = new ToolResult<object>(false, Error: ToolErrors.InvalidArgument, Summary: summary,
             RetryExample: retryExample);
         var payloadElement = JsonSerializer.SerializeToElement(payload, McpJsonUtilities.DefaultOptions);
+        // Same cleaning as success results (McpResponseCleaner skips IsError): no nulls, compact JSON.
+        var cleaned = McpResponseCleaner.Clean(payloadElement);
+        var text = cleaned?.ToJsonString(McpResponseCleaner.ContentSerializerOptions) ?? payloadElement.GetRawText();
 
         // Full payload goes in Content, matching McpResponseCleaner's success-path rule: most MCP hosts
         // (opencode among them) only forward Content, never StructuredContent, so a short "see
@@ -147,8 +167,10 @@ internal static partial class McpToolErrorFilter
         return new CallToolResult
         {
             IsError = true,
-            Content = [new TextContentBlock { Text = payloadElement.GetRawText() }],
-            StructuredContent = McpResponseCleaner.IncludeStructuredContent ? payloadElement : null,
+            Content = [new TextContentBlock { Text = text }],
+            StructuredContent = McpResponseCleaner.IncludeStructuredContent
+                ? (cleaned is null ? payloadElement : JsonSerializer.SerializeToElement(cleaned))
+                : null,
         };
     }
 }

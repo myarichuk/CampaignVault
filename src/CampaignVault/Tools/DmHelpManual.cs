@@ -9,6 +9,17 @@ namespace CampaignVault.Tools;
 /// </summary>
 internal static class DmHelpManual
 {
+    /// <summary>The notices the content licenses require (NOTICE.md), so a player can ask the DM what the rules data is and where it comes from.</summary>
+    internal const string LicensingSection = @"# Bundled game content and its licenses
+
+CampaignVault ships only free rules. Nothing from a paid rulebook or setting book is in the data; ask the DM to homebrew it or install a plugin.
+
+- **D&D 5e**: This work includes material taken from the System Reference Document 5.1 (""SRD 5.1"") by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.
+- **Pathfinder 2e**: This product is licensed under the ORC License located at the Library of Congress at TX 9-307-067 and available online at https://paizo.com/orclicense. Licensed Material: Pathfinder Player Core and Pathfinder Player Core 2, © 2023 Paizo Inc. Reserved Material: none. Paizo and Pathfinder are trademarks of Paizo Inc.; CampaignVault is not published, endorsed or approved by Paizo Inc.
+
+The full notices are in the repository's NOTICE.md; the code itself is under the PolyForm Noncommercial license (LICENSE, LICENSING.md).
+";
+
     internal const string SessionsSection = @"# Session lifecycle
 
 ## start_session (once per session, or after a reconnect/context loss)
@@ -19,10 +30,11 @@ Returns a flat-size kickoff, not a world dump:
 - `campaign` (posture), `time`, `activeQuests`, `seedCoverage` (only while seeding gaps remain), top-level `worldPressure`.
 - `party[]` — straight from the DB: hp, ac, level, locationId, conditions, equipped/carried item names, `highNeeds` (≥60), `memoryCount` and `keyMemories` (top topics).
 - `partyFingerprint` — echo it as `clientPartyFingerprint` on your first take_turn.
+- `scene` — the opening room in full (NPCs present, scene pressure, plot threads), the same shape take_turn's `fullScene` has. Omitted with `includeScene=false`.
 
 **The DB wins.** If the handoff says the party rested at the tavern but `party[].locationId` says the lighthouse, the lighthouse is true. Never narrate HP, location, gear or conditions from the handoff.
 
-Next call: `take_turn` with `fullDetailLocationId=<the PC's locationId>` (the summary names it). That first take_turn is a full reseed automatically. Need a PC's full memories? `take_turn memoriesOnlyCharacterId=<id>`. Full sheet? `get_entity`.
+Next call: narrate the opening from `scene`, then `take_turn` for the first beat (no `fullDetailLocationId` needed). That first take_turn is a full reseed automatically. Need a PC's full memories? `take_turn memoriesOnlyCharacterId=<id>`. Full sheet? `get_entity`.
 
 ## end_session (when the session ends)
 
@@ -114,20 +126,20 @@ Omit `bonus`/`damageBonus` (derived from the sheet). Flags, features and feat `a
 
 ## Common Mistakes
 
-**Narrating a whole new dungeon level without creates**
-→ Next scene fetch on a room ID: instant hallucination pressure + exact create JSON. Paste it.
+**Narrating a whole new dungeon level without seeding it**
+→ The next `fullScene` for that room carries an ENGINE WARNING with the `world_build` JSON to paste.
 
-**Creating a cellar via create but forgetting the back exit**
+**Seeding a cellar but forgetting the back exit**
 → Pressure on entry: ENGINE WARNING with `location_update` JSON to add the missing exit.
 
 **Spawning 40 named sailors for one scene**
-→ Bloat; use ambient + 1-2 creates only for interactables; GC cleans the rest.
+→ Bloat; use `ambientCrowd` and seed only the one or two the party will talk to; GC cleans the rest.
 
 **Forgetting to `activity` change after a scene**
 → The next scene view shows stale locations/activities. Update it.
 
 **Not clearing a resolved encounter/crowd-interrupt NPC from the scene**
-→ `travel`/`rest`/`advance_world` encounters and `scene_interrupt_check` promotions spawn a transient NPC located AT the scene. Once you narrate the encounter as resolved (they leave, are dealt with, or the party moves on), commit an `activity` change for that NPC (`newLocationId: null, updateLocation: true`) in the SAME batch as the resolution narration. `keepAlive: false` transients only auto-GC on a later simulation sweep keyed off days since their *location* was last visited (default grace period: 1 day, `TransientEvictionGraceDays`) — not days since the NPC itself was seen. `PresentNPCs` is rebuilt fresh from live data on every scene fetch with no staleness tracking of its own, so until you explicitly clear the location or the grace period elapses, a resolved NPC will keep showing up as present, potentially for many turns.
+→ `travel`/`rest`/`advance_world` encounters and `scene_interrupt_check` promotions spawn a transient NPC located AT the scene. Once you narrate the encounter as resolved (they leave, are dealt with, or the party moves on), commit an `activity` change for that NPC (`newLocationId: null, updateLocation: true`) in the SAME batch as the resolution narration. `keepAlive: false` transients only auto-GC on a later simulation sweep keyed off days since their *location* was last visited (default grace period: 1 day, `TransientEvictionGraceDays`) — not days since the NPC itself was seen. `PresentNPCs` is rebuilt fresh from live data on every `fullScene` with no staleness tracking of its own, so until you explicitly clear the location or the grace period elapses, a resolved NPC will keep showing up as present, potentially for many turns.
 
 **Ignoring an aging ""Unresolved"" event for 10 days**
 → Pressure in the next world-state refresh with resolution hint. Fix it.
@@ -183,6 +195,12 @@ When a scene pressure says a party member looks vulnerable in a crowd, pick one:
 
 Onboarding state is per-campaign-slug and resumable: calling `start_campaign_onboarding` again on an in-progress slug resumes where it left off instead of restarting.
 
+## Calls
+
+- `create_campaign(name: ""sunken-crown"", initialSystem: ""dnd5e"", displayName: ""The Sunken Crown"", narrativeFocus: [""political intrigue""])` — slugs are canonicalized (`Dragon Heist` → `dragon-heist`); systems: dnd5e, pf2e, narrative (plugins may add more). Optional `loreEpoch`, `loreYear` (1492), `loreMonth`, `loreDay`, `loreHour` (6).
+- `start_campaign_onboarding(campaignName: ""dragon-heist"")` → `submit_onboarding_answer(campaignName, answer: ""Dnd5e"")` … → `finalize_campaign_onboarding(campaignName)`.
+- `list_campaigns()` — slug, display name, system.
+
 Removing a campaign: `delete_campaign` needs `confirmName` equal to the slug and removes every document in it. No undo — never call it on a slug the user didn't name for deletion.
 ";
 
@@ -225,17 +243,17 @@ Forward references are fine — a quest's `giverId` pointing at a character earl
 {
   ""batch"": {
     ""locations"": [
-      { ""id"": ""locations/dragon-heist-yawning-portal"", ""name"": ""The Yawning Portal"", ""description"": ""A famous tavern built around a deep well leading to Undermountain."", ""type"": ""Building"", ""climateZone"": ""Temperate"", ""ambientCrowd"": ""a dozen adventurers and regulars"" }
+      { ""id"": ""locations/harrowgate-well-tavern"", ""name"": ""The Old Well"", ""description"": ""A tavern built around a deep well leading to the ruins below the city."", ""type"": ""Building"", ""climateZone"": ""Temperate"", ""ambientCrowd"": ""a dozen adventurers and regulars"" }
     ],
     ""characters"": [
-      { ""id"": ""chars/valen"", ""name"": ""Valen"", ""isPc"": true, ""currentLocationId"": ""locations/dragon-heist-yawning-portal"", ""systemStats"": { ""$system"": ""dnd5e"", ""hitDie"": ""d10"", ""level"": 1, ""constitution"": 14 } },
-      { ""id"": ""chars/durnan"", ""name"": ""Durnan"", ""currentLocationId"": ""locations/dragon-heist-yawning-portal"", ""currentActivity"": ""Tending the bar"", ""notes"": ""Owner of the Yawning Portal, retired adventurer."" }
+      { ""id"": ""chars/valen"", ""name"": ""Valen"", ""isPc"": true, ""currentLocationId"": ""locations/harrowgate-well-tavern"", ""systemStats"": { ""$system"": ""dnd5e"", ""hitDie"": ""d10"", ""level"": 1, ""constitution"": 14 } },
+      { ""id"": ""chars/orrin"", ""name"": ""Orrin"", ""currentLocationId"": ""locations/harrowgate-well-tavern"", ""currentActivity"": ""Tending the bar"", ""notes"": ""Owner of the Old Well, retired adventurer."" }
     ],
     ""quests"": [
-      { ""id"": ""quests/find-floon"", ""title"": ""Where's Floon?"", ""giverId"": ""chars/durnan"", ""objectives"": [ { ""description"": ""Track down Floon Blagmaar's last known whereabouts"" } ] }
+      { ""id"": ""quests/find-tam"", ""title"": ""Where's Tam?"", ""giverId"": ""chars/orrin"", ""objectives"": [ { ""description"": ""Track down Tam the potboy's last known whereabouts"" } ] }
     ]
   },
-  ""campaignName"": ""dragon-heist""
+  ""campaignName"": ""harrowgate""
 }
 ```
 
@@ -243,6 +261,6 @@ Forward references are fine — a quest's `giverId` pointing at a character earl
 
 Call `start_session` — its world state's `seedCoverage` block reports counts (locations, PC characters, factions, open quests, active plot threads) plus a short `gaps` hint list (e.g. ""no PC characters yet"", ""starting location has no climateZone""). Use it to spot what's still missing before you start the session; the gaps shrink as you seed more.
 
-For the full field-level schema of each entity kind, see `lookup kind=help topic=commit-enum` for enum values, or inspect the `world_build` tool's own input schema (every field mirrors what `character_update`/`location_update`/etc. accept during play).
+Each `world_build` array takes the same fields as its live-play change type (`characters[]` ↔ `character_update`, `locations[]` ↔ `location_update`, `items[]` ↔ `item_update`, `quests[]` ↔ `quest_progress`'s quest, `plotThreads[]` ↔ `plot_thread_progress`'s thread): `lookup kind=commit_schema type=<that $type>` lists them, and `topic=commit-enum` the enum values.
 ";
 }

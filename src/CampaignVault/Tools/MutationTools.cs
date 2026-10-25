@@ -317,15 +317,15 @@ public partial class MutationTools : CampaignToolBase, IMcpServerTool
     [ToolCategory("Mutation & time")]
     [McpServerTool(UseStructuredContent = true, ReadOnly = false)]
     [Description(
-        @"UNIFIED TURN TOOL: one call per narrative beat — commits changes[] atomically (any failure rolls back the whole batch) and returns fresh state for touched entities. Commit first, then narrate.
-
-Pass changes[] + narrative, and/or a refresh param (includeParty, includeWorldState, extraCharacterIds, extraLocationIds, fullDetailCharacterId, memoriesOnlyCharacterId, fullDetailLocationId); a call with neither is rejected. Every change needs '$type'.
-
-Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + location, and a mismatch forces a resync. So set includeParty only when party HP/slots/gold/needs/AC/gear changed, and use fullDetailLocationId on the travel turn instead of a separate get_entity. ruleset_action auto-applies its damage/healing and grapple; don't also send hp for it. Utility-spell statuses are yours to commit in the same batch. Lasting item wear (scratches, stains, hidden compartments): item_update.upsertItemDetail. Delta-mode mechanics: lookup kind=help topic=take-turn-modes.")]
+        "One call per narrative beat: commits changes[] atomically (any failure rolls back the batch) and returns fresh state for " +
+        "touched entities. A call needs changes[] + narrative, or a refresh parameter; neither is rejected. Every change needs $type. " +
+        "Echo the last partyFingerprint as clientPartyFingerprint. Lasting item wear: item_update.upsertItemDetail. " +
+        "Delta mechanics: lookup kind=help topic=take-turn-modes.")]
     public Task<ToolResult<TurnResult>> TakeTurn(
-        [Description("Bundled turn request: MUST contain EITHER (1) Changes with Narrative, OR (2) at least one refresh parameter — see this tool's own description for the field list. Passing neither is rejected. AutoRefreshInvolved (default true) controls whether entities touched by Changes get auto-refreshed; it does not itself satisfy the refresh-parameter requirement.")]
+        // The installed schema (TakeTurnSchemaBuilder) replaces the reflection one, so these two descriptions never reach a client.
+        [Description("See the schema.")]
         TakeTurnRequest request,
-        [Description(ToolParameterDescriptions.CampaignNameRequired)]
+        [Description("Campaign slug.")]
         string campaignName)
     {
         if (request is null)
@@ -672,8 +672,13 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
     /// </summary>
     private async Task RefreshPartyFingerprintAsync(TurnContext ctx)
     {
-        var fingerprint = await ComputePartyLocationHpFingerprintAsync(ctx);
+        var party = await ctx.Session.Query<Character>()
+            .Customize(x => x.WaitForNonStaleResults(TimeSpan.FromSeconds(2)))
+            .Where(c => c.CampaignName == ctx.Campaign && (c.IsPc || c.IsPartyCompanion))
+            .ToListAsync();
+        var fingerprint = PartyFingerprint.Compute(party);
         ctx.Cursor.LastPartyFingerprint = fingerprint;
+        SurfaceLevelUpReady(ctx, party);
         // Sent when the client's copy is stale (or absent) and on Full turns; an unchanged fingerprint
         // is the one the client just echoed, so repeating it every beat was pure echo.
         if (ctx.Mode == TurnMode.Full
@@ -681,7 +686,27 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
         {
             ctx.Result.PartyFingerprint = fingerprint;
         }
-        ctx.Result.WorldSequence = ctx.Cursor.WorldSequence;
+    }
+
+    /// <summary>
+    /// The client used to learn "a level is earned" from start_session after every turn (Phase 4 A1 stopped that
+    /// call). Now take_turn says it when XP moved (xp_grant, level_up) and on full turns, so a reseed after a
+    /// compaction re-surfaces it; a quiet delta turn carries nothing.
+    /// </summary>
+    private static void SurfaceLevelUpReady(TurnContext ctx, List<Character> party)
+    {
+        var xpMoved = ctx.AppliedChanges.Any(c => c is XpGrantChange or LevelUpChange);
+        if (!xpMoved && ctx.Mode != TurnMode.Full)
+        {
+            return;
+        }
+
+        var ready = party
+            .Where(m => Rulesets.LevelUpStatusReader.For(m, ctx.Config, null)?.Ready == true)
+            .Select(m => m.Id)
+            .OrderBy(id => id, StringComparer.Ordinal)
+            .ToList();
+        ctx.Result.LevelUpReady = ready.Count > 0 ? ready : null;
     }
 
     // P2-10(b): the old ComputePartyFingerprintAsync name was retired in favor of
@@ -1113,7 +1138,9 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
         result.EntityCollisions = commitResult.EntityCollisions;
         result.CommittedIds = commitResult.CommittedIds;
         result.NarrativeReminder = commitResult.NarrativeReminder;
-        result.SceneCue = SceneCue.Text;
+        // The cue is for connector models that write the scene themselves; a client with its own storyteller
+        // turns it off per campaign (CampaignConfig.SceneCueEnabled, settable via campaign_update).
+        result.SceneCue = ctx.Config?.SceneCueEnabled == false ? null : SceneCue.Text;
         result.PhysicalStateNudges = commitResult.PhysicalStateNudges is { Count: > 0 } nudges ? nudges : null;
         // Plugin faults need no field of their own: each one is already a "PLUGIN FAULT ..." line in Summary.
         ctx.AppliedChanges = [.. changes, .. commitResult.ReactionChanges, .. commitResult.AmbientDeltas];
@@ -2542,11 +2569,12 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                         continue;
                     }
 
+                    // The member's own applied changes are not echoed back (the caller sent them);
+                    // they only gate whether the entry surfaces. NeedsMoved is the receipt.
                     deltas.Add(new EntityChangeDelta
                     {
                         EntityId = member.Id,
                         Name = member.Name,
-                        Changes = memberChanges,
                         NeedsMoved = movedNeedKeys.Count > 0
                             ? liveNeeds
                                 .Where(kv => movedNeedKeys.Contains(kv.Key, StringComparer.OrdinalIgnoreCase))
@@ -2796,7 +2824,6 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
                 RecentInteractions =
                     [.. npcEvents.Take(EventSummaryView.NpcContextCap).Select(EventSummaryView.ForNpcContext)],
                 BehavioralSummary = behavioralSummary,
-                KnownNeeds = includeCombatDetail ? (npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>()) : new Dictionary<string, float>(),
                 Equipped = equipped,
                 Carried = carried
             };
@@ -2884,34 +2911,9 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
 
         try
         {
-            // Full detail here means full — bypass the Description/PointOfInterestDetails caps that
-            // apply everywhere else, since this call is already bounded to one location per take_turn.
-            var scene = await _repository.GetSceneAsync(new CampaignSession(ctx.Session, ctx.Campaign), locationId,
-                markVisited: false, fullDescription: true);
+            var scene = await FullSceneDetail.BuildAsync(_repository, _pressureOrchestrator, ctx.Session, ctx.Campaign, locationId, ctx.Config);
             if (scene != null)
             {
-                // Parity with get_entity's scene view, so arriving via travel + fullDetailLocationId
-                // doesn't need a follow-up get_entity for location ENGINE WARNINGs or plot threads.
-                // Runs before the PC strip below: scene contributors (e.g. location integrity) need
-                // PCs in the roster, same as get_entity.
-                var time = await _repository.GetTimeAsync(new CampaignSession(ctx.Session, ctx.Campaign));
-                var config = ctx.Config ?? await _repository.GetCampaignConfigAsync(new CampaignSession(ctx.Session, ctx.Campaign));
-                var scenePressure = await _pressureOrchestrator.CollectAndCapAsync(PressureScope.Scene, new PressureContext(
-                    ctx.Campaign, time, config, ctx.Session, Scene: scene, RequestedLocationId: locationId, PartyPresent: true));
-                if (scenePressure.Count > 0)
-                {
-                    scene.ScenePressure = [.. PressureManager.ToDisplayStrings(scenePressure)];
-                }
-
-                // PCs ride along internally (recognition hints / faction-reputation lookups need
-                // them), but they're not NPCs and their state already travels via Party/PartyDelta.
-                scene.PresentNPCs = [.. scene.PresentNPCs.Where(n => !n.IsPc)];
-                var threads = await _repository.GetPlotThreadsReferencingEntityAsync(ctx.Session, locationId, ctx.Campaign);
-                scene.AssociatedPlotThreads =
-                [
-                    .. threads
-                        .Select(t => new PlotThreadMinimal(t.Id, t.Title, t.State, t.TensionLevel))
-                ];
                 ApplyNeedLegendDeltaTrim(ctx, scene);
                 ctx.Result.FullScene = scene;
             }
@@ -2958,13 +2960,10 @@ Echo the last partyFingerprint as clientPartyFingerprint; it tracks party HP + l
             result.RateLimitTokensRemaining = (int)stats.CurrentAvailablePermits;
         }
 
-        var successMsg = result.Committed
-            ? $"Committed {result.ChangesProcessed} changes."
-            : "State refreshed.";
-        if (result.Warnings is { Count: > 0 })
-        {
-            successMsg += $" {result.Warnings.Count} warning(s) — see 'warnings'.";
-        }
+        // committed/changesProcessed already say what happened; the envelope summary only points at warnings.
+        var successMsg = result.Warnings is { Count: > 0 }
+            ? $"{result.Warnings.Count} warning(s) — see 'warnings'."
+            : null;
 
         return new ToolResult<TurnResult>(true, result, successMsg);
     }

@@ -456,7 +456,8 @@ public class SummonResolutionTests
         Assert.Equal("summon_undead", binding.SpellName);
         Assert.Equal(10, binding.DurationRounds);
         Assert.Null(binding.ExpiresAtRound);
-        Assert.True(binding.ConcentrationBound);
+        // Pathfinder has no concentration: a summon lasts its duration (sustaining is the caster's action, not a bond).
+        Assert.False(binding.ConcentrationBound);
     }
 
     private sealed class SeedlessSummonResolver(IRollService roll)

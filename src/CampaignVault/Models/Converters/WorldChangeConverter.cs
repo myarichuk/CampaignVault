@@ -24,6 +24,7 @@ internal static class WorldChangeNormalizer
             return json;
 
         json = RewriteDiscriminatorAliases(json);
+        json = RewriteFieldAliases(json);
 
         // Quick optimization: if the string already contains "$type" for every object marker,
         // it likely has all discriminators. Skip parsing in happy path.
@@ -34,19 +35,21 @@ internal static class WorldChangeNormalizer
         }
 
         // $type exists somewhere; parse to check if all objects have it
+        JsonArray? node;
         try
         {
-            var node = JsonNode.Parse(json) as JsonArray;
-            if (node == null || !NeedsNormalization(node))
-                return json; // All objects have $type; use original
-
-            return InferMissingTypes(json);
+            node = JsonNode.Parse(json) as JsonArray;
         }
         catch
         {
             // If parsing fails, let the normal deserializer handle the error
             return json;
         }
+
+        if (node == null || !NeedsNormalization(node))
+            return json; // All objects have $type; use original
+
+        return InferMissingTypes(json);
     }
 
     private static string RewriteDiscriminatorAliases(string json)
@@ -91,6 +94,44 @@ internal static class WorldChangeNormalizer
         return modified ? array.ToJsonString() : json;
     }
 
+    /// <summary>
+    /// LLMs occasionally send <c>actorId</c> where a change wants <c>characterId</c> (a documented naming
+    /// slip). Rename it when <c>characterId</c> is absent and drop it otherwise, so the strict deserializer
+    /// (unknown fields fail the batch) doesn't reject a change whose meaning is unambiguous.
+    /// </summary>
+    private static string RewriteFieldAliases(string json)
+    {
+        if (!json.Contains("actorId", StringComparison.Ordinal))
+            return json;
+
+        JsonArray? array;
+        try
+        {
+            array = JsonNode.Parse(json) as JsonArray;
+        }
+        catch
+        {
+            return json;
+        }
+
+        if (array is null)
+            return json;
+
+        var modified = false;
+        foreach (var entry in array)
+        {
+            if (entry is not JsonObject obj || !obj.TryGetPropertyValue("actorId", out var actorIdNode))
+                continue;
+
+            obj.Remove("actorId");
+            if (!obj.ContainsKey("characterId"))
+                obj["characterId"] = actorIdNode?.DeepClone();
+            modified = true;
+        }
+
+        return modified ? array.ToJsonString() : json;
+    }
+
     private static bool NeedsNormalization(JsonArray array)
     {
         foreach (var item in array)
@@ -110,9 +151,9 @@ internal static class WorldChangeNormalizer
                 return json;
 
             var modified = false;
-            foreach (var item in array)
+            for (var i = 0; i < array.Count; i++)
             {
-                if (item is not JsonObject obj)
+                if (array[i] is not JsonObject obj)
                     continue;
 
                 if (obj.ContainsKey("$type"))
@@ -134,15 +175,15 @@ internal static class WorldChangeNormalizer
                 }
                 else
                 {
-                    throw new InvalidOperationException(
-                        "WorldChange object is missing the required '$type' discriminator field and we could not infer the type from its properties. " +
-                        "Please ensure every change object includes '$type' — see WorldChange's own description for the full list of valid values.");
+                    // A JsonException so both commit paths (CommitChangesParser and the MCP binding filter)
+                    // turn it into the same short, listed-$types message (CommitBindingError).
+                    throw new JsonException($"Change $[{i}] {Tools.CommitBindingError.MissingTypeMarker}. Path: $[{i}]");
                 }
             }
 
             return modified ? array.ToJsonString() : json;
         }
-        catch (Exception ex) when (!(ex is InvalidOperationException))
+        catch (Exception ex) when (ex is not JsonException)
         {
             // Parse/modification error; let normal deserializer handle it
             System.Diagnostics.Debug.WriteLine($"WorldChangeNormalizer: Parse error: {ex.Message}");
@@ -204,6 +245,8 @@ public sealed class WorldChangeArrayJsonConverter : JsonConverter<WorldChange[]>
                     {
                         PropertyNameCaseInsensitive = true,
                         AllowOutOfOrderMetadataProperties = true,
+                        // Same strictness as CommitChangesParser.CreateOptions: unknown fields fail loudly.
+                        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
                         TypeInfoResolver = WorldChangeTypeRegistry.Instance.CreateTypeInfoResolver(),
                     };
                     _innerRegistryVersion = version;

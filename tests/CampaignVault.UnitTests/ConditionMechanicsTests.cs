@@ -131,10 +131,12 @@ public class ConditionMechanicsTests
     }
 
     [Fact]
-    public void Unconscious_SuppressesProneAndIncapacitated()
+    public void Unconscious_SuppressesIncapacitated_ButProneStaysItsOwnCondition()
     {
+        // SRD 5.1: an unconscious creature falls prone, and prone keeps its own effect (disadvantage on ranged attacks
+        // against it, which cancels unconscious's advantage into a straight roll). Only incapacitated is subsumed.
         var active = ConditionMechanics.Active(With("h", "Unconscious", "Prone", "Incapacitated"), Conditions, "dnd5e");
-        Assert.Equal(["unconscious"], active.Select(a => a.Definition.Name));
+        Assert.Equal(["unconscious", "prone"], active.Select(a => a.Definition.Name));
     }
 
     [Fact]

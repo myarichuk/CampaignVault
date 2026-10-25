@@ -3,7 +3,8 @@ using CampaignVault.Models;
 namespace CampaignVault.Rulesets;
 
 /// <summary>What the resolver can tell about the weapon from the item's tags, the action category and the range parameter.</summary>
-internal readonly record struct WeaponProfile(bool Known, bool Ranged, bool Finesse, bool TwoHanded, bool Heavy, bool Light = false, bool Agile = false)
+internal readonly record struct WeaponProfile(bool Known, bool Ranged, bool Finesse, bool TwoHanded, bool Heavy, bool Light = false, bool Agile = false,
+    bool Thrown = false, bool Propulsive = false)
 {
     public static WeaponProfile Read(RulesetAction action)
     {
@@ -17,7 +18,8 @@ internal readonly record struct WeaponProfile(bool Known, bool Ranged, bool Fine
             || (tags.Count == 0 && action.Parameters.TryGetValue("range", out var range)
                 && range is "Near" or "Far" or "Distant");
         var known = tags.Count > 0 || ranged;
-        return new WeaponProfile(known, ranged, tags.Contains("finesse"), tags.Contains("twohanded"), tags.Contains("heavy"), tags.Contains("light"), tags.Contains("agile"));
+        return new WeaponProfile(known, ranged, tags.Contains("finesse"), tags.Contains("twohanded"), tags.Contains("heavy"), tags.Contains("light"), tags.Contains("agile"),
+            tags.Contains("thrown"), tags.Contains("propulsive"));
     }
 }
 
@@ -110,9 +112,10 @@ internal sealed record DerivedAttack(int ToHit, int Damage, string Note)
             if (stats.Level is > 0)
             {
                 var rank = stats.Attributes.TryGetValue("weaponProficiencyRank", out var r) ? (int)r : (int)Pf2eProficiencyRank.Trained;
-                var proficiency = stats.Level.Value + rank;
+                // Player Core: an untrained proficiency bonus is +0, not level + 0.
+                var proficiency = rank > 0 ? stats.Level.Value + rank : 0;
                 toHit += proficiency;
-                hitParts.Add($"level+rank {Signed(proficiency)}");
+                hitParts.Add(rank > 0 ? $"level+rank {Signed(proficiency)}" : "untrained +0");
                 if (!stats.Attributes.ContainsKey("weaponProficiencyRank"))
                     notes.Add("assumes Trained weapon proficiency; set attributes.weaponProficiencyRank (2/4/6/8) to change");
             }
@@ -128,10 +131,21 @@ internal sealed record DerivedAttack(int ToHit, int Damage, string Note)
             }
         }
 
-        if (!explicitDamageBonus && !weapon.Ranged)
+        if (!explicitDamageBonus)
         {
-            damage += str;
-            dmgParts.Add($"STR {Signed(str)}");
+            // Player Core: melee and thrown weapons add Strength to damage; propulsive ranged weapons add half of a
+            // positive Strength modifier (all of a negative one); other ranged weapons add nothing.
+            if (!weapon.Ranged || weapon.Thrown)
+            {
+                damage += str;
+                dmgParts.Add($"STR {Signed(str)}");
+            }
+            else if (weapon.Propulsive)
+            {
+                var propulsive = str > 0 ? str / 2 : str;
+                damage += propulsive;
+                dmgParts.Add($"propulsive STR {Signed(propulsive)}");
+            }
         }
 
         return new DerivedAttack(toHit, damage, Describe(explicitBonus, explicitDamageBonus, hitParts, toHit, dmgParts, damage, notes));

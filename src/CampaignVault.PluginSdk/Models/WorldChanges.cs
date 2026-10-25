@@ -198,7 +198,7 @@ public class HpChange : WorldChange
     [JsonPropertyName("delta")]
     public int Delta { get; set; }
 
-    [Description("Set by the engine when the damage came from a critical hit: a creature already at 0 HP takes two death save failures from it, not one. Leave it out otherwise.")]
+    [Description("True when the damage came from a critical hit (ruleset_action sets it itself): a creature already at 0 HP takes two death save failures from it, not one. Leave it out otherwise.")]
     [JsonPropertyName("critical")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool Critical { get; set; }
@@ -387,6 +387,10 @@ public class DeathSaveChange : WorldChange
     [Description("Optional d20 value (1-20) rolled elsewhere. Omit to let the engine roll.")]
     [JsonPropertyName("roll")]
     public int? Roll { get; set; }
+
+    [Description("True to stabilize without a roll (Spare the Dying, a Medicine DC 10 check already passed): 5e PC stays at 0 HP, unconscious, no more death saves.")]
+    [JsonPropertyName("stabilize")]
+    public bool? Stabilize { get; set; }
 }
 
 /// <summary>
@@ -1848,6 +1852,10 @@ public class CampaignUpdateChange : WorldChange
     [Description("Required when systemOptions touches a player-owned key, or enabledModeIds switches a player-only mode: the human player's own words asking for the change, quoted. Never invent it; only send it when the player asked.")]
     [JsonPropertyName("playerRequest")]
     public string? PlayerRequest { get; set; }
+
+    [Description("false turns off the scene cue line on committed take_turn results (for a client with its own storyteller); true restores it.")]
+    [JsonPropertyName("sceneCueEnabled")]
+    public bool? SceneCueEnabled { get; set; }
 }
 
 /// <summary>

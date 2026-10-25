@@ -915,9 +915,10 @@ public abstract class RulesetResolverBase<TStats> : IHostRulesetModule, IActionR
         var feat = action is null
             ? FeatEffectFold.None
             : FeatEffectRules.Fold(kind, subject, action, action.FeatEffects.GetValueOrDefault(actor.Id) ?? [], System, isActor: actor.Id == action.CharacterId);
-        var resolved = Pipeline.Resolve(query, baseBonus, explicitAdvantage, feat.Advantage, feat.Disadvantage);
+        var range = action is not null && kind == RollKinds.Attack && actor.Id == action.CharacterId ? RangeRollModifier.Read(action) : RangeRollModifier.None;
+        var resolved = Pipeline.Resolve(query, baseBonus + range.Penalty, explicitAdvantage, feat.Advantage, feat.Disadvantage || range.Disadvantage);
         if (action is not null)
-            resolved = resolved with { Bonus = resolved.Bonus + feat.Bonus, Notes = [.. resolved.Notes, .. feat.Notes] };
+            resolved = resolved with { Bonus = resolved.Bonus + feat.Bonus, Notes = [.. resolved.Notes, .. feat.Notes, .. range.Notes] };
         var mechanic = resolved.Advantage switch
         {
             AdvantageEffect.Advantage => DiceMechanic.Advantage,
@@ -929,14 +930,22 @@ public abstract class RulesetResolverBase<TStats> : IHostRulesetModule, IActionR
 
     /// <summary>
     /// "melee" or "ranged" for an attack, so a condition can tell them apart (prone: melee attackers have advantage). A weapon
-    /// says which; with no weapon data a spell attack counts as ranged and anything else as melee.
+    /// says which; a spell's <c>attackType</c> parameter (stamped from the spell definition: touch spells are melee) says
+    /// which; with neither a spell attack counts as ranged and anything else as melee.
     /// </summary>
     internal static string AttackRangeTag(RulesetAction action)
     {
         var weapon = WeaponProfile.Read(action);
         if (weapon.Known)
             return weapon.Ranged ? "ranged" : "melee";
-        return action.ActionType == RulesetActionType.Spell ? "ranged" : "melee";
+        if (action.ActionType == RulesetActionType.Spell)
+        {
+            return action.Parameters.TryGetValue(SpellActionDefaults.AttackTypeParameter, out var kind)
+                   && string.Equals(kind?.Trim(), "melee", StringComparison.OrdinalIgnoreCase)
+                ? "melee"
+                : "ranged";
+        }
+        return "melee";
     }
 
     public virtual IReadOnlyDictionary<string, int> GetTurnActionBudget(Character character)

@@ -153,7 +153,8 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
 
     internal Task<ToolResult<NpcContextView>> GetNpcContext(
         [Description("The unique ID of the character.")] string characterId,
-        [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName)
+        [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
+        bool includeCombatDetail = false)
     {
         if (string.IsNullOrWhiteSpace(characterId))
         {
@@ -185,7 +186,6 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
 
             var behavioralSummary = _behaviorSynthesizer.GenerateSummary(npc, null, npcEvents);
 
-            var knownNeeds = npc.Needs?.ActiveNeeds ?? new Dictionary<string, float>();
             // Merge global + per-NPC descriptors (per-NPC wins) for full context
             var globalDescriptors = await _repository.GetGlobalNeedDescriptorsAsync(new CampaignSession(session, effective));
             var npcDescriptors = npc.Needs?.NeedDescriptors ?? new Dictionary<string, string>();
@@ -242,15 +242,16 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
                 RecentInteractions =
                     [.. npcEvents.Take(EventSummaryView.NpcContextCap).Select(EventSummaryView.ForNpcContext)],
                 BehavioralSummary = behavioralSummary,
-                KnownNeeds = knownNeeds,
-                NeedDescriptors = mergedDescriptors,
+                NeedDescriptors = LegendOnly(mergedDescriptors, npc),
                 BehavioralTension = enrichment.BehavioralTension,
-                TensionComponents = enrichment.TensionComponents,
                 ActiveInitiatives = [.. enrichment.ActiveInitiatives],
-                RelevantMemories = [.. enrichment.RelevantMemories],
                 Equipped = equipped,
                 Carried = carried,
-                ClassFeatures = CharacterClassFeatures.Views(npc, config.ActiveSystem, _progressionProvider),
+                // The rule text of every feature is a few hundred chars each; names suffice until a roll
+                // or fight involves this character (includeCombatDetail), as on take_turn.
+                ClassFeatures = includeCombatDetail
+                    ? CharacterClassFeatures.Views(npc, config.ActiveSystem, _progressionProvider)
+                    : [.. CharacterClassFeatures.Views(npc, config.ActiveSystem, _progressionProvider).Select(f => f with { Description = null })],
                 LevelUp = LevelUpStatusReader.For(npc, config, _progressionProvider),
                 TurnIntent = enrichment.TurnIntent,
                 AssociatedPlotThreads = associatedMinimal
@@ -342,6 +343,16 @@ public class ExplorationTools : CampaignToolBase, IMcpServerTool
 
             return new ToolResult<IEnumerable<Event>>(true, results, $"Retrieved {results.Count()} historical events (campaign: {effective}).");
         }, saveChanges: false);
+    }
+
+    /// <summary>Campaign-wide descriptors the character's own Needs.NeedDescriptors (already on the wire) don't carry.</summary>
+    private static Dictionary<string, string>? LegendOnly(Dictionary<string, string> merged, Character npc)
+    {
+        var own = npc.Needs?.NeedDescriptors;
+        var legend = merged
+            .Where(kv => own is null || !own.ContainsKey(kv.Key))
+            .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+        return legend.Count > 0 ? legend : null;
     }
 
     internal Task<ToolResult<NpcNeedsView>> GetNpcNeeds(

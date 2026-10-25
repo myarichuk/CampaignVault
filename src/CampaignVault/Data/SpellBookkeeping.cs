@@ -41,11 +41,12 @@ internal static class SpellBookkeeping
         var paired = batch.OfType<ResourceChange>().Any(rc =>
             rc.Delta < 0
             && string.Equals(rc.CharacterId, caster.Id, StringComparison.OrdinalIgnoreCase)
-            && (SpellSlotValidator.TryParseSlotLevel(rc.PoolName, out _) || rc.PoolName is "pact_magic" or "focus_points"));
+            && ((SpellSlotValidator.TryParseSlotLevel(rc.PoolName, out var slotLevel) && slotLevel >= (spell.Level ?? 0))
+                || rc.PoolName is "pact_magic" or "focus_points"));
         return paired
             ? null
-            : $"{caster.Name} casts {spell.Name} (level {spell.Level}) but this batch has no spell-slot spend for them. "
-              + $"Add a resource change on spell_slots_{spell.Level} (delta -1, spellName '{spell.Name}') to the same commit. {EscapeHint}";
+            : $"{caster.Name} casts {spell.Name} (level {spell.Level}) but this batch has no spell-slot spend of level {spell.Level} or higher for them. "
+              + $"Add a resource change on spell_slots_{spell.Level} (delta -1, spellName '{spell.Name}') to the same commit; a lower slot can't hold it. {EscapeHint}";
     }
 
     /// <summary>M-61: the spell must be in the caster's recorded cantrips, prepared spells (prepared casters) or known spells. Returns the problem, or null.</summary>

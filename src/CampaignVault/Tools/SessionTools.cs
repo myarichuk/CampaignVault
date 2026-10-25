@@ -39,7 +39,8 @@ public class SessionTools : CampaignToolBase, IMcpServerTool
     public Task<ToolResult<SessionStartView>> StartSession(
         [Description(ToolParameterDescriptions.CampaignNameRequired)] string campaignName,
         [Description("Optional session title/number.")] string? title = null,
-        [Description("Optional party location ID; defaults to the PC's DB location.")] string? partyLocationId = null)
+        [Description("Optional party location ID; defaults to the PC's DB location.")] string? partyLocationId = null,
+        [Description("Include the opening scene (the PC's location in full) so the first beat needs no fullDetailLocationId. Default true.")] bool includeScene = true)
     {
         return ExecuteForCampaignAsync(campaignName, async (effective, session) => {
             // A campaign only exists once it's gone through create_campaign/finalize_campaign_onboarding.
@@ -176,6 +177,14 @@ public class SessionTools : CampaignToolBase, IMcpServerTool
 
             view.PartyFingerprint = PartyFingerprint.Compute(party);
             await PrimeTurnCursorAsync(session, effective, view.PartyFingerprint);
+
+            // The opening scene rides along (3d): one call to open a session instead of start_session + a
+            // scene-fetching take_turn. Only when the scope location resolved; a bad partyLocationId is
+            // reported in the summary instead.
+            if (includeScene && !string.IsNullOrEmpty(scopeLocationId) && (string.IsNullOrEmpty(partyLocationId) || worldState.PartyLocation != null))
+            {
+                view.Scene = await FullSceneDetail.BuildAsync(_repo, _pressureOrchestrator, session, effective, scopeLocationId, rules);
+            }
 
             return new ToolResult<SessionStartView>(true, view,
                 BuildStartSummary(effective, view, sessionLog!, partyLocationId, worldState.PartyLocation, scopeLocationId),
@@ -399,6 +408,10 @@ public class SessionTools : CampaignToolBase, IMcpServerTool
         if (!string.IsNullOrEmpty(requestedLocationId) && resolvedLocation == null)
         {
             summary += $" WARNING: partyLocationId '{requestedLocationId}' was not found; the party's DB locations are in party[].locationId.";
+        }
+        else if (view.Scene != null)
+        {
+            summary += $" The opening scene ({sceneLocationId}) is in 'scene': narrate from it, then take_turn with clientPartyFingerprint (no fullDetailLocationId needed).";
         }
         else if (!string.IsNullOrEmpty(sceneLocationId))
         {

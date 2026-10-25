@@ -349,8 +349,10 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         var riderType = action.Parameters.GetValueOrDefault("riderType");
         if (hasRider)
         {
-            var riderRoll = await _rollService.RollAsync(new RollRequest { Tag = "rider", Expression = riderDice!, Mechanic = DiceMechanic.Standard }, ct);
-            packets.Add(new DamagePacket(riderRoll.Result, riderType));
+            var riderTotal = (await _rollService.RollAsync(new RollRequest { Tag = "rider", Expression = riderDice!, Mechanic = DiceMechanic.Standard }, ct)).Result;
+            if (isCrit)
+                riderTotal += (await _rollService.RollAsync(new RollRequest { Tag = "riderCrit", Expression = DerivedAttack.DiceOnly(riderDice!), Mechanic = DiceMechanic.Standard }, ct)).Result;
+            packets.Add(new DamagePacket(riderTotal, riderType));
         }
 
         var dealt = DamageResolver.Resolve(packets, targetStats, targetEffects, action, DamageOrdering.Dnd5e);
@@ -1292,15 +1294,18 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             return ResolverResult.Fail("IncompatibleRuleset", "Error: Target uses incompatible ruleset stats for current ActiveSystem.");
         }
 
-        var isGrapple = EngagementMutationHelper.IsGrappleAction(action);
         var isEscape = EngagementMutationHelper.IsEscapeGrappleAction(action);
+        var isGrapple = !isEscape && EngagementMutationHelper.IsGrappleAction(action);
 
         var actorSkill = action.Parameters.TryGetValue("skill", out var as_name)
             ? as_name
             : isGrapple || isEscape ? "Athletics" : "Strength";
+        // SRD: the defender of a grapple or shove picks Athletics or Acrobatics (parameters.defenderSkill, or targetSkill).
         var targetSkill = action.Parameters.TryGetValue("targetSkill", out var ts_name)
             ? ts_name
-            : isGrapple ? "Athletics" : actorSkill;
+            : action.Parameters.TryGetValue("defenderSkill", out var ds_name)
+                ? ds_name
+                : isGrapple ? "Athletics" : actorSkill;
 
         int actorBonus;
         if (action.Parameters.TryGetValue("bonus", out var suppliedActorBonus))

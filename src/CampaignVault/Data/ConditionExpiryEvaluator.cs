@@ -66,7 +66,8 @@ public static class ConditionExpiryEvaluator
 
     // Concentration break checks (damage → CON save; recasting another concentration effect)
     // are handled inline in HpChangeHandler/StatusChangeHandler via StatusEffect.Name matching,
-    // not here — no shipped condition YAML currently sets DurationType.Concentration.
+    // not here. A condition YAML with DurationType.Concentration (invisible) only says the effect
+    // rides on the caster's concentration; the break itself is still the handlers' job.
 
     /// <summary>
     /// UntilLongRest effects that fully clear on long rest (non-stacking conditions).

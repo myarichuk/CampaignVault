@@ -42,7 +42,11 @@ internal enum HelpTopic
 
     /// <summary>Session lifecycle: start_session payload, end_session handoff fields/caps, checkpoints before compaction.</summary>
     [Description("Session lifecycle: start_session, end_session handoff, checkpoints")]
-    Sessions
+    Sessions,
+
+    /// <summary>The licenses and required notices for the bundled SRD 5.1 (CC-BY-4.0) and Player Core (ORC) data.</summary>
+    [Description("Licenses and notices for the bundled game content")]
+    Licensing
 }
 
 [McpServerToolType]
@@ -115,7 +119,9 @@ public class MetaTools : IMcpServerTool
 
             HelpTopic.Sessions => DmHelpManual.SessionsSection,
 
-            _ => "Reference lookup only. The server pushes what you need automatically on tool responses under `guidance`; follow it and don't call lookup kind=help speculatively. For session-0 setup: try topic=onboarding or topic=world-building. For reference: topic=commit-enum or topic=tools. Guidance on patterns, combat, spells, world-pressure, and sandbox is delivered on tool responses — do not fetch those sections here."
+            HelpTopic.Licensing => DmHelpManual.LicensingSection,
+
+            _ => "Reference lookup only. The server pushes what you need automatically on tool responses under `guidanceHints` and `warnings`; follow them and don't call lookup kind=help speculatively. For session-0 setup: try topic=onboarding or topic=world-building. For reference: topic=commit-enum or topic=tools. Guidance on patterns, combat, spells, world-pressure, and sandbox is delivered on tool responses — do not fetch those sections here."
         };
     }
 }

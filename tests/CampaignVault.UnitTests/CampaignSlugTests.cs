@@ -10,7 +10,7 @@ public class CampaignSlugTests
     [InlineData("Dragon Heist", "dragon-heist")]
     [InlineData("dragon_heist", "dragon-heist")]
     [InlineData("  SWORD-COAST ", "sword-coast")]
-    [InlineData("curse/of/strahd", "curse-of-strahd")]
+    [InlineData("curse/of/the/mire", "curse-of-the-mire")]
     [InlineData("double--hyphen", "double-hyphen")]
     public void Canonicalize_NormalizesConsistently(string input, string expected)
     {

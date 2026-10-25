@@ -10,7 +10,8 @@ public sealed class RulesetActionHandler(
     SpellDefinitionProvider spellProvider,
     FeatDefinitionProvider featProvider,
     ProgressionDefinitionProvider? progressionProvider = null,
-    RaceDefinitionProvider? raceProvider = null)
+    RaceDefinitionProvider? raceProvider = null,
+    ConditionDefinitionProvider? conditionProvider = null)
     : IWorldChangeHandler
 {
     private readonly IRulesetModuleSelector _selector = selector ?? throw new ArgumentNullException(nameof(selector));
@@ -19,6 +20,34 @@ public sealed class RulesetActionHandler(
     private readonly FeatDefinitionProvider _featProvider = featProvider ?? throw new ArgumentNullException(nameof(featProvider));
 
     public bool ShouldHandle(WorldChange change) => change is RulesetAction;
+
+    /// <summary>
+    /// A condition's <c>resistance</c> effect (petrified: all damage) rides on the same per-character list the damage
+    /// resolver reads for feat resistances, so the two halve once between them like any other pair of sources.
+    /// </summary>
+    private void AddConditionResistances(RulesetAction action, IEnumerable<Character> involved, string system)
+    {
+        if (conditionProvider is null)
+        {
+            return;
+        }
+
+        foreach (var character in involved)
+        {
+            var resistances = Rulesets.ConditionMechanics.Active(character, conditionProvider, system)
+                .SelectMany(active => active.Effects
+                    .Where(e => e.Kind == Templates.ConditionEffectKinds.Resistance && !string.IsNullOrWhiteSpace(e.DamageType))
+                    .Select(e => new ActiveFeatEffect(active.Definition.Name, new FeatEffect { Kind = FeatEffectKinds.Resistance, DamageType = e.DamageType })))
+                .ToList();
+            if (resistances.Count == 0)
+            {
+                continue;
+            }
+
+            var existing = action.FeatEffects.TryGetValue(character.Id, out var list) ? list : [];
+            action.FeatEffects[character.Id] = [.. existing, .. resistances];
+        }
+    }
 
     public async Task<ChangeHandlerResult> ApplyAsync(
         WorldChange change, IChangeContext context, CancellationToken ct = default)
@@ -119,9 +148,19 @@ public sealed class RulesetActionHandler(
 
         var module = _selector.GetModule(config.ActiveSystem);
 
+        // Spell data decides the action economy unless the caller said otherwise (bonus action, reaction, pf2e action cost,
+        // melee vs ranged spell attack).
+        var spellDefinition = SpellActionDefaults.Apply(action, _spellProvider, config.ActiveSystem);
+
         // Pre-check: action economy gating (turn ownership, action slots)
         if (ctx.ActiveCombat?.IsActive == true)
         {
+            if (spellDefinition is not null && SpellActionDefaults.TooLongForCombat(spellDefinition))
+            {
+                return ChangeHandlerResult.Failure(
+                    $"[CastingTimeTooLong] {spellDefinition.Name} takes {spellDefinition.CastingTime} to cast: it can't be finished within one combat turn. Cast it after combat, or narrate the turns it takes.");
+            }
+
             var activeCombat = ctx.ActiveCombat;
             var combatantState = activeCombat.Combatants.FirstOrDefault(c => c.CharacterId == action.CharacterId);
             if (combatantState == null)
@@ -166,6 +205,7 @@ public sealed class RulesetActionHandler(
             .Select(id => ctx.Characters[id]);
         action.FeatEffects = await FeatEffectRules.ResolveAsync(
             ctx.Session, _featProvider, config.ActiveSystem, involved, effectiveCampaign, [.. ctx.ActiveModes.Keys], progressionProvider, raceProvider);
+        AddConditionResistances(action, involved, config.ActiveSystem);
 
         // Merge weapon-derived defaults (including "range") before range validation runs,
         // so weapon-based range enforcement (the documented, primary path) actually has data to check.
@@ -196,9 +236,19 @@ public sealed class RulesetActionHandler(
 
             if (range.DisadvantageReason is { } why)
             {
-                // A disadvantage from range cancels an advantage the caller already set; the two leave a plain roll.
-                action.AdvantageState = action.AdvantageState == AdvantageState.Advantage ? AdvantageState.None : AdvantageState.Disadvantage;
-                action.Parameters["rangeNote"] = $"Disadvantage: {why}.";
+                if (string.Equals(config.ActiveSystem, RulesetSystem.Pathfinder2e, StringComparison.OrdinalIgnoreCase) && range.BandsBeyond > 0)
+                {
+                    // PF2e: -2 per range increment beyond the first; one distance band stands in for one increment.
+                    action.Parameters[RangeRollModifier.PenaltyParameter] = (-2 * range.BandsBeyond).ToString(global::System.Globalization.CultureInfo.InvariantCulture);
+                    action.Parameters["rangeNote"] = $"Range penalty {-2 * range.BandsBeyond}: {why}.";
+                }
+                else
+                {
+                    // The roll pipeline folds this as one more disadvantage source, so a condition's advantage cancels it to
+                    // a straight roll instead of winning outright.
+                    action.Parameters[RangeRollModifier.DisadvantageParameter] = why;
+                    action.Parameters["rangeNote"] = $"Disadvantage: {why}.";
+                }
             }
         }
 

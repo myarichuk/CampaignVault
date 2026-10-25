@@ -110,6 +110,7 @@ internal static class WeaponParameterResolver
             action.Parameters["weaponDefinition"] = weapon.DefinitionName;
         }
 
+        var callerSentDice = action.Parameters.ContainsKey("damageDice");
         foreach (var (rawKey, rawValue) in weapon.Properties)
         {
             var value = rawValue?.ToString();
@@ -123,6 +124,13 @@ internal static class WeaponParameterResolver
             {
                 action.Parameters[paramKey] = value;
             }
+        }
+
+        // Versatile (5e) / two-hand (PF2e): the larger die when the attack says parameters.twoHanded=true.
+        if (!callerSentDice && CombatFeatureRules.IsTrue(action, "twoHanded")
+            && action.Parameters.TryGetValue("damageVersatile", out var versatile) && !string.IsNullOrWhiteSpace(versatile))
+        {
+            action.Parameters["damageDice"] = versatile;
         }
 
         // Item tags (ranged, finesse, two-handed, heavy...) tell the resolver which ability and feature rules apply.

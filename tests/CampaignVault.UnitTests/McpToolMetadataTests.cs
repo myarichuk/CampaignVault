@@ -126,7 +126,9 @@ public class McpToolMetadataTests
                 {
                     if (string.Equals(param.Name, "campaignName", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (param.HasDefaultValue)
+                        // lookup serves kind=commit_schema and kind=help without a campaign (the rules
+                        // kinds still check it at runtime), so its campaignName is optional by design.
+                        if (param.HasDefaultValue && method.Name != "Lookup")
                         {
                             violations.Add($"{type.Name}.{method.Name} has optional/defaulted campaignName");
                         }
