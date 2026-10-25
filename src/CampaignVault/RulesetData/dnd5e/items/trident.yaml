@@ -11,6 +11,7 @@ properties:
   weight: 4
   costGp: 5
   range: Close
+  longRange: Near
 equipZones: [MainHand]
 equipLayer: Held
 twoHanded: false

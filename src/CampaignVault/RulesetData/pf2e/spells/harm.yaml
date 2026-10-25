@@ -7,7 +7,9 @@ level: 1
 classes: [cleric]
 concentration: false
 castingTime: Single Action to Three Actions
-verbal: true
+castKind: action
+actionCost: 1
+verbal: false
 somatic: true
 material: false
 materialConsumed: false

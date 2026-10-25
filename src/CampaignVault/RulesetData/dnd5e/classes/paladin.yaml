@@ -5,7 +5,7 @@ system: dnd5e
 hitDie: d10
 casterType: Half
 savingThrows: [Wisdom, Charisma]
-pools: [spell_slots_1, spell_slots_2, spell_slots_3, spell_slots_4, spell_slots_5, channel_divinity]
+pools: [spell_slots_1, spell_slots_2, spell_slots_3, spell_slots_4, spell_slots_5, channel_divinity, lay_on_hands]
 aliases: [paladin]
 skillChoices: { count: 2, from: [Athletics, Insight, Intimidation, Medicine, Persuasion, Religion] }
 proficiencies: { armor: [light, medium, heavy, shields], weapons: [simple, martial] }

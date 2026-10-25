@@ -5,9 +5,13 @@ name: concordant_choir
 system: pf2e
 level: 1
 classes: [bard, cleric]
-concentration: true
+concentration: false
 castingTime: Single Action to Three Actions
-verbal: true
+castKind: action
+actionCost: 1
+basicSave: true
+verbal: false
 somatic: false
 material: false
 materialConsumed: false
+saveType: fortitude

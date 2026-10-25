@@ -6,6 +6,8 @@ school: necromancy
 classes: [cleric]
 concentration: false
 castingTime: 1 action
+castKind: action
+attackType: melee
 verbal: true
 somatic: true
 material: false

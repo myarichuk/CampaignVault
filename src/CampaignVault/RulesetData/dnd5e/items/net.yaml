@@ -8,6 +8,7 @@ properties:
   weight: 3
   costGp: 1
   range: Touch
+  longRange: Close
 equipZones: [MainHand]
 equipLayer: Held
 twoHanded: false

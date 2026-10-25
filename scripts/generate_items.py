@@ -92,9 +92,8 @@ def cost_to_gp(cost: dict | None) -> float | int | None:
 def weapon_range_band(detail: dict) -> str | None:
     """Maps dnd5eapi's range/throw_range/properties onto SpatialDistanceBand.
 
-    Reach weapons (10 ft) -> Near, matching the existing convention already used by
-    the MedievalWeapons plugin (medieval_bill/halberd/pike all use `range: Near #
-    Reach weapon`). Thrown and ranged (ammunition) weapons bucket by their `normal`
+    Reach weapons (10 ft) -> Close (the band that holds 10 ft; the MedievalWeapons
+    plugin's reach weapons use the same). Thrown and ranged (ammunition) weapons bucket by their `normal`
     range in feet; the break points below are this script's own choice (there's no
     source-provided mapping to feet -> band), picked so real SRD weapons land where
     the plugin convention would expect (thrown daggers/handaxes at throw-normal 20ft
@@ -107,16 +106,31 @@ def weapon_range_band(detail: dict) -> str | None:
     properties = {p["index"] for p in detail.get("properties", [])}
 
     if "reach" in properties:
-        return BAND_NEAR
+        return BAND_CLOSE
 
+    normal, _ = weapon_ranges_ft(detail)
+    return feet_to_band(normal)
+
+
+def weapon_ranges_ft(detail: dict) -> tuple[int | None, int | None]:
+    """(normal, long) range in feet for a thrown or ranged weapon; (None, None) for plain melee."""
+    properties = {p["index"] for p in detail.get("properties", [])}
     if "thrown" in properties:
-        throw = detail.get("throw_range") or detail.get("range") or {}
-        normal = throw.get("normal")
+        rng = detail.get("throw_range") or detail.get("range") or {}
     elif detail.get("weapon_range") == "Ranged":
-        normal = (detail.get("range") or {}).get("normal")
+        rng = detail.get("range") or {}
     else:
-        return None
+        return None, None
+    return rng.get("normal"), rng.get("long")
 
+
+def weapon_long_range_band(detail: dict) -> str | None:
+    """The `longRange` band: a target past `range` but within it is hit with disadvantage (SRD 5.1)."""
+    _, long = weapon_ranges_ft(detail)
+    return feet_to_band(long)
+
+
+def feet_to_band(normal: int | None) -> str | None:
     if normal is None:
         return None
     if normal <= 5:
@@ -221,6 +235,9 @@ def load_weapon(entry: dict) -> tuple[str, dict]:
     range_band = weapon_range_band(detail)
     if range_band:
         props["range"] = range_band
+    long_band = weapon_long_range_band(detail)
+    if long_band and long_band != range_band:
+        props["longRange"] = long_band
 
     props.update(load_overlay().get(slug, {}))
 

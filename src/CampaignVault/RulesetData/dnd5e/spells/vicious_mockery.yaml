@@ -1,12 +1,13 @@
 # Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
 name: vicious_mockery
 system: dnd5e
-tags: [mental]
 level: 0
 school: enchantment
 classes: [bard]
+tags: [mental]
 concentration: false
 castingTime: 1 action
+castKind: action
 verbal: true
 somatic: false
 material: false

@@ -6,6 +6,7 @@ school: abjuration
 classes: [bard, cleric, druid, paladin, sorcerer, warlock, wizard]
 concentration: false
 castingTime: 1 action
+castKind: action
 verbal: true
 somatic: true
 material: false

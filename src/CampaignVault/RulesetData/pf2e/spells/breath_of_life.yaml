@@ -5,9 +5,11 @@ name: breath_of_life
 system: pf2e
 level: 5
 classes: [cleric]
-concentration: true
+concentration: false
 castingTime: 1 reaction
-verbal: true
+castKind: reaction
+actionCost: 0
+verbal: false
 somatic: false
 material: false
 materialConsumed: false

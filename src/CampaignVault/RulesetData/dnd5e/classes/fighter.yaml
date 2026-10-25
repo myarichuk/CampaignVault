@@ -5,7 +5,7 @@ system: dnd5e
 hitDie: d10
 casterType: None
 savingThrows: [Strength, Constitution]
-pools: [action_surge, second_wind]
+pools: [action_surge, second_wind, indomitable]
 aliases: [fighter]
 skillChoices: { count: 2, from: [Acrobatics, Animal Handling, Athletics, History, Insight, Intimidation, Perception, Survival] }
 proficiencies: { armor: [light, medium, heavy, shields], weapons: [simple, martial] }

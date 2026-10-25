@@ -6,5 +6,5 @@ system: pf2e
 mechanicalSummary: You can maintain a spell with hardly a thought.
 extraPools: []
 category: class
-classes: [bard, druid, necromancer, sorcerer, summoner, witch, wizard]
+classes: [bard, druid, witch, wizard]
 level: 16

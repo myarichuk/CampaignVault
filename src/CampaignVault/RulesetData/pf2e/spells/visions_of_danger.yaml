@@ -5,9 +5,13 @@ name: visions_of_danger
 system: pf2e
 level: 7
 classes: [bard]
-concentration: true
+concentration: false
 castingTime: 3 actions
-verbal: true
+castKind: action
+actionCost: 3
+basicSave: true
+verbal: false
 somatic: true
 material: false
 materialConsumed: false
+saveType: will

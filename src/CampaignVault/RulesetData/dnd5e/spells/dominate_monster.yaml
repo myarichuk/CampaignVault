@@ -1,12 +1,13 @@
 # Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
 name: dominate_monster
 system: dnd5e
-tags: [charm, compulsion]
 level: 8
 school: enchantment
 classes: [bard, sorcerer, warlock, wizard]
+tags: [charm, compulsion]
 concentration: true
 castingTime: 1 action
+castKind: action
 verbal: true
 somatic: true
 material: false

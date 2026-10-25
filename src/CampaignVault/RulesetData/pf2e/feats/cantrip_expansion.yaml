@@ -6,5 +6,5 @@ system: pf2e
 mechanicalSummary: Study broadens your range of simple spells.
 extraPools: []
 category: class
-classes: [bard, cleric, magus, oracle, psychic, sorcerer, witch, wizard]
+classes: [bard, cleric, witch, wizard]
 level: 2

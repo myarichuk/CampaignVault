@@ -6,6 +6,7 @@ school: transmutation
 classes: [sorcerer, warlock, wizard]
 concentration: true
 castingTime: 1 bonus action
+castKind: bonus
 verbal: true
 somatic: true
 material: false

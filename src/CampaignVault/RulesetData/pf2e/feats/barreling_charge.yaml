@@ -9,6 +9,6 @@ prerequisites:
 mechanicalSummary: You rush forward, moving enemies aside to reach your foe.
 extraPools: []
 category: class
-classes: [barbarian, fighter]
+classes: [fighter]
 skills: [Athletics]
 level: 4

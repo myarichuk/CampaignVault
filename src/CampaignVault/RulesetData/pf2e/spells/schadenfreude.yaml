@@ -5,9 +5,12 @@ name: schadenfreude
 system: pf2e
 level: 1
 classes: [bard, cleric, witch, wizard]
-concentration: true
+concentration: false
 castingTime: 1 reaction
-verbal: true
+castKind: reaction
+actionCost: 0
+verbal: false
 somatic: false
 material: false
 materialConsumed: false
+saveType: will

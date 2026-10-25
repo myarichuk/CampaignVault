@@ -6,5 +6,5 @@ system: pf2e
 mechanicalSummary: Your spells become a radiant display of light and color.
 extraPools: []
 category: class
-classes: [sorcerer, wizard]
+classes: [wizard]
 level: 16

@@ -5,9 +5,12 @@ name: canticle_of_everlasting_grief
 system: pf2e
 level: 8
 classes: [bard, cleric]
-concentration: true
+concentration: false
 castingTime: 2 actions
-verbal: true
+castKind: action
+actionCost: 2
+verbal: false
 somatic: true
 material: false
 materialConsumed: false
+saveType: will

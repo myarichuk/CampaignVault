@@ -6,6 +6,7 @@ school: conjuration
 classes: [sorcerer, warlock, wizard]
 concentration: false
 castingTime: 1 bonus action
+castKind: bonus
 verbal: true
 somatic: false
 material: false

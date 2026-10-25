@@ -1,12 +1,13 @@
 # Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
 name: command
 system: dnd5e
-tags: [compulsion]
 level: 1
 school: enchantment
 classes: [cleric, paladin]
+tags: [compulsion]
 concentration: false
 castingTime: 1 action
+castKind: action
 verbal: true
 somatic: false
 material: false

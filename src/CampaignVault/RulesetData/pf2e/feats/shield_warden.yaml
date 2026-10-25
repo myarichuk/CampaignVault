@@ -9,5 +9,5 @@ prerequisites:
 mechanicalSummary: When you have a shield raised, you can use your Shield Block reaction when an attack is made against an ally adjacent to you.
 extraPools: []
 category: class
-classes: [champion, commander, fighter]
+classes: [fighter]
 level: 6

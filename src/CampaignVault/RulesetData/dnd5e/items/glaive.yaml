@@ -9,7 +9,7 @@ properties:
   damageType: slashing
   weight: 6
   costGp: 20
-  range: Near
+  range: Close
 equipZones: [MainHand]
 equipLayer: Held
 twoHanded: true

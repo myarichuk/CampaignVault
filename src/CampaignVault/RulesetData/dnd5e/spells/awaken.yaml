@@ -6,6 +6,7 @@ school: transmutation
 classes: [bard, druid]
 concentration: false
 castingTime: 8 hours
+castKind: long
 verbal: true
 somatic: true
 material: true

@@ -6,6 +6,7 @@ school: transmutation
 classes: [cleric, druid, wizard]
 concentration: true
 castingTime: 10 minutes
+castKind: long
 verbal: true
 somatic: true
 material: true

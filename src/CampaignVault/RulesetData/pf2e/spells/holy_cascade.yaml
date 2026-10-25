@@ -5,10 +5,14 @@ name: holy_cascade
 system: pf2e
 level: 4
 classes: [cleric]
-concentration: true
+concentration: false
 castingTime: 2 actions
-verbal: true
+castKind: action
+actionCost: 2
+basicSave: true
+verbal: false
 somatic: true
 material: true
 materialText: "One vial of {{treasure 3001 \"holy water\"}}"
 materialConsumed: true
+saveType: reflex

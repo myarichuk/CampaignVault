@@ -6,6 +6,7 @@ school: conjuration
 classes: [cleric, sorcerer, wizard]
 concentration: true
 castingTime: 1 action
+castKind: action
 verbal: true
 somatic: true
 material: true

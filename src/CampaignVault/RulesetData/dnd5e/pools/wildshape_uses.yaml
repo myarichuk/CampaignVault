@@ -1,15 +1,10 @@
 # Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
 # https://creativecommons.org/licenses/by/4.0/legalcode
 name: wildshape_uses
-description: Druid Wild Shape uses (recovers on short rest)
+description: Druid Wild Shape uses, two per short rest from level 2 (SRD 5.1)
 applicableSystems: [dnd5e]
 applicableClasses: [druid]
 recovery: ShortRest
 defaultMax: 2
 levelToMaxMap:
   "2": 2
-  "4": 3
-  "8": 4
-  "12": 5
-  "16": 6
-  "20": 6

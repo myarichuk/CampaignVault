@@ -6,6 +6,8 @@ school: evocation
 classes: [cleric]
 concentration: false
 castingTime: 1 bonus action
+castKind: bonus
+attackType: melee
 verbal: true
 somatic: true
 material: false

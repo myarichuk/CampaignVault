@@ -5,9 +5,11 @@ name: wall_of_force
 system: pf2e
 level: 6
 classes: [bard, witch, wizard]
-concentration: true
+concentration: false
 castingTime: 3 actions
-verbal: true
+castKind: action
+actionCost: 3
+verbal: false
 somatic: true
 material: false
 materialConsumed: false

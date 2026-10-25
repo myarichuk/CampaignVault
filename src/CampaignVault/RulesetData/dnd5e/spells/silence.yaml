@@ -6,6 +6,8 @@ school: illusion
 classes: [bard, cleric, ranger]
 concentration: true
 castingTime: 1 action
+castKind: action
+ritual: true
 verbal: true
 somatic: true
 material: false

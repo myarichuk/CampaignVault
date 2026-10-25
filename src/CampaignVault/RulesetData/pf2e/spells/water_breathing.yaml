@@ -5,9 +5,10 @@ name: water_breathing
 system: pf2e
 level: 2
 classes: [cleric, druid, witch, wizard]
-concentration: true
+concentration: false
 castingTime: 1 minute
-verbal: true
+castKind: long
+verbal: false
 somatic: true
 material: false
 materialConsumed: false

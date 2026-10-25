@@ -6,6 +6,7 @@ school: illusion
 classes: [bard, druid, wizard]
 concentration: false
 castingTime: 10 minutes
+castKind: long
 verbal: true
 somatic: true
 material: false

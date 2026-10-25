@@ -56,8 +56,9 @@ Rules content and features left out on purpose, or deferred. Each entry says why
   - Range (built, M-80): `range` is the normal maximum band, `longRange` lets a farther target be hit with disadvantage, `minRange`
     refuses a closer one, and a 5e ranged weapon attack with a living hostile (the other side of the PC/NPC line) recorded within
     Touch has disadvantage. An area spell checks its origin point against `range` and the targets against `aoeRadius` from the origin.
-    Everything passes when no position is recorded. Not done: reach weapons, PF2e's range increments, and a hostile found only among
-    the characters the action loaded.
+    Everything passes when no position is recorded. Reach weapons are Close; PF2e long range is -2 per distance band beyond
+    `range` (a band stands in for a range increment). Not done: a hostile found only among the characters the action loaded, and
+    the melee auto-crit against a paralyzed target also fires from a reach weapon at 10 ft (bands can't tell 5 from 10).
 
 - **Scripted effects (not built, on purpose).** The effect vocabulary now covers numeric bonuses, advantage,
   extra damage dice, critical range, resistance, flat damage reduction, evasion, and initiative, speed and passive bonuses. A sandboxed script (Jint: no host access, a time and memory cap)
@@ -67,6 +68,21 @@ Rules content and features left out on purpose, or deferred. Each entry says why
   effect records the vocabulary uses, never something the DM homebrews.
 
 ## Done since the first draft
+
+- **Code review fixes (2026-10-15, REVIEW_REMEDIATION_PLAN.md Phases 1–2).** Data: the SRD spell-slot table for every
+  caster level, pact magic at warlock 2, sorcery points to 20, Channel Divinity per class, Wild Shape 2, Rage, Lay on
+  Hands, Arcane Recovery and Indomitable pools; petrified resists everything; unconscious no longer hides prone; reach
+  weapons are Close and ranged weapons carry `longRange`; spells carry their casting kind (`castKind`), PF2e `actionCost`,
+  `attackType` (touch = melee), `ritual`, PF2e `saveType`/`basicSave`; PF2e spells no longer claim concentration or a
+  verbal component. Code: stabilizing resets the death-save tally (and `death_save` `stabilize: true` does it without a
+  roll); a spell's data sets its action economy; PF2e untrained attacks add no level, thrown weapons add Strength and
+  propulsive half; rider dice double on a critical; PF2e shields count only while raised (`Raise a Shield`); heavy armor's
+  Strength minimum slows, `stealthDisadvantage` is the `noisy_armor` condition, PF2e check penalties and the Strength
+  threshold apply, versatile weapons use the larger die with `twoHanded`; PF2e grapple degrees, the grappler's Athletics
+  Escape DC and MAP; the 5e defender may use Acrobatics; a long rest needs 8 hours and 1 HP; a paired slot must hold the
+  spell; range disadvantage goes through the roll pipeline; ranged-in-melee ignores an incapacitated hostile and covers
+  thrown weapons; PF2e Sneak Attack needs an agile, finesse or ranged weapon; a missing PF2e save counts as trained;
+  Legendary spellcasting at 19; going without food lasts 3 + Constitution days.
 
 - **Mechanics review fixes (2026-10).** The engine owns what it can compute and the prompts say so: long-rest healing,
   hit dice and exhaustion, 0 HP (Unconscious, Prone, 5e death saves, PF2e dying and wounded), temporary HP, spell slot
@@ -106,6 +122,12 @@ Rules content and features left out on purpose, or deferred. Each entry says why
 
 ## Deferred
 
+- **Still open from the 2026-10 code review.** PF2e conditions beyond their listed modifiers (drained's HP loss,
+  stupefied's flat check to cast, frightened and sickened decrementing at turn end, enfeebled on every Strength roll);
+  a grapple's size limit (no size on the sheet); PF2e feat resistance stays "halve" unless the feat uses the flat
+  `damageReduction` kind; shield `hardness` and Shield Block; a 5e spell with a long casting time is refused in combat
+  but ritual casting isn't modelled outside it; a caster level above 20 or a multiclass slot table; 5e subraces and
+  dragonborn resistance.
 - **Subclass features that are rule text only.** The 12 SRD subclasses' features are data (by level, with their own
   choices), shown on the sheet and to the DM. The engine applies the ones the effect vocabulary covers (fighting
   styles, Improved Critical, Divine Strike, Colossus Slayer, Draconic Resilience's hit points and armor class,
@@ -118,8 +140,6 @@ Rules content and features left out on purpose, or deferred. Each entry says why
 - **PF2e and the new effect kinds.** Advantage, extra damage dice and critical range apply to 5e attacks; PF2e rolls take
   the numeric kinds, resistance and flat damage reduction (damage goes through the same resolver as 5e's).
 
-- **PF2e versatile heritages** (nephilim, changeling, aiuvarin, dromaar; Player Core 2: dhampir, dragonblood,
-  duskwalker). They go with any ancestry, so `generate_pf2e_origins.py` skips them today.
 - **PF2e cleric deity's skill.** It's a free skill pick until there are deities.
 - **PF2e druid's Voice of Nature** feat choice.
 - **5e Expertise** (bard 3 and 10, rogue 1 and 6), ranger favored enemy and natural explorer.

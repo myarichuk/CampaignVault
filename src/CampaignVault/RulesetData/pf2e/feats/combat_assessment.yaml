@@ -6,5 +6,5 @@ system: pf2e
 mechanicalSummary: You make a telegraphed attack to learn about your foe.
 extraPools: []
 category: class
-classes: [commander, fighter]
+classes: [fighter]
 level: 1

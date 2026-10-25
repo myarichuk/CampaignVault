@@ -6,6 +6,8 @@ school: evocation
 classes: [warlock]
 concentration: false
 castingTime: 1 action
+castKind: action
+attackType: ranged
 verbal: true
 somatic: true
 material: false

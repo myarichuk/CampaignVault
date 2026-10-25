@@ -5,9 +5,11 @@ name: gentle_landing
 system: pf2e
 level: 1
 classes: [druid, witch, wizard]
-concentration: true
+concentration: false
 castingTime: 1 reaction
-verbal: true
+castKind: reaction
+actionCost: 0
+verbal: false
 somatic: false
 material: false
 materialConsumed: false

@@ -5,9 +5,12 @@ name: blinding_fury
 system: pf2e
 level: 6
 classes: [bard, cleric, druid]
-concentration: true
+concentration: false
 castingTime: 1 reaction
-verbal: true
+castKind: reaction
+actionCost: 0
+verbal: false
 somatic: false
 material: false
 materialConsumed: false
+saveType: will

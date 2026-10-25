@@ -6,5 +6,5 @@ system: pf2e
 mechanicalSummary: You draw your weapon and attack with the same motion.
 extraPools: []
 category: class
-classes: [gunslinger, ranger, rogue]
+classes: [ranger, rogue]
 level: 2

@@ -7,7 +7,10 @@ level: 2
 classes: [bard, cleric, witch, wizard]
 concentration: false
 castingTime: 1 reaction
-verbal: true
+castKind: reaction
+actionCost: 0
+verbal: false
 somatic: false
 material: false
 materialConsumed: false
+saveType: will

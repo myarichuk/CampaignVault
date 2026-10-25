@@ -6,6 +6,8 @@ school: necromancy
 classes: [cleric, wizard]
 concentration: false
 castingTime: 1 action
+castKind: action
+ritual: true
 verbal: true
 somatic: true
 material: true

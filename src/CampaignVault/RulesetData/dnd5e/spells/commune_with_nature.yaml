@@ -6,6 +6,8 @@ school: divination
 classes: [druid, ranger]
 concentration: false
 castingTime: 1 minute
+castKind: long
+ritual: true
 verbal: true
 somatic: true
 material: false

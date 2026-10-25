@@ -6,6 +6,7 @@ school: illusion
 classes: [bard, wizard]
 concentration: true
 castingTime: 1 action
+castKind: action
 verbal: false
 somatic: true
 material: false

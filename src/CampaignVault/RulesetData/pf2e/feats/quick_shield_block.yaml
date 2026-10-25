@@ -9,5 +9,5 @@ prerequisites:
 mechanicalSummary: You can bring your shield into place with hardly a thought.
 extraPools: []
 category: class
-classes: [champion, fighter]
+classes: [fighter]
 level: 8

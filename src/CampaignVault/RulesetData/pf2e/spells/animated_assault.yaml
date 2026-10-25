@@ -5,12 +5,16 @@ name: animated_assault
 system: pf2e
 level: 2
 classes: [bard, witch, wizard]
-concentration: true
+concentration: false
 castingTime: 2 actions
-verbal: true
+castKind: action
+actionCost: 2
+basicSave: true
+verbal: false
 somatic: true
 material: false
 materialConsumed: false
+saveType: reflex
 summon:
   inlineSeed:
     attacks: ["Assailant's own attack: the GM applies the animated assailant's statistics and passes maxHp explicitly."]

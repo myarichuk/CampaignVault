@@ -5,9 +5,10 @@ name: energy_aegis
 system: pf2e
 level: 7
 classes: [bard, cleric, druid, witch, wizard]
-concentration: true
+concentration: false
 castingTime: 1 minute
-verbal: true
+castKind: long
+verbal: false
 somatic: true
 material: false
 materialConsumed: false

@@ -9,6 +9,6 @@ prerequisites:
 mechanicalSummary: After downing a foe, you menace another.
 extraPools: []
 category: class
-classes: [rogue, swashbuckler]
+classes: [rogue]
 skills: [Intimidation]
 level: 1

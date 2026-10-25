@@ -1,12 +1,13 @@
 # Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
 name: symbol
 system: dnd5e
-tags: [fear, mental]
 level: 7
 school: abjuration
 classes: [bard, cleric, wizard]
+tags: [fear, mental]
 concentration: false
 castingTime: 1 minute
+castKind: long
 verbal: true
 somatic: true
 material: true

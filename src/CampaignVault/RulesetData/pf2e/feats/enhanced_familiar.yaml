@@ -7,5 +7,5 @@ prerequisite: a familiar
 mechanicalSummary: You infuse your familiar with additional primal energy, increasing its abilities.
 extraPools: []
 category: class
-classes: [animist, druid, magus, sorcerer, thaumaturge, witch, wizard]
+classes: [druid, witch, wizard]
 level: 2

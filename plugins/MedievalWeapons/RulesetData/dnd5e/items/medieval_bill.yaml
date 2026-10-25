@@ -10,7 +10,7 @@ properties:
   damageType: slashing
   weight: 5
   costGp: 3
-  range: Near  # Reach weapon
+  range: Close  # Reach weapon (10 ft)
   historicalPeriod: "Late Medieval (15th–16th century)"
   historicalRole: "Peasant anti-cavalry polearm with hooking capability; effective in formations"
   historicalMaterial: "Ash pole with iron-forged hook and spike"

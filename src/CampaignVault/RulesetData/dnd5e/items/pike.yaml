@@ -9,7 +9,7 @@ properties:
   damageType: piercing
   weight: 18
   costGp: 5
-  range: Near
+  range: Close
 equipZones: [MainHand]
 equipLayer: Held
 twoHanded: true

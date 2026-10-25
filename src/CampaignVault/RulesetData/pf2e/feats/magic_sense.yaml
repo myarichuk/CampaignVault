@@ -6,5 +6,5 @@ system: pf2e
 mechanicalSummary: You have a literal sixth sense for ambient magic in your vicinity.
 extraPools: []
 category: class
-classes: [magus, oracle, sorcerer, wizard]
+classes: [wizard]
 level: 12

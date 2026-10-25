@@ -6,5 +6,5 @@ system: pf2e
 mechanicalSummary: You have practiced quickly switching between combat styles and the equipment needed for them.
 extraPools: []
 category: class
-classes: [exemplar, fighter]
+classes: [fighter]
 level: 2

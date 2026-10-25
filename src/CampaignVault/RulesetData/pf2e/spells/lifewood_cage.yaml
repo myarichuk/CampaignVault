@@ -5,9 +5,12 @@ name: lifewood_cage
 system: pf2e
 level: 7
 classes: [druid, witch, wizard]
-concentration: true
+concentration: false
 castingTime: 3 actions
-verbal: true
+castKind: action
+actionCost: 3
+verbal: false
 somatic: true
 material: false
 materialConsumed: false
+saveType: reflex

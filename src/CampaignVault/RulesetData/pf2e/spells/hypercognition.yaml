@@ -5,9 +5,11 @@ name: hypercognition
 system: pf2e
 level: 3
 classes: [bard]
-concentration: true
+concentration: false
 castingTime: 1 action
-verbal: true
+castKind: action
+actionCost: 1
+verbal: false
 somatic: false
 material: false
 materialConsumed: false

@@ -1,0 +1,12 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+# Engine-managed: ArmorParameterResolver puts it on a character wearing armor with stealthDisadvantage and takes it off again.
+name: noisy_armor
+system: dnd5e
+durationType: Manual
+mechanicalSummary: Disadvantage on Dexterity (Stealth) checks from the armor worn
+moodHint: clanking, conspicuous
+immunities: []
+suppresses: []
+effects:
+  - { kind: disadvantage, on: check, subject: stealth }

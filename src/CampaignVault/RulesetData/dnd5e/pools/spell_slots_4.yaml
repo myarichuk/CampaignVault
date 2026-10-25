@@ -8,5 +8,4 @@ defaultMax: 1
 levelToMaxMap:
   "7": 1
   "8": 2
-  "9": 2
-  "20": 2
+  "9": 3

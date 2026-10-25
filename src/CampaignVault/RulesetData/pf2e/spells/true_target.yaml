@@ -5,9 +5,11 @@ name: true_target
 system: pf2e
 level: 7
 classes: [bard, witch, wizard]
-concentration: true
+concentration: false
 castingTime: 1 action
-verbal: true
+castKind: action
+actionCost: 1
+verbal: false
 somatic: false
 material: false
 materialConsumed: false

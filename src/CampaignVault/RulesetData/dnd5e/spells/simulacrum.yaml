@@ -6,6 +6,7 @@ school: illusion
 classes: [wizard]
 concentration: false
 castingTime: 12 hours
+castKind: long
 verbal: true
 somatic: true
 material: true

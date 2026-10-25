@@ -6,5 +6,5 @@ system: pf2e
 mechanicalSummary: You have an intuitive sense that alerts you to the presence of traps.
 extraPools: []
 category: class
-classes: [investigator, rogue]
+classes: [rogue]
 level: 1

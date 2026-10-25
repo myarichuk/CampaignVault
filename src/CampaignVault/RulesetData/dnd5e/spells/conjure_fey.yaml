@@ -6,6 +6,7 @@ school: conjuration
 classes: [druid, warlock]
 concentration: true
 castingTime: 1 minute
+castKind: long
 verbal: true
 somatic: true
 material: false

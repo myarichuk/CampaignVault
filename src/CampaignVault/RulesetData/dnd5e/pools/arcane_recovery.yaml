@@ -1,0 +1,8 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: arcane_recovery
+description: Wizard Arcane Recovery, once per day after a short rest (slots recovered up to half the wizard level, rounded up, none 6th level or higher)
+applicableSystems: [dnd5e]
+applicableClasses: [wizard]
+recovery: Daily
+defaultMax: 1

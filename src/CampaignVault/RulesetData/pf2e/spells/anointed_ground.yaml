@@ -5,9 +5,10 @@ name: anointed_ground
 system: pf2e
 level: 3
 classes: [cleric]
-concentration: true
+concentration: false
 castingTime: 1 minute
-verbal: true
+castKind: long
+verbal: false
 somatic: true
 material: true
 materialText: 3 gp worth of oil

@@ -73,3 +73,12 @@ Your right to use the software terminates if you breach any part of these terms.
 ## No Liability
 
 The software is provided "as is" without any warranty. In no event shall the licensor be liable for any damages arising from your use of or inability to use the software.
+
+## Exception: bundled game content
+
+These terms cover CampaignVault's own code and documentation only. The game reference data under
+`src/CampaignVault/RulesetData/dnd5e/` is material from the System Reference Document 5.1 by Wizards of the Coast LLC,
+licensed under the Creative Commons Attribution 4.0 International License, and the data under
+`src/CampaignVault/RulesetData/pf2e/` is Pathfinder Player Core / Player Core 2 material by Paizo Inc. licensed under the
+ORC License. That data is redistributed under those licenses, not under these terms, and nothing here adds any
+restriction to it. See NOTICE.md for the required notices.

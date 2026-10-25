@@ -5,9 +5,11 @@ name: blazing_bolt
 system: pf2e
 level: 2
 classes: [druid, witch, wizard]
-concentration: true
+concentration: false
 castingTime: Single Action to Three Actions
-verbal: true
+castKind: action
+actionCost: 1
+verbal: false
 somatic: true
 material: false
 materialConsumed: false

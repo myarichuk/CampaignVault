@@ -1,12 +1,13 @@
 # Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
 name: dominate_person
 system: dnd5e
-tags: [charm, compulsion]
 level: 5
 school: enchantment
 classes: [bard, sorcerer, wizard]
+tags: [charm, compulsion]
 concentration: true
 castingTime: 1 action
+castKind: action
 verbal: true
 somatic: true
 material: false

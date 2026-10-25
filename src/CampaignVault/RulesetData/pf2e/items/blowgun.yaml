@@ -13,6 +13,7 @@ properties:
   costGp: 0.1
   reload: 1
   range: Close
+  longRange: Far
 equipZones: [MainHand]
 equipLayer: Held
 twoHanded: false

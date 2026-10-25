@@ -76,9 +76,21 @@ def write_spell(path: Path, header: str, body: dict) -> None:
     if body.get("classes"):
         classes = ", ".join(body["classes"])
         lines.append(f"classes: [{classes}]")
+    if body.get("tags"):
+        lines.append(f"tags: [{', '.join(body['tags'])}]")
     lines.append(f"concentration: {'true' if body.get('concentration') else 'false'}")
     if body.get("castingTime"):
         lines.append(f"castingTime: {yaml_quote(body['castingTime'])}")
+    if body.get("castKind"):
+        lines.append(f"castKind: {body['castKind']}")
+    if body.get("actionCost") is not None:
+        lines.append(f"actionCost: {body['actionCost']}")
+    if body.get("attackType"):
+        lines.append(f"attackType: {body['attackType']}")
+    if body.get("ritual"):
+        lines.append("ritual: true")
+    if body.get("basicSave"):
+        lines.append("basicSave: true")
     if body.get("verbal") is not None:
         lines.append(f"verbal: {'true' if body['verbal'] else 'false'}")
     if body.get("somatic") is not None:
@@ -641,6 +653,27 @@ def parse_dnd5e_mechanics(detail: dict) -> dict:
     return result
 
 
+def dnd5e_cast_kind(casting_time: str) -> str:
+    """The action-economy slot a cast takes: action, bonus, reaction, or long (a minute or more)."""
+    text = casting_time.strip().lower()
+    if "bonus" in text:
+        return "bonus"
+    if "reaction" in text:
+        return "reaction"
+    if text.startswith("1 action"):
+        return "action"
+    return "long"
+
+
+def read_kept_tags(folder: Path) -> dict[str, list[str]]:
+    kept: dict[str, list[str]] = {}
+    for path in folder.glob("*.yaml"):
+        m = re.search(r"^tags: \[(.*)\]$", path.read_text(encoding="utf-8"), re.M)
+        if m:
+            kept[path.stem] = [t.strip() for t in m.group(1).split(",") if t.strip()]
+    return kept
+
+
 def generate_dnd5e() -> int:
     index = fetch_json("https://www.dnd5eapi.co/api/spells")
     spells = index["results"]
@@ -662,6 +695,9 @@ def generate_dnd5e() -> int:
             "classes": classes,
             "concentration": bool(detail.get("concentration")),
             "castingTime": detail.get("casting_time") or "1 action",
+            "castKind": dnd5e_cast_kind(detail.get("casting_time") or "1 action"),
+            "attackType": (detail.get("attack_type") or "").lower() or None,
+            "ritual": bool(detail.get("ritual")) or None,
             "verbal": "V" in components,
             "somatic": "S" in components,
             "material": "M" in components,
@@ -694,10 +730,15 @@ def generate_dnd5e() -> int:
     if unused_summon:
         raise ValueError(f"summon overlay entries match no API spell: {', '.join(unused_summon)}")
 
+    # Hand-kept tags (charm, compulsion, fear, mental: the effect vocabulary's spell categories) are not in the API;
+    # they survive regeneration by being read back from the files on disk.
+    kept_tags = read_kept_tags(DND5E_DIR)
     for path in DND5E_DIR.glob("*.yaml"):
         path.unlink()
 
     for slug in sorted(generated):
+        if slug in kept_tags:
+            generated[slug]["tags"] = kept_tags[slug]
         write_spell(DND5E_DIR / f"{slug}.yaml", DND5E_HEADER, generated[slug])
 
     print(f"Generated {len(generated)} dnd5e spells")
@@ -737,9 +778,28 @@ def pf2e_level(spell: dict) -> int:
     return int(spell.get("level") or 1)
 
 
-def pf2e_concentration(spell: dict) -> bool:
-    traits = {t.lower() for t in spell.get("trait") or []}
-    return "concentrate" in traits
+def pf2e_action_cost(spell: dict) -> tuple[int | None, str]:
+    """(actions, castKind). Variable casts ("Single Action to Three Actions") cost their minimum; the caller may pay more."""
+    actions = (spell.get("actions") or "").strip().lower()
+    if "reaction" in actions:
+        return 0, "reaction"
+    if "free" in actions:
+        return 0, "free"
+    words = {"single": 1, "one": 1, "two": 2, "three": 3}
+    for word, n in words.items():
+        if actions.startswith(word):
+            return n, "action"
+    return None, "long"
+
+
+def pf2e_save_type(text: str | None) -> str | None:
+    """"basic Reflex" -> "reflex"; None when the spell has no save."""
+    if not text:
+        return None
+    for save in ("fortitude", "reflex", "will"):
+        if save in text.lower():
+            return save
+    return None
 
 
 def pf2e_somatic(spell: dict) -> bool:
@@ -759,7 +819,7 @@ def fetch_aon_spells() -> list[dict]:
                 ]
             }
         },
-        "_source": ["name", "level", "trait", "tradition", "actions", "cost"],
+        "_source": ["name", "level", "trait", "tradition", "actions", "cost", "range", "saving_throw"],
     }
     result = fetch_json(AON_SEARCH_URL, data=json.dumps(query).encode("utf-8"))
     return [hit["_source"] for hit in result["hits"]["hits"]]
@@ -786,6 +846,10 @@ def generate_pf2e() -> int:
             n += 1
 
         cost_text = spell.get("cost")
+        action_cost, cast_kind = pf2e_action_cost(spell)
+        # AoN's range is feet, or the word "touch" for a touch-range spell (a melee spell attack).
+        range_value = spell.get("range")
+        touch = isinstance(range_value, str) and range_value.strip().lower() == "touch"
 
         generated[slug] = {
             "display": spell["name"],
@@ -793,9 +857,16 @@ def generate_pf2e() -> int:
             "system": "pf2e",
             "level": pf2e_level(spell),
             "classes": pf2e_classes(spell),
-            "concentration": pf2e_concentration(spell),
+            # The Remaster has no concentration: "concentrate" is an action trait, and sustaining is per spell.
+            "concentration": False,
             "castingTime": pf2e_casting_time(spell),
-            "verbal": True,
+            "actionCost": action_cost,
+            "castKind": cast_kind,
+            "attackType": "melee" if touch else None,
+            "saveType": pf2e_save_type(spell.get("saving_throw")),
+            "basicSave": "basic" in (spell.get("saving_throw") or "").lower() or None,
+            # No spell components in the Remaster; manipulate is the closest thing to a somatic component.
+            "verbal": False,
             "somatic": pf2e_somatic(spell),
             "material": bool(cost_text),
             "materialText": cost_text,

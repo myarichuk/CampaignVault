@@ -5,9 +5,12 @@ name: blessed_boundary
 system: pf2e
 level: 6
 classes: [cleric]
-concentration: true
+concentration: false
 castingTime: 3 actions
-verbal: true
+castKind: action
+actionCost: 3
+verbal: false
 somatic: true
 material: false
 materialConsumed: false
+saveType: reflex

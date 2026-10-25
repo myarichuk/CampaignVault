@@ -7,7 +7,9 @@ level: 9
 classes: [druid]
 concentration: false
 castingTime: 3 actions
-verbal: true
+castKind: action
+actionCost: 3
+verbal: false
 somatic: true
 material: false
 materialConsumed: false

@@ -1,0 +1,8 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: lay_on_hands
+description: Paladin Lay on Hands healing pool, five hit points per paladin level (recovers on long rest)
+applicableSystems: [dnd5e]
+applicableClasses: [paladin]
+recovery: LongRest
+maxFrom: { levelMultiplier: 5, min: 5 }

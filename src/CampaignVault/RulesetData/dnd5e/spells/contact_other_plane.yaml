@@ -6,6 +6,8 @@ school: divination
 classes: [warlock, wizard]
 concentration: false
 castingTime: 1 minute
+castKind: long
+ritual: true
 verbal: true
 somatic: false
 material: false

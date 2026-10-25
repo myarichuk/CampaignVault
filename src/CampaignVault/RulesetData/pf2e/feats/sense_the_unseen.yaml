@@ -6,5 +6,5 @@ system: pf2e
 mechanicalSummary: When you look for foes, you can catch even the slightest cues, such as their minute movements or the shifting of air currents on your skin.
 extraPools: []
 category: class
-classes: [investigator, ranger, rogue]
+classes: [ranger, rogue]
 level: 14

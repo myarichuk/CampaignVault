@@ -5,9 +5,11 @@ name: sacred_form
 system: pf2e
 level: 6
 classes: [cleric]
-concentration: true
+concentration: false
 castingTime: 2 actions
-verbal: true
+castKind: action
+actionCost: 2
+verbal: false
 somatic: true
 material: false
 materialConsumed: false

@@ -11,7 +11,7 @@ properties:
   damageType: piercing
   bulk: 2
   costGp: 1
-  range: Near
+  range: Close
 equipZones: [MainHand]
 equipLayer: Held
 twoHanded: true

@@ -6,6 +6,7 @@ school: evocation
 classes: [warlock]
 concentration: false
 castingTime: 1 reaction
+castKind: reaction
 verbal: true
 somatic: true
 material: false

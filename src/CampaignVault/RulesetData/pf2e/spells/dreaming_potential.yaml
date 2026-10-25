@@ -5,9 +5,10 @@ name: dreaming_potential
 system: pf2e
 level: 5
 classes: [bard]
-concentration: true
+concentration: false
 castingTime: 10 minutes
-verbal: true
+castKind: long
+verbal: false
 somatic: true
 material: false
 materialConsumed: false

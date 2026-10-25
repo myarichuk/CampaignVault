@@ -5,6 +5,10 @@ and **swade**. All entries use the `ss_` prefix so they never shadow core
 (regenerated) or MedievalWeapons (`medieval_`) definitions — plugin
 templates merge last-wins on `name:` *per system*.
 
+The `swade` entries are original homebrew written in the notation of the Savage Worlds Adventure Edition (a trademark of
+Pinnacle Entertainment Group, which does not license its rules openly). No Pinnacle text or stat block is reproduced;
+the files exist so a table that already owns that game can use the pack with it.
+
 ## Contents (61 blueprints)
 
 | System | Weapons (5) | Armor (5) | Gear |

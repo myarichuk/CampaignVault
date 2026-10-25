@@ -5,9 +5,10 @@ name: augury
 system: pf2e
 level: 2
 classes: [bard, cleric]
-concentration: true
+concentration: false
 castingTime: 10 minutes
-verbal: true
+castKind: long
+verbal: false
 somatic: true
 material: false
 materialConsumed: false

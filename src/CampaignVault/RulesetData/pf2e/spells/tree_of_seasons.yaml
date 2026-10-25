@@ -5,9 +5,11 @@ name: tree_of_seasons
 system: pf2e
 level: 6
 classes: [druid]
-concentration: true
+concentration: false
 castingTime: 2 actions
-verbal: true
+castKind: action
+actionCost: 2
+verbal: false
 somatic: true
 material: false
 materialConsumed: false

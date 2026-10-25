@@ -1,12 +1,13 @@
 # Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
 name: calm_emotions
 system: dnd5e
-tags: [charm]
 level: 2
 school: enchantment
 classes: [bard, cleric]
+tags: [charm]
 concentration: true
 castingTime: 1 action
+castKind: action
 verbal: true
 somatic: true
 material: false

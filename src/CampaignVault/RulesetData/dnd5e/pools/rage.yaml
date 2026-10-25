@@ -1,0 +1,15 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: rage
+description: Barbarian Rage uses per long rest (SRD 5.1 table; unlimited at level 20)
+applicableSystems: [dnd5e]
+applicableClasses: [barbarian]
+recovery: LongRest
+defaultMax: 2
+levelToMaxMap:
+  "1": 2
+  "3": 3
+  "6": 4
+  "12": 5
+  "17": 6
+  "20": 99

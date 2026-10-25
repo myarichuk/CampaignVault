@@ -5,9 +5,13 @@ name: final_sacrifice
 system: pf2e
 level: 2
 classes: [bard, cleric, druid, witch, wizard]
-concentration: true
+concentration: false
 castingTime: 2 actions
-verbal: true
+castKind: action
+actionCost: 2
+basicSave: true
+verbal: false
 somatic: true
 material: false
 materialConsumed: false
+saveType: reflex

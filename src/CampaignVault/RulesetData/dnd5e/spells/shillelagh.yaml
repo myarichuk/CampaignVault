@@ -6,6 +6,7 @@ school: transmutation
 classes: [druid]
 concentration: false
 castingTime: 1 bonus action
+castKind: bonus
 verbal: true
 somatic: true
 material: true

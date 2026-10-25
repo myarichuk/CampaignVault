@@ -6,6 +6,7 @@ school: evocation
 classes: [druid]
 concentration: true
 castingTime: 1 bonus action
+castKind: bonus
 verbal: true
 somatic: true
 material: true

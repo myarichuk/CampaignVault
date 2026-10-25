@@ -6,6 +6,7 @@ school: evocation
 classes: [cleric]
 concentration: false
 castingTime: 24 hours
+castKind: long
 verbal: true
 somatic: true
 material: true

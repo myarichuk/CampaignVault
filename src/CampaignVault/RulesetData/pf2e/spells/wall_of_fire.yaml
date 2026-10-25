@@ -5,9 +5,11 @@ name: wall_of_fire
 system: pf2e
 level: 4
 classes: [druid, witch, wizard]
-concentration: true
+concentration: false
 castingTime: 3 actions
-verbal: true
+castKind: action
+actionCost: 3
+verbal: false
 somatic: true
 material: false
 materialConsumed: false

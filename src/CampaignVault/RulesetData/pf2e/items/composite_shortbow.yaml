@@ -14,6 +14,7 @@ properties:
   reload: 0
   level: 1
   range: Near
+  longRange: Distant
 equipZones: [MainHand]
 equipLayer: Held
 twoHanded: false

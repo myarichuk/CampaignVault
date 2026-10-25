@@ -1,12 +1,13 @@
 # Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
 name: zone_of_truth
 system: dnd5e
-tags: [compulsion]
 level: 2
 school: enchantment
 classes: [bard, cleric, paladin]
+tags: [compulsion]
 concentration: false
 castingTime: 1 action
+castKind: action
 verbal: true
 somatic: true
 material: false

@@ -6,6 +6,7 @@ school: divination
 classes: [bard, cleric, wizard]
 concentration: false
 castingTime: 10 minutes
+castKind: long
 verbal: true
 somatic: true
 material: true

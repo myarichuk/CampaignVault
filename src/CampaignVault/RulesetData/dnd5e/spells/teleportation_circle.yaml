@@ -6,6 +6,7 @@ school: conjuration
 classes: [bard, sorcerer, wizard]
 concentration: false
 castingTime: 1 minute
+castKind: long
 verbal: true
 somatic: false
 material: true

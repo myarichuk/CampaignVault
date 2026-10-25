@@ -5,9 +5,13 @@ name: howling_blizzard
 system: pf2e
 level: 5
 classes: [druid, witch, wizard]
-concentration: true
+concentration: false
 castingTime: Two Actions or Three Actions
-verbal: true
+castKind: action
+actionCost: 2
+basicSave: true
+verbal: false
 somatic: true
 material: false
 materialConsumed: false
+saveType: reflex

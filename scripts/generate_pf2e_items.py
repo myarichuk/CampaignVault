@@ -113,20 +113,32 @@ def cost_to_gp(price_cp: int | None) -> float | int | None:
 
 def weapon_range_band(detail: dict, traits: list[str], trait_raw: list[str]) -> str | None:
     if "Reach" in traits:
-        return BAND_NEAR
+        return BAND_CLOSE
 
+    return feet_to_band(range_increment_ft(detail, traits, trait_raw))
+
+
+def range_increment_ft(detail: dict, traits: list[str], trait_raw: list[str]) -> int | None:
+    """The weapon's range increment in feet (thrown weapons carry it in the trait text)."""
     if "Thrown" in traits:
-        normal = None
         for t in trait_raw:
             m = THROWN_RE.search(t)
             if m:
-                normal = int(m.group(1))
-                break
-    elif detail.get("weapon_type") == "Ranged":
-        normal = detail.get("range")
-    else:
+                return int(m.group(1))
         return None
+    if detail.get("weapon_type") == "Ranged":
+        return detail.get("range")
+    return None
 
+
+def weapon_long_range_band(detail: dict, traits: list[str], trait_raw: list[str]) -> str | None:
+    """Player Core: a ranged attack reaches up to six range increments, at -2 per increment past the first.
+    `longRange` is the band of the sixth increment; the per-increment penalty is the resolver's job."""
+    increment = range_increment_ft(detail, traits, trait_raw)
+    return feet_to_band(increment * 6) if increment else None
+
+
+def feet_to_band(normal: int | None) -> str | None:
     if normal is None:
         return None
     if normal <= 5:
@@ -210,6 +222,9 @@ def load_weapons() -> dict[str, dict]:
         range_band = weapon_range_band(detail, traits, trait_raw)
         if range_band:
             props["range"] = range_band
+        long_band = weapon_long_range_band(detail, traits, trait_raw)
+        if long_band and long_band != range_band:
+            props["longRange"] = long_band
 
         tags = sorted({category.lower(), detail["weapon_type"].lower(), *(t.lower() for t in traits)})
 

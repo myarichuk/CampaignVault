@@ -7,7 +7,9 @@ level: 1
 classes: [bard, cleric, druid, witch, wizard]
 concentration: false
 castingTime: 1 action
-verbal: true
+castKind: action
+actionCost: 1
+verbal: false
 somatic: true
 material: false
 materialConsumed: false

@@ -6,5 +6,5 @@ system: pf2e
 mechanicalSummary: "Your muse has opened your senses to the world beyond. "
 extraPools: []
 category: class
-classes: [bard, sorcerer]
+classes: [bard]
 level: 8

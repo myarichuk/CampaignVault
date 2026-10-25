@@ -5,9 +5,10 @@ name: vital_beacon
 system: pf2e
 level: 4
 classes: [cleric, druid]
-concentration: true
+concentration: false
 castingTime: 1 minute
-verbal: true
+castKind: long
+verbal: false
 somatic: true
 material: false
 materialConsumed: false

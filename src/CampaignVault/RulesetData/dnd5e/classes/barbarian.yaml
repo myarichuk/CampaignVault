@@ -5,7 +5,7 @@ system: dnd5e
 hitDie: d12
 casterType: None
 savingThrows: [Strength, Constitution]
-pools: []
+pools: [rage]
 aliases: [barbarian]
 skillChoices: { count: 2, from: [Animal Handling, Athletics, Intimidation, Nature, Perception, Survival] }
 proficiencies: { armor: [light, medium, shields], weapons: [simple, martial] }

@@ -6,7 +6,7 @@ durationType: Timed
 mechanicalSummary: Incapacitated; can't move or speak; unaware of surroundings; drops held items; falls prone; auto-fail STR/DEX saves; attackers have advantage; hits within 5 ft are critical hits
 moodHint: unconscious
 immunities: []
-suppresses: [incapacitated, prone]
+suppresses: [incapacitated]
 effects:
   - { kind: blocksActions }
   - { kind: speed, set: 0 }

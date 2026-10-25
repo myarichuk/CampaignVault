@@ -12,6 +12,7 @@ properties:
   bulk: 0.1
   costGp: 0.4
   range: Close
+  longRange: Distant
 equipZones: [MainHand]
 equipLayer: Held
 twoHanded: false

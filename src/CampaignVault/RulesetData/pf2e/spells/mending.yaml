@@ -5,9 +5,10 @@ name: mending
 system: pf2e
 level: 1
 classes: [bard, cleric, druid, witch, wizard]
-concentration: true
+concentration: false
 castingTime: 10 minutes
-verbal: true
+castKind: long
+verbal: false
 somatic: true
 material: false
 materialConsumed: false

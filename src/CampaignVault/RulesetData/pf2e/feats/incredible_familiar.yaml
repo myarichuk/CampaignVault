@@ -9,5 +9,5 @@ prerequisites:
 mechanicalSummary: Your familiar is imbued with even more magic than other familiars.
 extraPools: []
 category: class
-classes: [thaumaturge, witch]
+classes: [witch]
 level: 8

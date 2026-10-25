@@ -1,0 +1,12 @@
+# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0
+# https://creativecommons.org/licenses/by/4.0/legalcode
+name: indomitable
+description: Fighter Indomitable rerolls of a failed saving throw (recovers on long rest)
+applicableSystems: [dnd5e]
+applicableClasses: [fighter]
+recovery: LongRest
+defaultMax: 1
+levelToMaxMap:
+  "9": 1
+  "13": 2
+  "17": 3

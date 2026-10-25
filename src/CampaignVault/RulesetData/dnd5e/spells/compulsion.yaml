@@ -6,6 +6,7 @@ school: enchantment
 classes: [bard]
 concentration: true
 castingTime: 1 action
+castKind: action
 verbal: true
 somatic: true
 material: false

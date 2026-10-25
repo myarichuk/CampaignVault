@@ -7,4 +7,3 @@ recovery: LongRest
 defaultMax: 1
 levelToMaxMap:
   "17": 1
-  "20": 1

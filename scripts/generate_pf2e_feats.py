@@ -32,6 +32,16 @@ HEADER = (
 AON_SEARCH_URL = "https://elasticsearch.aonprd.com/aon/_search"
 AON_REMASTER_SOURCES = ["Player Core", "Player Core 2"]
 
+# The free-rules scope (LICENSING.md) ships only feats a shipped class or ancestry can take: the class and ancestry
+# files under RulesetData/pf2e, plus the versatile heritages every ancestry lists. A feat whose classes or ancestries
+# are all unshipped (Player Core 2 classes with no file yet, Lost Omens ancestries) is dropped rather than left
+# dangling in the builder; a mixed one keeps only its shipped classes. Add a class/ancestry file and regenerate.
+VERSATILE_HERITAGES = {"aiuvarin", "changeling", "dhampir", "dragonblood", "dromaar", "duskwalker", "nephilim"}
+
+
+def shipped_names(folder: Path) -> set[str]:
+    return {p.stem for p in folder.glob("*.yaml")}
+
 # Class trait names observed on Player Core / Player Core 2 class feats (aggregated from
 # trait_group:Class documents). Anything else in `trait` is a non-class trait (Concentrate,
 # Manipulate, Flourish, damage types, etc.) and is ignored for class-eligibility purposes.
@@ -287,6 +297,22 @@ def generate() -> int:
             "skills": feat_skills(feat),
             "level": feat.get("level"),
         }
+
+    shipped_classes = shipped_names(PF2E_FEATS_DIR.parent / "classes")
+    shipped_ancestries = shipped_names(PF2E_FEATS_DIR.parent / "ancestries") | VERSATILE_HERITAGES
+    unshipped_class = re.compile(r"\[(" + "|".join(sorted(KNOWN_CLASSES - shipped_classes)) + r")\]", re.I)
+    dropped = 0
+    for slug in list(generated):
+        body = generated[slug]
+        if body["category"] == "class" and not (set(body["classes"]) & shipped_classes):
+            del generated[slug]; dropped += 1
+        elif body["category"] == "ancestry" and body["ancestries"] and not (set(body["ancestries"]) & shipped_ancestries):
+            del generated[slug]; dropped += 1
+        elif body["prerequisite"] and unshipped_class.search(body["prerequisite"]):
+            del generated[slug]; dropped += 1
+        else:
+            body["classes"] = [c for c in body["classes"] if c in shipped_classes]
+    print(f"  dropped {dropped} feats for classes/ancestries that aren't shipped (LICENSING.md scope)")
 
     # Prerequisites name feats by their display name; the builder checks them by file name.
     by_name = {body["display"].lower(): slug for slug, body in generated.items()}

@@ -6,6 +6,8 @@ school: evocation
 classes: [bard, wizard]
 concentration: true
 castingTime: 1 action
+castKind: action
+attackType: melee
 verbal: true
 somatic: true
 material: true

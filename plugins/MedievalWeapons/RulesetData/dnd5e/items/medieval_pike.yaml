@@ -10,7 +10,7 @@ properties:
   damageType: piercing
   weight: 10
   costGp: 5
-  range: Near  # Reach weapon; far range if on horseback
+  range: Close  # Reach weapon (10 ft); far range if on horseback
   historicalPeriod: "High-Late Medieval (12th–16th century)"
   historicalRole: "Defensive anti-cavalry formation polearm; effective in massed pike blocks"
   historicalMaterial: "Ash wood shaft with steel spearhead"
