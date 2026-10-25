@@ -22,7 +22,7 @@ Before a conversation, search or fight in a settlement, resolve or create the Di
 ```json
 {
   "locations": [
-    { "id": "locations/dockside", "name": "Dockside", "type": "District", "parentLocationId": "locations/neverwinter", "connectedFromLocationId": "locations/neverwinter", "connectionDescription": "The harbor gate opens onto the docks." },
+    { "id": "locations/dockside", "name": "Dockside", "type": "District", "parentLocationId": "locations/harrowgate", "connectedFromLocationId": "locations/harrowgate", "connectionDescription": "The harbor gate opens onto the docks." },
     { "id": "locations/salty-anchor", "name": "The Salty Anchor", "type": "Building", "parentLocationId": "locations/dockside", "connectedFromLocationId": "locations/dockside", "connectionDescription": "A weathered tavern facing the pier." }
   ]
 }
@@ -42,7 +42,7 @@ Leaving for a distinct spot (an hour into the woods, off the road to camp) means
 ```json
 {
   "changes": [
-    { "$type": "location_update", "locationId": "locations/hidden-hollow", "name": "Hidden Forest Hollow", "type": "Wilderness", "description": "A secluded hollow a kilometer into the trees, screened from the road.", "parentLocationId": "locations/sword-coast", "dangerModifier": -10, "addExit": { "targetLocationId": "locations/sword-coast", "description": "Back toward the High Road" } },
+    { "$type": "location_update", "locationId": "locations/hidden-hollow", "name": "Hidden Forest Hollow", "type": "Wilderness", "description": "A secluded hollow a kilometer into the trees, screened from the road.", "parentLocationId": "locations/greywater-reach", "dangerModifier": -10, "addExit": { "targetLocationId": "locations/greywater-reach", "description": "Back toward the coast road" } },
     { "$type": "travel", "characterId": "chars/lyra", "destinationLocationId": "locations/hidden-hollow", "travelCostHoursOverride": 0.5, "encounterRiskModifier": -15 }
   ],
   "narrative": "Lyra leaves the road for a hidden hollow to camp in."

@@ -17,18 +17,17 @@ Each rule lives in one skill; the others name it in a few words. On a conflict, 
 |---|---|
 | `dnd-world-change` | change syntax, required fields, atomic batches, auto-apply and auto-log, persistent state, entity creation, time, refresh options |
 | `dnd-bundling` | one beat = one call, never chaining beats, which changes belong together |
-| `dnd-combat` / `pf2e-combat` | combat flow, action types, spells, feats (5e / Pathfinder 2e) |
+| `dnd-combat` | combat flow, action types, restraint, status effects, range, feat effects (every ruleset) |
+| `dnd5e-combat` / `pf2e-combat` | what D&D 5e / Pathfinder 2e add: attack flags, spells, slots, dying |
 | `dnd-exploration` | location hierarchy, travel, rest, search, encounters and their cleanup |
-| `dnd-conversation` | logging dialogue: Conversation events, `involved`, Trivial beats |
-| `dnd-social` | social checks, relationship modifiers, what a social roll can change |
-| `dnd-npc-interaction` | reading NPCs, their voice sources, knowledge, needs, initiative, the two-beat rule |
+| `dnd-npc-interaction` | reading NPCs, their voice, knowledge, needs, initiative, the two-beat rule; logging dialogue; social checks and relationship modifiers |
 | `dnd-campaign-events` | ENGINE WARNINGs, quests, rumors, factions, plot-thread progress, time skips |
 | `dnd-world-building` | seeding with `world_build`: order, depth, plot threads, clues, items |
-| `dnd-narration` | the prose after the commit |
+| `dnd-narration` | the prose after the commit (`dnd-narration-examples`: worked passages) |
 
 ## Inspecting is read-only
 
-Diagnose with queries only: `get_entity`, `search_world`, `recall_history`, `lookup`. Every `take_turn` commits (the clock ticks, pressure is evaluated) even with a trivial batch, so never call it to look at something. `includeWorldState` and `includeParty` verify a fix you are sending; they are not status polls.
+Diagnose with queries: `get_entity`, `search_world`, `recall_history`, `lookup`. A `take_turn` with changes commits them and ticks the clock, even a trivial batch, so never send a change to look at something; one with no changes (a `memoriesOnlyCharacterId` or `forceFullReseed` refresh) commits nothing. `includeWorldState` and `includeParty` verify a fix you are sending; they are not status polls.
 
 ## Batches are atomic
 
@@ -49,9 +48,9 @@ Send each change sparse: `$type` plus the fields you mean, no nulls. The tool sc
 | Area | `$type` | Use |
 |---|---|---|
 | Record | `event`, `rumor` | what happened; a rumor's lifecycle |
-| Rolls and bodies | `ruleset_action`, `hp`, `status`, `status_remove`, `resource`, `rest`, `death_save`, `death`, `xp_grant`, `level_up` | checks, attacks, spells, damage, conditions, pools, rests, dying |
-| A character | `character_update`, `mood`, `knowledge_update`, `need`, `attribute`, `activity`, `schedule_change` | appearance and tags, mood, memories, needs, scores, what they are doing |
-| Between people | `relationship`, `engagement_relation`, `spatial_position`, `scene_setup` | opinion, lasting holds and states, tactical spacing |
+| Rolls and bodies | `ruleset_action`, `hp`, `grant_temp_hp`, `status`, `status_remove`, `apply_effect`, `resource`, `rest`, `death_save`, `death`, `xp_grant`, `level_up` | checks, attacks, spells, damage, temp HP, conditions, keyed buffs/debuffs, pools, rests, dying |
+| A character | `character_update`, `mood`, `knowledge_update`, `need`, `attribute`, `activity`, `schedule_change`, `soil`, `piercing` | appearance and tags, mood, memories, needs, scores, what they are doing, dirt and marks on a body |
+| Between people | `relationship`, `engagement_relation`, `spatial_position`, `scene_setup`, `tether` | opinion, lasting holds and states, tactical spacing, being tied to someone or something |
 | NPC behaviour | `npc_initiative_nudge`, `scene_interrupt_check` | prime an NPC to act next; let the crowd break in |
 | Items | `item`, `item_equip`, `item_unequip`, `item_update`, `item_use` | move, wear, change, use |
 | Places | `travel`, `location_update` | journeys; a place's state, description, exits |
@@ -60,17 +59,19 @@ Send each change sparse: `$type` plus the fields you mean, no nulls. The tool sc
 
 **`relationship`, `engagement_relation`, `spatial_position` and `faction_state` are different things.** `relationship` is a numeric opinion change (−100 to 100) between two characters and needs a `reason`; a successful check never moves it by itself. `engagement_relation` is a lasting physical or social state between two characters (a verb plus `category`: grappling/Physical, escorting/Proximity, persuaded/Social). `spatial_position` is tactical spacing only. `faction_state` and `faction_reputation` are about factions, not people.
 
-## Required fields
+## Field rules the schema can't say
 
-- `ruleset_action`: `actionType` (Attack, SkillCheck, SavingThrow, ContestedCheck, Spell) and `actionName`. For a SkillCheck the `actionName` is the skill; `parameters.skill` exists only to roll under a different skill than the label. A Spell also needs `parameters.resolution` (attack, save, check, heal, utility); a SkillCheck needs `parameters.dc`.
+The generated Fields section below lists names, types, enums and required flags; these are the rules on top of it.
+
+- `ruleset_action`: for a SkillCheck the `actionName` is the skill; `parameters.skill` exists only to roll under a different skill than the label. A Spell also needs `parameters.resolution` (attack, save, check, heal, utility); a SkillCheck needs `parameters.dc`. Omit `bonus`, `damageBonus` and a spell's `dc`: the sheet supplies them.
   ```json
   { "$type": "ruleset_action", "characterId": "chars/pc", "actionName": "Investigation", "actionType": "SkillCheck", "parameters": { "dc": 12 } }
   { "$type": "ruleset_action", "characterId": "chars/pc", "actionName": "Prestidigitation", "actionType": "Spell", "parameters": { "resolution": "utility" } }
   ```
 - `quest_progress`: `newState` (Open, InProgress, Complete, Failed, Skipped) and `objectiveIndex` or `objectiveName`.
 - `rest`: `intendedHours`.
-- `event`: `locationId` goes in its own field, never inside `involved`. `category` is a closed list: Conversation, Combat, Discovery, Arrival, Travel, Betrayal, SceneInterrupt, SceneCommit, Timeskip, Interaction, Departure. A wrong category fails the whole batch.
-- `engagement_relation`: `category` (Physical, Medical, Social, Attention, Proximity). Left out, an unknown verb becomes Social, which never blocks travel.
+- `event`: `locationId` goes in its own field, never inside `involved`. `category` is the closed list in Fields (there is no Exploration or Social); a wrong one fails the whole batch.
+- `engagement_relation`: set `category`; left out, an unknown verb becomes Social, which never blocks travel.
 - `faction_state`: `factionId` is the subject; `targetFactionId` only for a stance toward another faction.
 - `knowledge_update`: `source` is Witnessed, Heard, Told, Experienced, Trauma or Conditioned; `salience` is a number from 0 to 1. Witnessed and Experienced also need `sourceEventIds`: give the paired `event` or `ruleset_action` in the same batch your own `eventId` and cite it, because the engine does not hand back ids mid-batch.
 
@@ -100,7 +101,7 @@ Never narrate a named person into existence. Before anyone gets a name, a voice 
 
 ## Needs, attributes, traits, death
 
-- **`need`** moves a tracked need (`characterId`, `need`, `delta`). The name is free (`paranoia`, `homesickness`). Only hunger, thirst, tiredness and social_drive tick with time on their own; any other need moves only when you commit it, unless you give it `accumulationRate` (points per day) once. Pass `delta: 0` to set only the rate, and `accumulationRate: 0` to stop drift. A sudden spike (a big drink) is a `delta` in the same batch as its cause, not a rate change. Needs appear in the response's `KnownNeeds`.
+- **`need`** moves a tracked need (`characterId`, `need`, `delta`). The name is free (`paranoia`, `homesickness`). Only hunger, thirst, tiredness and social_drive tick with time on their own; any other need moves only when you commit it, unless you give it `accumulationRate` (points per day) once. Pass `delta: 0` to set only the rate, and `accumulationRate: 0` to stop drift. A sudden spike (a big drink) is a `delta` in the same batch as its cause, not a rate change.
 - **`attribute`** sets a persistent 0–100 score (`corruption`, `debt_pressure`) with `value` and optional `isDelta`. It never shows as a need.
 - **`character_update.systemStats.traits`** holds free string facts. Sending one key merges it into the rest.
   ```json
@@ -123,10 +124,10 @@ A pure read (Perception, Insight, a social read) changes nothing by itself, and 
 ## Refresh options on the same call
 
 - `take_turn` returns summaries of touched entities (up to 6 NPCs and 3 scenes). On a delta turn, unchanged appearance, gear, psychology and memories are left out: a missing field means unchanged, not gone.
-- `fullDetailLocationId` on the travel call gives the room you enter (people, plot threads, pressure); `fullDetailCharacterId` gives one NPC's roleplay card, and `includeCombatDetail: true` adds stats and gear once a roll or fight involves them; `memoriesOnlyCharacterId` is the cheap memory-only refresh after a gap; `extraCharacterIds` and `extraLocationIds` add untouched entities.
+- `start_session` carries the opening room; after that, `fullDetailLocationId` on the travel call gives the room you enter (people, plot threads, pressure); `fullDetailCharacterId` gives one NPC's roleplay card, and `includeCombatDetail: true` adds stats and gear once a roll or fight involves them; `memoriesOnlyCharacterId` is the cheap memory-only refresh after a gap; `extraCharacterIds` and `extraLocationIds` add untouched entities.
 - `includeParty` only when a PC's HP, slots, gold, needs, AC or gear changed, or before first narrating their needs this session. `partyFingerprint` already covers HP and location; echo it back as `clientPartyFingerprint` every call.
 - `includeWorldState` rebuilds the whole world state: use it to verify a pressure fix, never by default. `forceFullReseed` only after a context compaction or at a fresh start.
-- A standalone read with no change is `get_entity`. A section that comes back null is explained in `warnings`.
+- A standalone read of one entity is `get_entity`. A section that comes back null is explained in `warnings`; one-time guidance arrives in `guidanceHints`.
 
 ## Broad or narrow
 
@@ -139,3 +140,87 @@ A narrow change (tags, mood, position, activity, HP, a pool) is a `take_turn` ch
 - [ ] Lasting physical changes are committed, with `impliesPersistentPhysicalChange` on the event.
 - [ ] Anyone newly named is seeded.
 - [ ] Time is on the request, not inside a change.
+
+<!-- fields:begin -->
+## Fields
+
+Generated from the server: `name:type [req] (enum values) {object shape}`. Unknown field names fail the batch. Field notes and every other type: `lookup kind=commit_schema type=<$type>`.
+
+**activity** — Update what an NPC is currently doing and/or where they're…
+- characterId:string [req]
+- newActivity:string
+- newLocationId:string
+- updateLocation:bool
+- reason:string
+
+**engagement_relation** — Establish, update, or remove a pairwise engagement state…
+- characterId:string [req]
+- targetId:string [req]
+- category:enum (Physical|Social|Medical|Attention|Proximity)
+- verb:string
+- restrictionLevel:enum (None|Soft|Hard)
+- bidirectional:bool
+
+**event** — Record a noteworthy occurrence in the world; appears in…
+- summary:string [req]
+- category:enum (Unresolved|Combat|Conversation|Discovery|Arrival|Betrayal|SceneCommit|Timeskip|Simulation|Interaction|Test|Travel|SceneInterrupt|Departure)
+- involved:string[]
+- emotionalBeat:string
+- initiatorId:string
+- relatedEntityId:string
+- locationId:string
+- relatedLocationIds:string[]
+- impliesPersistentPhysicalChange:bool
+- eventId:string
+- importance:enum (Trivial|Important|Core)
+- recordingMode:enum (Passive|Deliberate)
+- details:map<string,any>
+
+**hp** — Adjust a character's current HP by a delta.
+- characterId:string [req]
+- delta:int
+- critical:bool
+
+**item** — Move/transfer an existing item to a new holder (character…
+- itemId:string [req]
+- toHolderId:string [req]
+
+**mood** — Directly override an NPC's current emotional mood string…
+- characterId:string [req]
+- newMood:string [req]
+
+**relationship** — Apply a numeric delta to the relationship score between two…
+- characterId:string [req]
+- targetId:string [req]
+- reason:string [req]
+- delta:int
+
+**ruleset_action** — Perform a ruleset-mechanical action (attack, save, skill…
+- characterId:string [req]
+- actionName:string [req]
+- actionType:enum [req] (Attack|Spell|SkillCheck|ContestedCheck|OpposedCheck|UseItem|Recovery|SavingThrow)
+- targetIds:string[]
+- actionCategory:enum (Melee|Ranged|Spell|Maneuver|Social|Survival)
+- advantageState:enum (None|Advantage|Disadvantage)
+- damageType:string
+- isReaction:bool
+- reactionTrigger:string
+- parameters:map<string,string>
+- FeatEffects:map<string,object[]>
+
+**status** — Add a structured status effect (condition) to a character…
+- characterId:string [req]
+- status:string [req]
+- effect:object {name:string, category:string, affectedPart:(Head|Neck|Torso|LeftArm|RightArm|LeftHand|RightHand|LeftLeg|RightLeg|LeftFoot|RightFoot), statModifiers:map<string,number>, expiresAtDay:number, expiresAtRound:int, recoveryHint:string, appliedBy:string, conditionName:string, pendingDamage:object, effectKey:string, effectTier:string, expiresAtOwnTurnStart:bool}
+
+**travel** — Record a party or character traveling between two connected…
+- characterId:string [req]
+- destinationLocationId:string [req]
+- narrative:string
+- travelCostHoursOverride:number
+- terrainOverride:string
+- encounterRiskModifier:int
+- hazard:string
+
+Other types: apply_effect, archive_entity, attribute, campaign_update, character_update, death, death_save, faction_reputation, faction_state, grant_temp_hp, item_equip, item_unequip, item_update, item_use, knowledge_update, level_up, location_update, mode_transition, need, npc_initiative_nudge, piercing, plot_thread_clue, plot_thread_progress, quest_progress, resource, rest, rumor, scene_interrupt_check, scene_setup, schedule_change, soil, spatial_position, status_remove, tether, world_event_status, xp_grant.
+<!-- fields:end -->

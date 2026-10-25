@@ -88,10 +88,11 @@ export const CampaignVaultPlugin: Plugin = async ({ client }) => {
     },
 
     event: async ({ event }) => {
-      if (event.type !== "session.idle" && event.type !== "session.compacted") return;
+      // Only a compaction loses context; an idle gap keeps it, so re-injecting there is wasted tokens (D24).
+      if (event.type !== "session.compacted") return;
 
       const sessionID = event.properties.sessionID;
-      if (event.type === "session.compacted") pendingReseed.mark(sessionID);
+      pendingReseed.mark(sessionID);
       const info = campaignInfoBySession.get(sessionID);
       if (!info) return;
 

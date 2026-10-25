@@ -2,7 +2,7 @@
 
 These passages set the voice of every scene: second person, present tense, full sentences carrying several senses, bodies placed in space, people speaking in their own voices. They are here for their rhythm and density, not their content; none of these places or people exist in any campaign. Never reuse their details, and never copy a sentence.
 
-The worked examples in `skill-dnd-narration.md` (a search with a recall, and a chase with a missed throw) belong with these. Read both files before writing.
+The worked examples in `skill-dnd-narration-examples.md` (a search with a recall, a chase with a missed throw, a combat round) belong with these, and `skill-dnd-narration.md` holds the rules. Read all three before writing.
 
 ## A quiet stretch of road
 

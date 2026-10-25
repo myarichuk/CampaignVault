@@ -7,12 +7,13 @@ metadata:
 
 # Pathfinder 2e Combat
 
-Applies **only when the campaign's ruleset is `pf2e`**. The flow in `dnd-combat` (start, turns, a PC's turn as a hard stop, the checklist) is the same here; this skill covers what differs. If the campaign is D&D 5e, ignore this file.
+Applies **only when the campaign's ruleset is `pf2e`**. Load it with `dnd-combat` (the shared flow: start, turns, action types, a PC's turn as a hard stop, status effects, range, feat effects); this skill covers what differs. Never load `dnd5e-combat` for a PF2e campaign.
 
 ## The turn: three actions
 
 - A turn is **3 actions** (budget key `actions`), not action + bonus. Every `ruleset_action` costs 1 unless it says otherwise.
-- Multi-action activities (a 2-action spell, Sudden Charge) pass `parameters.actionCost` (`"2"`, `"3"`). Overspending is refused with the actions remaining.
+- Multi-action activities (Sudden Charge) pass `parameters.actionCost` (`"2"`, `"3"`). A spell's cost comes from its data (`heal` is 1 to 3: pass `actionCost` only to choose); a reaction spell is a reaction by itself. Overspending is refused with the actions remaining. A spell with a casting time of a minute or more is refused in combat.
+- **Raise a Shield** is a `ruleset_action` named `Raise a Shield` (1 action): the shield's AC applies until the start of the next turn. A lowered shield gives no AC.
 - **Reactions** (`isReaction: true`) are free of the budget; one per round, tracked by the engine.
 - There is no bonus action, no Extra Attack, no `offHand`, no Cunning Action here. Don't pass those; they are 5e.
 
@@ -28,13 +29,13 @@ Applies **only when the campaign's ruleset is `pf2e`**. The flow in `dnd-combat`
 
 - **SkillCheck**: `actionName` is the skill; `parameters.dc`. A skill with no recorded modifier rolls as *untrained* (ability modifier only). Perception uses Wisdom.
 - **SavingThrow**: `save` (Fortitude, Reflex, Will), `dc`. Spells with a save use the caster's spell DC if you omit `dc`.
-- **Spell**: `resolution` attack / save / check / heal / utility, as in `dnd-combat`. Damage from a save is basic-save style: critical success none, success half (`halfOnSave: "false"` for full), failure full, critical failure double — the engine applies it.
-- **Grapple / Escape**: `ContestedCheck` with `skill` (default Athletics). Grapple is against Fortitude DC, Escape against 10 + the grabber's bonus in the same `skill`; success auto-applies the engagement. Pass `dc` to override.
+- **Spell**: `resolution` attack / save / check / heal / utility (`dnd-combat`). Damage from a save is basic-save style: critical success none, success half (`halfOnSave: "false"` for full), failure full, critical failure double — the engine applies it.
+- **Grapple / Escape**: `ContestedCheck` with `skill` (default Athletics). Grapple is against Fortitude DC: critical success restrains, success grabs, critical failure drops the hold (the target may then grab or trip, by hand). Escape (`maneuver: escape`, the escaper's Athletics, Acrobatics or unarmed) is against 10 + the grabber's Athletics. Both take and count toward MAP. Pass `dc` to override.
 - Focus points and slots are resource pools (`focus_points`, `spell_slots_N`); commit the `resource` spend in the same batch.
 
 ## Feats
 
-Homebrew and SRD feats with `effects` fold into Strikes, damage, skills, saves and AC exactly as in `dnd-combat`'s "Feat effects" section. PF2e differences:
+Feats with `effects` fold into Strikes, damage, skills, saves and AC as in `dnd-combat`'s "Feat effects". PF2e differences:
 
 - Effects carry a **`bonusType`** (`circumstance`, `status`, `item`, `untyped`). Among a character's *feat* effects only the highest bonus and worst penalty of each typed kind count; untyped stack.
 - Judged conditions ("an ally is flanking", "target is off-guard") go in `parameters.assert`; `take_turn`'s `featChecklist` lists them. Never invent the number.
@@ -43,6 +44,6 @@ Homebrew and SRD feats with `effects` fold into Strikes, damage, skills, saves a
 ## Not echoed / not enforced
 
 - Contested-check and spell-save target notes from feat effects are not echoed in the result.
-- Automatic MAP assumes non-agile weapons; pass `mapPenalty` for agile. The three-action cost of activities is only as good as the `actionCost` you pass.
+- Automatic MAP reads the weapon's `agile` tag; pass `mapPenalty` to override. The three-action cost of non-spell activities is only as good as the `actionCost` you pass. Long range is -2 per distance band beyond the weapon's `range`, a stand-in for range increments.
 - Dying and wounded are the engine's: a PC at 0 HP gets dying 1 (2 on a critical hit) plus wounded, damage while dying raises it, healing ends it and adds wounded. On their turn commit `death_save` for the recovery check, or adjudicate something else. Dying 4 (less doomed) kills.
 - Conditions (frightened, off-guard, prone) are `status` commits; the engine folds their listed modifiers into rolls but does not know PF2e condition rules by name.

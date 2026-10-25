@@ -109,7 +109,7 @@ CampaignVault assumes your LLM client **loads the skills in [`claude_skills/`](.
 - **[PLUGINS.md](./PLUGINS.md)** — Homebrew content packs (custom items/spells/creatures), new rulesets, and code plugins; includes the trust model and an installation guide
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** — System design, simulation rules, pressure system, ruleset integration
 - **[System Prompt](./recommended-system-prompt.md)** — Copy-paste LLM system prompt (or [opencode-specific](./recommended-system-prompt.opencode.md))
-- **[Licensing](./LICENSING.md)** — Game content attribution and legal notes
+- **[Licensing](./LICENSING.md)** — Game content attribution and legal notes; the required notices are in [NOTICE.md](./NOTICE.md)
 - **[Commercial Use](./COMMERCIAL.md)** — Dual licensing and RavenDB Community Edition requirements
 
 ---

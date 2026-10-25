@@ -1,7 +1,6 @@
-// Covers the ENGINE IS AUTHORITATIVE rule of recommended-system-prompt*.md: "Persisted state is ground truth, not your memory —
-// trust the latest scene/NPC query over recollection, especially after any gap or summarization."
-// After a session.compacted/session.idle gap, re-inject the CAMPAIGN line and a nudge to re-verify
-// state via start_session/get_entity rather than trusting recollection.
+// Covers the ENGINE IS AUTHORITATIVE rule of recommended-system-prompt*.md: the database is the truth, not the
+// model's memory. After a session.compacted gap, re-inject the CAMPAIGN line and the SESSIONS rule for it
+// (forceFullReseed on the next take_turn; start_session is never called mid-play).
 
 export interface CampaignInfo {
   slug: string;
@@ -37,15 +36,15 @@ export function extractCampaignInfo(payload: unknown): CampaignInfo | null {
   };
 }
 
-/** Builds the text re-injected into the session after a compaction/idle gap. */
+/** Builds the text re-injected into the session after a compaction. */
 export function buildReinjectionText(info: CampaignInfo): string {
   const rulesetLine = info.ruleset ? ` ruleset="${info.ruleset}"` : "";
   const rosterLine = info.rosterIds.length > 0 ? ` roster=[${info.rosterIds.join(", ")}]` : "";
   return [
     `CAMPAIGN: campaignName="${info.slug}"${rulesetLine}${rosterLine}`,
-    "Context gap detected (compaction or idle). Persisted state is ground truth, not your memory: " +
-      "re-verify current scene/NPC/party state via get_entity or start_session before narrating, " +
-      "rather than trusting what you recall from earlier in the conversation.",
+    "Context was compacted. Persisted state is ground truth, not your memory: send forceFullReseed:true " +
+      "on your next take_turn (memoriesOnlyCharacterId or fullDetailCharacterId for an NPC you are about to voice), " +
+      "and never call start_session mid-play.",
   ].join("\n");
 }
 

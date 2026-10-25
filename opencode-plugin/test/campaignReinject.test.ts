@@ -61,6 +61,8 @@ describe("buildReinjectionText", () => {
     expect(text).toContain('ruleset="Dnd5e"');
     expect(text).toContain("roster=[chars/valen]");
     expect(text).toContain("Persisted state is ground truth");
+    expect(text).toContain("forceFullReseed:true");
+    expect(text).toContain("never call start_session mid-play");
   });
 
   it("omits ruleset/roster segments when absent", () => {

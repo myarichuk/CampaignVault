@@ -1,13 +1,13 @@
 ---
 name: dnd-npc-interaction
-description: Running NPCs from their psychology — reading their card, voice sources, self-interest, knowledge, needs, schedules, initiative and the two-beat rule (load when an NPC speaks, decides or reacts)
+description: Running NPCs and the talk around them — reading the card, voice sources, self-interest, knowledge, needs, initiative, the two-beat rule, logging dialogue as Conversation events, social checks and what a social roll can change (load when an NPC speaks, decides or reacts)
 metadata:
   type: skill
 ---
 
 # NPC Interaction
 
-NPCs act from their own psychology, not from what would help the story along. Social checks are in `dnd-social`, logging dialogue in `dnd-conversation`, and the prose itself in `dnd-narration`.
+NPCs act from their own psychology, not from what would help the story along. This skill also owns how talk is logged and how social checks resolve; the prose itself is `dnd-narration`.
 
 ## Read the card first
 
@@ -45,6 +45,30 @@ NPCs react only to what they see, hear and experience. They cannot hear the PC's
 
 If three beats have kept the same tenor with only the scenery changing, escalate, complicate or cool the scene down (`dnd-narration`, "Detail that moves").
 
+## Logging dialogue
+
+Each exchange (one player message and the answers it gets) is committed as one Conversation `event` before the player responds; several lines share one event. Only committed events and `knowledge_update`s feed NPC memory.
+
+```json
+{ "$type": "event", "category": "Conversation", "involved": ["chars/pc", "chars/npc-guard"], "locationId": "locations/castle-gate", "summary": "The guard demands the PC's business; the PC claims to be a merchant" }
+```
+
+- `involved` lists everyone who spoke, NPCs talking only to each other included. It marks who took part; `engagement_relation` is never for conversation.
+- `minutesElapsed` goes on the request: a greeting 1–2 minutes, banter 2–5, a tense interrogation 10–30, a long talk into the night 60–180.
+- Pure flavour with nothing new (a toast, small talk) is still committed, with `narrativeImportance: "Trivial"` on the request and `"importance": "Trivial"` on the event, so it doesn't crowd real beats out of recall.
+
+## Social checks
+
+Negotiation, persuasion, deception, intimidation, romance, betrayal. Decide who the NPC is and what they want before the roll, never afterwards to explain it.
+
+```json
+{ "$type": "ruleset_action", "characterId": "chars/pc", "targetIds": ["chars/npc"], "actionType": "SkillCheck", "actionName": "Persuasion", "parameters": { "dc": 15 } }
+```
+
+Reading someone (Insight) leaves out `targetIds`. The engine adds the relationship modifier to a check against someone itself (+5 at 80 or more, +3 from 60, +1 from 40, 0 between −39 and 39, −1 from −40, −3 from −60, −5 at −80 or less); never add one by hand. A successful check never moves the score: if the bond really shifted, commit a `relationship` with `delta` and `reason`.
+
+A social roll changes the method, not the job. On a failure they do the job the ugly way: grab, draw, call for backup. On a success, even a natural 20, they believe a beat, hesitate, laugh, take a worse angle, talk one sentence longer; they don't drop a contract, free a mark or abandon a hunt because the line landed. A king told to abdicate on a natural 20 takes it as nerve or a joke; a crew hired to take her still takes her, and the good roll buys a minute of talk or keeps it from happening in front of witnesses.
+
 ## Promoting an NPC
 
 A transient worth keeping gets `character_update` with `keepAlive: true`, and earns a plot thread (`world_build` `plotThreads[]`, scaffolded per `dnd-world-building`). A permanent NPC can anchor several threads.
@@ -55,3 +79,5 @@ A transient worth keeping gets `character_update` with `keepAlive: true`, and ea
 - [ ] They acted from self-interest, not helpfulness.
 - [ ] What they learned is a `knowledge_update`; a bond that moved is a `relationship` with a `reason`.
 - [ ] Something that landed on their psychology got a nudge; an idle PC got an NPC who acts.
+- [ ] The exchange is one Conversation event with every speaker in `involved`; time is on the request; pure flavour is Trivial.
+- [ ] The NPC's wants were settled before a social roll, and its outcome changed the method, not the job.
