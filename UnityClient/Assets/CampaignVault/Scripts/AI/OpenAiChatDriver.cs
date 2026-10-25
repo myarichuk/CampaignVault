@@ -27,7 +27,7 @@ namespace CampaignVault.UnityClient.AI
     ///   the real state; the model re-reads it with a tool when it needs it);
     /// - history is capped by characters, trimmed a whole turn at a time.
     /// </summary>
-    public class OpenAiChatDriver : MonoBehaviour
+    public partial class OpenAiChatDriver : MonoBehaviour
     {
         public const int MaxToolIterations = 8;
         public const int MaxHistoryChars = 48000;
@@ -124,7 +124,14 @@ namespace CampaignVault.UnityClient.AI
         /// text). The app layer follows the session through it (a start_session
         /// or end_session the DM made on its own).
         /// </summary>
-        public event Action<string, string> ToolSucceeded;
+        /// <summary>A tool call that returned success: its name, the arguments the model sent, and the raw result text.</summary>
+        public event Action<string, JsonValue, string> ToolSucceeded;
+
+        /// <summary>Only the engine's own commits carry roll lines; a lookup or an entity read never does, so no roll card is cut from them (A6).</summary>
+        internal static bool CarriesRolls(string toolName)
+        {
+            return toolName == "take_turn" || toolName == "combat";
+        }
 
         private readonly List<JsonValue> _history = new List<JsonValue>();
 
@@ -157,7 +164,8 @@ namespace CampaignVault.UnityClient.AI
             if (!IsBusy) { return; }
             _cancelRequested = true;
             if (_activeChat != null) { _activeChat.Abort(); }
-            if (Mcp != null) { Mcp.AbortAll(); }
+            // Only this turn's calls: a table refresh or a codex search in flight is not the player's to stop (A13).
+            if (Mcp != null) { Mcp.Abort(McpOwner); }
         }
 
         /// <summary>
@@ -189,21 +197,6 @@ namespace CampaignVault.UnityClient.AI
             _passages.Clear();
             SessionUsage = new TokenUsage();
             CurrentTurn = null;
-        }
-
-        /// <summary>
-        /// Gives the storyteller back its recent scenes (from the client's saved
-        /// history) after a restart, so the prose picks up where it left off.
-        /// </summary>
-        public void RestorePassages(IList<KeyValuePair<string, string>> passages)
-        {
-            _passages.Clear();
-            if (passages == null) { return; }
-            foreach (var p in passages)
-            {
-                _passages.Add(new KeyValuePair<string, string>(p.Key, Storyteller.Cap(p.Value, Storyteller.MaxPassageChars)));
-            }
-            while (_passages.Count > Storyteller.MaxPassages) { _passages.RemoveAt(0); }
         }
 
         /// <summary>Force a fresh tools/list on the next message (server, connector or plugins changed).</summary>
@@ -273,16 +266,22 @@ namespace CampaignVault.UnityClient.AI
                 CompactFinishedTurns();
                 // OOC lines may carry the onboarding brief, which runs past a normal turn's length.
                 string cleanPlayer = TextSanitizer.Clean(playerText, Storyteller.IsOocPlayer(playerText) ? 12000 : 4000);
-                userMessage = RoleMessage("user", twoPass ? Storyteller.LoopUserMessage(LastPassage, cleanPlayer) : cleanPlayer);
+                // Trimming is silent to the model, so the prompt's "after a compaction send forceFullReseed" never fired (A20).
+                string trimNote = _historyTrimmed ? "\n\n" + TrimmedNote : string.Empty;
+                _historyTrimmed = false;
+                userMessage = RoleMessage("user", (twoPass ? Storyteller.LoopUserMessage(LastPassage, cleanPlayer) : cleanPlayer) + trimNote);
                 _history.Add(userMessage);
                 TrimToBudget();
-                string systemPrompt = twoPass ? Prompts.BuildSystemPrompt(Storyteller.LoopContract) : Prompts.BuildSystemPrompt(SinglePassNoteOverride ?? Storyteller.SinglePassNote);
+                _loopTurn = twoPass;
+                string systemPrompt = twoPass ? Prompts.BuildSystemPrompt(Storyteller.LoopContract, true) : Prompts.BuildSystemPrompt(SinglePassNoteOverride ?? Storyteller.SinglePassNote);
 
                 for (int turn = 0; turn < MaxToolIterations; turn++)
                 {
                     if (_cancelRequested) { AddStopped(transcript, changed); break; }
                     Status = "the DM is thinking…";
                     CurrentTool = string.Empty;
+                    // Tool results pile up inside one turn; older turns go first so the request stays under budget (A9).
+                    TrimToBudget();
 
                     // Streamed text lands in one live segment; once the reply is
                     // complete it's replaced by its final form (narration split
@@ -348,6 +347,12 @@ namespace CampaignVault.UnityClient.AI
                     string reasoning;
                     ExtractContent(message, out content, out reasoning);
                     var toolCalls = message.GetArray("tool_calls");
+                    // A reply cut off at the output limit: its tool arguments are incomplete and its prose ends mid-sentence (A5).
+                    bool cutOff = firstChoice.GetString("finish_reason", string.Empty) == "length";
+                    if (cutOff && toolCalls.Count == 0)
+                    {
+                        AddSystem(transcript, "⚠ The reply was cut off at the model's output limit (finish_reason=length). Raise the output token limit in Settings if this repeats.");
+                    }
                     _history.Add(PruneMessage(message, content));
                     assistantReplied = true;
                     if (live != null) { transcript.Remove(live); }
@@ -437,7 +442,15 @@ namespace CampaignVault.UnityClient.AI
                         }
                         string argText = toolCalls[i].Get("function").GetString("arguments", "{}");
                         JsonValue args;
-                        if (!JsonValue.TryParse(argText, out args)) { args = JsonValue.NewObject(); }
+                        if (!JsonValue.TryParse(argText, out args) || args.Kind != JsonKind.Object)
+                        {
+                            // Never sent to the server as "{}": the model gets a parse error it can resend from (A5).
+                            LogTool(toolName + " BAD ARGS · " + argText.Length + " chars" + (cutOff ? " (cut off)" : string.Empty));
+                            _history.Add(ToolMessage(callId, "error [BadArguments] the arguments for " + toolName + " were not a complete JSON object ("
+                                + argText.Length + " chars" + (cutOff ? ", the reply was cut off at the output limit" : string.Empty)
+                                + "). Nothing was sent to the server; resend the call with complete JSON."));
+                            continue;
+                        }
                         CurrentTool = toolName;
                         record.Tools.Add(toolName);
 
@@ -452,6 +465,7 @@ namespace CampaignVault.UnityClient.AI
                             if (Prompts.TryLoadSkill(skill, out body))
                             {
                                 resultText = body;
+                                record.Succeeded.Add(toolName);
                                 LogTool("load_skill:" + skill + " ok · " + body.Length + " chars");
                             }
                             else
@@ -468,20 +482,24 @@ namespace CampaignVault.UnityClient.AI
                             changed();
                             McpOutcome<string> call = null;
                             yield return Mcp.CallTool(Vault, Vault.ActiveConnector(), toolName, args,
-                                delegate (McpOutcome<string> o) { call = o; });
+                                delegate (McpOutcome<string> o) { call = o; }, McpOwner);
                             if (call != null && call.Ok)
                             {
                                 resultText = call.Data;
+                                record.Succeeded.Add(toolName);
                                 LogTool(toolName + " ok · " + (call.Data != null ? call.Data.Length : 0) + " chars");
-                                foreach (var roll in SegmentSplitter.ExtractRolls(resultText))
+                                if (CarriesRolls(toolName))
                                 {
-                                    transcript.Add(roll);
-                                    record.Rolls.Add(roll.Roll.Label + " " + roll.Roll.Detail + ": " + roll.Roll.Verdict);
+                                    foreach (var roll in SegmentSplitter.ExtractRolls(resultText))
+                                    {
+                                        transcript.Add(roll);
+                                        record.Rolls.Add(roll.Roll.Label + " " + roll.Roll.Detail + ": " + roll.Roll.Verdict);
+                                    }
                                 }
                                 brief.Add(toolName, args, resultText, true);
                                 if (ToolSucceeded != null)
                                 {
-                                    try { ToolSucceeded(toolName, resultText); }
+                                    try { ToolSucceeded(toolName, args, resultText); }
                                     catch (Exception ex) { Debug.LogException(ex); }
                                 }
                             }
@@ -640,75 +658,14 @@ namespace CampaignVault.UnityClient.AI
             done(true);
         }
 
-        /// <summary>
-        /// A tool-free side conversation (onboarding brainstorming): the caller
-        /// owns the messages; nothing touches the play history or the server.
-        /// done(reply, error) — exactly one of them is non-null.
-        /// </summary>
-        public IEnumerator Brainstorm(IList<KeyValuePair<string, string>> roleMessages, Action<string> onDelta, Action<string, string> done, bool retryBusy = true)
-        {
-            string reason;
-            if (!Byok.Validate(out reason))
-            {
-                LastFailure = LlmFailure.Setup(reason, FailureContext(Byok.ChatUrl(), 0, string.Empty));
-                done(null, reason);
-                yield break;
-            }
-            if (IsBusy)
-            {
-                const string busy = "The DM is busy with a turn. Try again when it finishes.";
-                LastFailure = LlmFailure.Other(busy, FailureContext(Byok.ChatUrl(), 0, string.Empty));
-                done(null, busy);
-                yield break;
-            }
-            LastFailure = null;
-            IsBusy = true;
-            _cancelRequested = false;
-            _retryBusy = retryBusy;
-            try
-            {
-                var messages = JsonValue.NewArray();
-                foreach (var m in roleMessages) { messages.ArrayValue.Add(RoleMessage(m.Key, m.Value)); }
-                string model = Byok.Model.Trim();
-                JsonValue response = null;
-                string failure = null;
-                yield return RequestReply(
-                    delegate (bool stream, bool usageOptions)
-                    {
-                        var request = NewRequest(model, stream, usageOptions);
-                        request.ObjectValue["messages"] = messages;
-                        return request;
-                    },
-                    onDelta ?? delegate { },
-                    delegate (JsonValue r, string err) { response = r; failure = err; });
-                if (failure != null) { done(null, failure); yield break; }
-                RecordUsage(MeasureUsage(response, model), model);
-                var choices = response.GetArray("choices");
-                JsonValue message = choices.Count > 0 ? choices[0].Get("message") : JsonValue.Null;
-                string content = string.Empty;
-                string reasoning;
-                if (!message.IsNull) { ExtractContent(message, out content, out reasoning); }
-                content = content.Trim();
-                if (content.Length == 0)
-                {
-                    LastFailure = LlmFailure.Malformed("an empty reply", FailureContext(Byok.ChatUrl(), 1, CapText(response.ToJson(), 1500)));
-                    done(null, model + " returned an empty reply.");
-                    yield break;
-                }
-                done(content, null);
-            }
-            finally { IsBusy = false; _retryBusy = true; }
-        }
-
-        /// <summary>Quiet retries of a busy provider; off for a throwaway helper call (a level hint) that shouldn't hold the DM up.</summary>
-        private bool _retryBusy = true;
-
         internal JsonValue BuildNarrationMessages(string playerText, TurnBrief brief)
         {
             string skill;
+            string examples;
             if (!Prompts.TryLoadSkill("dnd-narration", out skill)) { skill = string.Empty; }
+            if (!Prompts.TryLoadSkill("dnd-narration-examples", out examples)) { examples = string.Empty; }
             var messages = JsonValue.NewArray();
-            messages.ArrayValue.Add(RoleMessage("system", Storyteller.NarrationSystemPrompt(skill, PcCard, Prompts.CampaignLine())));
+            messages.ArrayValue.Add(RoleMessage("system", Storyteller.NarrationSystemPrompt(skill, examples, PcCard, Prompts.CampaignLine())));
             if (NarrationRemedies)
             {
                 messages.ArrayValue.Add(RoleMessage("user", "The player says:\n" + Storyteller.ExemplarPlayer));
@@ -738,228 +695,8 @@ namespace CampaignVault.UnityClient.AI
             changed();
         }
 
-        /// <summary>Counts one priced call toward the session and, when a campaign is open, toward its persisted total.</summary>
-        private void RecordUsage(TokenUsage usage, string model)
-        {
-            SessionUsage.Add(usage);
-            if (CampaignUsage != null && Prompts != null) { CampaignUsage.Add(Prompts.CampaignSlug, model, usage); }
-        }
-
-        /// <summary>One call's reported tokens, priced for the active profile.</summary>
-        private TokenUsage MeasureUsage(JsonValue response, string model)
-        {
-            TokenUsage usage = TokenUsage.FromJson(response.Get("usage"));
-            usage.ApplyPrice(ModelPricing.Bundled, Byok.Active, model);
-            return usage;
-        }
-
-        public const int MaxTransientRetries = 2;
-
-        /// <summary>No answer, a dropped stream (a 200 that failed), a timeout, a rate limit or a server error: a retry can work.</summary>
-        internal static bool IsTransient(long status)
-        {
-            return status == 0 || status == 200 || status == 408 || status == 425 || status == 429 || (status >= 500 && status <= 599);
-        }
-
-        /// <summary>What a failure report needs to know about the call that just ran (the key is passed only so it can be scrubbed).</summary>
-        private LlmFailure.Context FailureContext(string endpoint, int attempts, string body)
-        {
-            return new LlmFailure.Context
-            {
-                Endpoint = endpoint,
-                Model = Byok.Model.Trim(),
-                RequestMeta = LastRequestMeta,
-                Attempts = Math.Max(1, attempts),
-                ApiKey = Byok.HasKey ? Byok.ApiKey() : string.Empty,
-                Body = CapText(body, 1500),
-            };
-        }
-
-        /// <summary>The provider's raw reply to the last PostChat, kept only to describe a failure.</summary>
-        private string _lastBody = string.Empty;
-
-        /// <summary>
-        /// One model call. Streams when the endpoint allows it; an endpoint that
-        /// rejects stream:true (HTTP 400/422) is retried once without it and
-        /// remembered, so it's never asked to stream again this run.
-        /// </summary>
-        private IEnumerator RequestReply(Func<bool, bool, JsonValue> build, Action<string> onDelta, Action<JsonValue, string> done)
-        {
-            string endpoint = Byok.ChatUrl();
-            bool stream = !Byok.Active.DisableStreaming && !_noStreamEndpoints.Contains(endpoint);
-            bool usageOptions = stream && !_noStreamOptions.Contains(endpoint);
-            JsonValue request = build(stream, usageOptions);
-            LastRequestMeta = DescribeRequest(request);
-            JsonValue response = null;
-            string failure = null;
-            long status = 0;
-            bool streamedText = false;
-            Action<string> trackDelta = delegate (string delta) { streamedText = true; onDelta(delta); };
-            int attempts = 0;
-            Action<JsonValue, string, long> keep = delegate (JsonValue r, string err, long code) { response = r; failure = err; status = code; attempts++; };
-            yield return PostChat(request, stream, trackDelta, keep);
-            if (usageOptions && failure != null && !streamedText && !_cancelRequested && (status == 400 || status == 422))
-            {
-                // Some endpoints stream fine but reject stream_options: drop it before giving up on streaming.
-                request = build(true, false);
-                LastRequestMeta = DescribeRequest(request) + " · no stream_options";
-                yield return PostChat(request, true, trackDelta, keep);
-                if (failure == null) { _noStreamOptions.Add(endpoint); }
-            }
-            if (stream && failure != null && !streamedText && !_cancelRequested && (status == 400 || status == 422))
-            {
-                request = build(false, false);
-                LastRequestMeta = DescribeRequest(request) + " · stream retry";
-                yield return PostChat(request, false, onDelta, keep);
-                if (failure == null) { _noStreamEndpoints.Add(endpoint); }
-            }
-            // A busy provider (free models especially) drops or refuses requests that work a moment later: try again, quietly.
-            for (int attempt = 1; attempt <= MaxTransientRetries && _retryBusy && failure != null && !streamedText && !_cancelRequested && IsTransient(status); attempt++)
-            {
-                Status = "the provider is busy: trying again (" + attempt + "/" + MaxTransientRetries + ")…";
-                float until = Time.realtimeSinceStartup + 2f * attempt;
-                while (Time.realtimeSinceStartup < until && !_cancelRequested) { yield return null; }
-                if (_cancelRequested) { break; }
-                request = build(stream, usageOptions && !_noStreamOptions.Contains(endpoint));
-                yield return PostChat(request, stream, trackDelta, keep);
-            }
-            if (failure == null)
-            {
-                ProviderProblem = string.Empty;
-                LastFailure = null;
-            }
-            else
-            {
-                LlmFailure.Context context = FailureContext(endpoint, attempts, _lastBody);
-                if (_cancelRequested) { LastFailure = LlmFailure.Cancelled(context); }
-                else
-                {
-                    LastFailure = LlmFailure.From(status, failure, context);
-                    // Callers still get one string: the friendly wording for the quiet-retry kinds, the provider's own for the rest.
-                    if (_retryBusy && IsTransient(status)) { failure = LastFailure.Friendly; }
-                    string problem = ProviderProblemFor(status, Byok.Model.Trim());
-                    if (problem.Length > 0) { ProviderProblem = problem; }
-                }
-            }
-            done(response, failure);
-        }
-
-        /// <summary>
-        /// Reads the reply text tolerantly: most providers send a plain string,
-        /// but some gateways send content blocks ([{type:text, text:…}]) and
-        /// reasoning models park visible text in reasoning_content, leaving
-        /// content null. All three used to render as total silence.
-        /// </summary>
-        internal static void ExtractContent(JsonValue message, out string content, out string reasoning)
-        {
-            content = message.GetString("content", null);
-            if (content == null)
-            {
-                var sb = new StringBuilder();
-                foreach (var block in message.GetArray("content"))
-                {
-                    string text = block.GetString("text", string.Empty);
-                    if (!string.IsNullOrEmpty(text))
-                    {
-                        if (sb.Length > 0) { sb.Append('\n'); }
-                        sb.Append(text);
-                    }
-                }
-                content = sb.ToString();
-            }
-            reasoning = message.GetString("reasoning_content",
-                message.GetString("reasoning", string.Empty));
-            if (content == null) { content = string.Empty; }
-            if (reasoning == null) { reasoning = string.Empty; }
-        }
-
-        private static string CapText(string text, int max)
-        {
-            if (text != null && text.Length > max)
-            {
-                return text.Substring(0, max) + "\n… (" + text.Length + " chars total, capped for display)";
-            }
-            return text ?? string.Empty;
-        }
-
-        private string DescribeRequest(JsonValue request)
-        {
-            int messages = request.Get("messages").Kind == JsonKind.Array
-                ? request.GetArray("messages").Count
-                : 0;
-            int tools = request.Get("tools").Kind == JsonKind.Array
-                ? request.GetArray("tools").Count
-                : 0;
-            string meta = request.GetString("model", Byok.Model) + " · " + messages + " msgs · " + request.ToJson().Length + " chars · " + tools + " tools";
-            if (request.Get("temperature").Kind == JsonKind.Number) { meta += " · T" + request.GetNumber("temperature", 1); }
-            if (request.Get("max_tokens").Kind == JsonKind.Number) { meta += " · ≤" + (int)request.GetNumber("max_tokens", 0) + " tok"; }
-            if (!request.Get("reasoning").IsNull) { meta += " · effort " + request.Get("reasoning").GetString("effort", "?"); }
-            if (request.GetBool("stream", false)) { meta += " · streaming"; }
-            return meta;
-        }
-
-        /// <summary>Only OpenRouter is known to accept the reasoning block; strict endpoints 400 it.</summary>
-        private static bool IsOpenRouter(string baseUrl)
-        {
-            return (baseUrl ?? string.Empty).ToLowerInvariant().Contains("openrouter.ai");
-        }
-
-        private void LogTool(string line)
-        {
-            ToolLog.Add(line);
-            while (ToolLog.Count > 30) { ToolLog.RemoveAt(0); }
-        }
-
-        /// <summary>Model, streaming and sampling knobs shared by the loop and the storyteller.</summary>
-        private JsonValue NewRequest(string model, bool stream, bool usageOptions)
-        {
-            var request = JsonValue.NewObject();
-            request.ObjectValue["model"] = JsonValue.FromString(model);
-            if (stream) { request.ObjectValue["stream"] = JsonValue.FromBool(true); }
-            if (stream && usageOptions)
-            {
-                // Streamed replies only report token usage when asked.
-                var options = JsonValue.NewObject();
-                options.ObjectValue["include_usage"] = JsonValue.FromBool(true);
-                request.ObjectValue["stream_options"] = options;
-            }
-            // Sampling knobs ride only when customized: strict endpoints
-            // (o1-style models, plain OpenAI) reject a temperature they didn't
-            // ask for, and max_tokens has no safe universal default.
-            float temp = Mathf.Clamp(Byok.Active.Temperature, 0f, 2f);
-            if (Mathf.Abs(temp - 1f) > 0.0001f) { request.ObjectValue["temperature"] = JsonValue.FromNumber(temp); }
-            if (Byok.Active.MaxTokens > 0) { request.ObjectValue["max_tokens"] = JsonValue.FromNumber(Byok.Active.MaxTokens); }
-            if (!string.IsNullOrEmpty(Byok.Active.ReasoningEffort) && IsOpenRouter(Byok.BaseUrl))
-            {
-                var reasoning = JsonValue.NewObject();
-                reasoning.ObjectValue["effort"] = JsonValue.FromString(Byok.Active.ReasoningEffort);
-                request.ObjectValue["reasoning"] = reasoning;
-            }
-            return request;
-        }
-
-        private JsonValue BuildRequest(string systemPrompt, bool stream, bool usageOptions)
-        {
-            var request = NewRequest(Byok.Model.Trim(), stream, usageOptions);
-            var messages = JsonValue.NewArray();
-            messages.ArrayValue.Add(RoleMessage("system", systemPrompt));
-            for (int i = 0; i < _history.Count; i++) { messages.ArrayValue.Add(_history[i]); }
-            request.ObjectValue["messages"] = messages;
-
-            var tools = JsonValue.NewArray();
-            for (int i = 0; i < _toolCache.Count; i++)
-            {
-                var t = _toolCache[i];
-                if (AllowedTools.Count > 0 && !AllowedTools.Contains(t.Name)) { continue; }
-                tools.ArrayValue.Add(FunctionTool(t.Name,
-                    string.IsNullOrEmpty(t.Description) ? t.Name : t.Description,
-                    t.InputSchema ?? JsonValue.NewObject()));
-            }
-            var skillNames = Prompts.SkillNames();
-            if (skillNames.Count > 0) { tools.ArrayValue.Add(LoadSkillDefinition(skillNames)); }
-            if (tools.ArrayValue.Count > 0) { request.ObjectValue["tools"] = tools; }
-            return request;
-        }
+        /// <summary>The current turn is the two-pass loop: no narration sections in its prompt, no narration skills in its menu (A24).</summary>
+        private bool _loopTurn;
 
         private static JsonValue LoadSkillDefinition(List<string> skillNames)
         {
@@ -991,271 +728,6 @@ namespace CampaignVault.UnityClient.AI
             fn.ObjectValue["parameters"] = parameters;
             def.ObjectValue["function"] = fn;
             return def;
-        }
-
-        /// <summary>
-        /// Shrinks every message before the new turn: tool results become a
-        /// one-line summary, skill bodies a reload hint, and bulky tool-call
-        /// arguments an elision marker. Call ids stay intact so the protocol
-        /// pairing (assistant tool_calls -> tool results) remains valid.
-        /// </summary>
-        private void CompactFinishedTurns()
-        {
-            for (int i = 0; i < _history.Count; i++)
-            {
-                var message = _history[i];
-                string role = message.GetString("role", string.Empty);
-                if (role == "user")
-                {
-                    // Only the newest loop message carries the last scene.
-                    string content = message.GetString("content", string.Empty);
-                    string stripped = Storyteller.StripScene(content);
-                    if (!ReferenceEquals(stripped, content)) { message.ObjectValue["content"] = JsonValue.FromString(stripped); }
-                }
-                else if (role == "tool")
-                {
-                    string callId = message.GetString("tool_call_id", string.Empty);
-                    string name;
-                    _callNames.TryGetValue(callId, out name);
-                    message.ObjectValue["content"] = JsonValue.FromString(
-                        CompactResult(name ?? string.Empty, message.GetString("content", string.Empty)));
-                }
-                else if (role == "assistant")
-                {
-                    // Reasoning replay only matters inside the turn that made it.
-                    message.ObjectValue.Remove("reasoning_details");
-                    foreach (var call in message.GetArray("tool_calls"))
-                    {
-                        var fn = call.Get("function");
-                        string arguments = fn.GetString("arguments", "{}");
-                        if (arguments.Length <= CompactedArgumentChars) { continue; }
-                        var marker = JsonValue.NewObject();
-                        marker.ObjectValue["elided"] = JsonValue.FromString(arguments.Length + " chars, already sent and applied");
-                        fn.ObjectValue["arguments"] = JsonValue.FromString(marker.ToJson());
-                    }
-                }
-            }
-            _turnStart = _history.Count;
-        }
-
-        internal static string CompactResult(string toolName, string content)
-        {
-            if (content.StartsWith("[earlier", StringComparison.Ordinal)) { return content; }
-            if (toolName == SystemPromptProvider.LoadSkillTool)
-            {
-                return "[earlier skill load, dropped to save context; call load_skill again if you need it]";
-            }
-            string summary = content;
-            JsonValue parsed;
-            if (JsonValue.TryParse(content, out parsed) && parsed.Kind == JsonKind.Object)
-            {
-                string envelopeSummary = parsed.GetString("summary", string.Empty);
-                if (!parsed.GetBool("success", true)) { envelopeSummary = "FAILED: " + envelopeSummary; }
-                if (envelopeSummary.Length > 0) { summary = envelopeSummary; }
-            }
-            if (summary.Length > CompactedResultChars) { summary = summary.Substring(0, CompactedResultChars) + "…"; }
-            return "[earlier " + toolName + " result] " + summary;
-        }
-
-        /// <summary>
-        /// Drops the oldest whole turns (a user message up to the next user
-        /// message) while history is over budget, never touching the current
-        /// turn, so a tool result is never replayed without the tool_calls
-        /// that produced it.
-        /// </summary>
-        private void TrimToBudget()
-        {
-            while (HistoryChars() > MaxHistoryChars)
-            {
-                int nextUser = -1;
-                // _turnStart is the current user message: the furthest a cut may reach.
-                for (int i = 1; i <= _turnStart && i < _history.Count; i++)
-                {
-                    if (_history[i].GetString("role", string.Empty) == "user") { nextUser = i; break; }
-                }
-                if (nextUser < 0) { break; }
-                _history.RemoveRange(0, nextUser);
-                _turnStart -= nextUser;
-            }
-            PruneCallNames();
-        }
-
-        /// <summary>
-        /// Drops call-id labels for tool calls no longer in history, so the
-        /// map can't grow without bound over a long campaign.
-        /// </summary>
-        private void PruneCallNames()
-        {
-            if (_callNames.Count == 0) { return; }
-            var live = new HashSet<string>();
-            foreach (var message in _history)
-            {
-                if (message.GetString("role", string.Empty) != "assistant") { continue; }
-                foreach (var call in message.GetArray("tool_calls"))
-                {
-                    string id = call.GetString("id", string.Empty);
-                    if (!string.IsNullOrEmpty(id)) { live.Add(id); }
-                }
-            }
-            var dead = new List<string>();
-            foreach (string id in _callNames.Keys)
-            {
-                if (!live.Contains(id)) { dead.Add(id); }
-            }
-            foreach (string id in dead) { _callNames.Remove(id); }
-        }
-
-        private int HistoryChars()
-        {
-            int total = 0;
-            foreach (var message in _history) { total += message.ToJson().Length; }
-            return total;
-        }
-
-        private IEnumerator PostChat(JsonValue request, bool stream, Action<string> onDelta, Action<JsonValue, string, long> done)
-        {
-            byte[] payload = Encoding.UTF8.GetBytes(request.ToJson());
-            _lastBody = string.Empty;
-            using (UnityWebRequest web = new UnityWebRequest(Byok.ChatUrl(), "POST"))
-            {
-                ChatStreamAccumulator accumulator = null;
-                SseDownloadHandler sse = null;
-                if (stream)
-                {
-                    accumulator = new ChatStreamAccumulator();
-                    var decoder = new SseDecoder();
-                    decoder.OnEvent = delegate (string data)
-                    {
-                        string delta = accumulator.Feed(data);
-                        if (delta.Length > 0) { onDelta(delta); }
-                    };
-                    sse = new SseDownloadHandler(decoder);
-                    web.downloadHandler = sse;
-                }
-                else
-                {
-                    web.downloadHandler = new DownloadHandlerBuffer();
-                }
-                web.uploadHandler = new UploadHandlerRaw(payload);
-                web.SetRequestHeader("Content-Type", "application/json");
-                if (stream) { web.SetRequestHeader("Accept", "text/event-stream"); }
-                if (Byok.HasKey) { web.SetRequestHeader("Authorization", "Bearer " + Byok.ApiKey()); }
-                // Model turns (long narration, reasoning models) outlast tool calls.
-                web.timeout = Math.Max(120, Vault != null ? Vault.TimeoutSeconds * 2 : 120);
-                _activeChat = web;
-                yield return web.SendWebRequest();
-                _activeChat = null;
-
-                string body = sse != null ? sse.RawText : (web.downloadHandler.text ?? string.Empty);
-                _lastBody = body;
-                if (web.result != UnityWebRequest.Result.Success)
-                {
-                    string detail = string.Empty;
-                    JsonValue errorBody;
-                    if (JsonValue.TryParse(body, out errorBody))
-                    {
-                        detail = errorBody.Get("error").GetString("message", string.Empty);
-                    }
-                    string what = web.responseCode == 0
-                        ? (web.error ?? "no response") + " contacting the chat endpoint"
-                        : "HTTP " + web.responseCode + " from chat endpoint";
-                    done(null, what + (detail.Length > 0 ? ": " + TextSanitizer.Clean(detail, 300) : "."), web.responseCode);
-                    yield break;
-                }
-                if (stream)
-                {
-                    if (accumulator.Error != null)
-                    {
-                        done(null, TextSanitizer.Clean(accumulator.Error, 300), web.responseCode);
-                        yield break;
-                    }
-                    if (accumulator.Chunks == 0)
-                    {
-                        // A 200 that wasn't SSE: some gateways ignore stream:true.
-                        JsonValue plain;
-                        if (JsonValue.TryParse(body, out plain) && plain.Kind == JsonKind.Object)
-                        {
-                            done(plain, null, web.responseCode);
-                            yield break;
-                        }
-                        done(null, "Chat endpoint returned an empty stream.", web.responseCode);
-                        yield break;
-                    }
-                    done(accumulator.ToResponse(), null, web.responseCode);
-                    yield break;
-                }
-                JsonValue response;
-                if (!JsonValue.TryParse(body, out response))
-                {
-                    done(null, "Chat endpoint returned invalid JSON.", web.responseCode);
-                    yield break;
-                }
-                if (!response.Get("error").IsNull)
-                {
-                    done(null, TextSanitizer.Clean(response.Get("error").GetString("message", "chat error"), 300), web.responseCode);
-                    yield break;
-                }
-                done(response, null, web.responseCode);
-            }
-        }
-
-        private static JsonValue RoleMessage(string role, string text)
-        {
-            var m = JsonValue.NewObject();
-            m.ObjectValue["role"] = JsonValue.FromString(role);
-            m.ObjectValue["content"] = JsonValue.FromString(text);
-            return m;
-        }
-
-        private static JsonValue ToolMessage(string callId, string text)
-        {
-            var m = JsonValue.NewObject();
-            m.ObjectValue["role"] = JsonValue.FromString("tool");
-            m.ObjectValue["tool_call_id"] = JsonValue.FromString(callId);
-            string clipped = text.Length > McpClient.MaxResultChars
-                ? text.Substring(0, McpClient.MaxResultChars) + "\n… (result truncated)"
-                : text;
-            m.ObjectValue["content"] = JsonValue.FromString(clipped);
-            return m;
-        }
-
-        /// <summary>
-        /// Keep assistant messages replayable without protocol leftovers. The
-        /// content key is always present (possibly empty): a bare
-        /// {"role":"assistant"} with neither content nor tool_calls is rejected
-        /// by some OpenAI-compatible endpoints on replay. Content comes from
-        /// ExtractContent, so block-array replies aren't flattened to "".
-        /// reasoning_details and per-call extra_content ride along because
-        /// some providers (Gemini thought signatures via OpenRouter or the
-        /// OpenAI-compat endpoint) reject a tool loop replayed without them.
-        /// </summary>
-        internal static JsonValue PruneMessage(JsonValue message, string content)
-        {
-            var m = JsonValue.NewObject();
-            m.ObjectValue["role"] = JsonValue.FromString("assistant");
-            m.ObjectValue["content"] = JsonValue.FromString(content ?? string.Empty);
-            var details = message.Get("reasoning_details");
-            if (details.Kind == JsonKind.Array && details.ArrayValue.Count > 0) { m.ObjectValue["reasoning_details"] = details; }
-            var calls = message.GetArray("tool_calls");
-            if (calls.Count > 0)
-            {
-                var kept = JsonValue.NewArray();
-                for (int i = 0; i < calls.Count; i++)
-                {
-                    var c = JsonValue.NewObject();
-                    c.ObjectValue["id"] = JsonValue.FromString(calls[i].GetString("id", "call-" + i));
-                    c.ObjectValue["type"] = JsonValue.FromString("function");
-                    var fn = JsonValue.NewObject();
-                    fn.ObjectValue["name"] = JsonValue.FromString(calls[i].Get("function").GetString("name", string.Empty));
-                    fn.ObjectValue["arguments"] = JsonValue.FromString(calls[i].Get("function").GetString("arguments", "{}"));
-                    c.ObjectValue["function"] = fn;
-                    var extra = calls[i].Get("extra_content");
-                    if (!extra.IsNull) { c.ObjectValue["extra_content"] = extra; }
-                    kept.ArrayValue.Add(c);
-                }
-                m.ObjectValue["tool_calls"] = kept;
-            }
-            return m;
         }
 
         private static void AddSystem(VaultTranscript transcript, string text)

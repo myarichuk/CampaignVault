@@ -173,9 +173,68 @@ namespace CampaignVault.UnityClient.App
             DropSpellCounts(b, step.Key);
             if (cleared.Count > 0) { b.ClearedNote = BuilderDependencies.ClearedNote(step, cleared); }
             _s.Notify(StateArea.Builder);
-            yield return BuilderSteps();
-            yield return BuilderOptions(b.Current);
-            yield return BuilderPreview();
+            yield return BuilderSync();
+        }
+
+        /// <summary>Quick successive clicks (a point-buy, an array of toggles) wait this long for the next before the server hears.</summary>
+        public static float BuilderDebounceSeconds = 0.25f;
+        private bool _builderChooseSupported = true;
+
+        /// <summary>
+        /// After a choice: one character_builder action=choose carries the steps, the shown step's options and the
+        /// preview (three calls before). A newer choice while waiting wins; a server without choose gets the old three.
+        /// </summary>
+        private IEnumerator BuilderSync()
+        {
+            var b = _s.Builder;
+            int revision = b.Revision;
+            float until = UnityEngine.Time.realtimeSinceStartup + BuilderDebounceSeconds;
+            while (UnityEngine.Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+                if (b.Revision != revision) { yield break; }
+            }
+            if (!_builderChooseSupported)
+            {
+                yield return BuilderSteps();
+                yield return BuilderOptions(b.Current);
+                yield return BuilderPreview();
+                yield break;
+            }
+            string shown = b.Current;
+            string name = b.Draft.Name + "\n" + b.Draft.Concept + "\n" + b.Draft.Look;
+            McpOutcome<ToolPayload> result = null;
+            yield return CallBuilder("choose", shown, delegate (McpOutcome<ToolPayload> o) { result = o; });
+            if (revision != b.Revision) { yield break; }
+            if (result != null && !result.Ok && result.ErrorMessage != null && result.ErrorMessage.IndexOf("Unknown action", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                _builderChooseSupported = false;
+                yield return BuilderSteps();
+                yield return BuilderOptions(b.Current);
+                yield return BuilderPreview();
+                yield break;
+            }
+            if (result == null || !result.Ok)
+            {
+                b.Error = "Couldn't update the builder: " + (result != null ? result.ErrorMessage : "no response");
+                _s.Notify(StateArea.Builder);
+                yield break;
+            }
+            ReadChoose(b, result.Data.Data, shown);
+            b.PreviewCurrent = name == b.Draft.Name + "\n" + b.Draft.Concept + "\n" + b.Draft.Look;
+            b.Error = string.Empty;
+            _s.Notify(StateArea.Builder);
+        }
+
+        /// <summary>One choose reply: steps, the options of the step that was shown (when the reply has them), the preview.</summary>
+        internal static void ReadChoose(BuilderState b, JsonValue data, string shownStep)
+        {
+            ReadSteps(b, data);
+            if (!string.IsNullOrEmpty(shownStep) && b.Step(shownStep) != null && data.Get("options").Kind == JsonKind.Array)
+            {
+                b.Options[shownStep] = ReadOptions(data);
+            }
+            ReadPreview(b, data);
         }
 
         /// <summary>A levelChoices step: one option of one slot (see <see cref="LevelChoices.Toggle"/>).</summary>
@@ -581,13 +640,16 @@ namespace CampaignVault.UnityClient.App
 
         internal static StepOptions ReadOptions(McpOutcome<ToolPayload> result)
         {
-            var options = new StepOptions();
             if (result == null || !result.Ok)
             {
-                options.Error = result != null ? result.ErrorMessage : "no response";
-                return options;
+                return new StepOptions { Error = result != null ? result.ErrorMessage : "no response" };
             }
-            var data = result.Data.Data;
+            return ReadOptions(result.Data.Data);
+        }
+
+        internal static StepOptions ReadOptions(JsonValue data)
+        {
+            var options = new StepOptions();
             foreach (var o in data.GetArray("options")) { options.Options.Add(BuilderOption.Parse(o)); }
             options.Count = (int)data.GetNumber("count", -1);
             foreach (var slot in data.GetArray("slots")) { options.Slots.Add(LevelSlot.Parse(slot)); }
@@ -676,6 +738,8 @@ namespace CampaignVault.UnityClient.App
                 // The first player character built is the one the player plays.
                 if (b.ForOnboarding) { RecordPartyMember(b, id); _s.Notify(StateArea.Builder); _s.FinishPartyBuilder(); }
                 else if (b.Draft.Kind == "pc" && string.IsNullOrEmpty(_s.PcId) && id.Length > 0) { SetPcId(id); }
+                // A character built mid-campaign joins the roster the DM is told about, and the chronicle (A19).
+                if (!b.ForOnboarding && !update && id.Length > 0 && b.Draft.Kind == "pc") { AddToPartyLine(id, who); }
                 _s.Notify(StateArea.Builder);
             }
             finally { _s.EndBusy("builder-commit"); }

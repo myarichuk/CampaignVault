@@ -111,12 +111,40 @@
                         <ui:DataBinding property="itemsSource" data-source-path="Fields" binding-mode="ToTarget" />
                     </Bindings>
                 </cv:Repeater>
+                <ui:Label text="PEOPLE IN PLAY" class="cv-caption cv-field-caption" />
+                <cv:Repeater item-template="Table/PersonRow">
+                    <Bindings>
+                        <ui:DataBinding property="itemsSource" data-source-path="People" binding-mode="ToTarget" />
+                    </Bindings>
+                </cv:Repeater>
+                <ui:VisualElement class="cv-journal__chips">
+                    <Bindings>
+                        <cv:ClassBinding property="cls-hidden" data-source-path="HasCandidates" class-name="cv-hidden" invert="true" />
+                    </Bindings>
+                    <cv:Repeater item-template="Common/Choice">
+                        <Bindings>
+                            <ui:DataBinding property="itemsSource" data-source-path="Candidates" binding-mode="ToTarget" />
+                        </Bindings>
+                    </cv:Repeater>
+                </ui:VisualElement>
+                <ui:Label class="cv-body cv-muted">
+                    <Bindings>
+                        <ui:DataBinding property="text" data-source-path="PeopleHint" binding-mode="ToTarget" />
+                        <cv:ClassBinding property="cls-hidden" data-source-path="PeopleHint" class-name="cv-hidden" invert="true" />
+                    </Bindings>
+                </ui:Label>
                 <cv:Repeater item-template="Common/ErrorText">
                     <Bindings>
                         <ui:DataBinding property="itemsSource" data-source-path="Issues" binding-mode="ToTarget" />
                     </Bindings>
                 </cv:Repeater>
                 <ui:VisualElement class="cv-row cv-journal__actions">
+                    <cv:VaultButton name="codex-draft-handoff" label="LET THE DM WRITE IT" icon="spark" tooltip="The Dungeon Master drafts every field from this session's chronicle; you edit before sending." class="cv-btn--small cv-btn--ghost">
+                        <Bindings>
+                            <ui:DataBinding property="command" data-source-path="Draft" binding-mode="ToTarget" />
+                            <ui:DataBinding property="enabledSelf" data-source-path="Idle" binding-mode="ToTarget" />
+                        </Bindings>
+                    </cv:VaultButton>
                     <cv:VaultButton name="codex-checkpoint" label="CHECKPOINT" icon="seal" class="cv-btn--small">
                         <Bindings>
                             <ui:DataBinding property="command" data-source-path="Checkpoint" binding-mode="ToTarget" />

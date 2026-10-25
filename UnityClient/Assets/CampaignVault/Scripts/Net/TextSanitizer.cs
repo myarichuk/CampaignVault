@@ -29,7 +29,9 @@ namespace CampaignVault.UnityClient.Net
             string cleaned = new string(buffer, 0, n);
             if (maxLength > 0 && cleaned.Length > maxLength)
             {
-                cleaned = cleaned.Substring(0, maxLength) + "\u2026 (truncated)";
+                // Never cut between the halves of a surrogate pair (an emoji would become two broken chars) (A29).
+                int cut = char.IsHighSurrogate(cleaned[maxLength - 1]) ? maxLength - 1 : maxLength;
+                cleaned = cleaned.Substring(0, cut) + "\u2026 (truncated)";
             }
             return cleaned;
         }
@@ -86,9 +88,11 @@ namespace CampaignVault.UnityClient.Net
 
         private static bool IsLoopback(string host)
         {
+            // Uri.Host keeps the brackets of an IPv6 literal (A28).
             return string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)
                 || host == "127.0.0.1"
-                || host == "::1";
+                || host == "::1"
+                || host == "[::1]";
         }
 
         /// <summary>Scrub secrets out of text before it reaches logs or the screen.</summary>

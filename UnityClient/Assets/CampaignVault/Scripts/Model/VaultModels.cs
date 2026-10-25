@@ -74,12 +74,25 @@ namespace CampaignVault.UnityClient.Model
         public event Action<TranscriptSegment> Updated;
         /// <summary>Everything went (campaign switch).</summary>
         public event Action Cleared;
+        /// <summary>A segment was inserted at this index (earlier chronicle pages land at the front).</summary>
+        public event Action<int, TranscriptSegment> Inserted;
 
         public void Add(TranscriptSegment segment)
         {
             _segments.Add(segment);
             if (Added != null) { Added(segment); }
             EnforceCap();
+        }
+
+        /// <summary>Earlier history, oldest first, put before everything shown. The cap is left to the next Add: what was just asked for is not trimmed away.</summary>
+        public void Prepend(IList<TranscriptSegment> segments)
+        {
+            if (segments == null) { return; }
+            for (int i = 0; i < segments.Count; i++)
+            {
+                _segments.Insert(i, segments[i]);
+                if (Inserted != null) { Inserted(i, segments[i]); }
+            }
         }
 
         public bool Remove(TranscriptSegment segment)

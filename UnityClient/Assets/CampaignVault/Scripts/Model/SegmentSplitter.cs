@@ -119,10 +119,11 @@ namespace CampaignVault.UnityClient.Model
                 }
                 bool crit = hit && FollowedBy(toolText, m.Index + m.Length, "CRITICAL HIT");
                 if (crit) { outcome = RollOutcome.CriticalSuccess; }
+                // Two swings with the same total and target are two cards when their damage differs (A7).
                 AddRoll(hits, seen, claimed, m,
                     m.Groups["action"].Value.Trim() + " vs " + m.Groups["target"].Value.Trim(),
                     "AC", m.Groups["total"].Value, m.Groups["ac"].Value,
-                    crit ? "Critical Hit" : hit ? "Hit" : "Miss", outcome);
+                    crit ? "Critical Hit" : hit ? "Hit" : "Miss", outcome, m.Groups["hit"].Value);
             }
             foreach (Match m in TargetSavePattern.Matches(toolText))
             {
@@ -170,7 +171,7 @@ namespace CampaignVault.UnityClient.Model
 
         private static void AddRoll(
             List<RollHit> hits, HashSet<string> seen, List<KeyValuePair<int, int>> claimed, Match m,
-            string label, string against, string totalText, string targetText, string verdict, RollOutcome outcome)
+            string label, string against, string totalText, string targetText, string verdict, RollOutcome outcome, string distinct = "")
         {
             // One stretch of text is one roll, whichever pattern saw it first.
             int start = m.Index;
@@ -186,7 +187,7 @@ namespace CampaignVault.UnityClient.Model
             if (!int.TryParse(totalText, NumberStyles.Integer, CultureInfo.InvariantCulture, out total)) { return; }
             if (!int.TryParse(targetText, NumberStyles.Integer, CultureInfo.InvariantCulture, out target)) { return; }
             string detail = total + " vs " + against + " " + target;
-            if (!seen.Add(label + "|" + detail + "|" + verdict)) { return; }
+            if (!seen.Add(label + "|" + detail + "|" + verdict + "|" + distinct)) { return; }
             hits.Add(new RollHit
             {
                 Index = start,

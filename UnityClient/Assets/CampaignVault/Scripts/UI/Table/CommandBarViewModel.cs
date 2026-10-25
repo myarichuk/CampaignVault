@@ -79,7 +79,9 @@ namespace CampaignVault.UnityClient.UI.Table
         private int _focusRequest;
         private readonly List<QuickActionViewModel> _baseQuicks;
         private readonly QuickActionViewModel _retry;
+        private readonly QuickActionViewModel _undo;
         private bool _retryShown;
+        private bool _undoShown;
 
         public CommandBarViewModel(VaultAppState state, VaultController controller)
         {
@@ -93,6 +95,7 @@ namespace CampaignVault.UnityClient.UI.Table
             }
             _baseQuicks = quick;
             _retry = new QuickActionViewModel("RETRY", "refresh", "The DM couldn't answer: send your last line again", delegate { _c.RetryLastTurn(); });
+            _undo = new QuickActionViewModel("UNDO", "trash", "Take back your last line and the DM's answer (nothing was committed); the line goes back in the box to edit or resend", delegate { Undo(); });
             Quicks = quick;
             SetUp = delegate { state.RequestSetup(); };
             Act = ActOrStop;
@@ -134,11 +137,14 @@ namespace CampaignVault.UnityClient.UI.Table
                 : _s.Session == null ? "What do you do? Your first line opens the session."
                 : "What do you do?";
             bool canRetry = _c.CanRetryLastTurn;
-            if (canRetry != _retryShown)
+            bool canUndo = _c.CanUndoLastTurn;
+            if (canRetry != _retryShown || canUndo != _undoShown)
             {
                 _retryShown = canRetry;
+                _undoShown = canUndo;
                 var list = new List<QuickActionViewModel>();
                 if (canRetry) { list.Add(_retry); }
+                if (canUndo) { list.Add(_undo); }
                 list.AddRange(_baseQuicks);
                 Quicks = list;
             }
@@ -169,6 +175,16 @@ namespace CampaignVault.UnityClient.UI.Table
         {
             Draft = text;
             RequestFocus();
+        }
+
+        /// <summary>Undo: the last turn leaves the log and the DM's memory; the line comes back to the box to edit or resend.</summary>
+        public bool Undo()
+        {
+            string line = _c.UndoLastTurn();
+            if (line == null) { return false; }
+            Prefill(line);
+            Refresh();
+            return true;
         }
 
         private void Use(Quick q)

@@ -23,5 +23,11 @@
                 <cv:ClassBinding property="cls-hidden" data-source-path="Help" class-name="cv-hidden" invert="true" />
             </Bindings>
         </ui:Label>
+        <ui:Label name="onboarding-rejected" class="cv-body cv-text-blood">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="Error" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="Error" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </ui:Label>
     </ui:VisualElement>
 </ui:UXML>

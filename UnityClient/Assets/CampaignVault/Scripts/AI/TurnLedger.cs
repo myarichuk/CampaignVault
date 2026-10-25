@@ -131,6 +131,8 @@ namespace CampaignVault.UnityClient.AI
         /// <summary>Roll lines as the transcript shows them ("Perception 17 vs DC 14: Success").</summary>
         public readonly List<string> Rolls = new List<string>();
         public readonly List<string> Tools = new List<string>();
+        /// <summary>The tools that returned success this turn, in order; a failed or aborted call is only in <see cref="Tools"/>.</summary>
+        public readonly List<string> Succeeded = new List<string>();
         public readonly TokenUsage Usage = new TokenUsage();
 
         public void AddNarration(string text)

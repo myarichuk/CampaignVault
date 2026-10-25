@@ -68,6 +68,8 @@ namespace CampaignVault.UnityClient.Net
             public string Body = string.Empty;
             public string SessionId = string.Empty;
             public string Error = string.Empty;
+            /// <summary>The JSON-RPC id this reply answers (0 for notifications), so an SSE body's frames can be matched to it (A30).</summary>
+            public long RequestId;
         }
 
         private int _nextId = 1;
@@ -78,7 +80,8 @@ namespace CampaignVault.UnityClient.Net
         private readonly HashSet<string> _opening = new HashSet<string>();
 
         // Requests on the wire, so Stop can cut them instead of waiting out the timeout.
-        private readonly HashSet<UnityWebRequest> _inFlight = new HashSet<UnityWebRequest>();
+        /// <summary>In-flight requests and who started them (the driver tags its turn's calls; panels leave theirs untagged).</summary>
+        private readonly Dictionary<UnityWebRequest, string> _inFlight = new Dictionary<UnityWebRequest, string>();
 
         /// <summary>Drop every negotiated session (server URL or token changed).</summary>
         public void ResetSessions() { _sessions.Clear(); }
@@ -90,8 +93,16 @@ namespace CampaignVault.UnityClient.Net
         /// </summary>
         public void AbortAll()
         {
-            foreach (var request in new List<UnityWebRequest>(_inFlight)) { request.Abort(); }
+            foreach (var request in new List<UnityWebRequest>(_inFlight.Keys)) { request.Abort(); }
             _inFlight.Clear();
+        }
+
+        /// <summary>Cuts only the requests one owner started (the DM's turn), leaving a table refresh or a codex search alone (A13).</summary>
+        public void Abort(string owner)
+        {
+            var mine = new List<UnityWebRequest>();
+            foreach (var kv in _inFlight) { if (kv.Value == owner) { mine.Add(kv.Key); } }
+            foreach (var request in mine) { request.Abort(); _inFlight.Remove(request); }
         }
 
         public IEnumerator ListTools(
@@ -121,10 +132,10 @@ namespace CampaignVault.UnityClient.Net
         /// </summary>
         public IEnumerator CallTool(
             VaultClientConfig config, string connector, string toolName, JsonValue args,
-            Action<McpOutcome<string>> done)
+            Action<McpOutcome<string>> done, string owner = null)
         {
             McpOutcome<JsonValue> outcome = null;
-            yield return InvokeTool(config, connector, toolName, args, delegate (McpOutcome<JsonValue> o) { outcome = o; });
+            yield return InvokeTool(config, connector, toolName, args, delegate (McpOutcome<JsonValue> o) { outcome = o; }, owner);
             if (!outcome.Ok) { done(McpOutcome<string>.Fail(outcome.ErrorCode, outcome.ErrorMessage)); yield break; }
             string text = ResultText(outcome.Data);
             if (text.Length > MaxResultChars)
@@ -192,18 +203,18 @@ namespace CampaignVault.UnityClient.Net
 
         private IEnumerator InvokeTool(
             VaultClientConfig config, string connector, string toolName, JsonValue args,
-            Action<McpOutcome<JsonValue>> done)
+            Action<McpOutcome<JsonValue>> done, string owner = null)
         {
             var callParams = JsonValue.NewObject();
             callParams.ObjectValue["name"] = JsonValue.FromString(toolName);
             callParams.ObjectValue["arguments"] = args ?? JsonValue.NewObject();
-            return PostRpc(config, connector, "tools/call", callParams, done);
+            return PostRpc(config, connector, "tools/call", callParams, done, owner);
         }
 
         /// <summary>Sends one JSON-RPC request inside an MCP session; done gets the result member.</summary>
         private IEnumerator PostRpc(
             VaultClientConfig config, string connector, string method, JsonValue rpcParams,
-            Action<McpOutcome<JsonValue>> done)
+            Action<McpOutcome<JsonValue>> done, string owner = null)
         {
             string reason;
             if (!config.Validate(out reason))
@@ -226,7 +237,7 @@ namespace CampaignVault.UnityClient.Net
                 _sessions.TryGetValue(url, out session);
 
                 RawReply reply = null;
-                yield return Send(config, url, Envelope(method, rpcParams, true), session, delegate (RawReply r) { reply = r; });
+                yield return Send(config, url, Envelope(method, rpcParams, true), session, delegate (RawReply r) { reply = r; }, owner);
 
                 // 404 = the server forgot this session (restart, idle expiry): reopen once.
                 if (reply.Status == 404 && session != null && !string.IsNullOrEmpty(session.Id) && attempt == 0)
@@ -297,12 +308,12 @@ namespace CampaignVault.UnityClient.Net
         }
 
         private IEnumerator Send(
-            VaultClientConfig config, string url, JsonValue body, McpSession session, Action<RawReply> done)
+            VaultClientConfig config, string url, JsonValue body, McpSession session, Action<RawReply> done, string owner = null)
         {
             byte[] payload = Encoding.UTF8.GetBytes(body.ToJson());
             using (UnityWebRequest request = new UnityWebRequest(url, "POST"))
             {
-                _inFlight.Add(request);
+                _inFlight[request] = owner ?? string.Empty;
                 request.uploadHandler = new UploadHandlerRaw(payload);
                 request.downloadHandler = new DownloadHandlerBuffer();
                 request.SetRequestHeader("Content-Type", "application/json");
@@ -326,6 +337,7 @@ namespace CampaignVault.UnityClient.Net
                     Body = request.downloadHandler != null ? (request.downloadHandler.text ?? string.Empty) : string.Empty,
                     SessionId = HeaderValue(request, "Mcp-Session-Id"),
                     Error = request.error ?? string.Empty,
+                    RequestId = (long)body.GetNumber("id", 0),
                 });
             }
         }
@@ -339,12 +351,12 @@ namespace CampaignVault.UnityClient.Net
                     return McpOutcome<JsonValue>.Fail("AUTH", "Server rejected credentials (401). Check the bearer token.");
                 }
                 string detail = reply.Status == 0 ? reply.Error : "HTTP " + reply.Status;
-                string serverMessage = RpcErrorMessage(ExtractJsonPayload(reply.Body));
+                string serverMessage = RpcErrorMessage(ExtractJsonPayload(reply.Body, reply.RequestId));
                 if (!string.IsNullOrEmpty(serverMessage)) { detail += ": " + serverMessage; }
                 return McpOutcome<JsonValue>.Fail("HTTP", TextSanitizer.Clean(detail + " contacting " + url, 500));
             }
             JsonValue envelope;
-            if (!JsonValue.TryParse(ExtractJsonPayload(reply.Body), out envelope) || envelope.Kind != JsonKind.Object)
+            if (!JsonValue.TryParse(ExtractJsonPayload(reply.Body, reply.RequestId), out envelope) || envelope.Kind != JsonKind.Object)
             {
                 return McpOutcome<JsonValue>.Fail("PROTOCOL", "Server returned a non-JSON-RPC payload.");
             }
@@ -375,10 +387,11 @@ namespace CampaignVault.UnityClient.Net
         }
 
         /// <summary>
-        /// Streamable HTTP may answer as SSE (event:/data: frames). Take the last
-        /// data frame; plain JSON passes through untouched.
+        /// Streamable HTTP may answer as SSE (event:/data: frames). Take the frame that answers the request's
+        /// JSON-RPC id when one does (a server may interleave notifications), else the last data frame;
+        /// plain JSON passes through untouched.
         /// </summary>
-        internal static string ExtractJsonPayload(string raw)
+        internal static string ExtractJsonPayload(string raw, long expectId = 0)
         {
             if (string.IsNullOrEmpty(raw) || raw.IndexOf("data:", StringComparison.Ordinal) < 0)
             {
@@ -387,6 +400,7 @@ namespace CampaignVault.UnityClient.Net
             // One event = consecutive data: lines (joined with \n, per the SSE
             // spec) up to a blank line. The last complete event wins.
             string last = null;
+            string answer = null;
             var current = new StringBuilder();
             bool inEvent = false;
             string[] lines = raw.Replace("\r\n", "\n").Split('\n');
@@ -398,7 +412,7 @@ namespace CampaignVault.UnityClient.Net
                     if (inEvent)
                     {
                         string data = current.ToString();
-                        if (data.Trim() != "[DONE]") { last = data; }
+                        if (data.Trim() != "[DONE]") { last = data; if (expectId > 0 && HasRpcId(data, expectId)) { answer = data; } }
                     }
                     current.Length = 0;
                     inEvent = false;
@@ -413,7 +427,13 @@ namespace CampaignVault.UnityClient.Net
                     inEvent = true;
                 }
             }
-            return last ?? raw;
+            return answer ?? last ?? raw;
+        }
+
+        private static bool HasRpcId(string data, long id)
+        {
+            JsonValue json;
+            return JsonValue.TryParse(data, out json) && json.Kind == JsonKind.Object && json.Get("id").Kind == JsonKind.Number && (long)json.Get("id").NumberValue == id;
         }
     }
 }

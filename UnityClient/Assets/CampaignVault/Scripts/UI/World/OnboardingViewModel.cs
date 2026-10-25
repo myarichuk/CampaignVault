@@ -47,6 +47,7 @@ namespace CampaignVault.UnityClient.UI.World
         private readonly ActionViewModel _send;
         private readonly ActionViewModel _writeUp;
         private readonly ActionViewModel _back;
+        private readonly ActionViewModel _previous;
         private readonly ActionViewModel _toTable;
         private readonly ActionViewModel _seed;
         private readonly ActionViewModel _restart;
@@ -69,6 +70,8 @@ namespace CampaignVault.UnityClient.UI.World
             _send = new ActionViewModel("send", "onboarding-send", delegate { controller.Run(controller.SendBrainstorm(_s.Onboarding.BrainstormDraft)); }, primary: true).Show("SEND", "chevron");
             _writeUp = new ActionViewModel("writeup", "onboarding-writeup", delegate { controller.Run(controller.WriteUpBrainstorm()); });
             _back = new ActionViewModel("back", "onboarding-back", controller.CloseBrainstorm, ghost: true).Show("BACK TO THE QUESTION", "chevron");
+            _previous = new ActionViewModel("previous", "onboarding-previous", delegate { controller.Run(controller.GoBackOnboarding()); }, ghost: true)
+                .Show("BACK", "chevron", true, "The previous question again, with its answer in the field to change.");
             _toTable = new ActionViewModel("table", "onboarding-table", close, ghost: true).Show("TO THE TABLE");
             _seed = new ActionViewModel("seed", "onboarding-seed", delegate { if (controller.SeedWorldThroughDm()) { close(); } }, primary: true)
                 .Show("SEED THE WORLD", "spark", true, "The Dungeon Master creates your characters and the starter places, people and quests from your answers. The first session opens as soon as the party exists.");
@@ -123,6 +126,8 @@ namespace CampaignVault.UnityClient.UI.World
                         }
                         else { _question.Update(ob); }
                         Page = _question;
+                        // The campaign name (the first answer) is fixed, so there is a question to go back to from the third on.
+                        if (ob.Answered >= 2) { actions.Add(_previous); }
                         if (_question is TextPageViewModel) { actions.Add(_answer); }
                     }
                     break;

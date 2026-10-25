@@ -74,8 +74,8 @@ namespace CampaignVault.UnityClient.AI
         public const string LoopContract =
             "# TURN CONTRACT (this client)\n" +
             "You handle the bookkeeping half of each turn. Make the tool calls the player's action needs: rolls, commits, lookups. " +
-            "A separate storyteller then writes the scene from what you committed, so you don't narrate, and you don't need the dnd-narration skill: " +
-            "the NARRATION section above is the storyteller's job, not yours.\n" +
+            "A separate storyteller then writes the scene from what you committed, so you don't narrate and never load a narration skill: " +
+            "the scene's length and voice are the storyteller's job, not yours.\n" +
             "When the state is committed (or when nothing needed committing, as in plain conversation), reply with the single word DONE.\n" +
             "The storyteller only knows what the tools returned and the narrative line you pass to take_turn, so put the concrete content of the beat in that line " +
             "(up to about 500 characters): who does what, each thing found with its quality, what an NPC says or decides, in their own words where the words matter.\n" +
@@ -167,10 +167,20 @@ namespace CampaignVault.UnityClient.AI
 
         public static string NarrationSystemPrompt(string narrationSkill, string pcCard, string campaignLine)
         {
+            return NarrationSystemPrompt(narrationSkill, string.Empty, pcCard, campaignLine);
+        }
+
+        /// <summary>The narration pass gets the voice rules (dnd-narration) and the worked passages (dnd-narration-examples) in one guide.</summary>
+        public static string NarrationSystemPrompt(string narrationSkill, string examplesSkill, string pcCard, string campaignLine)
+        {
             var sb = new StringBuilder(NarrationHeader);
             if (!string.IsNullOrEmpty(narrationSkill))
             {
                 sb.Append("\n\n# NARRATION GUIDE\n\n").Append(StripFrontMatter(narrationSkill).Trim());
+            }
+            if (!string.IsNullOrEmpty(examplesSkill))
+            {
+                sb.Append("\n\n").Append(StripFrontMatter(examplesSkill).Trim());
             }
             if (!string.IsNullOrEmpty(campaignLine)) { sb.Append("\n\n# TABLE\n").Append(campaignLine.Trim()); }
             if (!string.IsNullOrEmpty(pcCard)) { sb.Append("\n\n# THE PLAYER'S CHARACTER\n").Append(pcCard.Trim()); }
@@ -250,6 +260,7 @@ namespace CampaignVault.UnityClient.AI
         private readonly List<string> _world = new List<string>();
         private readonly List<string> _reminders = new List<string>();
         private readonly List<string> _failed = new List<string>();
+        private readonly List<string> _warnings = new List<string>();
         private readonly HashSet<string> _seen = new HashSet<string>();
 
         public int Calls { get; private set; }
@@ -275,10 +286,13 @@ namespace CampaignVault.UnityClient.AI
                 return;
             }
             if (narrative.Length > 0) { Push(_committed, Storyteller.Cap(narrative, 500)); }
-            foreach (var roll in SegmentSplitter.ExtractRolls(resultText))
+            if (OpenAiChatDriver.CarriesRolls(toolName))
             {
-                var r = roll.Roll;
-                Push(_rolls, r.Label + ": " + (string.IsNullOrEmpty(r.Verdict) ? r.Outcome.ToString() : Humanize(r.Verdict)));
+                foreach (var roll in SegmentSplitter.ExtractRolls(resultText))
+                {
+                    var r = roll.Roll;
+                    Push(_rolls, r.Label + ": " + (string.IsNullOrEmpty(r.Verdict) ? r.Outcome.ToString() : Humanize(r.Verdict)));
+                }
             }
             var data = env.Get("data");
             var summaryLines = data.GetArray("summary");
@@ -304,6 +318,39 @@ namespace CampaignVault.UnityClient.AI
             string time = Time(delta.Get("time"));
             if (time.Length == 0) { time = Time(data.Get("worldState").Get("time")); }
             if (time.Length > 0) { Push(_world, "Time now: " + time); }
+            // A8: the room entered on a travel turn, the party's moved needs and memory hints, quest steps,
+            // and the engine's narrative prompts used to be dropped here; the scene is written from this brief.
+            var full = data.Get("fullScene");
+            if (full.Kind == JsonKind.Object)
+            {
+                if (full.Get("location").Kind == JsonKind.Object) { Place(full.Get("location")); }
+                foreach (var npc in full.GetArray("presentNPCs")) { Push(_people, Presence(npc)); }
+                foreach (var thread in full.GetArray("plotThreads"))
+                {
+                    string title = thread.GetStringAny(new[] { "title", "name", "id" }, string.Empty);
+                    string stage = thread.GetStringAny(new[] { "stage", "state", "status" }, string.Empty);
+                    if (title.Length > 0) { Push(_world, "Thread here: " + title + (stage.Length > 0 ? " (" + stage + ")" : string.Empty)); }
+                }
+            }
+            foreach (var member in data.GetArray("partyDelta"))
+            {
+                string who = member.GetStringAny(new[] { "name", "entityId" }, "Someone");
+                var moved = member.Get("needsMoved");
+                if (moved.Kind == JsonKind.Object && moved.ObjectValue != null && moved.ObjectValue.Count > 0)
+                {
+                    var parts = new List<string>();
+                    foreach (var kv in moved.ObjectValue) { parts.Add(kv.Key + " " + (kv.Value.Kind == JsonKind.Number ? ((int)kv.Value.NumberValue).ToString() : kv.Value.ToJson())); }
+                    Push(_physical, who + ": " + string.Join(", ", parts.ToArray()));
+                }
+                string hint = member.GetString("memoryHint", string.Empty);
+                if (hint.Length > 0) { Push(_context, who + ": " + Storyteller.Cap(hint, 240)); }
+            }
+            foreach (var quest in delta.GetArray("questChanges"))
+            {
+                string objective = quest.GetString("objectiveName", string.Empty);
+                Push(_world, "Quest " + quest.GetString("questId", "?") + ": " + quest.GetString("newState", "updated") + (objective.Length > 0 ? " (" + objective + ")" : string.Empty));
+            }
+            foreach (var warning in data.GetArray("warnings")) { if (warning.Kind == JsonKind.String) { Push(_warnings, Storyteller.Cap(warning.StringValue, 240)); } }
         }
 
         private static bool IsLookupNoise(string toolName)
@@ -408,6 +455,7 @@ namespace CampaignVault.UnityClient.AI
             Section(sb, "Meanwhile in the world", _world);
             Section(sb, "Keep in mind", _reminders);
             Section(sb, "Attempted but not applied (don't narrate these as done)", _failed);
+            Section(sb, "Engine warnings (something asked for came back empty; don't narrate it as done)", _warnings);
             if (sb.Length == headerLength) { sb.Append("\nNothing was committed this turn: this is conversation or a moment in the scene.\n"); }
             string request = remedies ? Storyteller.SceneRequest : Storyteller.PlainSceneRequest;
             sb.Append('\n').Append(request);

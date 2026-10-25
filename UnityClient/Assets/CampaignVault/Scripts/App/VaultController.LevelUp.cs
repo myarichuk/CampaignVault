@@ -16,6 +16,7 @@ namespace CampaignVault.UnityClient.App
         /// <summary>Opens the menu for a character: forgets the last one and asks the server what the next level offers.</summary>
         public IEnumerator LevelUpOpen(string characterId)
         {
+            if (DmBusy("level up")) { yield break; }
             var l = _s.LevelUp;
             l.CharacterId = characterId ?? string.Empty;
             l.Offer = null;
@@ -52,7 +53,7 @@ namespace CampaignVault.UnityClient.App
         public IEnumerator LevelUpApply()
         {
             var l = _s.LevelUp;
-            if (l.Offer == null || l.Applying || !l.Offer.CanApply(l.Choice)) { yield break; }
+            if (l.Offer == null || l.Applying || !l.Offer.CanApply(l.Choice) || DmBusy("level up")) { yield break; }
             string id = l.CharacterId;
             l.Applying = true;
             l.Error = string.Empty;
@@ -69,6 +70,8 @@ namespace CampaignVault.UnityClient.App
             var status = LevelUpStatus.Parse(result.Data.Data.Get("status"));
             string who = l.Offer.Name.Length > 0 ? l.Offer.Name : "The character";
             _s.RaiseToast(who + (status != null ? " is now level " + status.Level + "." : " gained a level."), ToastKind.Success);
+            // The chronicle and the DM's next brief see the level too (A19).
+            AddChronicle(new TranscriptSegment { Kind = SegmentKind.System, Text = "✦ " + who + (status != null ? " is now level " + status.Level + "." : " gained a level.") });
             l.Done = true;
             _s.Notify(StateArea.LevelUp);
             // The sheet, the party frame and the played character's card read the new level, scores and hit points.

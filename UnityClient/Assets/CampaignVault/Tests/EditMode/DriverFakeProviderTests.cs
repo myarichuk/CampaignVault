@@ -646,7 +646,7 @@ namespace CampaignVault.UnityClient.Tests
             int liveNarration = 0;
             _transcript.Added += delegate (TranscriptSegment seg) { if (seg.Streaming && seg.Kind != SegmentKind.Narration) { liveNarration++; } };
             var succeeded = new List<string>();
-            _driver.ToolSucceeded += delegate (string tool, string result) { succeeded.Add(tool); };
+            _driver.ToolSucceeded += delegate (string tool, JsonValue args, string result) { succeeded.Add(tool); };
 
             yield return Send("I step inside.");
 
@@ -759,6 +759,23 @@ namespace CampaignVault.UnityClient.Tests
             _script.Enqueue(req => new Reply { Body = Plain("   ") });
             yield return Send("Hello?");
             Assert.IsTrue(_transcript.Segments.Any(s => s.Kind == SegmentKind.System && s.Text.Contains("empty scene")));
+        }
+
+        [UnityTest]
+        public IEnumerator DropLastTurn_ForgetsTheTurn()
+        {
+            _script.Enqueue(req => new Reply { Body = Plain("The rain keeps falling.") });
+            _script.Enqueue(req => new Reply { Body = Plain("Still raining.") });
+            yield return Send("I wait.");
+            int afterFirst = _driver.History.Count;
+            yield return Send("I wait more.");
+            Assert.Greater(_driver.History.Count, afterFirst);
+            Assert.IsNotNull(_driver.CurrentTurn);
+
+            Assert.IsTrue(_driver.DropLastTurn());
+            Assert.AreEqual(afterFirst, _driver.History.Count, "the undone turn's user message and reply are gone, the earlier turn stays");
+            Assert.IsNull(_driver.CurrentTurn);
+            Assert.IsFalse(_driver.DropLastTurn(), "nothing left to drop");
         }
     }
 }

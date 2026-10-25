@@ -76,8 +76,32 @@ namespace CampaignVault.UnityClient.Model
             }
         }
 
+        /// <summary>How many lines the chronicle file holds (0 when there is none), for "is there an earlier page".</summary>
+        public int LineCount(string slug)
+        {
+            if (string.IsNullOrEmpty(slug)) { return 0; }
+            try
+            {
+                string path = PathFor(slug);
+                if (!File.Exists(path)) { return 0; }
+                int count = 0;
+                using (var reader = new StreamReader(path, Encoding.UTF8))
+                {
+                    while (reader.ReadLine() != null) { count++; }
+                }
+                return count;
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                return 0;
+            }
+        }
+
         /// <summary>The last limit segments, oldest first, marked Restored. Unreadable lines are skipped.</summary>
-        public List<TranscriptSegment> Load(string slug, int limit = LoadLimit)
+        public List<TranscriptSegment> Load(string slug, int limit = LoadLimit) { return Load(slug, limit, 0); }
+
+        /// <summary>The limit lines before the last skipFromEnd lines, oldest first: the page before what is shown.</summary>
+        public List<TranscriptSegment> Load(string slug, int limit, int skipFromEnd)
         {
             var result = new List<TranscriptSegment>();
             if (string.IsNullOrEmpty(slug)) { return result; }
@@ -99,7 +123,8 @@ namespace CampaignVault.UnityClient.Model
             {
                 return result;
             }
-            for (int i = Math.Max(0, lines.Length - limit); i < lines.Length; i++)
+            int end = Math.Max(0, lines.Length - Math.Max(0, skipFromEnd));
+            for (int i = Math.Max(0, end - limit); i < end; i++)
             {
                 JsonValue json;
                 if (!JsonValue.TryParse(lines[i], out json) || json.Kind != JsonKind.Object) { continue; }
@@ -107,6 +132,38 @@ namespace CampaignVault.UnityClient.Model
                 if (seg != null) { result.Add(seg); }
             }
             return result;
+        }
+
+        /// <summary>
+        /// Undo: the chronicle's last turn (its last player line and what followed) leaves the file. Nothing is
+        /// removed when a recap came after it, so a closed session's record stays whole. False when nothing was cut.
+        /// </summary>
+        public bool DropLastTurn(string slug)
+        {
+            if (string.IsNullOrEmpty(slug)) { return false; }
+            string path = PathFor(slug);
+            try
+            {
+                if (!File.Exists(path)) { return false; }
+                var lines = new List<string>(File.ReadAllLines(path, Encoding.UTF8));
+                int cut = -1;
+                for (int i = lines.Count - 1; i >= 0; i--)
+                {
+                    JsonValue json;
+                    if (!JsonValue.TryParse(lines[i], out json) || json.Kind != JsonKind.Object) { continue; }
+                    string kind = json.GetString("k", string.Empty);
+                    if (kind == SegmentKind.Recap.ToString()) { return false; }
+                    if (kind == SegmentKind.Player.ToString()) { cut = i; break; }
+                }
+                if (cut < 0) { return false; }
+                lines.RemoveRange(cut, lines.Count - cut);
+                File.WriteAllText(path, lines.Count > 0 ? string.Join("\n", lines.ToArray()) + "\n" : string.Empty, Encoding.UTF8);
+                return true;
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                return false;
+            }
         }
 
         public void Delete(string slug)

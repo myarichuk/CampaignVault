@@ -68,6 +68,7 @@ namespace CampaignVault.UnityClient.UI
             if (VaultSmokeRunner.RequestedServerUrl() != null) { return; }
             Build();
             StartCoroutine(FirstLook());
+            StartCoroutine(HealthLoop());
         }
 
         /// <summary>Builds and binds the whole UI. Public for tests that host it without a scene.</summary>
@@ -121,6 +122,7 @@ namespace CampaignVault.UnityClient.UI
             _state.SetupRequested += OpenSetup;
             _state.SettingsRequested += delegate { OpenSettings(SettingsViewModel.ProviderTab); };
             _state.CampaignsRequested += OpenCampaigns;
+            _state.ConfirmRequested += delegate (string title, string message, string confirm, System.Action onConfirm) { _overlays.Open(new ConfirmOverlay(title, message, confirm, true, onConfirm)); };
             _state.PartyBuilderRequested += OpenPartyBuilder;
             _state.PartyBuilderDone += delegate { if (_overlays.IsOpen(_builder)) { _overlays.Close(_builder); } };
             OnChanged(StateArea.All);
@@ -132,6 +134,16 @@ namespace CampaignVault.UnityClient.UI
         /// connection, and resume the session this client left open. A session
         /// that was ended stays ended: the next line the player sends opens one.
         /// </summary>
+        /// <summary>Every 30 s while the status says Healthy: a cheap /health GET, so a server that died is noticed before the next turn fails (A35).</summary>
+        private IEnumerator HealthLoop()
+        {
+            while (true)
+            {
+                yield return new WaitForSeconds(30f);
+                yield return _controller.PingHealth();
+            }
+        }
+
         private IEnumerator FirstLook()
         {
             yield return null;

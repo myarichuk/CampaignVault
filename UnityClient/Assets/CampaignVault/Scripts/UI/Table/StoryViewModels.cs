@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Unity.Properties;
+using UnityEngine;
 using CampaignVault.UnityClient.App;
 using CampaignVault.UnityClient.Model;
 using CampaignVault.UnityClient.UI.Mvvm;
@@ -56,6 +57,27 @@ namespace CampaignVault.UnityClient.UI.Table
                 if (hash < 0) { hash = -hash; }
                 return (hash % 8).ToString(CultureInfo.InvariantCulture);
             }
+        }
+
+        /// <summary>The story as plain text to paste elsewhere: player lines, narration, voices, rolls and recaps; nothing of the machinery.</summary>
+        public static string PlainStory(IEnumerable<TranscriptSegment> segments)
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (var seg in segments)
+            {
+                if (seg.Streaming || string.IsNullOrEmpty(seg.Text)) { continue; }
+                switch (seg.Kind)
+                {
+                    case SegmentKind.Player: sb.Append("> ").Append(seg.Text).Append("\n\n"); break;
+                    case SegmentKind.Narration: sb.Append(seg.Text).Append("\n\n"); break;
+                    case SegmentKind.NpcVoice: sb.Append(seg.Speaker).Append(": \u201c").Append(seg.Text).Append("\u201d\n\n"); break;
+                    case SegmentKind.Roll:
+                        if (seg.Roll != null) { sb.Append('[').Append(seg.Roll.Label).Append(' ').Append(seg.Roll.Detail).Append(": ").Append(seg.Roll.Verdict).Append("]\n\n"); }
+                        break;
+                    case SegmentKind.Recap: sb.Append("— ").Append(seg.Speaker).Append(" —\n").Append(seg.Text).Append("\n\n"); break;
+                }
+            }
+            return sb.ToString().TrimEnd();
         }
 
         /// <summary>Tool lines and the two-pass loop's notes: folded into the turn's strip, out of the story.</summary>
@@ -172,10 +194,21 @@ namespace CampaignVault.UnityClient.UI.Table
         public SystemLineViewModel(TranscriptSegment seg)
         {
             string text = seg.Text ?? string.Empty;
-            Error = text.StartsWith("⚠");
+            Error = text.StartsWith("⚠", StringComparison.Ordinal);
             if (Error) { text = text.Substring(1).Trim(); }
+            Icon = Error ? "warning" : IconFor(text);
+            if (!Error && Icon != "spark") { text = text.Substring(1).Trim(); }
             Text = DisplayText.Plain(text);
-            Icon = Error ? "warning" : "spark";
+        }
+
+        /// <summary>Event lines carry a leading glyph the controller chose: ⚔ combat, ☠ a downed PC, ⚙ an engine warning; ✦ and the rest read as a spark.</summary>
+        internal static string IconFor(string text)
+        {
+            // Ordinal: under a culture comparison these symbols can match one another.
+            if (text.StartsWith("⚔", StringComparison.Ordinal)) { return "attack"; }
+            if (text.StartsWith("☠", StringComparison.Ordinal)) { return "danger"; }
+            if (text.StartsWith("⚙", StringComparison.Ordinal)) { return "warning"; }
+            return "spark";
         }
 
         public override string Template { get { return "Story/System"; } }
@@ -308,6 +341,7 @@ namespace CampaignVault.UnityClient.UI.Table
         private readonly List<Entry> _entries = new List<Entry>();
         private bool _pinned = true;
         private bool _showJump;
+        private bool _showEarlier;
         private int _scrollTick;
 
         public StoryLogViewModel(VaultAppState state, Later later)
@@ -315,6 +349,8 @@ namespace CampaignVault.UnityClient.UI.Table
             _s = state;
             _later = later;
             Jump = Pin;
+            Copy = delegate { CopyStory(); };
+            Earlier = delegate { _s.RequestEarlierHistory(); };
             var transcript = state.Transcript;
             foreach (var seg in transcript.Segments) { Append(seg, false); }
             // Restored history arrives in a burst: no dice tumbling or sounds for rolls made last week.
@@ -322,6 +358,34 @@ namespace CampaignVault.UnityClient.UI.Table
             transcript.Removed += OnRemoved;
             transcript.Updated += OnUpdated;
             transcript.Cleared += OnCleared;
+            transcript.Inserted += OnInserted;
+            Watch(state, StateArea.Campaign | StateArea.Driver);
+            Refresh();
+        }
+
+        public override void Refresh()
+        {
+            ShowEarlier = _s.CanLoadEarlier;
+            Notify("HasStory");
+        }
+
+        /// <summary>The chronicle file holds a page older than the oldest line shown.</summary>
+        [CreateProperty] public bool ShowEarlier { get { return _showEarlier; } private set { Set(ref _showEarlier, value); } }
+        [CreateProperty] public Action Earlier { get; private set; }
+        [CreateProperty] public Action Copy { get; private set; }
+        [CreateProperty] public bool HasStory { get { return _s.Transcript.Segments.Count > 0; } }
+
+        /// <summary>The whole story shown, as text, on the clipboard.</summary>
+        public string CopyStory()
+        {
+            string text = StoryText.PlainStory(_s.Transcript.Segments);
+            if (text.Length == 0) { _s.RaiseToast("Nothing to copy yet.", ToastKind.Info); return text; }
+            GUIUtility.systemCopyBuffer = text;
+            int words = 0;
+            bool inWord = false;
+            foreach (char c in text) { if (char.IsWhiteSpace(c)) { inWord = false; } else if (!inWord) { inWord = true; words++; } }
+            _s.RaiseToast("Story copied: " + words.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + " words.", ToastKind.Success);
+            return text;
         }
 
         [CreateProperty] public IList Items { get { return _items; } }
@@ -355,15 +419,33 @@ namespace CampaignVault.UnityClient.UI.Table
             transcript.Removed -= OnRemoved;
             transcript.Updated -= OnUpdated;
             transcript.Cleared -= OnCleared;
+            transcript.Inserted -= OnInserted;
             base.Dispose();
         }
 
         private void OnAdded(TranscriptSegment seg) { Append(seg, _s.FxEnabled && !seg.Restored); }
 
+        /// <summary>An earlier page: each segment gets its own item before the one at that index (restored lines are never activity).</summary>
+        private void OnInserted(int index, TranscriptSegment seg)
+        {
+            if (index < 0 || index > _entries.Count) { return; }
+            var entry = new Entry { Item = StoryItemViewModel.For(seg, false, _later, _s) };
+            int at = _items.Count;
+            if (index < _entries.Count)
+            {
+                var next = _entries[index];
+                at = _items.IndexOf(next.Strip != null ? (StoryItemViewModel)next.Strip : next.Item);
+                if (at < 0) { at = _items.Count; }
+            }
+            _items.Insert(at, entry.Item);
+            _entries.Insert(index, entry);
+        }
+
         private void OnCleared()
         {
             _entries.Clear();
             _items.Clear();
+            Notify("HasStory");
         }
 
         private void Append(TranscriptSegment seg, bool animate)
@@ -387,6 +469,7 @@ namespace CampaignVault.UnityClient.UI.Table
                 _items.Add(entry.Item);
             }
             _entries.Add(entry);
+            if (_entries.Count == 1) { Notify("HasStory"); }
             NoteNewContent();
         }
 

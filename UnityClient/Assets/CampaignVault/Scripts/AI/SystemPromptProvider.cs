@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using UnityEngine;
+using CampaignVault.UnityClient.Json;
 
 namespace CampaignVault.UnityClient.AI
 {
@@ -46,6 +47,13 @@ namespace CampaignVault.UnityClient.AI
 
         /// <summary>Tests point this at a scratch folder; empty = StreamingAssets/CampaignVault.</summary>
         [NonSerialized] public string ContentRoot = string.Empty;
+        /// <summary>Zip-installed plugins live here; each one's skills (manifest skillsPath, default ./skills) are indexed like the bundled ones (A17).</summary>
+        [NonSerialized] public string UserPluginsDir = string.Empty;
+        /// <summary>A disabled plugin's skills stay out of the index.</summary>
+        [NonSerialized] public Func<string, bool> IsPluginDisabled;
+
+        /// <summary>Plugins changed (installed, removed, toggled): the index is rebuilt on the next prompt.</summary>
+        public void Reload() { _skillIndex = null; }
 
         private string _skillIndex;
         private List<Skill> _skills;
@@ -58,11 +66,14 @@ namespace CampaignVault.UnityClient.AI
         /// Prompt, skill index, then extra (a static contract, kept in the
         /// cacheable prefix), then the per-campaign line last.
         /// </summary>
-        public string BuildSystemPrompt(string extra)
+        public string BuildSystemPrompt(string extra) { return BuildSystemPrompt(extra, false); }
+
+        /// <param name="loopOnly">The two-pass tool loop never narrates: its prompt drops the NARRATION and LAST STEP sections and the narration skills (A24).</param>
+        public string BuildSystemPrompt(string extra, bool loopOnly)
         {
             EnsureLoaded();
-            var sb = new StringBuilder(PromptFor(Ruleset));
-            sb.Append(_skillIndex);
+            var sb = new StringBuilder(loopOnly ? WithoutSections(PromptFor(Ruleset), LoopSkippedSections) : PromptFor(Ruleset));
+            sb.Append(loopOnly ? _loopSkillIndex : _skillIndex);
             if (!string.IsNullOrEmpty(extra)) { sb.Append("\n\n").Append(extra.Trim()); }
             sb.Append("\n\n").Append(CampaignLine()).Append('\n');
             return sb.ToString();
@@ -83,12 +94,41 @@ namespace CampaignVault.UnityClient.AI
         }
 
         /// <summary>Skill names for the load_skill tool's enum.</summary>
-        public List<string> SkillNames()
+        public List<string> SkillNames() { return SkillNames(false); }
+
+        /// <param name="loopOnly">Leave out the narration skills: the two-pass loop never writes the scene.</param>
+        public List<string> SkillNames(bool loopOnly)
         {
             EnsureLoaded();
             var names = new List<string>();
-            foreach (var skill in _skills) { names.Add(skill.Name); }
+            foreach (var skill in _skills) { if (!loopOnly || !IsNarrationSkill(skill.Name)) { names.Add(skill.Name); } }
             return names;
+        }
+
+        /// <summary>dnd-narration and dnd-narration-examples: the storyteller's, never the loop's.</summary>
+        internal static bool IsNarrationSkill(string name)
+        {
+            return (name ?? string.Empty).StartsWith("dnd-narration", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>Prompt sections the loop skips: a section is its heading line through the next blank line.</summary>
+        internal static readonly string[] LoopSkippedSections = { "NARRATION", "LAST STEP OF EVERY BEAT" };
+
+        internal static string WithoutSections(string prompt, string[] headings)
+        {
+            string text = (prompt ?? string.Empty).Replace("\r\n", "\n");
+            var kept = new List<string>();
+            foreach (string block in text.Split(new[] { "\n\n" }, StringSplitOptions.None))
+            {
+                string head = block.TrimStart('\n');
+                bool skip = false;
+                foreach (string heading in headings)
+                {
+                    if (head.StartsWith(heading, StringComparison.Ordinal) && (head.Length == heading.Length || head[heading.Length] == '\n' || head[heading.Length] == ' ' || head[heading.Length] == '(')) { skip = true; break; }
+                }
+                if (!skip) { kept.Add(block); }
+            }
+            return string.Join("\n\n", kept.ToArray());
         }
 
         public bool TryLoadSkill(string name, out string body)
@@ -204,7 +244,29 @@ namespace CampaignVault.UnityClient.AI
                 {
                     foreach (string pluginDir in Directory.GetDirectories(pluginRoot))
                     {
-                        _skills.AddRange(LoadSkills(pluginDir, Path.GetFileName(pluginDir)));
+                        string id = Path.GetFileName(pluginDir);
+                        if (Disabled(id)) { continue; }
+                        _skills.AddRange(LoadSkills(pluginDir, id));
+                    }
+                }
+                if (!string.IsNullOrEmpty(UserPluginsDir) && Directory.Exists(UserPluginsDir))
+                {
+                    foreach (string pluginDir in Directory.GetDirectories(UserPluginsDir))
+                    {
+                        string id = Path.GetFileName(pluginDir);
+                        if (id.StartsWith(".", StringComparison.Ordinal)) { continue; }
+                        string skillsPath = "./skills";
+                        string manifest = Path.Combine(pluginDir, "plugin.json");
+                        JsonValue json;
+                        if (File.Exists(manifest) && JsonValue.TryParse(File.ReadAllText(manifest), out json))
+                        {
+                            string declared = json.GetString("id", string.Empty).Trim();
+                            if (declared.Length > 0) { id = declared; }
+                            string declaredPath = json.GetString("skillsPath", string.Empty).Trim();
+                            if (declaredPath.Length > 0) { skillsPath = declaredPath; }
+                        }
+                        if (Disabled(id)) { continue; }
+                        _skills.AddRange(LoadSkills(Path.GetFullPath(Path.Combine(pluginDir, skillsPath)), id));
                     }
                 }
             }
@@ -213,6 +275,20 @@ namespace CampaignVault.UnityClient.AI
                 Debug.LogWarning("[Vault] Plugin skill load hit: " + ex.GetType().Name);
             }
             _skills.Sort(delegate (Skill a, Skill b) { return string.CompareOrdinal(a.Name, b.Name); });
+            _skillIndex = SkillIndex(false);
+            _loopSkillIndex = SkillIndex(true);
+        }
+
+        private string _loopSkillIndex = string.Empty;
+
+        private bool Disabled(string pluginId)
+        {
+            try { return IsPluginDisabled != null && IsPluginDisabled(pluginId); }
+            catch (Exception) { return false; }
+        }
+
+        private string SkillIndex(bool loopOnly)
+        {
             var sb = new StringBuilder();
             if (_skills.Count > 0)
             {
@@ -221,12 +297,13 @@ namespace CampaignVault.UnityClient.AI
                 sb.Append("Loads from earlier turns are dropped from the conversation to save context: reload a skill whenever you need it again.\n");
                 foreach (var skill in _skills)
                 {
+                    if (loopOnly && IsNarrationSkill(skill.Name)) { continue; }
                     sb.Append("- ").Append(skill.Name);
                     if (!string.IsNullOrEmpty(skill.Description)) { sb.Append(": ").Append(skill.Description); }
                     sb.Append('\n');
                 }
             }
-            _skillIndex = sb.ToString();
+            return sb.ToString();
         }
 
         /// <summary>Every NAME/SKILL.md under skillsDir; a plugin prefix namespaces the names.</summary>

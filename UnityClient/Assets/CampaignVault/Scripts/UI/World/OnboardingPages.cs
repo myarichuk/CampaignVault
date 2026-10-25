@@ -125,8 +125,11 @@ namespace CampaignVault.UnityClient.UI.World
         private string _progress = string.Empty;
         private string _text = string.Empty;
         private string _help = string.Empty;
+        private string _error = string.Empty;
 
         public abstract string Template { get; }
+        /// <summary>Why the last answer was rejected, under the question; empty otherwise.</summary>
+        [CreateProperty] public string Error { get { return _error; } private set { Set(ref _error, value); } }
 
         [CreateProperty] public string Caption { get { return _caption; } private set { Set(ref _caption, value); } }
         [CreateProperty] public string Progress { get { return _progress; } private set { Set(ref _progress, value); } }
@@ -143,6 +146,7 @@ namespace CampaignVault.UnityClient.UI.World
             Progress = DisplayText.Plain(ob.Progress);
             Text = DisplayText.Plain(q.Text);
             Help = DisplayText.Plain(HelpOf(q));
+            Error = DisplayText.Plain(ob.Error);
         }
 
         public static QuestionPageViewModel For(OnboardingState ob, VaultController controller)

@@ -113,6 +113,27 @@ namespace CampaignVault.UnityClient.Tests
         }
 
         [Test]
+        public void CompactResult_KeepsFingerprintWarningsAndPressure()
+        {
+            string compacted = OpenAiChatDriver.CompactResult("take_turn",
+                "{\"success\":true,\"summary\":\"Moved to the mill.\",\"worldPressure\":[\"ENGINE WARNING: locations/mill has no exits\"],"
+                + "\"data\":{\"partyFingerprint\":\"chars/ari:9/12@locations/mill\",\"warnings\":[\"fullScene omitted: location not found\"]}}");
+            StringAssert.StartsWith("[earlier take_turn result] Moved to the mill.", compacted);
+            StringAssert.Contains("partyFingerprint=chars/ari:9/12@locations/mill", compacted);
+            StringAssert.Contains("warnings: fullScene omitted: location not found", compacted);
+            StringAssert.Contains("pressure: ENGINE WARNING: locations/mill has no exits", compacted);
+        }
+
+        [Test]
+        public void RollCards_ComeOnlyFromCommits()
+        {
+            Assert.IsTrue(OpenAiChatDriver.CarriesRolls("take_turn"));
+            Assert.IsTrue(OpenAiChatDriver.CarriesRolls("combat"));
+            Assert.IsFalse(OpenAiChatDriver.CarriesRolls("recall_history"));
+            Assert.IsFalse(OpenAiChatDriver.CarriesRolls("get_entity"));
+        }
+
+        [Test]
         public void CompactResult_SkillLoads_BecomeReloadHint()
         {
             string compacted = OpenAiChatDriver.CompactResult(SystemPromptProvider.LoadSkillTool, "# long skill body");

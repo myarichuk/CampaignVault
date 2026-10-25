@@ -111,6 +111,8 @@ namespace CampaignVault.UnityClient.UI
         protected virtual string ModalClass { get { return null; } }
         /// <summary>False for dialogs that must be completed (first-run setup without a provider).</summary>
         public virtual bool CanDismiss { get { return true; } }
+        /// <summary>When set, closing (Esc, the X, a click outside) first asks with this text; null closes at once (A23).</summary>
+        public virtual string DismissWarning { get { return null; } }
         /// <summary>The page's layout under Resources/VaultUI/Templates, or null for a page built in code.</summary>
         protected virtual string Template { get { return null; } }
 
@@ -130,13 +132,13 @@ namespace CampaignVault.UnityClient.UI
             else { icon.AddToClassList("cv-hidden"); }
             _title = Root.Q<Label>("modal-title");
             var close = Root.Q<VaultButton>("modal-close");
-            close.command = delegate { host.Close(this); };
+            close.command = delegate { host.RequestClose(this); };
             close.EnableInClassList("cv-hidden", !CanDismiss);
             Toolbar = Root.Q("modal-toolbar");
             Body = Root.Q<ScrollView>("modal-scroll").contentContainer;
             Dock = Root.Q("modal-dock");
             Foot = Root.Q("modal-foot");
-            Root.RegisterCallback<ClickEvent>(delegate { if (CanDismiss) { host.Close(this); } });
+            Root.RegisterCallback<ClickEvent>(delegate { if (CanDismiss) { host.RequestClose(this); } });
         }
 
         /// <summary>A fresh copy of the page's template on every open, so nothing from the last visit shows for a frame.</summary>
@@ -243,8 +245,16 @@ namespace CampaignVault.UnityClient.UI
         {
             var top = Top;
             if (top == null || !top.CanDismiss) { return false; }
-            Close(top);
+            RequestClose(top);
             return true;
+        }
+
+        /// <summary>Closes, or asks first when the page says leaving would lose work (A23).</summary>
+        public void RequestClose(Overlay overlay)
+        {
+            string warning = overlay.DismissWarning;
+            if (warning == null) { Close(overlay); return; }
+            Open(new ConfirmOverlay("Leave this page?", warning, "Leave", true, delegate { Close(overlay); }));
         }
 
         public void Toggle(Overlay overlay)

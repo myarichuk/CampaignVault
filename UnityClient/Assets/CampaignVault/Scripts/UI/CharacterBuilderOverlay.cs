@@ -25,6 +25,15 @@ namespace CampaignVault.UnityClient.UI
 
         protected override string Title { get { return _kind == "companion" ? "A new companion" : _editId.Length > 0 ? "Edit character" : "A new character"; } }
         protected override string TitleIcon { get { return "character"; } }
+        public override string DismissWarning
+        {
+            get
+            {
+                var b = _state.Builder;
+                bool unsaved = b != null && b.Draft != null && b.Draft.Name.Length > 0 && b.CommittedId.Length == 0;
+                return unsaved ? "This character isn't saved yet. Leave without saving?" : null;
+            }
+        }
         protected override string ModalClass { get { return "cv-modal--builder"; } }
         protected override string Template { get { return "Builder/CharacterBuilder"; } }
 

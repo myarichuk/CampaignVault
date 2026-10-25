@@ -430,11 +430,48 @@ namespace CampaignVault.UnityClient.UI.Table
             }
         }
 
+        /// <summary>The draft was filled from outside the form (the DM's write-up): show it without echoing it back.</summary>
+        public void Reset(string value)
+        {
+            if (Set(ref _value, value ?? string.Empty, "Value")) { Count(); }
+        }
+
         private void Count()
         {
             if (_limit <= 0) { return; }
             Counter = _value.Length + " / " + _limit;
             Over = _value.Length > _limit;
+        }
+    }
+
+    /// <summary>One person in the handoff: name, id and an editable stance line.</summary>
+    public sealed class PersonRowViewModel : ViewModel, IKeyed
+    {
+        private readonly NpcStanceRow _row;
+        private string _stance;
+
+        public PersonRowViewModel(NpcStanceRow row, string name, Action remove)
+        {
+            _row = row;
+            Key = row.Id;
+            Name = "handoff-person-" + row.Id.Replace('/', '-');
+            Title = DisplayText.Plain(name);
+            Id = DisplayText.Plain(row.Id);
+            _stance = row.Stance ?? string.Empty;
+            Remove = remove;
+        }
+
+        public string Key { get; private set; }
+        [CreateProperty] public string Name { get; private set; }
+        [CreateProperty] public string Title { get; private set; }
+        [CreateProperty] public string Id { get; private set; }
+        [CreateProperty] public Action Remove { get; private set; }
+
+        [CreateProperty]
+        public string Stance
+        {
+            get { return _stance; }
+            set { if (Set(ref _stance, value ?? string.Empty)) { _row.Stance = _stance; } }
         }
     }
 
@@ -486,6 +523,10 @@ namespace CampaignVault.UnityClient.UI.Table
         private string _searchSummary = string.Empty;
         private List<SearchHitViewModel> _hits = new List<SearchHitViewModel>();
         private string _hitsKey = string.Empty;
+        private int _draftVersion;
+        private List<PersonRowViewModel> _people = new List<PersonRowViewModel>();
+        private List<ChoiceViewModel> _candidates = new List<ChoiceViewModel>();
+        private string _candidatesKey;
 
         public JournalPage(VaultAppState state, VaultController controller) : base(state)
         {
@@ -495,15 +536,20 @@ namespace CampaignVault.UnityClient.UI.Table
                 new CountedFieldViewModel("last", "What happened this session", "required", _draft.LastSession, 600, true, delegate (string v) { _draft.LastSession = v; }),
                 new CountedFieldViewModel("story", "The story so far", "the rolling summary (leave blank to keep the last one)", _draft.StorySoFar, 800, true, delegate (string v) { _draft.StorySoFar = v; }),
                 new CountedFieldViewModel("threads", "Open threads", "one per line, up to 6", _draft.Threads, 0, true, delegate (string v) { _draft.Threads = v; }),
-                new CountedFieldViewModel("npcs", "People in play", "one per line: id | stance", _draft.Npcs, 0, true, delegate (string v) { _draft.Npcs = v; }),
                 new CountedFieldViewModel("intent", "Party intent", "what they mean to do next", _draft.Intent, 200, false, delegate (string v) { _draft.Intent = v; }),
                 new CountedFieldViewModel("tone", "Tone", "how it should feel", _draft.Tone, 120, false, delegate (string v) { _draft.Tone = v; }),
             };
             Open = delegate { _c.Run(State.Session == null ? _c.StartSession(null) : _c.RefreshTable()); };
             Advance = delegate { _c.AdvanceDays(_days); };
             Write = delegate { _writing = true; Refresh(); };
+            Draft = delegate { _c.Run(_c.DraftHandoff(_draft)); };
             Checkpoint = delegate { _c.Run(_c.EndSession(_draft, true)); };
-            End = delegate { _c.Run(_c.EndSession(_draft, false)); };
+            End = delegate
+            {
+                State.RequestConfirm("End the session?", "The handoff is stored and the session closes; the next one starts from it. Checkpoint instead to keep playing.", "END SESSION",
+                    delegate { _c.Run(_c.EndSession(_draft, false)); });
+            };
+            _draftVersion = _draft.Version;
             Search = delegate { _c.Run(_c.SearchWorld(_query)); };
         }
 
@@ -546,14 +592,86 @@ namespace CampaignVault.UnityClient.UI.Table
         [CreateProperty] public List<string> Issues { get { return _issues; } private set { SetList(ref _issues, value); } }
         [CreateProperty] public bool Working { get { return _working; } private set { Set(ref _working, value); } }
         [CreateProperty] public bool Idle { get { return !_working; } }
+        [CreateProperty] public Action Draft { get; private set; }
         [CreateProperty] public Action Checkpoint { get; private set; }
         [CreateProperty] public Action End { get; private set; }
+        /// <summary>The people in play, each with its stance line.</summary>
+        [CreateProperty] public List<PersonRowViewModel> People { get { return _people; } private set { Set(ref _people, value); } }
+        /// <summary>NPCs the session showed and the handoff doesn't name yet; one tap adds one.</summary>
+        [CreateProperty] public List<ChoiceViewModel> Candidates { get { return _candidates; } private set { Set(ref _candidates, value); } }
+        [CreateProperty] public bool HasCandidates { get { return _candidates.Count > 0; } }
+        [CreateProperty] public bool HasPeople { get { return _people.Count > 0; } }
+        [CreateProperty] public string PeopleHint
+        {
+            get
+            {
+                if (_people.Count > 0 || _candidates.Count > 0) { return string.Empty; }
+                return State.Session == null ? "Open the session and the people it shows will be listed here." : "Nobody has appeared yet this session.";
+            }
+        }
+
+        /// <summary>The draft's people list as rows; the pickable rest of the session's NPCs as chips.</summary>
+        private void SyncPeople()
+        {
+            var seen = State.Session != null ? State.Session.SeenNpcs : new List<SeenNpc>();
+            var rows = new List<PersonRowViewModel>();
+            foreach (var row in _draft.People)
+            {
+                var captured = row;
+                var who = seen.Find(delegate (SeenNpc n) { return n.Id == captured.Id; });
+                rows.Add(new PersonRowViewModel(row, who != null && who.Name.Length > 0 ? who.Name : SessionDigest.TitleFromId(row.Id), delegate { RemovePerson(captured); }));
+            }
+            var key = new System.Text.StringBuilder();
+            foreach (var r in rows) { key.Append(r.Key).Append('|'); }
+            key.Append('#');
+            var chips = new List<ChoiceViewModel>();
+            foreach (var npc in seen)
+            {
+                var captured = npc;
+                if (_draft.People.Exists(delegate (NpcStanceRow r) { return r.Id == captured.Id; })) { continue; }
+                key.Append(npc.Id).Append('|');
+                chips.Add(new ChoiceViewModel(npc.Id, npc.Name.Length > 0 ? npc.Name : SessionDigest.TitleFromId(npc.Id), "add", true, delegate { AddPerson(captured); }));
+            }
+            if (key.ToString() == _candidatesKey) { return; }
+            _candidatesKey = key.ToString();
+            People = rows;
+            Candidates = chips;
+            Notify("HasCandidates");
+            Notify("HasPeople");
+            Notify("PeopleHint");
+        }
+
+        public void AddPerson(SeenNpc npc)
+        {
+            if (npc == null || _draft.People.Exists(delegate (NpcStanceRow r) { return r.Id == npc.Id; })) { return; }
+            _draft.People.Add(new NpcStanceRow { Id = npc.Id, Stance = npc.Stance });
+            SyncPeople();
+        }
+
+        public void RemovePerson(NpcStanceRow row)
+        {
+            _draft.People.Remove(row);
+            SyncPeople();
+        }
 
         [CreateProperty] public string Query { get { return _query; } set { Set(ref _query, value ?? string.Empty); } }
         [CreateProperty] public Action Search { get; private set; }
         [CreateProperty] public string SearchError { get { return _searchError; } private set { Set(ref _searchError, value); } }
         [CreateProperty] public string SearchSummary { get { return _searchSummary; } private set { Set(ref _searchSummary, value); } }
         [CreateProperty] public List<SearchHitViewModel> Hits { get { return _hits; } private set { Set(ref _hits, value); } }
+
+        private string DraftValue(string key)
+        {
+            switch (key)
+            {
+                case "last": return _draft.LastSession;
+                case "story": return _draft.StorySoFar;
+                case "threads": return _draft.Threads;
+                case "intent": return _draft.Intent;
+                case "tone": return _draft.Tone;
+                default: return string.Empty;
+            }
+        }
 
         public override void Refresh()
         {
@@ -577,8 +695,17 @@ namespace CampaignVault.UnityClient.UI.Table
             Lately = handoff == null && digest != null ? DisplayText.Rich(digest.RecentDigest) : string.Empty;
 
             bool form = _writing || State.HandoffIssues.Count > 0;
+            if (form) { _writing = true; }
             ShowWrite = !form;
             ShowForm = form;
+            if (_draftVersion != _draft.Version)
+            {
+                // The DM wrote the draft: the fields show it; what the player then types still wins.
+                _draftVersion = _draft.Version;
+                foreach (var f in Fields) { f.Reset(DraftValue(f.Key)); }
+                _candidatesKey = null;
+            }
+            SyncPeople();
             Issues = State.HandoffIssues.ConvertAll(delegate (string i) { return DisplayText.Plain(i); });
             if (Set(ref _working, State.IsBusy("handoff"), "Working")) { Notify("Idle"); }
 

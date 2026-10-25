@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
 using CampaignVault.UnityClient.Json;
@@ -135,6 +136,8 @@ namespace CampaignVault.UnityClient.AI
         public void ApplyPreset(ProviderProfile profile, string presetId)
         {
             ProviderPreset preset = PresetFor(presetId);
+            // A key belongs to the host it was issued for: a new host starts without one, so it is never sent elsewhere (A14).
+            if (!string.Equals(profile.BaseUrl, preset.BaseUrl, StringComparison.OrdinalIgnoreCase)) { profile.ApiKey = string.Empty; }
             profile.Preset = preset.Id;
             profile.BaseUrl = preset.BaseUrl;
             profile.Model = preset.Model;
@@ -173,8 +176,11 @@ namespace CampaignVault.UnityClient.AI
             }
             catch (Exception)
             {
-                // Unreadable file: start clean rather than crash the client.
+                // Unreadable file: start clean rather than crash the client, but keep the bytes: the next Save would
+                // otherwise overwrite the only copy of every stored key (A15).
                 Profiles.Clear();
+                try { if (File.Exists(FilePath)) { File.Copy(FilePath, FilePath + ".corrupt-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss", System.Globalization.CultureInfo.InvariantCulture), true); } }
+                catch (Exception) { }
             }
             if (Profiles.Count == 0 && PlayerPrefs.HasKey(LegacyBaseUrl))
             {
@@ -194,12 +200,32 @@ namespace CampaignVault.UnityClient.AI
             try
             {
                 var file = new ProviderFile { Active = ActiveIndex, Profiles = new List<ProviderProfile>(Profiles) };
-                File.WriteAllText(FilePath, JsonUtility.ToJson(file, true));
+                // Written beside and swapped in, so a crash mid-write never leaves half a file; owner-only on Unix (A15).
+                string temp = FilePath + ".tmp";
+                File.WriteAllText(temp, JsonUtility.ToJson(file, true));
+                RestrictToOwner(temp);
+                File.Copy(temp, FilePath, true);
+                File.Delete(temp);
+                RestrictToOwner(FilePath);
             }
             catch (Exception e)
             {
                 Debug.LogWarning("Could not save provider profiles: " + e.Message);
             }
+        }
+
+        /// <summary>chmod 600: the file holds API keys. No-op on Windows, where the user profile folder is already private.</summary>
+        internal static void RestrictToOwner(string path)
+        {
+            if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) { return; }
+            try
+            {
+                using (var chmod = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("chmod", "600 \"" + path + "\"") { UseShellExecute = false, CreateNoWindow = true }))
+                {
+                    if (chmod != null) { chmod.WaitForExit(2000); }
+                }
+            }
+            catch (Exception) { }
         }
 
         public bool Validate(out string reason)
@@ -215,14 +241,55 @@ namespace CampaignVault.UnityClient.AI
         internal string ApiKey() { return Active.ApiKey ?? string.Empty; }
 
         /// <summary>
-        /// Advisory check of the active profile: GET {base}/models. Reports
-        /// reachable / key rejected / model unknown. Not every provider serves
-        /// /models, so a 404 is "reachable, unverified", not a failure.
+        /// Checks the active profile the way a turn would: a one-token chat completion, which a wrong key or an
+        /// unknown model refuses even on providers whose /models list is public (A16). When the provider has no
+        /// usable answer to that (404/405/400), the older GET {base}/models probe decides.
         /// </summary>
         public IEnumerator TestConnection(Action<bool, string> done)
         {
             string reason;
             if (!Validate(out reason)) { done(false, reason); yield break; }
+            var ping = JsonValue.NewObject();
+            ping.ObjectValue["model"] = JsonValue.FromString(Model.Trim());
+            var user = JsonValue.NewObject();
+            user.ObjectValue["role"] = JsonValue.FromString("user");
+            user.ObjectValue["content"] = JsonValue.FromString("ping");
+            var messages = JsonValue.NewArray();
+            messages.ArrayValue.Add(user);
+            ping.ObjectValue["messages"] = messages;
+            ping.ObjectValue["max_tokens"] = JsonValue.FromNumber(1);
+            using (UnityWebRequest web = new UnityWebRequest(ChatUrl(), "POST"))
+            {
+                web.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(ping.ToJson()));
+                web.downloadHandler = new DownloadHandlerBuffer();
+                web.SetRequestHeader("Content-Type", "application/json");
+                if (HasKey) { web.SetRequestHeader("Authorization", "Bearer " + ApiKey()); }
+                web.timeout = 30;
+                yield return web.SendWebRequest();
+                long code = web.responseCode;
+                if (web.result == UnityWebRequest.Result.ConnectionError)
+                {
+                    done(false, "Cannot reach " + BaseUrl + " (" + Net.TextSanitizer.Redact(web.error, ApiKey()) + ").");
+                    yield break;
+                }
+                if (code == 401 || code == 403) { done(false, "The provider rejected the API key (HTTP " + code + ")."); yield break; }
+                if (web.result == UnityWebRequest.Result.Success) { done(true, "Connected. Key and model verified with a one-token reply."); yield break; }
+                string detail = string.Empty;
+                JsonValue body;
+                if (JsonValue.TryParse(web.downloadHandler.text ?? string.Empty, out body)) { detail = body.Get("error").GetString("message", string.Empty); }
+                if (code == 404 && detail.ToLowerInvariant().Contains("model")) { done(false, "Connected, but model \"" + Model.Trim() + "\" is unknown to the provider."); yield break; }
+                if (code != 404 && code != 405 && code != 400)
+                {
+                    done(false, "HTTP " + code + " from " + BaseUrl + (detail.Length > 0 ? ": " + Net.TextSanitizer.Clean(detail, 200) : "."));
+                    yield break;
+                }
+            }
+            yield return ProbeModels(done);
+        }
+
+        /// <summary>GET {base}/models: reachable / key rejected / model unknown. A 404 is "reachable, unverified".</summary>
+        private IEnumerator ProbeModels(Action<bool, string> done)
+        {
             using (UnityWebRequest web = UnityWebRequest.Get(BaseUrl.TrimEnd('/') + "/models"))
             {
                 if (HasKey) { web.SetRequestHeader("Authorization", "Bearer " + ApiKey()); }

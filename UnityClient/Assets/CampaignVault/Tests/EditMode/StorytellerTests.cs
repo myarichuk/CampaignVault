@@ -161,12 +161,16 @@ namespace CampaignVault.UnityClient.Tests
         [Test]
         public void NarrationPrompt_FromRealSkill_CarriesTheExamples()
         {
-            string path = System.IO.Path.GetFullPath(System.IO.Path.Combine(UnityEngine.Application.dataPath, "..", "..", "claude_skills", "dnd-narration", "SKILL.md"));
-            Assume.That(System.IO.File.Exists(path), path + " not in this checkout");
-            string prompt = Storyteller.NarrationSystemPrompt(System.IO.File.ReadAllText(path), string.Empty, string.Empty);
+            string skills = System.IO.Path.GetFullPath(System.IO.Path.Combine(UnityEngine.Application.dataPath, "..", "..", "claude_skills"));
+            string core = System.IO.Path.Combine(skills, "dnd-narration", "SKILL.md");
+            string examples = System.IO.Path.Combine(skills, "dnd-narration-examples", "SKILL.md");
+            Assume.That(System.IO.File.Exists(core) && System.IO.File.Exists(examples), skills + " not in this checkout");
+            string prompt = Storyteller.NarrationSystemPrompt(System.IO.File.ReadAllText(core), System.IO.File.ReadAllText(examples), string.Empty, string.Empty);
+            StringAssert.Contains("### One passage at the register", prompt);
             StringAssert.Contains("### Example: a search and a recall", prompt);
             StringAssert.Contains("### Example: a chase with a missed throw", prompt);
             StringAssert.DoesNotContain("name: dnd-narration", prompt);
+            StringAssert.DoesNotContain("name: dnd-narration-examples", prompt);
         }
 
         [Test]

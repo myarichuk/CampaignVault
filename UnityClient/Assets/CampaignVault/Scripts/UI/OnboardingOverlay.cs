@@ -22,6 +22,15 @@ namespace CampaignVault.UnityClient.UI
         }
 
         protected override string Title { get { return "A new campaign"; } }
+        public override string DismissWarning
+        {
+            get
+            {
+                var phase = _state.Onboarding.Phase;
+                bool midway = phase == OnboardingPhase.Working || phase == OnboardingPhase.Question || phase == OnboardingPhase.ReadyToFinalize;
+                return midway ? "The campaign setup is still in progress. Your answers so far stay on the server; reopen this page to continue, or use Start over to discard them." : null;
+            }
+        }
         protected override string TitleIcon { get { return "seal"; } }
         protected override bool Narrow { get { return true; } }
         protected override string Template { get { return "Onboarding/Onboarding"; } }

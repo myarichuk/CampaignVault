@@ -92,7 +92,7 @@ namespace CampaignVault.UnityClient.Server
             if (!Uri.TryCreate((url ?? string.Empty).Trim(), UriKind.Absolute, out uri)) { return false; }
             string host = uri.Host;
             return string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)
-                || host == "127.0.0.1" || host == "::1";
+                || host == "127.0.0.1" || host == "::1" || host == "[::1]";
         }
 
         /// <summary>
@@ -173,7 +173,8 @@ namespace CampaignVault.UnityClient.Server
 
             int port = EmbeddedServerSupport.PickPort(Port, EmbeddedServerSupport.IsPortFree, EmbeddedServerSupport.FreePort);
             if (port != Port && status != null) { status("Port " + Port + " is in use; starting on " + port + " instead."); }
-            Config.ServerUrl = "http://127.0.0.1:" + port;
+            // The client's URL moves only once the new server answers (A22): a failed start leaves the old one usable.
+            string serverUrl = "http://127.0.0.1:" + port;
 
             var start = new ProcessStartInfo
             {
@@ -273,6 +274,7 @@ namespace CampaignVault.UnityClient.Server
                 yield break;
             }
             ReportedVersion = version;
+            Config.ServerUrl = serverUrl;
             done(true, "Embedded server healthy on 127.0.0.1:" + port + (version.Length > 0 ? " (version " + version + ")" : string.Empty));
 #endif
         }

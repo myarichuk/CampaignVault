@@ -43,6 +43,7 @@ namespace CampaignVault.UnityClient.Editor
 
             StagePrompt(repoRoot, dest, "recommended-system-prompt.md", "system-prompt.md", true);
             StagePrompt(repoRoot, dest, "recommended-system-prompt.narrative.md", "system-prompt.narrative.md", false);
+            StageFile(repoRoot, dest, "NOTICE.md");
 
             int core = CopySkillTree(Path.Combine(repoRoot, "claude_skills"), Path.Combine(dest, "skills"));
 
@@ -64,6 +65,15 @@ namespace CampaignVault.UnityClient.Editor
             }
             AssetDatabase.Refresh();
             Debug.Log("[Vault] Staged DM prompt, " + core + " core skills, " + plugin + " plugin skills.");
+        }
+
+        /// <summary>A file copied as-is (the content licenses' notices, shown under Settings → Advanced).</summary>
+        private static void StageFile(string repoRoot, string dest, string name)
+        {
+            string source = Path.Combine(repoRoot, name);
+            string target = Path.Combine(dest, name);
+            if (File.Exists(source)) { File.Copy(source, target, true); }
+            else if (File.Exists(target)) { File.Delete(target); }
         }
 
         private static void StagePrompt(string repoRoot, string dest, string sourceName, string targetName, bool required)

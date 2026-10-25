@@ -1,12 +1,24 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
     <!-- The story (StoryLogViewModel), cloned into Shell.uxml's #Log: the scrolling list, and the button that returns to the newest line. -->
     <ui:ScrollView name="StoryScroll" mode="Vertical" horizontal-scroller-visibility="Hidden" mouse-wheel-scroll-size="60" class="cv-log">
+        <cv:VaultButton name="StoryEarlier" label="EARLIER" icon="chevron" tooltip="Show the chronicle's previous page" class="cv-btn--small cv-btn--ghost cv-earlier">
+            <Bindings>
+                <ui:DataBinding property="command" data-source-path="Earlier" binding-mode="ToTarget" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="ShowEarlier" class-name="cv-hidden" invert="true" />
+            </Bindings>
+        </cv:VaultButton>
         <cv:LiveRepeater item-template="Story/Narration">
             <Bindings>
                 <ui:DataBinding property="itemsSource" data-source-path="Items" binding-mode="ToTarget" />
             </Bindings>
         </cv:LiveRepeater>
     </ui:ScrollView>
+    <cv:VaultButton name="StoryCopy" icon="journal" tooltip="Copy the story as text" class="cv-btn--icon cv-btn--ghost cv-btn--small cv-copy-story">
+        <Bindings>
+            <ui:DataBinding property="command" data-source-path="Copy" binding-mode="ToTarget" />
+            <cv:ClassBinding property="cls-hidden" data-source-path="HasStory" class-name="cv-hidden" invert="true" />
+        </Bindings>
+    </cv:VaultButton>
     <cv:VaultButton name="StoryJump" label="LATEST" icon="chevron" class="cv-btn--small cv-jump cv-hidden">
         <Bindings>
             <ui:DataBinding property="command" data-source-path="Jump" binding-mode="ToTarget" />

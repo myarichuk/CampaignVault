@@ -55,6 +55,13 @@
             </ui:VisualElement>
             <ui:Label text="Press F12 at the table for the inspector: the last request, the raw model reply and the tool log." class="cv-body cv-muted" />
         </cv:VaultCard>
+        <cv:VaultCard title="GAME CONTENT LICENSES">
+            <ui:Label name="advanced-licensing" class="cv-body cv-muted">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Licensing" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+        </cv:VaultCard>
         <cv:VaultCard title="DATA ON THIS DEVICE">
             <ui:VisualElement class="cv-kv">
                 <ui:Label text="APP DATA" class="cv-kv__key" />

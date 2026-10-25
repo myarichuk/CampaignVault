@@ -309,14 +309,17 @@ namespace CampaignVault.UnityClient.Json
                 }
             }
 
+            private static bool IsAsciiDigit(char c) { return c >= '0' && c <= '9'; }
+
             private JsonValue ParseNumber()
             {
                 int start = _pos;
                 if (_pos < _text.Length && (_text[_pos] == '-' || _text[_pos] == '+')) { _pos++; }
                 bool digits = false;
-                while (_pos < _text.Length && (char.IsDigit(_text[_pos]) || _text[_pos] == '.' || _text[_pos] == 'e' || _text[_pos] == 'E' || _text[_pos] == '+' || _text[_pos] == '-'))
+                // ASCII digits only: char.IsDigit also accepts Arabic-Indic and other Unicode digits, which JSON forbids (A31).
+                while (_pos < _text.Length && (IsAsciiDigit(_text[_pos]) || _text[_pos] == '.' || _text[_pos] == 'e' || _text[_pos] == 'E' || _text[_pos] == '+' || _text[_pos] == '-'))
                 {
-                    if (char.IsDigit(_text[_pos])) { digits = true; }
+                    if (IsAsciiDigit(_text[_pos])) { digits = true; }
                     _pos++;
                 }
                 if (!digits) { throw new JsonParseException("invalid value"); }

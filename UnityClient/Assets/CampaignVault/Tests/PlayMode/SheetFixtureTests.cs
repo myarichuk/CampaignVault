@@ -1,10 +1,12 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UIElements;
 using CampaignVault.UnityClient.App;
+using CampaignVault.UnityClient.Flows;
 using CampaignVault.UnityClient.Json;
 using CampaignVault.UnityClient.Net;
 
@@ -106,7 +108,7 @@ namespace CampaignVault.UnityClient.PlayTests
                 LastSession = "The party reached the crossing, took the job, and was ambushed on the way back.",
                 StorySoFar = "Hired for a quiet errand, the party found the countryside anything but quiet.",
                 Threads = "Who hired the bandits?\nThe poisoned blade bore a guild mark.",
-                Npcs = npcId + " | grateful, but hiding something",
+                People = new List<NpcStanceRow> { new NpcStanceRow { Id = npcId, Stance = "grateful, but hiding something" } },
                 Intent = "Rest, then follow the tracks at first light.",
                 Tone = "Slow dread, small kindnesses.",
             };

@@ -152,6 +152,35 @@ namespace CampaignVault.UnityClient.AI
             return content;
         }
 
+        /// <summary>
+        /// Streamed reasoning_details arrive as fragments of the same block (same index or id, text split across
+        /// chunks); replayed unmerged, a provider rejects or mangles them. Fragments of one block become one entry (A25).
+        /// </summary>
+        internal static List<JsonValue> MergeReasoningDetails(List<JsonValue> fragments)
+        {
+            var merged = new List<JsonValue>();
+            var byKey = new Dictionary<string, JsonValue>();
+            foreach (var fragment in fragments)
+            {
+                if (fragment.Kind != JsonKind.Object) { merged.Add(fragment); continue; }
+                string key = fragment.Get("index").Kind == JsonKind.Number
+                    ? "#" + ((int)fragment.Get("index").NumberValue).ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    : fragment.GetString("id", string.Empty);
+                JsonValue existing;
+                if (key.Length > 0 && byKey.TryGetValue(key, out existing) && existing.Get("text").Kind == JsonKind.String && fragment.Get("text").Kind == JsonKind.String)
+                {
+                    existing.ObjectValue["text"] = JsonValue.FromString(existing.Get("text").StringValue + fragment.Get("text").StringValue);
+                    foreach (var kv in fragment.ObjectValue) { if (kv.Key != "text" && !existing.ObjectValue.ContainsKey(kv.Key)) { existing.ObjectValue[kv.Key] = kv.Value; } }
+                    continue;
+                }
+                var copy = JsonValue.NewObject();
+                foreach (var kv in fragment.ObjectValue) { copy.ObjectValue[kv.Key] = kv.Value; }
+                if (key.Length > 0) { byKey[key] = copy; }
+                merged.Add(copy);
+            }
+            return merged;
+        }
+
         /// <summary>The assembled reply, shaped like a non-streamed response body.</summary>
         public JsonValue ToResponse()
         {
@@ -162,7 +191,7 @@ namespace CampaignVault.UnityClient.AI
             if (_reasoningDetails.Count > 0)
             {
                 var details = JsonValue.NewArray();
-                details.ArrayValue.AddRange(_reasoningDetails);
+                details.ArrayValue.AddRange(MergeReasoningDetails(_reasoningDetails));
                 message.ObjectValue["reasoning_details"] = details;
             }
             if (_calls.Count > 0)
@@ -203,22 +232,43 @@ namespace CampaignVault.UnityClient.AI
     public sealed class SseDownloadHandler : DownloadHandlerScript
     {
         private const int MaxRawBytes = 64 * 1024;
+        /// <summary>A 200 that is plain JSON rather than SSE is the whole reply: it must not be cut at the error-body cap (A26).</summary>
+        private const int MaxPlainBytes = 4 * 1024 * 1024;
         private readonly SseDecoder _decoder;
         private readonly List<byte> _raw = new List<byte>();
+        private int _cap = -1;
+        private readonly System.Diagnostics.Stopwatch _sinceData = System.Diagnostics.Stopwatch.StartNew();
 
         public SseDownloadHandler(SseDecoder decoder) : base(new byte[16 * 1024]) { _decoder = decoder; }
+
+        /// <summary>Seconds since the last bytes arrived (or since the request started): a stream is alive while this stays small (A11).</summary>
+        public double SecondsSinceLastData { get { return _sinceData.Elapsed.TotalSeconds; } }
 
         public string RawText { get { return Encoding.UTF8.GetString(_raw.ToArray()); } }
 
         protected override bool ReceiveData(byte[] data, int dataLength)
         {
             if (data == null || dataLength <= 0) { return true; }
-            int keep = Math.Min(dataLength, MaxRawBytes - _raw.Count);
+            _sinceData.Restart();
+            if (_cap < 0) { _cap = LooksLikeSse(data, dataLength) ? MaxRawBytes : MaxPlainBytes; }
+            int keep = Math.Min(dataLength, _cap - _raw.Count);
             for (int i = 0; i < keep; i++) { _raw.Add(data[i]); }
             _decoder.Feed(data, dataLength);
             return true;
         }
 
         protected override void CompleteContent() { _decoder.Finish(); }
+
+        /// <summary>The first bytes of an SSE body start a field (data:, event:, id:, retry:) or a comment line.</summary>
+        internal static bool LooksLikeSse(byte[] data, int length)
+        {
+            int i = 0;
+            while (i < length && (data[i] == ' ' || data[i] == '\n' || data[i] == '\r' || data[i] == '\t')) { i++; }
+            if (i >= length) { return true; }
+            if (data[i] == ':') { return true; }
+            string head = Encoding.ASCII.GetString(data, i, Math.Min(6, length - i));
+            return head.StartsWith("data:", StringComparison.Ordinal) || head.StartsWith("event:", StringComparison.Ordinal)
+                || head.StartsWith("id:", StringComparison.Ordinal) || head.StartsWith("retry:", StringComparison.Ordinal);
+        }
     }
 }

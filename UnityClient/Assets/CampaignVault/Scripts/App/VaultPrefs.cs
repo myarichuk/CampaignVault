@@ -30,6 +30,8 @@ namespace CampaignVault.UnityClient.App
         public const string StoryTextSize = "vault.storytext";
         public const string EmbeddedPort = "vault.embedded.port";
         public const string EmbeddedAutostart = "vault.embedded.autostart";
+        /// <summary>Comma-separated tool allowlist for the DM (empty = every tool), kept across launches (A34).</summary>
+        public const string Tools = "vault.tools";
         /// <summary>Per campaign (suffix the slug): the session number this client left open, so a relaunch resumes it.</summary>
         public const string OpenSessionPrefix = "vault.session.open.";
     }

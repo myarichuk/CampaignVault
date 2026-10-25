@@ -193,6 +193,10 @@
 .cv-thinking__dots { width: 18px; margin-left: 0; padding-left: 0; -unity-text-align: middle-left; }
 
 .cv-jump { position: absolute; right: 16px; bottom: 12px; }
+.cv-copy-story { position: absolute; right: 16px; top: 8px; opacity: 0.6; }
+.cv-copy-story:hover { opacity: 1; }
+.cv-earlier { align-self: center; margin-bottom: 12px; }
+.cv-earlier .cv-icon { rotate: 180deg; }
 
 /* ------------------------------------------------------------- command bar */
 
@@ -430,6 +434,13 @@
 .cv-journal__write { margin-top: 8px; }
 .cv-journal__actions { margin-top: 8px; }
 .cv-journal__actions > .cv-btn { margin-right: 8px; }
+.cv-journal__actions { flex-wrap: wrap; }
+.cv-journal__chips { flex-direction: row; flex-wrap: wrap; margin-top: 4px; }
+.cv-journal__chips > .cv-btn { margin: 0 6px 6px 0; }
+.cv-person { padding: 6px 0; border-bottom-width: 1px; border-color: var(--line-faint); }
+.cv-person__head { align-items: center; }
+.cv-person__name { -unity-font-definition: url("../Fonts/SDF/EBGaramond-SemiBold.asset"); font-size: var(--fs-md); color: var(--text-1); white-space: normal; }
+.cv-person__id { font-size: var(--fs-xs); color: var(--text-3); margin-right: 6px; }
 .cv-codex__go { margin-left: 6px; }
 
 .cv-campaigns__bar { margin-bottom: 18px; }

@@ -88,11 +88,28 @@ namespace CampaignVault.UnityClient.UI.Settings
             ReloadTools = delegate { controller.Run(controller.ReloadTools()); };
             RunSetup = closeAndSetup;
             AppData = DisplayText.Plain(Application.persistentDataPath);
+            Licensing = DisplayText.Plain(LoadNotice());
             Watch(state, StateArea.Tools);
             Refresh();
         }
 
         public override string Template { get { return "Settings/AdvancedPage"; } }
+
+        private static string LoadNotice()
+        {
+            try
+            {
+                string path = System.IO.Path.Combine(AI.SystemPromptProvider.StreamingRoot(), "NOTICE.md");
+                if (System.IO.File.Exists(path)) { return System.IO.File.ReadAllText(path); }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[Vault] NOTICE.md not readable: " + ex.GetType().Name);
+            }
+            return "D&D 5e data: System Reference Document 5.1 by Wizards of the Coast LLC, CC-BY-4.0. "
+                + "Pathfinder 2e data: Player Core and Player Core 2 by Paizo Inc., ORC License. "
+                + "The full notices are in NOTICE.md in the CampaignVault repository.";
+        }
 
         [CreateProperty] public string Prompt { get { return _prompt; } private set { Set(ref _prompt, value); } }
         [CreateProperty] public string PromptTone { get { return _promptTone; } private set { Set(ref _promptTone, value); } }
@@ -101,6 +118,8 @@ namespace CampaignVault.UnityClient.UI.Settings
         [CreateProperty] public List<string> Errors { get { return _errors; } private set { SetList(ref _errors, value); } }
         [CreateProperty] public string Notice { get { return _notice; } private set { Set(ref _notice, value); } }
         [CreateProperty] public string AppData { get; private set; }
+        /// <summary>The notices the bundled game content's licenses require (NOTICE.md, staged next to the prompt).</summary>
+        [CreateProperty] public string Licensing { get; private set; }
         [CreateProperty] public Action EnableAll { get; private set; }
         [CreateProperty] public Action ReloadTools { get; private set; }
         [CreateProperty] public Action RunSetup { get; private set; }

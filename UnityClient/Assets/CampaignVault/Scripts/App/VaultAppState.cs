@@ -374,9 +374,12 @@ namespace CampaignVault.UnityClient.App
         public string LastSession = string.Empty;
         public string StorySoFar = string.Empty;
         public string Threads = string.Empty;
-        public string Npcs = string.Empty;
+        /// <summary>People in play: picked from the NPCs the session showed, each with a stance line.</summary>
+        public List<NpcStanceRow> People = new List<NpcStanceRow>();
         public string Intent = string.Empty;
         public string Tone = string.Empty;
+        /// <summary>Bumped when something other than the form filled the draft (the DM's write-up), so the form reloads its fields.</summary>
+        public int Version;
     }
 
     /// <summary>
@@ -502,12 +505,29 @@ namespace CampaignVault.UnityClient.App
             if (Toast != null) { Toast(TextSanitizer.Clean(message, 400), kind); }
         }
 
+        /// <summary>A view model wants the player to confirm: (title, message, confirm label, what to do on yes). The shell opens a ConfirmOverlay; with no shell (tests) the action runs at once.</summary>
+        public event Action<string, string, string, Action> ConfirmRequested;
+
+        public void RequestConfirm(string title, string message, string confirmLabel, Action onConfirm)
+        {
+            if (ConfirmRequested != null) { ConfirmRequested(title, message, confirmLabel, onConfirm); }
+            else { onConfirm(); }
+        }
+
         /// <summary>A failure card asked for the provider settings (a rejected key, an unknown model).</summary>
         public event Action SettingsRequested;
         /// <summary>A failure card asked to send the last player line again.</summary>
         public event Action RetryTurnRequested;
         /// <summary>Set by the controller: the last player line failed and can be sent again.</summary>
         public Func<bool> TurnRetryAvailable;
+
+        /// <summary>The story asked for the chronicle page before the oldest one shown.</summary>
+        public event Action EarlierHistoryRequested;
+        /// <summary>Set by the controller: the chronicle file holds lines older than what the log shows.</summary>
+        public Func<bool> EarlierHistoryAvailable;
+
+        public void RequestEarlierHistory() { if (EarlierHistoryRequested != null) { EarlierHistoryRequested(); } }
+        public bool CanLoadEarlier { get { return EarlierHistoryAvailable != null && EarlierHistoryAvailable(); } }
 
         public void RequestSettings() { if (SettingsRequested != null) { SettingsRequested(); } }
         public void RequestRetryTurn() { if (RetryTurnRequested != null) { RetryTurnRequested(); } }

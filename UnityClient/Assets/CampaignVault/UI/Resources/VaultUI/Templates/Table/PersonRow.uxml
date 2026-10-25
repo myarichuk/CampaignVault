@@ -1,0 +1,28 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
+    <!-- PersonRowViewModel: one person in the handoff, with an editable stance line. -->
+    <ui:VisualElement class="cv-person">
+        <ui:VisualElement class="cv-row cv-person__head">
+            <ui:Label class="cv-person__name cv-grow">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Title" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <ui:Label class="cv-person__id">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="Id" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+            <cv:VaultButton icon="close" tooltip="Leave them out" class="cv-btn--icon cv-btn--ghost cv-btn--small">
+                <Bindings>
+                    <ui:DataBinding property="command" data-source-path="Remove" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultButton>
+        </ui:VisualElement>
+        <cv:VaultField placeholder="how they stand toward the party now" class="cv-field--flush">
+            <Bindings>
+                <ui:DataBinding property="name" data-source-path="Name" binding-mode="ToTarget" />
+                <ui:DataBinding property="value" data-source-path="Stance" binding-mode="TwoWay" />
+            </Bindings>
+        </cv:VaultField>
+    </ui:VisualElement>
+</ui:UXML>
