@@ -1,5 +1,3 @@
-using System.Runtime.CompilerServices;
-using System.Text.Json;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -37,8 +35,9 @@ internal static class ToolProfiles
     {
         "take_turn", "get_entity", "search_world", "recall_history", "combat", "advance_world",
         "start_session", "end_session", "lookup",
-        // Mid-play seeding: a name that isn't in the world yet has to be world_built before take_turn uses it.
-        "world_build",
+        // No world_build here: mid-play seeding is a take_turn change (character_create, item_create,
+        // location_update with a new id, rumor_create), so a table can switch off the /build connector
+        // once the campaign is seeded and lose nothing.
     };
 
     public static readonly IReadOnlySet<string> BuildTools = new HashSet<string>(
@@ -90,9 +89,7 @@ internal static class ToolProfiles
                 continue;
             }
 
-            filtered.Add(profile == ToolProfile.Play && tool.ProtocolTool.Name == "world_build"
-                ? PlayWorldBuild.GetValue(tool, inner => new SlimTool(inner, PlayWorldBuildDescription, PlayWorldBuildSchema))
-                : tool);
+            filtered.Add(tool);
         }
 
         return filtered;
@@ -112,38 +109,5 @@ internal static class ToolProfiles
             : "";
         return $"unknown tool '{toolName}' on {here}{elsewhere}. Tell the user; don't search for tools. " +
                $"This connector: {string.Join(", ", available.Order(StringComparer.Ordinal))}.";
-    }
-
-    // Mid-play seeding is a handful of kinds with a few fields each. The full per-kind $defs stay on "/" and
-    // "/build"; /play gets this stub, and the dnd-world-building skill or lookup kind=help carries the rest.
-    // The call itself goes to the same tool, so nothing the stub leaves out is rejected.
-    private const string PlayWorldBuildDescription =
-        "Seed entities mid-play, before naming them in narration (a new NPC, shop, room, item). One atomic batch, " +
-        "max 100. Items carry holderId (equipment is an items[] entry, not a character field); combat-capable NPCs " +
-        "need systemStats; locations take parentLocationId and exits. Examples: lookup kind=help topic=world-building.";
-
-    private static readonly JsonElement PlayWorldBuildSchema = JsonDocument.Parse("""
-        {"type":"object","properties":{
-          "batch":{"type":"object","description":"Arrays by kind: locations, characters, items, factions, quests, plotThreads, creatures, lore, rumors, worldEvents. Each entry needs id and name (quests/lore: title; rumors: subject)."},
-          "campaignName":{"type":"string","description":"Campaign slug."}},
-         "required":["batch","campaignName"]}
-        """).RootElement.Clone();
-
-    private static readonly ConditionalWeakTable<McpServerTool, McpServerTool> PlayWorldBuild = new();
-
-    /// <summary>A tool served under a different description/schema on one connector; calls go to the original.</summary>
-    private sealed class SlimTool(McpServerTool inner, string description, JsonElement inputSchema) : DelegatingMcpServerTool(inner)
-    {
-        private readonly Tool _protocolTool = new()
-        {
-            Name = inner.ProtocolTool.Name,
-            Title = inner.ProtocolTool.Title,
-            Description = description,
-            InputSchema = inputSchema,
-            OutputSchema = inner.ProtocolTool.OutputSchema,
-            Annotations = inner.ProtocolTool.Annotations,
-        };
-
-        public override Tool ProtocolTool => _protocolTool;
     }
 }

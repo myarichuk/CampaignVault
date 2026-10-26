@@ -315,10 +315,11 @@ public class CampaignConfig
 
     /// <summary>
     /// When true, the engine automatically repairs one-way location exits by appending reverse exits
-    /// when they are missing (unless the forward exit is marked OneWay: true).
-    /// Defaults to false — many campaigns use intentional one-way exits (chutes, secret doors, traps).
+    /// when they are missing (unless the forward exit is marked OneWay: true), both on location_update.addExit
+    /// and on world_build location upserts. Defaults to true: an unmarked one-way link is almost always an
+    /// omission that then blocks travel back; a deliberate chute or trapdoor says so with OneWay: true.
     /// </summary>
-    public bool AutoRepairLocationConnectivity { get; set; } = false;
+    public bool AutoRepairLocationConnectivity { get; set; } = true;
 
     /// <summary>
     /// Number of events surfaced in ambient "story so far" context (get_world_state, get_scene).

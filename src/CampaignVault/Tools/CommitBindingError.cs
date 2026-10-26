@@ -14,7 +14,9 @@ namespace CampaignVault.Tools;
 internal static partial class CommitBindingError
 {
     public const int MaxChars = 600;
+    public const int UnknownFieldsMaxChars = 1000;
     public const string MissingTypeMarker = "is missing $type";
+    public const string UnknownFieldsMarker = "Unknown field(s) in the batch:";
 
     [GeneratedRegex(@"The JSON property '([^']+)' could not be mapped to any \.NET member contained in type '([^']+)'", RegexOptions.CultureInvariant)]
     private static partial Regex UnknownMemberRegex();
@@ -42,6 +44,11 @@ internal static partial class CommitBindingError
         if (message.Contains(MissingTypeMarker, StringComparison.Ordinal))
         {
             return Clip($"{StripNoise(message)} {CommitFieldReference.ValidTypesLine()}");
+        }
+
+        if (message.StartsWith(UnknownFieldsMarker, StringComparison.Ordinal))
+        {
+            return Clip(StripNoise(message), UnknownFieldsMaxChars);
         }
 
         var unknownMember = UnknownMemberRegex().Match(message);
@@ -142,12 +149,41 @@ internal static partial class CommitBindingError
         return prev[b.Length];
     }
 
+    /// <summary>
+    /// One message for every unknown top-level field the normalizer found across the array: index, $type,
+    /// field, and the closest real field when there is one; then the field list of the first offending type.
+    /// </summary>
+    internal static string DescribeUnknownFields(IReadOnlyList<(int Index, string Type, string Field, string? Suggestion)> unknown)
+    {
+        var sb = new StringBuilder(UnknownFieldsMarker);
+        for (var i = 0; i < unknown.Count; i++)
+        {
+            var (index, type, field, suggestion) = unknown[i];
+            sb.Append(i == 0 ? " " : " | ");
+            sb.Append("Unknown field '").Append(field).Append("' at $[").Append(index).Append("] ($type ").Append(type).Append(')');
+            if (suggestion is not null) sb.Append(". Did you mean '").Append(suggestion).Append('\'');
+            sb.Append('.');
+        }
+
+        if (unknown.Count > 1) sb.Append(" Nothing was applied; fix every one and resend the full batch.");
+        foreach (var type in unknown.Select(u => u.Type).Distinct(StringComparer.Ordinal))
+        {
+            var variant = CommitSchemaModel.Find(type);
+            if (variant is null) continue;
+            var summary = " " + CommitFieldReference.FieldSummary(variant);
+            if (sb.Length + summary.Length > UnknownFieldsMaxChars) break;
+            sb.Append(summary);
+        }
+
+        return sb.ToString();
+    }
+
     private static string StripNoise(string message) => PositionNoiseRegex().Replace(message, "").Trim();
 
-    private static string Clip(string text)
+    private static string Clip(string text, int max = MaxChars)
     {
-        if (text.Length <= MaxChars) return text;
-        var cut = text.LastIndexOf(' ', MaxChars - 1);
-        return text[..(cut > MaxChars / 2 ? cut : MaxChars - 1)].TrimEnd(',', ' ') + "…";
+        if (text.Length <= max) return text;
+        var cut = text.LastIndexOf(' ', max - 1);
+        return text[..(cut > max / 2 ? cut : max - 1)].TrimEnd(',', ' ') + "…";
     }
 }

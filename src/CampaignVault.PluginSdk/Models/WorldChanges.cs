@@ -12,7 +12,7 @@ namespace CampaignVault.Models;
 /// The LLM must include the exact <c>$type</c> discriminator so the server knows which concrete change to apply.
 /// Mix as many different change kinds as needed in a single call for atomicity.
 /// </summary>
-[Description("REQUIRED: every WorldChange object MUST include '$type'. Hot path: hp, activity, event, travel, rest, ruleset_action, knowledge_update, item, status, status_remove, character_update, location_update, quest_progress. Full list: lookup kind=commit_schema. Mix freely in one take_turn batch.")]
+[Description("REQUIRED: every WorldChange object MUST include '$type'. Hot path: hp, activity, event, travel, rest, ruleset_action, knowledge_update, item, status, status_remove, character_update, location_update, quest_progress. New entities mid-play: character_create, item_create, location_update (new id), rumor_create. Full list: lookup kind=commit_schema. Mix freely in one take_turn batch.")]
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
 [JsonDerivedType(typeof(HpChange), "hp")]
 [JsonDerivedType(typeof(ItemTransfer), "item")]
@@ -36,6 +36,9 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(RestChange), "rest")]
 [JsonDerivedType(typeof(ItemUpdate), "item_update")]
 [JsonDerivedType(typeof(CharacterUpdate), "character_update")]
+[JsonDerivedType(typeof(CharacterCreate), "character_create")]
+[JsonDerivedType(typeof(ItemCreate), "item_create")]
+[JsonDerivedType(typeof(RumorCreate), "rumor_create")]
 [JsonDerivedType(typeof(KnowledgeUpdate), "knowledge_update")]
 [JsonDerivedType(typeof(EngagementRelationChange), "engagement_relation")]
 [JsonDerivedType(typeof(SpatialPositionChange), "spatial_position")]
@@ -627,7 +630,8 @@ public class RumorEvolves : WorldChange
 }
 
 /// <summary>Seed a new rumor. State starts at Nascent; advance via <see cref="RumorEvolves"/> ($type rumor).</summary>
-[Description("Seed a new rumor at Nascent state.")]
+[CommitCategory("Narrative")]
+[Description("Seed a new rumor at Nascent state (advance it later with $type rumor).")]
 public class RumorCreate : WorldChange
 {
     [Description("Unique rumor ID (e.g. 'rumors/nightshade-gang'). Namespace with campaign slug when campaign-specific.")]
@@ -716,9 +720,13 @@ public class EngagementRelationChange : WorldChange
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public EngagementCategory? Category { get; set; }
 
-    [Description("Freeform verb (e.g. 'grappling', 'ranting at', 'stitching'). Omit or set to null/empty to remove/clear the relation.")]
+    [Description("Freeform verb (e.g. 'grappling', 'ranting at', 'stitching'). Omit (or set clear: true) to remove the relation.")]
     [JsonPropertyName("verb")]
     public string? Verb { get; set; }
+
+    [Description("true ends the relation between characterId and targetId (both sides when bidirectional), whatever verb says. The explicit form of omitting verb.")]
+    [JsonPropertyName("clear")]
+    public bool? Clear { get; set; }
 
     [Description("Optional restriction override: None, Soft, or Hard.")]
     [JsonPropertyName("restrictionLevel")]
@@ -794,9 +802,13 @@ public class SceneSetupEngagement
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public EngagementCategory? Category { get; set; }
 
-    [Description("Freeform verb (e.g. 'grappling', 'ranting at', 'stitching'). Omit or set to null/empty to remove/clear the relation.")]
+    [Description("Freeform verb (e.g. 'grappling', 'ranting at', 'stitching'). Omit (or set clear: true) to remove the relation.")]
     [JsonPropertyName("verb")]
     public string? Verb { get; set; }
+
+    [Description("true ends the relation between characterId and targetId (both sides when bidirectional), whatever verb says. The explicit form of omitting verb.")]
+    [JsonPropertyName("clear")]
+    public bool? Clear { get; set; }
 
     [Description("Optional restriction override: None, Soft, or Hard.")]
     [JsonPropertyName("restrictionLevel")]
@@ -1107,7 +1119,8 @@ public class LocationUpdate : WorldChange
 /// <summary>
 /// Create a new transient (or persistent) character at runtime.
 /// </summary>
-[Description("Create a new transient or persistent character at runtime.")]
+[CommitCategory("World")]
+[Description("Create a new NPC (or companion/PC) mid-play, in the same batch as the beat that introduces them: name, currentLocationId, lifeStage, notes; systemStats for anyone who may fight. An existing characterId is merged, not duplicated. Setup-time casts still go through world_build.")]
 public class CharacterCreate : WorldChange
 {
     [Description("The unique ID of the new character (e.g., 'chars/cloaked_figure_42').")]
@@ -1368,6 +1381,108 @@ public class QuestProgress : WorldChange
     [Description("Optional. Character/faction/location IDs tied to this progress step. When the quest reaches Complete/Failed, these become the 'involved' list on the auto-generated completion event — omit and that event will have no 'involved' entries.")]
     [JsonPropertyName("involvedIds")]
     public List<string>? InvolvedIds { get; set; }
+}
+
+/// <summary>
+/// Create a new item mid-play (a gift, loot, a dropped note) in the same batch as the beat that introduces it.
+/// Holder must already exist (or be created earlier in the same batch). Fails on an existing itemId: move with
+/// <see cref="ItemTransfer"/> ($type item) or change with <see cref="ItemUpdate"/> instead.
+/// </summary>
+[CommitCategory("World")]
+[Description("Create a new item mid-play (gift, loot, a note) held by a character, location or container. itemId must be new: an existing item is moved with $type item or changed with item_update. Pass definitionName to seed category/tags/equip fields from a ruleset template (lookup kind=items).")]
+public class ItemCreate : WorldChange
+{
+    [Description("New item ID (e.g. 'items/whiskers-bell').")]
+    [JsonPropertyName("itemId")]
+    public string ItemId { get; set; } = null!;
+
+    [Description("Display name.")]
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = null!;
+
+    [Description("Short description (what it looks like, what it is).")]
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    [Description("Who holds it: a character ('chars/x'), a location ('locations/x') or a container item ('items/x'). Must exist, or be created earlier in this batch.")]
+    [JsonPropertyName("holderId")]
+    public string HolderId { get; set; } = null!;
+
+    [Description("Stack size; default 1.")]
+    [JsonPropertyName("quantity")]
+    public int? Quantity { get; set; }
+
+    [Description("Weapon, Armor, Clothing, Tool, Consumable, Currency, Document, Container, Other, or a plugin category. Defaults from definitionName's template, else Other.")]
+    [JsonPropertyName("coreCategory")]
+    public string? CoreCategory { get; set; }
+
+    [Description("Ruleset item template name (lookup kind=items) to seed category/tags/properties/equip fields; your explicit fields win.")]
+    [JsonPropertyName("definitionName")]
+    public string? DefinitionName { get; set; }
+
+    [Description("Temporary tags (e.g. 'wet', 'concealed').")]
+    [JsonPropertyName("tags")]
+    public List<string>? Tags { get; set; }
+
+    [Description("Permanent physical features.")]
+    [JsonPropertyName("distinctiveFeatures")]
+    public List<string>? DistinctiveFeatures { get; set; }
+
+    [Description("Key-value properties (damage, weight, value...).")]
+    [JsonPropertyName("properties")]
+    public Dictionary<string, object>? Properties { get; set; }
+
+    [Description("Temporary narrative state (e.g. 'still warm from the forge').")]
+    [JsonPropertyName("currentState")]
+    public string? CurrentState { get; set; }
+
+    [Description("Equip zones (MainHand, OffHand, Torso, Head...). Empty/omitted = not equippable.")]
+    [JsonPropertyName("equipZones")]
+    public List<string>? EquipZones { get; set; }
+
+    [Description("Base/Armor/Outer/Held. Required with equipZones for the item to be equippable.")]
+    [JsonPropertyName("equipLayer")]
+    public string? EquipLayer { get; set; }
+
+    [Description("True for a two-handed weapon (MainHand that also blocks OffHand).")]
+    [JsonPropertyName("twoHanded")]
+    public bool? TwoHanded { get; set; }
+
+    [Description("Concealed until found (a check or passive Perception meeting discoverDc).")]
+    [JsonPropertyName("hidden")]
+    public bool? Hidden { get; set; }
+
+    [Description("DC that finds it while hidden.")]
+    [JsonPropertyName("discoverDc")]
+    public int? DiscoverDc { get; set; }
+
+    [Description("Trap on the item, fired when taken/opened.")]
+    [JsonPropertyName("hazard")]
+    public Hazard? Hazard { get; set; }
+
+    [Description("Charges/doses it holds (potion sips, wand charges). Starts full.")]
+    [JsonPropertyName("maxCharges")]
+    public int? MaxCharges { get; set; }
+
+    [Description("Unit label for charges (doses, sips, uses).")]
+    [JsonPropertyName("chargeUnit")]
+    public string? ChargeUnit { get; set; }
+
+    [Description("Container capacity; null = unstructured.")]
+    [JsonPropertyName("capacity")]
+    public int? Capacity { get; set; }
+
+    [Description("Unit label for capacity (items, liters).")]
+    [JsonPropertyName("capacityUnit")]
+    public string? CapacityUnit { get; set; }
+
+    [Description("Cosmetic tags visible when narrating (never mechanical).")]
+    [JsonPropertyName("visualTags")]
+    public List<string>? VisualTags { get; set; }
+
+    [Description("How it reads on the wearer; purely descriptive.")]
+    [JsonPropertyName("appearanceNote")]
+    public string? AppearanceNote { get; set; }
 }
 
 /// <summary>
@@ -1834,7 +1949,7 @@ public class ArchiveEntityChange : WorldChange
 /// Lets the DM shift the campaign's center of gravity (dungeon crawl → political thriller)
 /// via take_turn without a dedicated management tool.
 /// </summary>
-[Description("Update campaign-level meta (narrative focus, enabled modes, house-rule SystemOptions keys).")]
+[Description("Update campaign-level meta: narrative focus, enabled modes, house-rule SystemOptions keys, scene cue, and the calendar (loreYear/loreMonth/loreDay/hour/loreEpoch).")]
 public class CampaignUpdateChange : WorldChange
 {
     [Description("Full replacement list of narrative focus tags (e.g. ['political intrigue', 'court politics']). Pass every tag you want retained — this replaces the whole list, it does not append.")]
@@ -1856,6 +1971,26 @@ public class CampaignUpdateChange : WorldChange
     [Description("false turns off the scene cue line on committed take_turn results (for a client with its own storyteller); true restores it.")]
     [JsonPropertyName("sceneCueEnabled")]
     public bool? SceneCueEnabled { get; set; }
+
+    [Description("Set the campaign calendar's year (lore date), e.g. 1492. Relabels the clock; days elapsed are untouched. Omit to keep.")]
+    [JsonPropertyName("loreYear")]
+    public int? LoreYear { get; set; }
+
+    [Description("Set the calendar month (1-12). Omit to keep.")]
+    [JsonPropertyName("loreMonth")]
+    public int? LoreMonth { get; set; }
+
+    [Description("Set the calendar day of month (1-30; the fantasy calendar has twelve 30-day months). Omit to keep.")]
+    [JsonPropertyName("loreDay")]
+    public int? LoreDay { get; set; }
+
+    [Description("Set the hour of day (0-23) without passing time (needs/rest don't tick; use time_advanced, rest or travel to let hours pass). Omit to keep.")]
+    [JsonPropertyName("hour")]
+    public int? Hour { get; set; }
+
+    [Description("Rename the era label shown with the date (e.g. 'Year of the Scarlet Witch', 'DR'). Omit to keep.")]
+    [JsonPropertyName("loreEpoch")]
+    public string? LoreEpoch { get; set; }
 }
 
 /// <summary>

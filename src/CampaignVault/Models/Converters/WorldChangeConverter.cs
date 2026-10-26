@@ -25,7 +25,13 @@ internal static class WorldChangeNormalizer
 
         json = RewriteDiscriminatorAliases(json);
         json = RewriteFieldAliases(json);
+        json = EnsureDiscriminators(json);
+        SweepUnknownFields(json);
+        return json;
+    }
 
+    private static string EnsureDiscriminators(string json)
+    {
         // Quick optimization: if the string already contains "$type" for every object marker,
         // it likely has all discriminators. Skip parsing in happy path.
         if (!json.Contains("$type", StringComparison.Ordinal))
@@ -52,16 +58,60 @@ internal static class WorldChangeNormalizer
         return InferMissingTypes(json);
     }
 
+    /// <summary>
+    /// Verb names a model reaches for that mean an existing <c>$type</c>. Compared case-insensitively against
+    /// the discriminator value only, never against narratives or property values.
+    /// </summary>
+    private static readonly Dictionary<string, string> DiscriminatorAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["statusremove"] = "status_remove",
+        ["remove_status"] = "status_remove",
+        ["item_transfer"] = "item",
+        ["transfer_item"] = "item",
+        ["itemtransfer"] = "item",
+        ["create_character"] = "character_create",
+        ["charactercreate"] = "character_create",
+        ["create_item"] = "item_create",
+        ["itemcreate"] = "item_create",
+        ["create_rumor"] = "rumor_create",
+        ["rumorcreate"] = "rumor_create",
+        ["create_location"] = "location_update",
+        ["location_create"] = "location_update",
+        ["knowledge"] = "knowledge_update",
+    };
+
+    /// <summary>
+    /// Field names a model reaches for, per <c>$type</c> ("*" applies to every type), mapped to the real field.
+    /// The alias is renamed when the real field is absent and dropped when it is present, so the strict binder
+    /// (unknown fields fail the batch) never rejects a change whose meaning is unambiguous.
+    /// </summary>
+    private static readonly Dictionary<string, Dictionary<string, string>> FieldAliases = new(StringComparer.Ordinal)
+    {
+        ["*"] = new(StringComparer.OrdinalIgnoreCase) { ["actorId"] = "characterId" },
+        ["status_remove"] = new(StringComparer.OrdinalIgnoreCase) { ["statusName"] = "status", ["condition"] = "status", ["name"] = "status" },
+        ["status"] = new(StringComparer.OrdinalIgnoreCase) { ["statusName"] = "status", ["condition"] = "status" },
+        ["knowledge_update"] = new(StringComparer.OrdinalIgnoreCase) { ["content"] = "details", ["text"] = "details", ["memory"] = "details", ["summary"] = "details" },
+        ["engagement_relation"] = new(StringComparer.OrdinalIgnoreCase) { ["end"] = "clear", ["remove"] = "clear", ["ended"] = "clear" },
+        ["event"] = new(StringComparer.OrdinalIgnoreCase) { ["participants"] = "involved", ["description"] = "summary", ["text"] = "summary" },
+        ["travel"] = new(StringComparer.OrdinalIgnoreCase) { ["toLocationId"] = "destinationLocationId", ["destinationId"] = "destinationLocationId", ["locationId"] = "destinationLocationId", ["newLocationId"] = "destinationLocationId" },
+        ["item"] = new(StringComparer.OrdinalIgnoreCase) { ["holderId"] = "toHolderId", ["newHolderId"] = "toHolderId", ["toCharacterId"] = "toHolderId" },
+        ["item_create"] = new(StringComparer.OrdinalIgnoreCase) { ["id"] = "itemId", ["toHolderId"] = "holderId" },
+        ["character_create"] = new(StringComparer.OrdinalIgnoreCase) { ["id"] = "characterId", ["locationId"] = "currentLocationId" },
+        ["location_update"] = new(StringComparer.OrdinalIgnoreCase) { ["id"] = "locationId" },
+        ["rumor_create"] = new(StringComparer.OrdinalIgnoreCase) { ["id"] = "rumorId" },
+        ["hp"] = new(StringComparer.OrdinalIgnoreCase) { ["amount"] = "delta", ["change"] = "delta" },
+    };
+
+    private static readonly string[] AliasProbe =
+        [.. DiscriminatorAliases.Keys.Concat(FieldAliases.Values.SelectMany(m => m.Keys)).Distinct(StringComparer.OrdinalIgnoreCase)];
+
     private static string RewriteDiscriminatorAliases(string json)
     {
-        if (!json.Contains("statusremove", StringComparison.OrdinalIgnoreCase))
+        if (!DiscriminatorAliases.Keys.Any(k => json.Contains(k, StringComparison.OrdinalIgnoreCase)))
         {
             return json;
         }
 
-        // Token-aware: only the $type discriminator value "statusremove" (any casing) becomes
-        // "status_remove". A raw string Replace would also rewrite narratives and property
-        // values that merely mention it.
         JsonNode? node;
         try
         {
@@ -84,9 +134,9 @@ internal static class WorldChangeNormalizer
                 && obj.TryGetPropertyValue("$type", out var typeVal)
                 && typeVal is JsonValue val
                 && val.TryGetValue<string>(out var discriminator)
-                && discriminator.Equals("statusremove", StringComparison.OrdinalIgnoreCase))
+                && DiscriminatorAliases.TryGetValue(discriminator, out var canonical))
             {
-                obj["$type"] = "status_remove";
+                obj["$type"] = canonical;
                 modified = true;
             }
         }
@@ -94,14 +144,9 @@ internal static class WorldChangeNormalizer
         return modified ? array.ToJsonString() : json;
     }
 
-    /// <summary>
-    /// LLMs occasionally send <c>actorId</c> where a change wants <c>characterId</c> (a documented naming
-    /// slip). Rename it when <c>characterId</c> is absent and drop it otherwise, so the strict deserializer
-    /// (unknown fields fail the batch) doesn't reject a change whose meaning is unambiguous.
-    /// </summary>
     private static string RewriteFieldAliases(string json)
     {
-        if (!json.Contains("actorId", StringComparison.Ordinal))
+        if (!AliasProbe.Any(k => json.Contains(k, StringComparison.OrdinalIgnoreCase)))
             return json;
 
         JsonArray? array;
@@ -120,16 +165,82 @@ internal static class WorldChangeNormalizer
         var modified = false;
         foreach (var entry in array)
         {
-            if (entry is not JsonObject obj || !obj.TryGetPropertyValue("actorId", out var actorIdNode))
+            if (entry is not JsonObject obj)
                 continue;
 
-            obj.Remove("actorId");
-            if (!obj.ContainsKey("characterId"))
-                obj["characterId"] = actorIdNode?.DeepClone();
-            modified = true;
+            var discriminator = obj.TryGetPropertyValue("$type", out var t) && t is JsonValue tv && tv.TryGetValue<string>(out var d) ? d : null;
+            modified |= ApplyAliases(obj, FieldAliases["*"]);
+            if (discriminator is not null && FieldAliases.TryGetValue(discriminator, out var perType))
+                modified |= ApplyAliases(obj, perType);
         }
 
         return modified ? array.ToJsonString() : json;
+    }
+
+    private static bool ApplyAliases(JsonObject obj, Dictionary<string, string> aliases)
+    {
+        var modified = false;
+        foreach (var key in obj.Select(kv => kv.Key).ToList())
+        {
+            if (!aliases.TryGetValue(key, out var canonical))
+                continue;
+
+            var value = obj[key];
+            obj.Remove(key);
+            var hasCanonical = obj.Any(kv => string.Equals(kv.Key, canonical, StringComparison.OrdinalIgnoreCase));
+            if (!hasCanonical)
+                obj[canonical] = value?.DeepClone();
+            modified = true;
+        }
+
+        return modified;
+    }
+
+    /// <summary>
+    /// Reports every unknown top-level field across the whole array in one error, instead of the binder's
+    /// first-failure-only exception: a batch with three misnamed fields costs one round trip, not three.
+    /// Types the schema model doesn't know (an unregistered $type) are left to the binder.
+    /// </summary>
+    private static void SweepUnknownFields(string json)
+    {
+        JsonArray? array;
+        try
+        {
+            array = JsonNode.Parse(json) as JsonArray;
+        }
+        catch
+        {
+            return;
+        }
+
+        if (array is null)
+            return;
+
+        List<(int Index, string Type, string Field, string? Suggestion)>? unknown = null;
+        for (var i = 0; i < array.Count; i++)
+        {
+            if (array[i] is not JsonObject obj
+                || !obj.TryGetPropertyValue("$type", out var t) || t is not JsonValue tv || !tv.TryGetValue<string>(out var discriminator))
+                continue;
+
+            var variant = Schema.CommitSchemaModel.Find(discriminator);
+            if (variant is null)
+                continue;
+
+            var known = new HashSet<string>(variant.Fields.Select(f => f.JsonName), StringComparer.OrdinalIgnoreCase) { "$type", "minutesElapsed" };
+            foreach (var key in obj.Select(kv => kv.Key))
+            {
+                if (known.Contains(key))
+                    continue;
+                unknown ??= [];
+                unknown.Add((i, discriminator, key, Tools.CommitBindingError.Suggest(key, variant.Fields.Select(f => f.JsonName))));
+            }
+        }
+
+        if (unknown is { Count: > 0 })
+        {
+            throw new JsonException(Tools.CommitBindingError.DescribeUnknownFields(unknown));
+        }
     }
 
     private static bool NeedsNormalization(JsonArray array)
@@ -218,6 +329,8 @@ internal static class WorldChangeNormalizer
             return "event";
         if (obj.ContainsKey("itemId") && obj.ContainsKey("toHolderId"))
             return "item";
+        if (obj.ContainsKey("itemId") && obj.ContainsKey("holderId") && obj.ContainsKey("name"))
+            return "item_create";
         if (obj.ContainsKey("rumorId"))
             return "rumor";
         if (obj.ContainsKey("questId"))

@@ -179,8 +179,9 @@ public class UpsertSurfaceCoverageTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public void Commit_WithLegacyCharacterCreateDiscriminator_NoLongerParses()
+    public void Commit_WithCharacterCreateDiscriminator_Parses_AsMidPlayCreation()
     {
+        // Re-registered: a /play connector without world_build needs an in-batch way to introduce an NPC.
         const string payload = """
                                [
                                  {
@@ -194,12 +195,13 @@ public class UpsertSurfaceCoverageTests : IClassFixture<RavenDBFixture>
         using var doc = JsonDocument.Parse(payload);
         var ok = CommitChangesParser.TryParse(doc.RootElement, out var parsed, out var error);
 
-        Assert.False(ok);
-        Assert.Null(parsed);
+        Assert.True(ok, error);
+        var create = Assert.IsType<CharacterCreate>(Assert.Single(parsed!));
+        Assert.Equal("Ghost", create.Name);
     }
 
     [Fact]
-    public void Commit_WithLegacyLocationCreateDiscriminator_NoLongerParses()
+    public void Commit_WithLegacyLocationCreateDiscriminator_AliasesToLocationUpdate()
     {
         const string payload = """
                                [
@@ -214,8 +216,10 @@ public class UpsertSurfaceCoverageTests : IClassFixture<RavenDBFixture>
         using var doc = JsonDocument.Parse(payload);
         var ok = CommitChangesParser.TryParse(doc.RootElement, out var parsed, out var error);
 
-        Assert.False(ok);
-        Assert.Null(parsed);
+        Assert.True(ok, error);
+        var update = Assert.IsType<LocationUpdate>(Assert.Single(parsed!));
+        Assert.Equal("locations/ghost-town", update.LocationId);
+        Assert.Equal("Ghost Town", update.Name);
     }
 
     [Fact]

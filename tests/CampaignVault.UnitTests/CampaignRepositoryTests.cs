@@ -1773,27 +1773,29 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         var parentId = "locations/broken-parent-" + Guid.NewGuid();
         var childId = "locations/broken-child-" + Guid.NewGuid();
 
-        // Setup broken state directly (parent has no exit back to child; child declares parent).
-        // Simulates old data, manual edit, or partial LLM location_update.
+        // Setup broken state directly on the documents (parent has no exit back to child; child declares parent).
+        // Simulates old data or a manual edit: the upsert path now repairs reciprocal exits itself.
         using (var session = _store.OpenAsyncSession())
         {
-            await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest
+            await session.StoreAsync(new Location
             {
                 Id = parentId,
                 Name = "Broken Parent",
                 Description = "Parent without back link",
                 Type = LocationType.Building,
-                Exits = [] // deliberately no child
-            });
-            await repo.UpsertLocationAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new LocationUpsertRequest
+                Exits = [], // deliberately no child
+                CampaignName = TestCampaignDefaults.Slug,
+            }, TestContext.Current.CancellationToken);
+            await session.StoreAsync(new Location
             {
                 Id = childId,
                 Name = "Broken Child",
                 Description = "Child pointing to parent but no reciprocal exit",
                 Type = LocationType.Room,
                 ParentLocationId = parentId,
-                Exits = [new LocationExit(parentId, "Leads back (but parent doesn't know)")]
-            });
+                Exits = [new LocationExit(parentId, "Leads back (but parent doesn't know)")],
+                CampaignName = TestCampaignDefaults.Slug,
+            }, TestContext.Current.CancellationToken);
             await session.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
@@ -1951,7 +1953,9 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
             Assert.NotEmpty(dbEvent.SemanticVector);
         }
 
-        // 3. Update with empty text to clear vectors
+        // 3. Update with empty text to clear vectors. A blank name is never a valid update (an omitted or empty
+        //    name preserves the stored one), so characters, locations and items keep a non-empty embedding text:
+        //    their vectors are re-derived, not cleared.
         using (var session = _store.OpenAsyncSession())
         {
             await repo.UpsertCharacterAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), new CharacterUpsertRequest { Id = charId, Name = "", Notes = "" });
@@ -1969,19 +1973,22 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
         using (var session = _store.OpenAsyncSession())
         {
             var dbChar = await session.LoadAsync<Character>(charId, TestContext.Current.CancellationToken);
-            Assert.Null(dbChar.SemanticVector);
+            Assert.False(string.IsNullOrEmpty(dbChar.Name)); // blank name preserved the stored one
+            Assert.NotNull(dbChar.SemanticVector);
             
             var dbLore = await session.LoadAsync<Lore>(loreId, TestContext.Current.CancellationToken);
             Assert.Null(dbLore.SemanticVector);
             
             var dbLoc = await session.LoadAsync<Location>(locId, TestContext.Current.CancellationToken);
-            Assert.Null(dbLoc.SemanticVector);
+            Assert.False(string.IsNullOrEmpty(dbLoc.Name));
+            Assert.NotNull(dbLoc.SemanticVector);
             
             var dbRumor = await session.LoadAsync<Rumor>(rumorId, TestContext.Current.CancellationToken);
             Assert.Null(dbRumor.SemanticVector);
             
             var dbItem = await session.LoadAsync<Item>(itemId, TestContext.Current.CancellationToken);
-            Assert.Null(dbItem.SemanticVector);
+            Assert.False(string.IsNullOrEmpty(dbItem.Name));
+            Assert.NotNull(dbItem.SemanticVector);
             
             var dbFaction = await session.LoadAsync<Faction>(factionId, TestContext.Current.CancellationToken);
             Assert.Null(dbFaction.SemanticVector);

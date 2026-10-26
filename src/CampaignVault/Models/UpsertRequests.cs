@@ -12,14 +12,19 @@ public class CharacterUpsertRequest
 {
     public string Id { get; set; } = null!;
 
-    public string Name { get; set; } = null!;
+    [Description("Required when creating. Omit on an existing character to preserve the stored name.")]
+    public string? Name { get; set; }
 
+    [Description("Omit to preserve the character's existing class/level string.")]
     public string? ClassLevel { get; set; }
 
-    public int CurrentHp { get; set; }
+    [Description("Omit to preserve the stored current HP (on create: derived from systemStats/maxHp).")]
+    public int? CurrentHp { get; set; }
 
-    public int MaxHp { get; set; }
+    [Description("Omit to preserve the stored max HP (on create: derived from systemStats; creatures may set it explicitly).")]
+    public int? MaxHp { get; set; }
 
+    [Description("Omit to preserve the character's existing notes.")]
     public string? Notes { get; set; }
 
     [Description("Current transient appearance (e.g. 'blood-streaked, one pauldron strap loose'). Omit to preserve the character's existing appearance.")]
@@ -31,19 +36,25 @@ public class CharacterUpsertRequest
     [Description("Permanent distinguishing features (scars, tattoos). Omit to preserve the character's existing features.")]
     public List<string>? DistinctiveFeatures { get; set; }
 
-    public bool KeepAlive { get; set; }
+    [Description("Omit to preserve the stored value (false on create).")]
+    public bool? KeepAlive { get; set; }
 
-    public bool IsPc { get; set; }
+    [Description("True for human player characters. Omit to preserve the stored value (false on create).")]
+    public bool? IsPc { get; set; }
 
-    public bool IsPartyCompanion { get; set; }
+    [Description("True for NPC party companions. Omit to preserve the stored value (false on create).")]
+    public bool? IsPartyCompanion { get; set; }
 
     [Description("child | adolescent | adult | elder. Omit to preserve. A character recorded as a minor cannot be changed to adult.")]
-    public LifeStage LifeStage { get; set; }
+    public LifeStage? LifeStage { get; set; }
 
+    [Description("Omit to preserve the character's existing schedule.")]
     public Schedule? Schedule { get; set; }
 
+    [Description("Omit to preserve the character's current location.")]
     public string? CurrentLocationId { get; set; }
 
+    [Description("Omit to preserve the character's current activity.")]
     public string? CurrentActivity { get; set; }
 
     [Description("Omit to preserve the character's existing psychology profile. Provide to replace it wholesale.")]
@@ -70,12 +81,16 @@ public class LocationUpsertRequest
 {
     public string Id { get; set; } = null!;
 
-    public string Name { get; set; } = null!;
+    [Description("Required when creating. Omit on an existing location to preserve the stored name.")]
+    public string? Name { get; set; }
 
-    public string Description { get; set; } = null!;
+    [Description("DM-facing description hints. Omit on an existing location to preserve the stored description.")]
+    public string? Description { get; set; }
 
-    public LocationType Type { get; set; } = LocationType.Building;
+    [Description("Region/Settlement/District/Building/Room/Wilderness. Omit to preserve (Building on create).")]
+    public LocationType? Type { get; set; }
 
+    [Description("Omit to preserve the existing parent.")]
     public string? ParentLocationId { get; set; }
 
     [Description("Only used when creating a new location. The ID of the location you are coming from — the engine automatically creates two-way exits linking them. Ignored on update.")]
@@ -94,15 +109,19 @@ public class LocationUpsertRequest
     [JsonPropertyName("pointOfInterestDetails")]
     public Dictionary<string, string>? PointOfInterestDetails { get; set; }
 
+    [Description("Omit to preserve the existing ambient crowd; pass an empty string to clear it.")]
     public string? AmbientCrowd { get; set; }
 
+    [Description("Omit to preserve.")]
     public int? LastVisitedDay { get; set; }
 
     [Description("Omit to preserve existing metadata. Provide to replace it wholesale.")]
     public Dictionary<string, object>? Metadata { get; set; }
 
+    [Description("Omit to preserve the existing controlling faction; pass an empty string to clear it.")]
     public string? ControllingFactionId { get; set; }
 
+    [Description("Omit to preserve the existing physical state; pass an empty string to clear it.")]
     public string? CurrentState { get; set; }
 
     [Description("Narrative danger modifier (-50 to +50), used to seed random encounters. Omit to preserve the existing value on update.")]
@@ -156,14 +175,19 @@ public class ItemUpsertRequest
 {
     public string Id { get; set; } = null!;
 
-    public string Name { get; set; } = null!;
+    [Description("Required when creating. Omit on an existing item to preserve the stored name.")]
+    public string? Name { get; set; }
 
-    public string Description { get; set; } = null!;
+    [Description("Omit on an existing item to preserve the stored description.")]
+    public string? Description { get; set; }
 
-    public string HolderId { get; set; } = null!;
+    [Description("Owning character, location or container item id (items carry holderId). Omit on an existing item to preserve the current holder; to move an item in play use the take_turn 'item' change.")]
+    public string? HolderId { get; set; }
 
-    public int Quantity { get; set; } = 1;
+    [Description("Omit to preserve (1 on create).")]
+    public int? Quantity { get; set; }
 
+    [Description("Omit to preserve the existing temporary state; pass an empty string to clear it.")]
     public string? CurrentState { get; set; }
 
     [Description("Omit to preserve the item's existing distinctive features. Provide to replace them wholesale.")]
@@ -255,7 +279,7 @@ public class PlotThreadUpsertRequest
 
     public int TensionLevel { get; set; }
 
-    [Description("Omit to preserve the thread's existing clues. Provide to replace them wholesale.")]
+    [Description("Clue objects {id, description, involvedEntityIds} or bare description strings (an id is derived from the text). Omit to preserve the thread's existing clues. Provide to replace them wholesale.")]
     public List<PlotClue>? Clues { get; set; }
 
     [Description("Omit to preserve the thread's existing involved entity IDs. Provide to replace them wholesale.")]

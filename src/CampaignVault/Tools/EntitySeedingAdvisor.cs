@@ -32,7 +32,7 @@ internal static class EntitySeedingAdvisor
         {
             case "location":
                 sb.AppendLine("**To seed a location:**");
-                sb.AppendLine("1. Use `world_build` to create it with:");
+                sb.AppendLine("1. Mid-play: a `location_update` change with the new locationId (name, parentLocationId, addExit back to the party's location) in the same take_turn batch. At setup, use `world_build` with:");
                 sb.AppendLine("   - `name`, `description`, `type` (Building/District/etc.)");
                 sb.AppendLine("   - `parentLocationId` (the parent region/settlement/district)");
                 sb.AppendLine("   - `dangerModifier` (adjust from default 0)");
@@ -45,7 +45,7 @@ internal static class EntitySeedingAdvisor
 
             case "character":
                 sb.AppendLine("**To seed an NPC:**");
-                sb.AppendLine("1. Use `world_build` to create it with:");
+                sb.AppendLine("1. Mid-play: add a `character_create` change (characterId, name, currentLocationId, lifeStage, notes; systemStats if they may fight) to the same take_turn batch. At setup, use `world_build` with:");
                 sb.AppendLine("   - `name`, `currentAppearance`, `distinctiveFeatures`");
                 sb.AppendLine("   - `social` profile (Role, Trust, Suspicion, Loyalty, Fear)");
                 sb.AppendLine("   - `psychology` profile (motivation, ideology, pride, quirks)");
@@ -59,7 +59,7 @@ internal static class EntitySeedingAdvisor
             case "item":
                 sb.AppendLine("**To seed an item:**");
                 sb.AppendLine("1. Check `lookup` kind:'items' for a matching template first — if found, set `definitionName` instead of typing fields by hand.");
-                sb.AppendLine("2. Otherwise use `world_build` to create it with:");
+                sb.AppendLine("2. Otherwise, mid-play, add an `item_create` change (itemId, name, holderId, optional definitionName) to the same take_turn batch; at setup use `world_build` with:");
                 sb.AppendLine("   - `name`, `description`, `coreCategory` (Weapon/Armor/Clothing/etc., or your own)");
                 sb.AppendLine("   - `equipZones`, `equipLayer`, `capacity` (if equippable or a container)");
                 sb.AppendLine("   - `holderId` (owning character/location, required)");

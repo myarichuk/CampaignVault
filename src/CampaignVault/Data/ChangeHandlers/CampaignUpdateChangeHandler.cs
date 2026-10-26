@@ -21,10 +21,28 @@ public sealed class CampaignUpdateChangeHandler(CampaignDocumentKeys keys) : IWo
         var ctx = (ChangeContext)context;
         var cu = (CampaignUpdateChange)change;
 
-        if (cu.NarrativeFocus is null && cu.EnabledModeIds is null && cu.SystemOptions is null && cu.SceneCueEnabled is null)
+        var touchesClock = cu.LoreYear is not null || cu.LoreMonth is not null || cu.LoreDay is not null
+                           || cu.Hour is not null || cu.LoreEpoch is not null;
+        if (cu.NarrativeFocus is null && cu.EnabledModeIds is null && cu.SystemOptions is null && cu.SceneCueEnabled is null
+            && !touchesClock)
         {
             return ChangeHandlerResult.Failure(
-                "campaign_update has nothing to apply — set narrativeFocus, enabledModeIds, systemOptions and/or sceneCueEnabled.");
+                "campaign_update has nothing to apply — set narrativeFocus, enabledModeIds, systemOptions, sceneCueEnabled and/or the calendar (loreYear, loreMonth, loreDay, hour, loreEpoch).");
+        }
+
+        if (cu.LoreMonth is < 1 or > 12)
+        {
+            return ChangeHandlerResult.Failure($"campaign_update.loreMonth must be 1-12 (got {cu.LoreMonth}).");
+        }
+
+        if (cu.LoreDay is < 1 or > 30)
+        {
+            return ChangeHandlerResult.Failure($"campaign_update.loreDay must be 1-30 (got {cu.LoreDay}).");
+        }
+
+        if (cu.Hour is < 0 or > 23)
+        {
+            return ChangeHandlerResult.Failure($"campaign_update.hour must be 0-23 (got {cu.Hour}).");
         }
 
         if (ctx.Session == null)
@@ -133,6 +151,20 @@ public sealed class CampaignUpdateChangeHandler(CampaignDocumentKeys keys) : IWo
             var config = await EnsureConfigAsync(ctx, ct);
             config.SceneCueEnabled = sceneCue;
             ctx.RecordMessage(sceneCue ? "Scene cue on." : "Scene cue off for this campaign.");
+        }
+
+        if (touchesClock)
+        {
+            // The dispatcher hands handlers the session-tracked CampaignTime, so writes here persist with the batch.
+            var time = await ctx.GetCurrentTimeAsync();
+            var before = $"{time.Epoch} {time.Year}-{time.Month:00}-{time.Day:00} hour {time.Hour}";
+            if (cu.LoreYear is { } year) time.Year = year;
+            if (cu.LoreMonth is { } month) time.Month = month;
+            if (cu.LoreDay is { } day) time.Day = day;
+            if (cu.Hour is { } hour) time.Hour = hour;
+            if (!string.IsNullOrWhiteSpace(cu.LoreEpoch)) time.Epoch = cu.LoreEpoch.Trim();
+            time.LastUpdated = DateTime.UtcNow;
+            ctx.RecordMessage($"Calendar set: {before} -> {time.Epoch} {time.Year}-{time.Month:00}-{time.Day:00} hour {time.Hour} (days elapsed unchanged: {time.TotalDaysElapsed}).");
         }
 
         return ChangeHandlerResult.Ok;

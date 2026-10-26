@@ -95,9 +95,9 @@ Picking up, dropping or handing over an existing item is an `item` change to the
 
 ## Entity creation and seeding before you name
 
-There are no `_create` change types. New characters, locations, items, factions, quests, rumors, plot threads, creatures, spells, feats and lore go through `world_build`, even one at a time; an existing id is merged, not duplicated. For a new item that matches a template, set `definitionName` (find it with `lookup kind=items`); fields you also set still override the template. Run the checklist in `dnd-world-building` before seeding a new area.
+Mid-play, a new person, thing or place is a change in the same `take_turn` as the beat that introduces it: `character_create` (characterId, name, currentLocationId, lifeStage, notes; `systemStats` for anyone who may fight; `keepAlive: true` if worth keeping), `item_create` (itemId, name, holderId; `definitionName` to seed from a template found with `lookup kind=items`, your fields win), `location_update` with a new locationId (name, parentLocationId, `addExit` back to where the party is), and `rumor_create`. An existing characterId is merged, not duplicated; an existing itemId fails (move it with `item`, change it with `item_update`). Session-zero seeding and anything structural (factions, quests, plot threads, creatures, spells, feats, lore, rewriting a psychology) stays on `world_build` on the /build connector; run the checklist in `dnd-world-building` before seeding a new area.
 
-Never narrate a named person into existence. Before anyone gets a name, a voice or an action of their own, check the scene roster (`presentNPCs` lists everyone present) and the cards; if they are missing, `world_build` them (with `keepAlive: true` if worth keeping) before or in the same batch as the scene. Unnamed background stays unnamed. If a seeded name still fails, `search_world` for the real id before retrying.
+Never narrate a named person into existence. Before anyone gets a name, a voice or an action of their own, check the scene roster (`presentNPCs` lists everyone present) and the cards; if they are missing, `character_create` them (with `keepAlive: true` if worth keeping) in the same batch as the scene. Unnamed background stays unnamed. If a seeded name still fails, `search_world` for the real id before retrying.
 
 ## Needs, attributes, traits, death
 
@@ -158,6 +158,7 @@ Generated from the server: `name:type [req] (enum values) {object shape}`. Unkno
 - targetId:string [req]
 - category:enum (Physical|Social|Medical|Attention|Proximity)
 - verb:string
+- clear:bool
 - restrictionLevel:enum (None|Soft|Hard)
 - bidirectional:bool
 
@@ -222,5 +223,5 @@ Generated from the server: `name:type [req] (enum values) {object shape}`. Unkno
 - encounterRiskModifier:int
 - hazard:string
 
-Other types: apply_effect, archive_entity, attribute, campaign_update, character_update, death, death_save, faction_reputation, faction_state, grant_temp_hp, item_equip, item_unequip, item_update, item_use, knowledge_update, level_up, location_update, mode_transition, need, npc_initiative_nudge, piercing, plot_thread_clue, plot_thread_progress, quest_progress, resource, rest, rumor, scene_interrupt_check, scene_setup, schedule_change, soil, spatial_position, status_remove, tether, world_event_status, xp_grant.
+Other types: apply_effect, archive_entity, attribute, campaign_update, character_create, character_update, death, death_save, faction_reputation, faction_state, grant_temp_hp, item_create, item_equip, item_unequip, item_update, item_use, knowledge_update, level_up, location_update, mode_transition, need, npc_initiative_nudge, piercing, plot_thread_clue, plot_thread_progress, quest_progress, resource, rest, rumor, rumor_create, scene_interrupt_check, scene_setup, schedule_change, soil, spatial_position, status_remove, tether, world_event_status, xp_grant.
 <!-- fields:end -->
