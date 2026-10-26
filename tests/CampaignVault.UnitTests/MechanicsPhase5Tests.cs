@@ -88,6 +88,36 @@ public class MechanicsPhase5Tests(RavenDBFixture fixture) : IClassFixture<RavenD
         Assert.Equal(30, kept.CurrentHp);
     }
 
+    [Fact]
+    public async Task LevelUp_ReportsTheCurrentHpMove_SoTheClientNeedsNoPartyRefresh()
+    {
+        var (_, _, messages) = await LevelUpAsync("hp-note", Fighter(5, 44, constitution: 14, current: 30), new LevelUpChange { LevelsGained = 1 });
+        Assert.Contains(messages, m => m.Contains("MaxHp 44 → 52") && m.Contains("Current HP 30 → 38"));
+    }
+
+    [Fact]
+    public async Task LevelUp_AtZeroHp_RaisesMaxOnly_AndSaysWhyCurrentStayed()
+    {
+        var (_, hero, messages) = await LevelUpAsync("hp-downed", Fighter(5, 44, constitution: 14, current: 0), new LevelUpChange { LevelsGained = 1 });
+        Assert.Equal(52, hero.MaxHp);
+        Assert.Equal(0, hero.CurrentHp);
+        Assert.Contains(messages, m => m.Contains("Current HP unchanged (at 0 HP"));
+    }
+
+    [Fact]
+    public async Task LevelUp_HealToMatch_RespectsTheExhaustionCapOnMaxHp()
+    {
+        // Exhaustion 4 halves the hit point maximum; the level's new hit points cannot lift current above that cap,
+        // exactly as a heal through HpChangeHandler cannot.
+        var hero = Fighter(5, 44, constitution: 14, current: 22);
+        hero.SystemStats!.StatusEffects.Add(new StatusEffect { Name = "Exhaustion 4", Category = "Condition", ConditionName = "exhaustion" });
+
+        var (_, after, _) = await LevelUpAsync("hp-exhausted", hero, new LevelUpChange { LevelsGained = 1 });
+
+        Assert.Equal(52, after.MaxHp);
+        Assert.Equal(26, after.CurrentHp); // 22 + 8 = 30, capped at 52 / 2
+    }
+
     // --- M-43: retroactive Constitution ------------------------------------------------------------------------------
 
     [Fact]
@@ -489,8 +519,8 @@ public class MechanicsPhase5Tests(RavenDBFixture fixture) : IClassFixture<RavenD
         await session.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var planner = CampaignVault.UnitTests.LevelUpPlannerTests.Create(Path.Combine(Path.GetTempPath(), "cv-p5-" + Guid.NewGuid().ToString("N")));
-        var (_, classes, _, _, initializer) = RulesetDataTestHelper.CreateServices();
-        var handler = new LevelUpChangeHandler(Keys, BootstrapTestHelper.CreateOrchestrator(), initializer, planner, classes);
+        var (_, classes, conditions, _, initializer) = RulesetDataTestHelper.CreateServices();
+        var handler = new LevelUpChangeHandler(Keys, BootstrapTestHelper.CreateOrchestrator(), initializer, planner, classes, conditions: conditions);
         var messages = new List<string>();
         var ctx = CreateContext(session, campaign, messages);
         ctx.RegisterNewCharacter(character);
