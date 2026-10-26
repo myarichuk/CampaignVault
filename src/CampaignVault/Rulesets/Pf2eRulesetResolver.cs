@@ -563,7 +563,11 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             return ResolverResult.Fail("InvalidParameter", dcError!);
         }
 
-        var saveName = action.Parameters.GetValueOrDefault("save", "Constitution");
+        if (TryResolveSaveName(action, LookupSpell(action), "Saving throw", out var saveName, out var saveSource) is { } saveNameError)
+        {
+            return saveNameError;
+        }
+
         var bonus = GetSavingThrowBonus(actorStats, saveName);
         var saveFold = await FoldAsync(
             context, context.Characters[action.CharacterId], RollKinds.Save, saveName, bonus, action, GetMechanicFromAction(action)).ConfigureAwait(false);
@@ -575,8 +579,15 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         var damage = await TryApplyPf2eSaveDamageAsync(action, action.CharacterId, actorStats, degree, new SaveDamageRoll(), mutations, ct);
         var damageMsg = damage > 0 ? $" Took {damage} damage." : string.Empty;
-        return ResolverResult.Ok($"{action.ActionName} ({saveName}): {degree}. Rolled {outcome.Result} vs DC {dc}.{damageMsg} {outcome.Summary}{saveFold.Suffix}");
+        return ResolverResult.Ok($"{action.ActionName} ({saveName}): {degree}. Rolled {outcome.Result} vs DC {dc}.{damageMsg} {outcome.Summary}{saveFold.Suffix}{saveSource}");
     }
+
+    /// <summary>The handbook entry named by the action, when the provider knows it (for saveType and summon data).</summary>
+    private SpellDefinition? LookupSpell(RulesetAction action) =>
+        _spellDefinitionProvider is not null
+        && _spellDefinitionProvider.TryGet(System, NormalizeSpellSlug(action.ActionName), out var spell)
+            ? spell
+            : null;
 
     protected override async Task<ResolverResult> ResolveSpellSaveAsync(
         RulesetAction action,
@@ -596,7 +607,11 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             return ResolverResult.Fail("InvalidParameter", dcError!);
         }
 
-        var saveName = action.Parameters.GetValueOrDefault("save", "Reflex");
+        if (TryResolveSaveName(action, LookupSpell(action), "Spell save", out var saveName, out var saveSource) is { } saveNameError)
+        {
+            return saveNameError;
+        }
+
         var narratives = new List<string>();
         var rolledDamage = new SaveDamageRoll();
 
@@ -631,7 +646,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
                 + (damage > 0 ? $" — {damage} damage." : "."));
         }
 
-        return ResolverResult.Ok(string.Join(" | ", narratives));
+        return ResolverResult.Ok(string.Join(" | ", narratives) + saveSource);
     }
 
     protected override async Task<ResolverResult> ResolveSpellUtilityAsync(

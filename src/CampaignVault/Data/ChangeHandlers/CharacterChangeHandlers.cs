@@ -357,6 +357,7 @@ public class LevelUpChangeHandler : IWorldChangeHandler
     private readonly LevelUpPlanner? _planner;
     private readonly ClassDefinitionProvider? _classes;
     private readonly ProgressionDefinitionProvider? _progressions;
+    private readonly ConditionDefinitionProvider? _conditions;
 
     public LevelUpChangeHandler(
         CampaignDocumentKeys keys,
@@ -364,11 +365,13 @@ public class LevelUpChangeHandler : IWorldChangeHandler
         ResourcePoolInitializer poolInitializer,
         LevelUpPlanner? planner = null,
         ClassDefinitionProvider? classes = null,
-        ProgressionDefinitionProvider? progressions = null)
+        ProgressionDefinitionProvider? progressions = null,
+        ConditionDefinitionProvider? conditions = null)
     {
         _planner = planner;
         _classes = classes;
         _progressions = progressions;
+        _conditions = conditions;
         _keys = keys ?? throw new ArgumentNullException(nameof(keys));
         _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
         _poolInitializer = poolInitializer ?? throw new ArgumentNullException(nameof(poolInitializer));
@@ -557,9 +560,27 @@ public class LevelUpChangeHandler : IWorldChangeHandler
         }
 
         // A dead or downed character isn't brought back by a level: only one still on their feet gets the new hit points.
+        // The gain is the whole difference, so a retroactive Constitution change (above) rides along with the new level's
+        // die, and the result is capped at the maximum in force (exhaustion can hold it below MaxHp) like any other heal.
+        var currentBefore = character.CurrentHp;
+        string hpNote;
         if (levelUp.HealToMatch && character.MaxHp > previousMax && character.Death is null && character.CurrentHp > 0)
         {
-            HitPointState.Set(character, character.CurrentHp + (character.MaxHp - previousMax));
+            HitPointState.Set(
+                character,
+                character.CurrentHp + (character.MaxHp - previousMax),
+                ConditionMechanics.EffectiveMaxHp(character, _conditions));
+            hpNote = $" Current HP {currentBefore} → {character.CurrentHp}.";
+        }
+        else if (levelUp.HealToMatch && character.MaxHp > previousMax)
+        {
+            hpNote = character.Death is not null
+                ? " Current HP unchanged (dead)."
+                : " Current HP unchanged (at 0 HP; the new hit points wait for a heal).";
+        }
+        else
+        {
+            hpNote = "";
         }
 
         var campaignConfig = !string.IsNullOrEmpty(ctx.CampaignName)
@@ -571,7 +592,7 @@ public class LevelUpChangeHandler : IWorldChangeHandler
         // request. The resulting MaxHp is ruleset-formula-derived (hit die rolls, CON mod, etc.), not
         // something the caller could compute itself.
         ctx.RecordMessage(
-            $"Level up: {character.Name} gained {levelUp.LevelsGained} level(s). MaxHp {previousMax} → {character.MaxHp}.");
+            $"Level up: {character.Name} gained {levelUp.LevelsGained} level(s). MaxHp {previousMax} → {character.MaxHp}.{hpNote}");
 
         if (pickMessages.Count > 0)
         {

@@ -122,7 +122,8 @@ public sealed class ItemTransferHandler(ProgressionDefinitionProvider? progressi
         }
 
         // If the item was equipped and holder changed, unequip it and recompute AC/warmth for previous holder
-        var autoUnequipped = wasEquipped && !string.IsNullOrEmpty(previousHolderId) && previousHolderId != transfer.ToHolderId;
+        var autoUnequipped = wasEquipped && !string.IsNullOrEmpty(previousHolderId)
+            && !string.Equals(previousHolderId, transfer.ToHolderId, StringComparison.OrdinalIgnoreCase);
         if (autoUnequipped)
         {
             item.IsEquipped = false;

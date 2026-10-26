@@ -1014,7 +1014,8 @@ public class WorldChangeDispatcherTests
 
         Assert.True(result.Success);
         Assert.Equal(1.5, time.UnsimulatedHours);
-        Assert.Equal(8, time.Hour); // 1.5 hours rounds to 2 for the clock face
+        Assert.Equal(7, time.Hour); // the clock face moves by whole hours; the half hour is carried
+        Assert.Equal(0.5, time.HourCarry, precision: 9);
     }
 
     [Fact]

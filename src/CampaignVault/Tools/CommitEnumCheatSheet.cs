@@ -54,7 +54,7 @@ Note: `world_build.quests[].objectives[]` only needs `description` (+ optional `
 | `actionCategory` | Melee, Ranged, Spell, Maneuver, Social, Survival |
 | `advantageState` | None, Advantage, Disadvantage |
 | `parameters.resolution` (Spell) | attack, save, check, utility, heal — **set explicitly** |
-| `parameters.save` | 5e abilities; PF2e Fortitude/Reflex/Will |
+| `parameters.save` | Required unless the named spell's handbook entry declares its saveType. 5e: Strength/Dexterity/Constitution/Intelligence/Wisdom/Charisma; PF2e: Fortitude/Reflex/Will (an ability name maps to its save). Unknown names are rejected, never rolled at +0 |
 | `parameters.halfOnSave` | true/false — 5e defaults **true** (half damage on successful save) |
 | `parameters.healDice` / `healBonus` / `healAmount` | Healing spells (5e/PF2e) |
 | `parameters.spellAttackBonus` / `dc` | Optional if caster has bootstrapped `spellAttackBonus` / `spellSaveDc` on systemStats |

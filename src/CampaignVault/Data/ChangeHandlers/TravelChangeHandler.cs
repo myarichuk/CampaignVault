@@ -89,7 +89,8 @@ public class TravelChangeHandler : IWorldChangeHandler
 
             if (startLoc != null)
             {
-                exit = startLoc.Exits?.FirstOrDefault(e => e.TargetLocationId == tc.DestinationLocationId);
+                exit = startLoc.Exits?.FirstOrDefault(e =>
+                    string.Equals(e.TargetLocationId, tc.DestinationLocationId, StringComparison.OrdinalIgnoreCase));
                 if (exit != null && tc.TerrainOverride == null)
                 {
                     terrain = exit.Terrain;

@@ -12,9 +12,15 @@ namespace CampaignVault.Data;
 /// </summary>
 public sealed class DefaultRollService : IRollService
 {
-    // Matches: optional NdX, optional flat modifier. e.g. "1d20+5", "2d6", "3d8-1", "5"
+    // Matches: optional [N]dX, optional flat modifier. e.g. "1d20+5", "d20", "2d6", "3d8-1", "5".
+    // Whitespace is stripped before matching, so "1d20 + 5" and "2d6 +1" parse too; a bare constant
+    // ("5", a fixed-damage effect) is a flat modifier with no dice.
     private static readonly Regex DiceRegex =
-        new(@"^(?:(\d+)d(\d+))?([+-]\d+)?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        new(@"^(?:(\d*)d(\d+))?([+-]?\d+)?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    /// <summary>Bounds on one expression: a mistyped "100000d6" from the model must not allocate a 100k-element list.</summary>
+    internal const int MaxDiceCount = 1000;
+    internal const int MaxDieSides = 10_000;
 
     private readonly Random _rng;
 
@@ -207,17 +213,31 @@ public sealed class DefaultRollService : IRollService
         ];
     }
 
-    private static (int Count, int Sides, int FlatMod) ParseExpression(string expr)
+    internal static (int Count, int Sides, int FlatMod) ParseExpression(string expr)
     {
-        var m = DiceRegex.Match(expr.Trim());
-        if (!m.Success)
+        if (string.IsNullOrWhiteSpace(expr))
         {
-            throw new ArgumentException($"Cannot parse dice expression: '{expr}'");
+            throw new ArgumentException("Cannot parse dice expression: it is empty. Use the form NdX[+M], e.g. '1d20+5'.");
         }
 
-        var count = m.Groups[1].Success ? int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture) : 1;
+        var compact = string.Concat(expr.Where(c => !char.IsWhiteSpace(c)));
+        var m = DiceRegex.Match(compact);
+        if (!m.Success)
+        {
+            throw new ArgumentException($"Cannot parse dice expression: '{expr}'. Use the form NdX[+M], e.g. '1d20+5' or '2d6-1'.");
+        }
+
+        var count = m.Groups[1].Success && m.Groups[1].Length > 0
+            ? int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture)
+            : 1;
         var sides = m.Groups[2].Success ? int.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture) : 0;
         var flatMod = m.Groups[3].Success ? int.Parse(m.Groups[3].Value, CultureInfo.InvariantCulture) : 0;
+
+        if (count > MaxDiceCount || sides > MaxDieSides)
+        {
+            throw new ArgumentException(
+                $"Dice expression '{expr}' is out of range: at most {MaxDiceCount} dice of at most d{MaxDieSides}.");
+        }
 
         return (count, sides, flatMod);
     }

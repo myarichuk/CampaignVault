@@ -53,10 +53,18 @@ public class ResourceChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure(hidden);
         }
 
-        if (character.SystemStats?.ResourcePools == null || !character.SystemStats.ResourcePools.TryGetValue(rc.PoolName, out var pool))
+        // Pool keys are snake_case ("spell_slots_1"); the dictionary is ordinal, so resolve the caller's
+        // spelling ("Spell_Slots_1", " hit_dice ") to the stored key instead of failing on case alone.
+        var poolKey = ResolvePoolKey(character.SystemStats?.ResourcePools, rc.PoolName);
+        if (poolKey is null || !character.SystemStats!.ResourcePools.TryGetValue(poolKey, out var pool))
         {
-            return ChangeHandlerResult.Failure($"Resource pool '{rc.PoolName}' does not exist for character '{rc.CharacterId}'.");
+            var known = character.SystemStats?.ResourcePools is { Count: > 0 } pools
+                ? $" Known pools: {string.Join(", ", pools.Keys.Order(StringComparer.Ordinal))}."
+                : "";
+            return ChangeHandlerResult.Failure($"Resource pool '{rc.PoolName}' does not exist for character '{rc.CharacterId}'.{known}");
         }
+
+        rc.PoolName = poolKey;
 
         var spellFailure = TryValidateSpellSpend(rc, character, ctx);
         if (spellFailure != null)
@@ -87,6 +95,23 @@ public class ResourceChangeHandler : IWorldChangeHandler
             : "";
 
         return new ChangeHandlerResult(true, $"{character.Name}'s {rc.PoolName}: {oldCurrent} → {newCurrent}.{clampNote}");
+    }
+
+    /// <summary>The stored key matching <paramref name="requested"/> (exact first, then case-insensitive on the trimmed name), or null.</summary>
+    internal static string? ResolvePoolKey(Dictionary<string, ResourcePool>? pools, string requested)
+    {
+        if (pools is null || pools.Count == 0)
+        {
+            return null;
+        }
+
+        if (pools.ContainsKey(requested))
+        {
+            return requested;
+        }
+
+        var trimmed = requested.Trim();
+        return pools.Keys.FirstOrDefault(k => string.Equals(k, trimmed, StringComparison.OrdinalIgnoreCase));
     }
 
     private ChangeHandlerResult? TryValidateSpellSpend(ResourceChange rc, Character character, IChangeContext context)

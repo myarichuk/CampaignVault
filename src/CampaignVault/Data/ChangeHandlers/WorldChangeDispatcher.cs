@@ -68,12 +68,15 @@ public sealed class WorldChangeDispatcher(
     private readonly IReadOnlyList<IPluginTraitsUpgrader> _traitsUpgraders = traitsUpgraders?.ToList() ?? [];
     private readonly IInteractionModeSelector? _modeSelector = modeSelector;
 
-    private readonly Dictionary<Type, IWorldChangeHandler> _handlersByChangeType = BuildHandlerDictionary(handlers ?? []);
+    // Concurrent: the dispatcher is a singleton and FindHandler caches plugin-defined change types on first
+    // sight, so two requests carrying a new plugin verb would otherwise write a plain Dictionary at once.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<Type, IWorldChangeHandler> _handlersByChangeType =
+        BuildHandlerDictionary(handlers ?? []);
 
 
-    private static Dictionary<Type, IWorldChangeHandler> BuildHandlerDictionary(IEnumerable<IWorldChangeHandler> handlers)
+    private static System.Collections.Concurrent.ConcurrentDictionary<Type, IWorldChangeHandler> BuildHandlerDictionary(IEnumerable<IWorldChangeHandler> handlers)
     {
-        var dict = new Dictionary<Type, IWorldChangeHandler>();
+        var dict = new System.Collections.Concurrent.ConcurrentDictionary<Type, IWorldChangeHandler>();
         var handlerList = handlers.ToList();
 
         var worldChangeType = typeof(WorldChange);
@@ -88,10 +91,7 @@ public sealed class WorldChangeDispatcher(
                 var testInstance = Activator.CreateInstance(changeType) as WorldChange;
                 if (testInstance != null && handler.ShouldHandle(testInstance))
                 {
-                    if (!dict.ContainsKey(changeType))
-                    {
-                        dict[changeType] = handler;
-                    }
+                    dict.TryAdd(changeType, handler);
                 }
             }
         }
@@ -187,7 +187,7 @@ public sealed class WorldChangeDispatcher(
         {
             if (candidate.ShouldHandle(change))
             {
-                _handlersByChangeType[type] = candidate;
+                _handlersByChangeType.TryAdd(type, candidate);
                 return candidate;
             }
         }

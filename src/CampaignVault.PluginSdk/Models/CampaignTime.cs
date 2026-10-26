@@ -33,26 +33,45 @@ public class CampaignTime
     /// </summary>
     public double UnsimulatedHours { get; set; } = 0;
 
+    /// <summary>
+    /// Fraction of an hour (0 ≤ x &lt; 1) the clock face has not shown yet. <see cref="AdvanceHours"/> only moves
+    /// <see cref="Hour"/> by whole hours, so the remainder of each call is carried here and folded into the next one:
+    /// four 1.4-hour legs advance the clock 5 hours (5.6 elapsed), not 4 (each leg rounded alone) and not 8
+    /// (each leg rounded up). Without the carry, sub-hour and x.5-hour spans drifted the clock unboundedly
+    /// against <see cref="UnsimulatedHours"/>, which the simulation tick trusts.
+    /// </summary>
+    public double HourCarry { get; set; } = 0;
+
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 
     /// <summary>
     /// Advances the clock by the given number of hours, rolling Day/Month/Year over on the fixed
     /// 360-day (12×30) fantasy calendar so a multi-day hour skip (e.g. a long rest spanning a
     /// month boundary) doesn't leave Day sitting above 30.
-    /// Fractional hours are rounded to the nearest whole hour for calendar/Hour-of-day purposes, but
-    /// the full fractional value is preserved in <see cref="UnsimulatedHours"/> for simulation timing.
+    /// The clock face moves by whole hours; the fractional remainder is kept in <see cref="HourCarry"/> and
+    /// applied once it accumulates to a full hour, while the full fractional value is also preserved in
+    /// <see cref="UnsimulatedHours"/> for simulation timing.
     /// </summary>
     public void AdvanceHours(double hours)
     {
-        if (hours <= 0)
+        if (hours <= 0 || double.IsNaN(hours) || double.IsInfinity(hours))
         {
             return;
         }
 
         UnsimulatedHours += hours;
 
-        var roundedHours = (int)Math.Round(hours);
-        var newHour = Hour + roundedHours;
+        var total = Math.Max(0, HourCarry) + hours;
+        var wholeHours = (int)Math.Floor(total);
+        HourCarry = total - wholeHours;
+        // Guard against float residue (0.99999999) sitting one ulp under a full hour forever.
+        if (HourCarry > 1 - 1e-9)
+        {
+            wholeHours++;
+            HourCarry = 0;
+        }
+
+        var newHour = Hour + wholeHours;
         var daysPassed = newHour / 24;
         Hour = newHour % 24;
 

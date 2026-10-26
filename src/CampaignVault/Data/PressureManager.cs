@@ -126,17 +126,11 @@ public class PressureManager(CampaignDocumentKeys keys, ILogger<PressureManager>
         int itemCount = 0;
         foreach (var group in allGroups)
         {
+            // The first (most severe) group always goes in, even when it alone exceeds the cap.
             if (cappedGroups.Count == 0 || itemCount + group.Count() <= maxPressures)
             {
                 cappedGroups.Add((IGrouping<dynamic, (WorldPressureItem Item, string OriginalKey, bool Escalated)>)group);
                 itemCount += group.Count();
-            }
-            else if (cappedGroups.Count == 0)
-            {
-                // Always include at least the first (most severe) group, even if it exceeds the cap
-                cappedGroups.Add((IGrouping<dynamic, (WorldPressureItem Item, string OriginalKey, bool Escalated)>)group);
-                itemCount = group.Count();
-                break;
             }
             else
             {

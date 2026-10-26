@@ -297,7 +297,8 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                     Summary: "No active combat encounter.");
             }
 
-            if (!string.IsNullOrWhiteSpace(expectedActiveTurnId) && encounter.ActiveTurnId != expectedActiveTurnId)
+            if (!string.IsNullOrWhiteSpace(expectedActiveTurnId)
+                && !string.Equals(encounter.ActiveTurnId, CanonicalId.NormalizeAlias(expectedActiveTurnId.Trim()), StringComparison.OrdinalIgnoreCase))
             {
                 return new ToolResult<CombatEncounterView>(false, Error: "StateDrift",
                     Summary:
