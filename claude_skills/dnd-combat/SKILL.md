@@ -25,7 +25,7 @@ Reactions and opportunity attacks are a `ruleset_action` with `isReaction: true`
 
 - **Attack**: `actionName` is the weapon; send its dice in `parameters.damageDice` without a modifier and omit `bonus` / `damageBonus`: the engine derives them from the sheet, and passing either replaces the derived total. One target per swing in `targetIds`.
 - **SkillCheck**: `actionName` is the skill; `parameters.dc`. `parameters.skill` only to roll under a different skill than the label.
-- **SavingThrow**: `parameters.save` (the ability or save name) and `dc`.
+- **SavingThrow**: `parameters.save` (one of the six abilities; `dex`/`con` style abbreviations are fine) and `dc`. `save` is required unless the action names a handbook spell with a known save type; an unknown name is rejected.
 - **ContestedCheck** / **OpposedCheck**: the actor's skill against the target's (grapple, shove, escape, a race, hide against search); the target's skill is `parameters.defenderSkill` (5e) or `targetSkill`. Both types resolve the same way.
 - **Spell**: `actionName` is the spell; `parameters.resolution` is attack, save, check, heal or utility.
 - **Recovery**: a self-heal feature (Second Wind needs nothing else; other features pass `healDice`/`healBonus` or `healAmount`).

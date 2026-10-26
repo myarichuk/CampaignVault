@@ -1384,7 +1384,11 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             return ResolverResult.Fail("InvalidParameter", "Error: Saving throw requires a 'dc' parameter.");
         }
 
-        var saveName = action.Parameters.GetValueOrDefault("save", "Dexterity");
+        if (TryResolveSaveName(action, spell, "Saving throw", out var saveName, out var saveSource) is { } saveNameError)
+        {
+            return saveNameError;
+        }
+
         var bonus = GetSavingThrowBonus(actorStats, saveName);
         
         var saveFold = await FoldAsync(
@@ -1412,7 +1416,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             : string.Empty;
 
         return ResolverResult.Ok(
-            $"{action.ActionName} ({saveName} Save): {resultStr}. Rolled {outcome.Result} vs DC {dc}.{damageMsg} {outcome.Summary}{saveFold.Suffix}");
+            $"{action.ActionName} ({saveName} Save): {resultStr}. Rolled {outcome.Result} vs DC {dc}.{damageMsg} {outcome.Summary}{saveFold.Suffix}{saveSource}");
     }
 
     protected override async Task<ResolverResult> ResolveSpellSaveAsync(
@@ -1440,7 +1444,11 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             return ResolverResult.Fail("InvalidParameter", "Error: Spell save requires a 'dc' parameter or spellSaveDc on the caster.");
         }
 
-        var saveName = action.Parameters.GetValueOrDefault("save", "Dexterity");
+        if (TryResolveSaveName(action, spell, "Spell save", out var saveName, out var saveSource) is { } saveNameError)
+        {
+            return saveNameError;
+        }
+
         var narratives = new List<string>();
         var poolSpell = spell != null && HasPoolData(spell) ? spell : null;
         var poolShape = poolSpell != null ? ResolvePoolShape(action, poolSpell) : null;
@@ -1505,7 +1513,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             ? $" [WARNING] '{action.ActionName}' upcast bonus has no chosen pool — pass upcastPool={string.Join("/", poolShape.Pools.Select(p => p.Type))} to attribute it (damage total is unaffected)."
             : "";
 
-        return ResolverResult.Ok(string.Join(" | ", narratives) + saveTypeWarning + damageWarning + halfOnSaveWarning + upcastNote);
+        return ResolverResult.Ok(string.Join(" | ", narratives) + saveSource + saveTypeWarning + damageWarning + halfOnSaveWarning + upcastNote);
     }
 
     protected override async Task<ResolverResult> ResolveSpellUtilityAsync(

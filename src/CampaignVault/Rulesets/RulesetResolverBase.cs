@@ -173,6 +173,50 @@ public abstract class RulesetResolverBase<TStats> : IHostRulesetModule, IActionR
     protected static string NormalizeSpellSlug(string name) =>
         name.Trim().ToLowerInvariant().Replace(' ', '_').Replace('-', '_');
 
+    /// <summary>
+    /// Decides which saving throw an action rolls. A stated <c>parameters.save</c> is validated against the
+    /// ruleset's saves (an unknown name is an error, not a +0 roll). An omitted one comes from the named spell's
+    /// <see cref="SpellDefinition.SaveType"/> when the handbook knows it, and the narrative says so; with neither,
+    /// the action fails and lists the valid names. Returns the failure, or null with <paramref name="saveName"/>
+    /// and a <paramref name="sourceNote"/> to append to the narrative (empty when nothing was derived).
+    /// </summary>
+    protected ResolverResult? TryResolveSaveName(
+        RulesetAction action, SpellDefinition? spell, string context, out string saveName, out string sourceNote)
+    {
+        saveName = string.Empty;
+        sourceNote = string.Empty;
+
+        if (action.Parameters.TryGetValue("save", out var stated) && !string.IsNullOrWhiteSpace(stated))
+        {
+            if (!SavingThrowNames.TryResolve(System, stated, out saveName, out var note))
+            {
+                return ResolverResult.Fail("InvalidParameter",
+                    $"Error: '{stated}' is not a {System} saving throw. Use one of: {SavingThrowNames.ValidList(System)}.");
+            }
+
+            sourceNote = note is null ? "" : $" [{note}]";
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(spell?.SaveType))
+        {
+            if (!SavingThrowNames.TryResolve(System, spell.SaveType, out saveName, out _))
+            {
+                return ResolverResult.Fail("InvalidParameter",
+                    $"Error: the handbook entry for '{action.ActionName}' lists saveType '{spell.SaveType}', which is not a {System} saving throw. Pass parameters.save explicitly ({SavingThrowNames.ValidList(System)}).");
+            }
+
+            sourceNote = $" [{saveName} save from the '{action.ActionName}' entry]";
+            return null;
+        }
+
+        var hint = action.ActionType == RulesetActionType.Spell
+            ? " (or name a handbook spell whose saveType is known)"
+            : "";
+        return ResolverResult.Fail("InvalidParameter",
+            $"Error: {context} requires a 'save' parameter: {SavingThrowNames.ValidList(System)}{hint}.");
+    }
+
     protected virtual async Task<ResolverResult> ResolveSpellAsync(
         RulesetAction action,
         IChangeContext context,
