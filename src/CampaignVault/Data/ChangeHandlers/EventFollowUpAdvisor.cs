@@ -3,12 +3,19 @@ using CampaignVault.Models;
 namespace CampaignVault.Data.ChangeHandlers;
 
 /// <summary>
-/// Nudges the LLM DM toward commonly-forgotten follow-up commits for narratively significant
-/// event categories: Conversation, Discovery, and Betrayal. Purely rule-based (no model
-/// inference) and advisory only — never blocks or fails the commit.
+/// Reads a commit batch and emits one-line hints when a tracked narrative event (conversation, discovery,
+/// betrayal) arrives without the follow-up changes that usually accompany it (activity, knowledge_update,
+/// relationship/engagement). Advisory only: nothing here fails the batch.
+///
+/// Token budget: every hint used to quote the event's full <see cref="EventOccurred.Summary"/> (the caller's
+/// own narrative, often a few hundred chars) and carried a sentence of rationale, two to four times per event,
+/// on every turn that logged a conversation. The hints now name the event by its id or a short snippet and keep
+/// the rationale to a clause; the "no 'x' commit found" phrasing is stable because clients and tests key on it.
 /// </summary>
 internal static class EventFollowUpAdvisor
 {
+    private const int SnippetChars = 48;
+
     public static IReadOnlyList<string> Apply(WorldChange[] changes)
     {
         var tracked = changes.OfType<EventOccurred>()
@@ -24,107 +31,87 @@ internal static class EventFollowUpAdvisor
             changes.OfType<ActivityChange>().Select(a => a.CharacterId),
             StringComparer.OrdinalIgnoreCase);
 
+        var knowledgeUpdates = changes.OfType<KnowledgeUpdate>().Where(k => k.CreateMemory).ToList();
+
         var knowledgeCharacterIds = new HashSet<string>(
-            changes.OfType<KnowledgeUpdate>().Where(k => k.CreateMemory).Select(k => k.CharacterId),
+            knowledgeUpdates.Select(k => k.CharacterId),
             StringComparer.OrdinalIgnoreCase);
 
         var sourcedKnowledgeCharacterIds = new HashSet<string>(
-            changes.OfType<KnowledgeUpdate>().Where(k => k.CreateMemory && k.SourceEventIds is { Count: > 0 }).Select(k => k.CharacterId),
+            knowledgeUpdates.Where(k => k.SourceEventIds is { Count: > 0 }).Select(k => k.CharacterId),
             StringComparer.OrdinalIgnoreCase);
 
         var relationshipCharacterIds = new HashSet<string>(
-            changes.OfType<RelationshipChange>().SelectMany(r => new[] { r.CharacterId, r.TargetId }),
-            StringComparer.OrdinalIgnoreCase);
-
-        var engagementCharacterIds = new HashSet<string>(
-            changes.OfType<EngagementRelationChange>().SelectMany(r => new[] { r.CharacterId, r.TargetId }),
+            changes.OfType<RelationshipChange>().SelectMany(r => new[] { r.CharacterId, r.TargetId })
+                .Concat(changes.OfType<EngagementRelationChange>().SelectMany(r => new[] { r.CharacterId, r.TargetId })),
             StringComparer.OrdinalIgnoreCase);
 
         var notes = new List<string>();
         foreach (var ev in tracked)
         {
             var involved = ev.Involved!;
+            var label = Ref(ev);
+            var hasActivity = involved.Any(activityCharacterIds.Contains);
+            var hasKnowledge = involved.Any(knowledgeCharacterIds.Contains);
 
-            switch (ev.Category)
+            if (!hasActivity)
             {
-                case EventCategory.Conversation:
-                    if (!involved.Any(activityCharacterIds.Contains))
-                    {
-                        notes.Add(
-                            $"Hint: no 'activity' commit found for any participant in \"{ev.Summary}\" — if body language/blocking changed (pacing, sitting down heavily, leaning in), commit an activity update so get_scene reflects it.");
-                    }
-
-                    if (!involved.Any(knowledgeCharacterIds.Contains))
-                    {
-                        notes.Add(
-                            $"Hint: no 'knowledge_update' commit found for any participant in \"{ev.Summary}\" — if anyone learned or revealed something worth remembering, commit knowledge_update so it persists as an NPC memory (with decay/importance).");
-                    }
-
-                    break;
-
-                case EventCategory.Discovery:
-                    if (!involved.Any(activityCharacterIds.Contains))
-                    {
-                        notes.Add(
-                            $"Hint: no 'activity' commit found for any participant in \"{ev.Summary}\" — if the discovery changed what someone is doing or where they are (e.g. crouching to examine it, moving to investigate), commit an activity update so get_scene reflects it.");
-                    }
-
-                    if (!involved.Any(knowledgeCharacterIds.Contains))
-                    {
-                        notes.Add(
-                            $"Hint: no 'knowledge_update' commit found for any participant in \"{ev.Summary}\" — discoveries are usually worth a memory (what was found, where) so the character can act on it or share it later.");
-                    }
-
-                    break;
-
-                case EventCategory.Betrayal:
-                    if (!involved.Any(activityCharacterIds.Contains))
-                    {
-                        notes.Add(
-                            $"Hint: no 'activity' commit found for any participant in \"{ev.Summary}\" — a betrayal usually changes posture or positioning (recoiling, drawing a weapon, fleeing); commit an activity update if so.");
-                    }
-
-                    if (!involved.Any(knowledgeCharacterIds.Contains))
-                    {
-                        notes.Add(
-                            $"Hint: no 'knowledge_update' commit found for any participant in \"{ev.Summary}\" — betrayals are highly salient; commit knowledge_update for affected characters (likely Important/Core importance, Negative/Traumatic valence).");
-                    }
-
-                    if (!involved.Any(relationshipCharacterIds.Contains) && !involved.Any(engagementCharacterIds.Contains))
-                    {
-                        notes.Add(
-                            $"Hint: no 'relationship_change' or 'engagement_relation' found for \"{ev.Summary}\" — a betrayal usually shifts how these characters view or interact with each other; consider committing one.");
-                    }
-
-                    break;
-            }
-
-            // Applies uniformly across all tracked categories: a knowledge_update was committed for a
-            // participant, but doesn't trace back to ground truth. Soft reminder only — the referenced
-            // ID can't be validated here (it may point at a prior commit's event, or at this event's
-            // own client-supplied 'eventId', which this handler hasn't resolved yet).
-            if (involved.Any(knowledgeCharacterIds.Contains) && !involved.Any(sourcedKnowledgeCharacterIds.Contains))
-            {
-                notes.Add(
-                    $"Hint: the knowledge_update(s) tied to \"{ev.Summary}\" don't set 'sourceEventIds' — if this memory stems from this beat, reference it via a client-set 'eventId' on this event change (or a prior event's ID) so ground truth stays traceable.");
-            }
-
-            // Nudge about relatedEntityIds: if knowledge_update exists but entities involved are not tracked
-            var knowledgeUpdatesForEvent = changes.OfType<KnowledgeUpdate>()
-                .Where(k => k.CharacterId != null && involved.Contains(k.CharacterId, StringComparer.OrdinalIgnoreCase))
-                .ToList();
-
-            if (knowledgeUpdatesForEvent.Any(k => k.RelatedEntityIds == null || k.RelatedEntityIds.Count == 0))
-            {
-                var otherInvolved = involved.Where(id => !id.StartsWith("locations/", StringComparison.OrdinalIgnoreCase)).ToList();
-                if (otherInvolved.Count > 0)
+                var why = ev.Category switch
                 {
-                    notes.Add(
-                        $"Hint: the knowledge_update(s) for \"{ev.Summary}\" don't populate 'relatedEntityIds' — if other entities (NPCs, items, locations) are contextually related to this memory, list them so the engine can surface relevant memories when those entities appear later.");
-                }
+                    EventCategory.Betrayal => "posture or positioning usually changes (recoiling, drawing steel, fleeing)",
+                    EventCategory.Discovery => "if it changed what someone is doing or where they are",
+                    _ => "if body language or blocking changed",
+                };
+                notes.Add($"Hint: no 'activity' commit found for {label} — {why}, commit one so the scene reflects it.");
+            }
+
+            if (!hasKnowledge)
+            {
+                var why = ev.Category switch
+                {
+                    EventCategory.Betrayal => "highly salient: commit knowledge_update for the affected characters (Important/Core, Negative/Traumatic)",
+                    EventCategory.Discovery => "a discovery is usually worth a memory (what was found, where)",
+                    _ => "if anyone learned or revealed something worth remembering, commit knowledge_update so it persists",
+                };
+                notes.Add($"Hint: no 'knowledge_update' commit found for {label} — {why}.");
+            }
+
+            if (ev.Category == EventCategory.Betrayal && !involved.Any(relationshipCharacterIds.Contains))
+            {
+                notes.Add($"Hint: no 'relationship_change' or 'engagement_relation' found for {label} — a betrayal usually shifts how these characters view each other.");
+            }
+
+            // A memory was committed for a participant but doesn't trace back to ground truth. Soft reminder only: the
+            // referenced id can't be validated here (it may be a prior event, or this event's own client-set eventId).
+            if (hasKnowledge && !involved.Any(sourcedKnowledgeCharacterIds.Contains))
+            {
+                notes.Add($"Hint: the knowledge_update for {label} sets no 'sourceEventIds' — reference this event's 'eventId' (or a prior event's id) so the memory stays traceable.");
+            }
+
+            var untaggedMemory = knowledgeUpdates.Any(k =>
+                k.CharacterId != null
+                && involved.Contains(k.CharacterId, StringComparer.OrdinalIgnoreCase)
+                && (k.RelatedEntityIds == null || k.RelatedEntityIds.Count == 0));
+            if (untaggedMemory && involved.Any(id => !id.StartsWith("locations/", StringComparison.OrdinalIgnoreCase)))
+            {
+                notes.Add($"Hint: the knowledge_update for {label} has no 'relatedEntityIds' — list the NPCs/items/places it concerns so the memory resurfaces when they appear.");
             }
         }
 
         return notes;
+    }
+
+    /// <summary>The event's client-set id when present, else a short quoted snippet of its summary.</summary>
+    private static string Ref(EventOccurred ev)
+    {
+        if (!string.IsNullOrWhiteSpace(ev.EventId))
+        {
+            return $"event '{ev.EventId.Trim()}'";
+        }
+
+        var summary = (ev.Summary ?? string.Empty).Trim();
+        return summary.Length <= SnippetChars
+            ? $"\"{summary}\""
+            : $"\"{summary[..SnippetChars].TrimEnd()}…\"";
     }
 }

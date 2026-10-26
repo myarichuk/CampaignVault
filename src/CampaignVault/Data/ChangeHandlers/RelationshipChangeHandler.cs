@@ -55,10 +55,18 @@ public sealed class RelationshipChangeHandler : IWorldChangeHandler
         source.Social ??= new SocialProfile();
         source.Social.Relationships ??= new Dictionary<string, int>();
 
-        var currentVal = source.Social.Relationships.GetValueOrDefault(rel.TargetId, 0);
-        source.Social.Relationships[rel.TargetId] = Math.Clamp(currentVal + rel.Delta, -100, 100);
+        // Document ids are case-insensitive in RavenDB but this dictionary is ordinal: "chars/Grog" and
+        // "chars/grog" must update the one stored edge, not fork a second one the modifier lookup never sees.
+        var targetKey = source.Social.Relationships.Keys
+            .FirstOrDefault(k => string.Equals(k, rel.TargetId, StringComparison.OrdinalIgnoreCase)) ?? rel.TargetId;
+        var currentVal = source.Social.Relationships.GetValueOrDefault(targetKey, 0);
+        var requested = currentVal + rel.Delta;
+        var stored = Math.Clamp(requested, -100, 100);
+        source.Social.Relationships[targetKey] = stored;
 
-        ctx.RecordMessage($"Relationship from {rel.CharacterId} to {rel.TargetId} is now {source.Social.Relationships[rel.TargetId]} (clamped -100 to 100).");
+        // The range note only earns its tokens when the clamp actually changed the outcome.
+        var clampNote = stored != requested ? $" (clamped from {requested}; range -100..100)" : "";
+        ctx.RecordMessage($"Relationship from {rel.CharacterId} to {rel.TargetId} is now {stored}.{clampNote}");
 
         return ChangeHandlerResult.Ok;
     }
