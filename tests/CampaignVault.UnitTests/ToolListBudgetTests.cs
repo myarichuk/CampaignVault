@@ -16,8 +16,8 @@ namespace CampaignVault.Tests;
 /// Program.cs does (WithToolsFromAssembly + AddCampaignVaultToolSchemas) and pins its size.
 /// Session 1 audit: 51,853 → 21,973 chars (compact JSON, 18 tools, Stub mode). This serializer escapes
 /// non-ASCII, so it reads ~22.6k for the same set. After the lookup merge (16 tools): "/" 21.1k,
-/// "/play" 16.3k, "/build" 11.9k in this serializer. With the /play world_build stub and prose trims,
-/// live: "/" 19.5k, "/play" 12.5k, "/build" 11.4k.
+/// "/play" 16.3k, "/build" 11.9k in this serializer. With prose trims, live: "/" 19.5k, "/play" 12.5k,
+/// "/build" 11.4k. world_build then left /play (mid-play seeding is a take_turn change), shrinking it further.
 /// </summary>
 public class ToolListBudgetTests(ITestOutputHelper output)
 {
@@ -183,21 +183,6 @@ public class ToolListBudgetTests(ITestOutputHelper output)
         Assert.False(changeItem.TryGetProperty("anyOf", out _));
         Assert.False(changeItem.TryGetProperty("oneOf", out _));
         Assert.Equal(["$type"], changeItem.GetProperty("properties").EnumerateObject().Select(p => p.Name));
-    }
-
-    [Fact]
-    public void PlayWorldBuild_IsSlim_WithoutChangingTheSharedTool()
-    {
-        var all = BuildOptions().ToolCollection!;
-        var shared = all.First(t => t.ProtocolTool.Name == "world_build");
-        var slim = ToolProfiles.Filter(all, ToolProfile.Play)!.First(t => t.ProtocolTool.Name == "world_build");
-        var build = ToolProfiles.Filter(all, ToolProfile.Build)!.First(t => t.ProtocolTool.Name == "world_build");
-
-        Assert.NotSame(shared, slim);
-        Assert.Same(shared, build);
-        Assert.True(shared.ProtocolTool.InputSchema.TryGetProperty("$defs", out _));
-        Assert.True(JsonSerializer.Serialize(slim.ProtocolTool, McpJsonUtilities.DefaultOptions).Length < 1_200);
-        Assert.Same(slim, ToolProfiles.Filter(all, ToolProfile.Play)!.First(t => t.ProtocolTool.Name == "world_build"));
     }
 
     [Theory]

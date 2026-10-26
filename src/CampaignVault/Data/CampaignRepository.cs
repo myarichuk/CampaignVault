@@ -1152,55 +1152,97 @@ public class CampaignRepository
             effectiveCampaignName = effective;
         }
 
-        if (!CharacterPartyRules.TryValidate(character.IsPc, character.IsPartyCompanion, effectiveCampaignName,
-                out var partyError))
-        {
-            throw new ArgumentException(partyError);
-        }
-
         var existing = await campaignSession.Session.LoadAsync<Character>(character.Id);
         Character result;
         if (existing != null)
         {
-            existing.Name = character.Name;
-            existing.ClassLevel = character.ClassLevel;
-            existing.CurrentHp = character.CurrentHp;
-            existing.MaxHp = character.MaxHp;
-            HitPointState.SyncDowned(existing);
+            // Partial update: every omitted (null) field keeps its stored value. Scalars used to be
+            // overwritten with the request's defaults (blank name, 0 HP, isPc=false), which silently
+            // dropped a PC out of the party and marked them Unconscious on the next scene.
+            var mergedIsPc = character.IsPc ?? existing.IsPc;
+            var mergedCompanion = character.IsPartyCompanion ?? existing.IsPartyCompanion;
+            if (!CharacterPartyRules.TryValidate(mergedIsPc, mergedCompanion, effectiveCampaignName, out var partyError))
+            {
+                throw new ArgumentException(partyError);
+            }
 
-            existing.Notes = character.Notes;
+            if (!string.IsNullOrWhiteSpace(character.Name))
+            {
+                existing.Name = character.Name;
+            }
+
+            existing.ClassLevel = character.ClassLevel ?? existing.ClassLevel;
+            if (character.MaxHp.HasValue)
+            {
+                existing.MaxHp = character.MaxHp.Value;
+            }
+
+            if (character.CurrentHp.HasValue)
+            {
+                existing.CurrentHp = character.CurrentHp.Value;
+            }
+
+            if (character.MaxHp.HasValue || character.CurrentHp.HasValue)
+            {
+                HitPointState.SyncDowned(existing);
+            }
+
+            existing.Notes = character.Notes ?? existing.Notes;
             existing.CurrentAppearance = character.CurrentAppearance ?? existing.CurrentAppearance;
             existing.VisualTags = character.VisualTags ?? existing.VisualTags;
             existing.DistinctiveFeatures = character.DistinctiveFeatures ?? existing.DistinctiveFeatures;
-            existing.Schedule = character.Schedule;
-            existing.CurrentLocationId = character.CurrentLocationId;
-            existing.CurrentActivity = character.CurrentActivity;
+            existing.Schedule = character.Schedule ?? existing.Schedule;
+            if (!string.IsNullOrWhiteSpace(character.CurrentLocationId))
+            {
+                existing.CurrentLocationId = character.CurrentLocationId;
+                // A re-anchored character is present again, whatever eviction recorded earlier.
+                existing.DepartedAtDay = null;
+                existing.DepartedFromLocationId = null;
+            }
+
+            existing.CurrentActivity = character.CurrentActivity ?? existing.CurrentActivity;
             existing.Psychology = character.Psychology ?? existing.Psychology;
             existing.Social = character.Social ?? existing.Social;
             existing.Needs = character.Needs ?? existing.Needs;
             existing.SystemStats = character.SystemStats ?? existing.SystemStats;
-            existing.KeepAlive = character.KeepAlive;
-            existing.IsPc = character.IsPc;
-            existing.IsPartyCompanion = character.IsPartyCompanion;
-            if (!LifeStageRules.TryChange(existing.LifeStage, character.LifeStage, out var stage, out var stageError))
+            existing.KeepAlive = character.KeepAlive ?? existing.KeepAlive;
+            existing.IsPc = mergedIsPc;
+            existing.IsPartyCompanion = mergedCompanion;
+            if (character.LifeStage.HasValue)
             {
-                throw new ArgumentException(stageError);
+                if (!LifeStageRules.TryChange(existing.LifeStage, character.LifeStage.Value, out var stage, out var stageError))
+                {
+                    throw new ArgumentException(stageError);
+                }
+
+                existing.LifeStage = stage;
             }
 
-            existing.LifeStage = stage;
             existing.LastUpdated = DateTime.UtcNow;
             existing.CampaignName = effectiveCampaignName;
             result = existing;
         }
         else
         {
+            if (string.IsNullOrWhiteSpace(character.Name))
+            {
+                throw new ArgumentException($"Character '{character.Id}' does not exist yet, so 'name' is required to create it.");
+            }
+
+            var isPc = character.IsPc ?? false;
+            var isCompanion = character.IsPartyCompanion ?? false;
+            if (!CharacterPartyRules.TryValidate(isPc, isCompanion, effectiveCampaignName, out var partyError))
+            {
+                throw new ArgumentException(partyError);
+            }
+
             result = new Character
             {
                 Id = character.Id,
                 Name = character.Name,
                 ClassLevel = character.ClassLevel,
-                CurrentHp = character.CurrentHp,
-                MaxHp = character.MaxHp,
+                CurrentHp = character.CurrentHp ?? 0,
+                MaxHp = character.MaxHp ?? 0,
                 Notes = character.Notes,
                 CurrentAppearance = character.CurrentAppearance,
                 VisualTags = character.VisualTags ?? [],
@@ -1212,10 +1254,10 @@ public class CampaignRepository
                 Social = character.Social ?? new SocialProfile(),
                 Needs = character.Needs ?? new NeedsProfile(),
                 SystemStats = character.SystemStats ?? new SystemExtension(),
-                KeepAlive = character.KeepAlive,
-                IsPc = character.IsPc,
-                IsPartyCompanion = character.IsPartyCompanion,
-                LifeStage = character.LifeStage,
+                KeepAlive = character.KeepAlive ?? false,
+                IsPc = isPc,
+                IsPartyCompanion = isCompanion,
+                LifeStage = character.LifeStage ?? LifeStage.Unspecified,
                 LastUpdated = DateTime.UtcNow,
                 CampaignName = effectiveCampaignName,
             };
@@ -1522,19 +1564,27 @@ public class CampaignRepository
         Location result;
         if (existing != null)
         {
-            // Mutate the tracked entity (safest with optimistic concurrency).
-            existing.Name = location.Name;
-            existing.Description = location.Description;
-            existing.Type = location.Type;
-            existing.ParentLocationId = location.ParentLocationId;
+            // Mutate the tracked entity (safest with optimistic concurrency). Omitted (null) fields keep
+            // their stored value; an empty string clears the nullable text fields.
+            if (!string.IsNullOrWhiteSpace(location.Name))
+            {
+                existing.Name = location.Name;
+            }
+
+            existing.Description = location.Description ?? existing.Description;
+            existing.Type = location.Type ?? existing.Type;
+            existing.ParentLocationId = location.ParentLocationId ?? existing.ParentLocationId;
             existing.Exits = location.Exits ?? existing.Exits;
-            existing.AmbientCrowd = location.AmbientCrowd;
-            existing.LastVisitedDay = location.LastVisitedDay;
+            existing.AmbientCrowd = location.AmbientCrowd is null ? existing.AmbientCrowd
+                : location.AmbientCrowd.Length == 0 ? null : location.AmbientCrowd;
+            existing.LastVisitedDay = location.LastVisitedDay ?? existing.LastVisitedDay;
             existing.Metadata = location.Metadata ?? existing.Metadata;
             existing.LastUpdated = DateTime.UtcNow;
             existing.CampaignName = effectiveCampaignName;
-            existing.ControllingFactionId = location.ControllingFactionId; // Phase 7.1
-            existing.CurrentState = location.CurrentState;
+            existing.ControllingFactionId = location.ControllingFactionId is null ? existing.ControllingFactionId
+                : location.ControllingFactionId.Length == 0 ? null : location.ControllingFactionId; // Phase 7.1
+            existing.CurrentState = location.CurrentState is null ? existing.CurrentState
+                : location.CurrentState.Length == 0 ? null : location.CurrentState;
             if (location.DangerModifier.HasValue)
             {
                 existing.DangerModifier = Math.Clamp(location.DangerModifier.Value, -50, 50);
@@ -1545,16 +1595,22 @@ public class CampaignRepository
                 existing.IsArchived = location.IsArchived.Value;
             }
             existing.ClimateZone = location.ClimateZone ?? existing.ClimateZone;
+            existing.Plane = location.Plane ?? existing.Plane;
             result = existing;
         }
         else
         {
+            if (string.IsNullOrWhiteSpace(location.Name))
+            {
+                throw new ArgumentException($"Location '{location.Id}' does not exist yet, so 'name' is required to create it.");
+            }
+
             result = new Location
             {
                 Id = location.Id,
                 Name = location.Name,
-                Description = location.Description,
-                Type = location.Type,
+                Description = location.Description ?? string.Empty,
+                Type = location.Type ?? LocationType.Building,
                 ParentLocationId = location.ParentLocationId,
                 Exits = location.Exits ?? [],
                 AmbientCrowd = location.AmbientCrowd,
@@ -1568,6 +1624,7 @@ public class CampaignRepository
                 Hazards = location.Hazards ?? [],
                 IsArchived = location.IsArchived ?? false,
                 ClimateZone = location.ClimateZone,
+                Plane = location.Plane,
             };
             await session.StoreAsync(result);
         }
@@ -1596,6 +1653,14 @@ public class CampaignRepository
                     result.Exits.Add(new LocationExit(parentLoc.Id, revDesc));
                 }
             }
+        }
+
+        // Reciprocal exits: an exits[] entry pointing at an existing location gets its return exit unless
+        // marked OneWay, so world_build no longer creates the one-way links the pressure contributor nags about.
+        var config = await GetCampaignConfigAsync(new CampaignSession(session, effectiveCampaignName));
+        if (config.AutoRepairLocationConnectivity)
+        {
+            await LocationConnectivity.EnsureReverseExitsAsync(session, result);
         }
 
         JsonSanitizer.Sanitize(result);
@@ -1839,11 +1904,21 @@ public class CampaignRepository
         Item result;
         if (existing != null)
         {
-            existing.Name = item.Name;
-            existing.Description = item.Description;
-            existing.HolderId = item.HolderId;
-            existing.Quantity = item.Quantity;
-            existing.CurrentState = item.CurrentState;
+            // Omitted (null) scalars keep their stored value; an empty currentState clears it.
+            if (!string.IsNullOrWhiteSpace(item.Name))
+            {
+                existing.Name = item.Name;
+            }
+
+            existing.Description = item.Description ?? existing.Description;
+            if (!string.IsNullOrWhiteSpace(item.HolderId))
+            {
+                existing.HolderId = item.HolderId;
+            }
+
+            existing.Quantity = item.Quantity ?? existing.Quantity;
+            existing.CurrentState = item.CurrentState is null ? existing.CurrentState
+                : item.CurrentState.Length == 0 ? null : item.CurrentState;
             existing.DistinctiveFeatures = item.DistinctiveFeatures ?? existing.DistinctiveFeatures;
             existing.CoreCategory = item.CoreCategory ?? existing.CoreCategory;
             existing.Tags = item.Tags ?? existing.Tags;
@@ -1884,13 +1959,18 @@ public class CampaignRepository
                 definitionNameUnresolved = definition == null;
             }
 
+            if (item.Name is null)
+            {
+                throw new ArgumentException($"Item '{item.Id}' does not exist yet, so 'name' is required to create it.");
+            }
+
             result = new Item
             {
                 Id = item.Id,
                 Name = item.Name,
-                Description = item.Description,
-                HolderId = item.HolderId,
-                Quantity = item.Quantity,
+                Description = item.Description ?? string.Empty,
+                HolderId = item.HolderId!,
+                Quantity = item.Quantity ?? 1,
                 CurrentState = item.CurrentState,
                 DistinctiveFeatures = item.DistinctiveFeatures ?? [],
                 CoreCategory = item.CoreCategory ?? definition?.Category ?? ItemCategories.Other,

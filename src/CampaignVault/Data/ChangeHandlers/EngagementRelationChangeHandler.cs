@@ -30,7 +30,7 @@ public sealed class EngagementRelationChangeHandler : IWorldChangeHandler
         actor.SystemStats.EngagementRelations ??= [];
         target.SystemStats.EngagementRelations ??= [];
 
-        if (EngagementRelationHelpers.IsClearRequest(src.Verb))
+        if (src.Clear == true || EngagementRelationHelpers.IsClearRequest(src.Verb))
         {
             var removedRelation = actor.SystemStats.EngagementRelations.FirstOrDefault(r => r.TargetId == src.TargetId);
             actor.SystemStats.EngagementRelations.RemoveAll(r => r.TargetId == src.TargetId);

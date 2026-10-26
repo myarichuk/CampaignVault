@@ -94,6 +94,7 @@ public class PlotThread : ICampaignScopedEntity, IArchivable
     public bool IsArchived { get; set; }
 }
 
+[System.Text.Json.Serialization.JsonConverter(typeof(PlotClueJsonConverter))]
 public record PlotClue(
     string Id,
     string Description,
@@ -103,6 +104,89 @@ public record PlotClue(
 )
 {
     public PlotClue() : this(Id: string.Empty, Description: string.Empty) { }
+
+    /// <summary>A stable clue id derived from its description: lower-case words joined by hyphens, capped at 48 chars.</summary>
+    public static string IdFromDescription(string description)
+    {
+        var sb = new System.Text.StringBuilder();
+        var lastHyphen = true;
+        foreach (var ch in description.Trim().ToLowerInvariant())
+        {
+            if (char.IsLetterOrDigit(ch))
+            {
+                sb.Append(ch);
+                lastHyphen = false;
+            }
+            else if (!lastHyphen)
+            {
+                sb.Append('-');
+                lastHyphen = true;
+            }
+
+            if (sb.Length >= 48)
+            {
+                break;
+            }
+        }
+
+        var id = sb.ToString().Trim('-');
+        return id.Length > 0 ? id : "clue";
+    }
+}
+
+/// <summary>
+/// Accepts a clue as the full object or as a bare description string (<c>"clues": ["A bloody glove", ...]</c>):
+/// the shorthand gets an id derived from the text. Writes the full object.
+/// </summary>
+public sealed class PlotClueJsonConverter : System.Text.Json.Serialization.JsonConverter<PlotClue>
+{
+    private sealed record Shape(
+        string? Id = null,
+        string? Description = null,
+        bool IsDiscovered = false,
+        int? DiscoveredOnDay = null,
+        List<string>? InvolvedEntityIds = null);
+
+    private static readonly System.Text.Json.JsonSerializerOptions ShapeOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+    };
+
+    public override PlotClue? Read(ref System.Text.Json.Utf8JsonReader reader, Type typeToConvert, System.Text.Json.JsonSerializerOptions options)
+    {
+        switch (reader.TokenType)
+        {
+            case System.Text.Json.JsonTokenType.Null:
+                return null;
+            case System.Text.Json.JsonTokenType.String:
+            {
+                var text = reader.GetString() ?? string.Empty;
+                return new PlotClue(PlotClue.IdFromDescription(text), text);
+            }
+            case System.Text.Json.JsonTokenType.StartObject:
+            {
+                var shape = System.Text.Json.JsonSerializer.Deserialize<Shape>(ref reader, ShapeOptions) ?? new Shape();
+                var description = shape.Description ?? string.Empty;
+                var id = string.IsNullOrWhiteSpace(shape.Id) ? PlotClue.IdFromDescription(description) : shape.Id;
+                return new PlotClue(id, description, shape.IsDiscovered, shape.DiscoveredOnDay, shape.InvolvedEntityIds);
+            }
+            default:
+                throw new System.Text.Json.JsonException(
+                    $"A plot clue is an object {{id, description, involvedEntityIds}} or a description string; got {reader.TokenType}.");
+        }
+    }
+
+    public override void Write(System.Text.Json.Utf8JsonWriter writer, PlotClue value, System.Text.Json.JsonSerializerOptions options)
+    {
+        var shape = new Shape(value.Id, value.Description, value.IsDiscovered, value.DiscoveredOnDay, value.InvolvedEntityIds);
+        // Honor the caller's naming policy for the output; fall back to camelCase.
+        var writeOptions = options.PropertyNamingPolicy is null && !options.PropertyNameCaseInsensitive
+            ? ShapeOptions
+            : new System.Text.Json.JsonSerializerOptions(ShapeOptions) { PropertyNamingPolicy = options.PropertyNamingPolicy ?? System.Text.Json.JsonNamingPolicy.CamelCase };
+        System.Text.Json.JsonSerializer.Serialize(writer, shape, writeOptions);
+    }
 }
 
 public enum PlotThreadState

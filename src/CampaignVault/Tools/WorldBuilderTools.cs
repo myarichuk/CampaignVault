@@ -61,6 +61,7 @@ public class WorldBuilderTools : CampaignToolBase, IMcpServerTool
             var warnings = result.Warnings;
 
             await ProcessKindAsync(batch.Locations, "locations", CanonicalId.Locations, r => r.Id, ApplyLocationUpsertAsync, s, effective, result, warnings);
+            await RepairBatchConnectivityAsync(batch.Locations, s, effective, warnings);
             await ProcessKindAsync(batch.Factions, "factions", CanonicalId.Factions, r => r.Id, ApplyFactionUpsertAsync, s, effective, result, warnings);
             await ProcessKindAsync(batch.Creatures, "creatures", CanonicalId.Creatures, r => r.Id, ApplyCreatureUpsertAsync, s, effective, result, warnings);
             await ProcessKindAsync(batch.Spells, "spells", CanonicalId.Spells, r => r.Id, ApplySpellUpsertAsync, s, effective, result, warnings);
@@ -305,12 +306,16 @@ public class WorldBuilderTools : CampaignToolBase, IMcpServerTool
             if (string.IsNullOrWhiteSpace(character.Id))
                 continue;
 
-            if (character.SystemStats == null)
+            // Judge the merged document, not the request: omitting systemStats on an existing character
+            // preserves the stored block, so it is not "missing".
+            var stored = await s.LoadAsync<Character>(CanonicalId.Normalize(character.Id, CanonicalId.Characters));
+            var stats = stored?.SystemStats ?? character.SystemStats;
+            if (stats == null)
             {
                 warnings.Add($"characters: '{character.Id}' has no systemStats — no HP/defense/abilities. " +
                     "For combat NPCs, provide systemStats with the appropriate ruleset (dnd5e, pf2e, etc.).");
             }
-            else if ((character.SystemStats.Attributes?.Count ?? 0) == 0)
+            else if ((stats.Attributes?.Count ?? 0) == 0)
             {
                 warnings.Add($"characters: '{character.Id}' has no custom attributes (willpower, morale, temperature, etc.). " +
                     "Consider adding Attributes to make this character mechanically/narratively richer.");
@@ -494,6 +499,45 @@ This is the only tool that creates a new location. During play, use commit's loc
         string campaignName)
     {
         return ExecuteForCampaignAsync(campaignName, (effective, s) => ApplyLocationUpsertAsync(s, location, effective));
+    }
+
+    /// <summary>
+    /// Second connectivity pass over a batch's locations once they all exist: an exit whose target came later
+    /// in the same array had no document to link back from when its own upsert ran.
+    /// </summary>
+    private async Task RepairBatchConnectivityAsync(
+        List<LocationUpsertRequest>? locations, IAsyncDocumentSession s, string effective, List<string> warnings)
+    {
+        if (locations is not { Count: > 1 })
+        {
+            return;
+        }
+
+        var config = await s.LoadAsync<CampaignConfig>(_keys.Config(effective));
+        if (config is { AutoRepairLocationConnectivity: false })
+        {
+            return;
+        }
+
+        var repaired = new List<string>();
+        foreach (var request in locations)
+        {
+            if (string.IsNullOrWhiteSpace(request.Id))
+            {
+                continue;
+            }
+
+            var stored = await s.LoadAsync<Location>(CanonicalId.Normalize(request.Id, CanonicalId.Locations));
+            if (stored is not null)
+            {
+                repaired.AddRange(await LocationConnectivity.EnsureReverseExitsAsync(s, stored));
+            }
+        }
+
+        if (repaired.Count > 0)
+        {
+            warnings.Add($"locations: added the missing return exit on {string.Join(", ", repaired.Distinct())} (mark an exit OneWay: true when a one-way link is intended).");
+        }
     }
 
     private async Task<ToolResult<Location>> ApplyLocationUpsertAsync(IAsyncDocumentSession s, LocationUpsertRequest location, string effective)

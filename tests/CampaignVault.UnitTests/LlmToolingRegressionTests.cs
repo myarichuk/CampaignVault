@@ -198,8 +198,9 @@ public class LlmToolingRegressionTests
         var prompt = content[(start + 7)..end].Trim();
         // After Phase 3.7 trim: ~3KB, well under the 12k limit
         Assert.InRange(prompt.Length, 1, 12_000);
-        // Key terms that should remain in the trimmed prompt
-        Assert.Contains("world_build", prompt);
+        // Key terms that should remain in the trimmed prompt (world_build left the /play prompt with the
+        // /play connector; mid-play seeding is a take_turn change)
+        Assert.Contains("character_create", prompt);
         Assert.Contains("take_turn", prompt);
         Assert.Contains("guidance", prompt, StringComparison.OrdinalIgnoreCase);
     }
@@ -292,8 +293,8 @@ public class LlmToolingRegressionTests
         "get_item", "list_tools", "start_combat", "next_turn", "end_combat", "get_combat",
         "trigger_opportunity_attack", "travel_to", "rest_at_location",
         "define_need_descriptor", "get_need_descriptors",
-        // removed commit discriminators
-        "character_create", "rumor_create", "quest_create", "location_create",
+        // removed commit discriminators (character_create and rumor_create came back as live take_turn verbs)
+        "quest_create", "location_create",
     ];
 
     /// <summary>

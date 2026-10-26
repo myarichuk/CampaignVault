@@ -232,9 +232,6 @@ public class LocationUpdateHandler : IWorldChangeHandler
             return;
         }
 
-        var reverseDesc = $"Leads back to {sourceLoc.Name}";
-        // The far side of a secret passage is just as secret until someone finds or uses it.
-        targetLoc.Exits.Add(new LocationExit(sourceLoc.Id, reverseDesc,
-            Hidden: forwardExit.Hidden, DiscoverDc: forwardExit.DiscoverDc, Intent: forwardExit.Intent));
+        targetLoc.Exits.Add(LocationConnectivity.ReverseOf(forwardExit, sourceLoc));
     }
 }
