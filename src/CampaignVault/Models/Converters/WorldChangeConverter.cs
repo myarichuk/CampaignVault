@@ -193,22 +193,25 @@ internal static class WorldChangeNormalizer
 
     private static string? TryInferType(JsonObject obj)
     {
+        // Each inference must name a $type whose declared fields cover the keys that triggered it: the
+        // binder runs with UnmappedMemberHandling.Disallow, so a wrong guess fails the whole batch with a
+        // confusing "unknown member" error instead of the clear missing-$type one.
         if (obj.ContainsKey("characterId"))
         {
-            if (obj.ContainsKey("delta") && obj.ContainsKey("newValue"))
-                return "hp";
-            if (obj.ContainsKey("newActivity"))
-                return "activity";
+            if (obj.ContainsKey("newActivity") || obj.ContainsKey("updateLocation") || obj.ContainsKey("newLocationId"))
+                return "activity"; // ActivityChange owns newLocationId; TravelChange uses destinationLocationId.
+            if (obj.ContainsKey("destinationLocationId"))
+                return "travel";
             if (obj.ContainsKey("targetId") && obj.ContainsKey("verb"))
                 return "engagement_relation";
             if (obj.ContainsKey("poolName"))
                 return "resource";
+            if (obj.ContainsKey("need"))
+                return "need";
             if (obj.ContainsKey("status") || obj.ContainsKey("effect"))
                 return "status";
-            if (obj.ContainsKey("updateLocation"))
-                return "activity";
-            if (obj.ContainsKey("newLocationId"))
-                return "travel";
+            if (obj.ContainsKey("delta"))
+                return "hp"; // HpChange has no newValue; delta alone (after need/resource above) is HP.
         }
 
         if (obj.ContainsKey("category") && obj.ContainsKey("summary"))

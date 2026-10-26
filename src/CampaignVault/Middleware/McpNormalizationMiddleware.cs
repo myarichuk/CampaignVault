@@ -39,7 +39,7 @@ public class McpNormalizationMiddleware(RequestDelegate next, ILogger<McpNormali
 
                             if (toolName is not null && paramsObj?["arguments"] is JsonObject argumentsObj)
                             {
-                                ToolCallExamples.TryNormalize(toolName, argumentsObj, out var rewrites);
+                                var modified = ToolCallExamples.TryNormalize(toolName, argumentsObj, out var rewrites);
                                 if (rewrites.Count > 0)
                                 {
                                     logger.LogDebug(
@@ -49,9 +49,17 @@ public class McpNormalizationMiddleware(RequestDelegate next, ILogger<McpNormali
                                         string.Join(", ", rewrites));
                                 }
 
-                                var modifiedBodyText = rootObj.ToJsonString();
-                                var modifiedBytes = Encoding.UTF8.GetBytes(modifiedBodyText);
-                                context.Request.Body = new MemoryStream(modifiedBytes);
+                                // Only swap the body when a rewrite happened: re-serializing every untouched
+                                // take_turn payload (tens of KB on a full reseed) was pure CPU, and the swapped
+                                // stream must carry its own length so downstream readers never trust the
+                                // original Content-Length against a body of a different size.
+                                if (modified)
+                                {
+                                    var modifiedBodyText = rootObj.ToJsonString();
+                                    var modifiedBytes = Encoding.UTF8.GetBytes(modifiedBodyText);
+                                    context.Request.Body = new MemoryStream(modifiedBytes);
+                                    context.Request.ContentLength = modifiedBytes.Length;
+                                }
                             }
                         }
                     }
