@@ -37,6 +37,14 @@ something you can hand someone else.
    Profiles, keys included, are saved as plain JSON in
    `Application.persistentDataPath/vault-providers.json`. Manage them later
    in Settings, along with server URL, connector and optional bearer token.
+   With the storyteller pass on (the default), a profile can name another
+   saved profile as its **storyteller**: the tool loop (rules, rolls, commits)
+   runs on this profile, and the scene is written through the other one's
+   endpoint, model, key, sampling and prices. The scene call offers no tools,
+   so a smaller or prose-tuned model, or one with weak tool calling, can
+   narrate. Spend the stronger model on the rules: its mistakes are written
+   to the campaign, the storyteller's only to the page. A turn won't start
+   unless both profiles are ready, and Test Connection checks both.
 
 If you ever start from a truly empty scene, use
 **CampaignVault > Create Client UI** (adds `VaultClient` to the open scene
@@ -119,8 +127,21 @@ and a second embedded server (own data folder under app data, `MeasureRig/`; the
 server). Two modes: **Storyteller** (the client's two calls per turn) and **Connector** (one model does tools and
 scene, with the web connectors' prompt). The switch "Narration remedies on" turns the storyteller's word target,
 pinned exemplar and thin-scene filter off to record a baseline. It makes real model calls (cost!), never touches the
-player's campaigns, prefs or provider file (the active profile is copied in memory), and saves a report and a
-`prose_stats.py`-readable transcript per run under `MeasureRig/Reports`. See `NARRATION_LENGTH_PLAN.md`.
+player's campaigns, prefs or provider file (the active profile, and its storyteller profile if it names one, are copied
+in memory), and saves a report and a `prose_stats.py`-readable transcript per run under `MeasureRig/Reports`. See
+`NARRATION_LENGTH_PLAN.md`.
+
+Storyteller runs also check **faithfulness**, which is what decides whether a cheap narrator is safe. The scene's
+prose goes back to the tool loop on the next turn, and the player acts on it, so an invented NPC or a dagger "glinting
+on the table" either contradicts the game or forces it to make the thing real.
+- **Ungrounded names** (free, always on): proper names in the scene that appear nowhere in what the storyteller was
+  given (brief, earlier scenes, character card). The narration guide and the pinned exemplar don't count as grounds,
+  so a name copied out of an example is caught. It errs toward silence: a name used once, as the first word of a
+  sentence, is not reported.
+- **Judge faithfulness** (switch, one more call per beat, billed to the rules profile and reported apart from play
+  cost): the rules model reads the brief, the earlier scenes and the scene, and lists what the scene added. Kinds are
+  entity, item, outcome, injury and contradiction; the texture the narration header allows is excluded. The rules
+  model judges because a narrator judging its own scene grades its own homework.
 
 ## Smoke-test a build
 
