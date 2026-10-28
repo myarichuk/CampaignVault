@@ -67,6 +67,9 @@ namespace CampaignVault.UnityClient.AI
             if (ModelPricing.IsLocal(profile) || ModelPricing.IsFreeVariant(model)) { FreeCalls = 1; return; }
             ModelRate rate = ModelPricing.OverrideFor(profile) ?? (pricing != null ? pricing.Find(model) : null);
             if (rate == null) { UnpricedCalls = 1; return; }
+            // The prompt's full length decides a length-tiered price, cache hits included (Anthropic prices each request on its own).
+            int promptTotal = _cacheOutsidePrompt ? Prompt + Cached + CacheWrite : Prompt;
+            if (rate.LongPrompt != null && rate.LongPromptOver > 0 && promptTotal > rate.LongPromptOver) { rate = rate.LongPrompt; }
             int plain = _cacheOutsidePrompt ? Prompt : Math.Max(0, Prompt - Cached - CacheWrite);
             Cost = (plain * rate.Input + Cached * rate.CachedInput + CacheWrite * rate.CacheWrite + Completion * rate.Output) / 1000000.0;
             EstimatedCalls = 1;
@@ -125,6 +128,8 @@ namespace CampaignVault.UnityClient.AI
     {
         public string Player = string.Empty;
         public string Model = string.Empty;
+        /// <summary>The model that wrote the scene in the storyteller pass (empty when no storyteller call was made).</summary>
+        public string NarratorModel = string.Empty;
         public DateTime StartedUtc = DateTime.UtcNow;
         /// <summary>The story text exactly as the model wrote it, before voice splitting.</summary>
         public readonly StringBuilder Narration = new StringBuilder();
@@ -168,7 +173,9 @@ namespace CampaignVault.UnityClient.AI
             {
                 var t = turns[i];
                 sb.Append("\n## Turn ").Append(i + 1).Append('\n');
-                sb.Append("<!-- usage model=").Append(t.Model)
+                sb.Append("<!-- usage model=").Append(t.Model);
+                if (t.NarratorModel.Length > 0 && t.NarratorModel != t.Model) { sb.Append(" narrator=").Append(t.NarratorModel); }
+                sb
                   .Append(" prompt=").Append(t.Usage.Prompt)
                   .Append(" completion=").Append(t.Usage.Completion)
                   .Append(" cached=").Append(t.Usage.Cached)

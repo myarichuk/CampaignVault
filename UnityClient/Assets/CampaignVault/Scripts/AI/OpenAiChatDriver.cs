@@ -237,11 +237,15 @@ namespace CampaignVault.UnityClient.AI
             TranscriptSegment lastAside = null;
             // Two-pass (default): the loop does the bookkeeping and says DONE,
             // then a tool-free storyteller call writes the scene from a brief.
-            bool twoPass = !Byok.Active.SinglePass;
+            // Both profiles are fixed for the whole turn: a settings save mid-turn must not split it across endpoints.
+            ProviderProfile loop = Byok.Active;
+            ProviderProfile narrator = Byok.NarratorFor(loop);
+            bool twoPass = !loop.SinglePass;
             bool oocPlayer = twoPass && Storyteller.IsOocPlayer(playerText);
             bool handToStoryteller = false;
             var brief = new TurnBrief();
-            var record = new TurnRecord { Player = playerText ?? string.Empty, Model = Byok.Model };
+            var record = new TurnRecord { Player = playerText ?? string.Empty, Model = loop.Model };
+            LastNarrationMessages = null;
             CurrentTurn = record;
             try
             {
@@ -307,8 +311,8 @@ namespace CampaignVault.UnityClient.AI
                     };
                     JsonValue response = null;
                     string failure = null;
-                    yield return RequestReply(
-                        delegate (bool stream, bool usageOptions) { return BuildRequest(systemPrompt, stream, usageOptions); },
+                    yield return RequestReply(loop,
+                        delegate (bool stream, bool usageOptions) { return BuildRequest(loop, systemPrompt, stream, usageOptions); },
                         onDelta, delegate (JsonValue r, string err) { response = r; failure = err; });
 
                     if (_cancelRequested || failure != null)
@@ -327,9 +331,9 @@ namespace CampaignVault.UnityClient.AI
                         break;
                     }
                     LastResponseJson = CapText(response.ToJson(), 8000);
-                    var usage = MeasureUsage(response, Byok.Model);
+                    var usage = MeasureUsage(response, loop);
                     record.Usage.Add(usage);
-                    RecordUsage(usage, Byok.Model);
+                    RecordUsage(usage, loop.Model);
                     JsonValue firstChoice = response.GetArray("choices").Count > 0
                         ? response.GetArray("choices")[0]
                         : JsonValue.Null;
@@ -337,8 +341,8 @@ namespace CampaignVault.UnityClient.AI
                     if (message.IsNull)
                     {
                         if (live != null) { transcript.Remove(live); }
-                        Fail(transcript, Byok.Model + " returned no message (empty choices). Open Inspect for the raw response.", changed,
-                            LlmFailure.Malformed("no message in the reply", FailureContext(Byok.ChatUrl(), 1, LastResponseJson)));
+                        Fail(transcript, loop.Model + " returned no message (empty choices). Open Inspect for the raw response.", changed,
+                            LlmFailure.Malformed("no message in the reply", FailureContext(loop, 1, LastResponseJson)));
                         loopFailed = true;
                         break;
                     }
@@ -538,7 +542,7 @@ namespace CampaignVault.UnityClient.AI
                 if (twoPass && handToStoryteller && !loopFailed && !_cancelRequested)
                 {
                     bool told = false;
-                    yield return Narrate(cleanPlayer, brief, transcript, changed, record, delegate (bool ok) { told = ok; });
+                    yield return Narrate(narrator, cleanPlayer, brief, transcript, changed, record, delegate (bool ok) { told = ok; });
                     narrated = told;
                     anyOutput = true;
                 }
@@ -555,9 +559,9 @@ namespace CampaignVault.UnityClient.AI
                 // so out loud instead of fading the spinner into silence.
                 if (!anyOutput && assistantReplied && !_cancelRequested)
                 {
-                    Fail(transcript, Byok.Model + " returned an empty reply (no text, no tool calls). "
+                    Fail(transcript, loop.Model + " returned an empty reply (no text, no tool calls). "
                         + "Check the endpoint serves OpenAI-style chat completions — open Inspect for the raw response.", changed,
-                        LlmFailure.Malformed("no text and no tool calls", FailureContext(Byok.ChatUrl(), 1, LastResponseJson)));
+                        LlmFailure.Malformed("no text and no tool calls", FailureContext(loop, 1, LastResponseJson)));
                 }
             }
             finally
@@ -581,6 +585,12 @@ namespace CampaignVault.UnityClient.AI
             }
         }
 
+        /// <summary>
+        /// Everything the storyteller saw on this turn's call (system prompt, exemplar, earlier scenes, brief), or null when the
+        /// turn had no storyteller call. The measurer grounds the scene against it.
+        /// </summary>
+        public JsonValue LastNarrationMessages { get; private set; }
+
         /// <summary>The last scene the storyteller wrote, or empty.</summary>
         public string LastPassage
         {
@@ -592,14 +602,18 @@ namespace CampaignVault.UnityClient.AI
         /// stable first so providers can cache the prefix: narration system
         /// prompt (header + narration skill + table + PC card), the last few
         /// scenes as prior turns, then the player's line with the brief.
+        /// It goes through <paramref name="narrator"/>: the loop's own profile,
+        /// or the one it names as narrator (a cheaper or prose-tuned model;
+        /// it needs no tool support, since this call offers none).
         /// </summary>
-        private IEnumerator Narrate(string playerText, TurnBrief brief, VaultTranscript transcript, Action changed, TurnRecord record, Action<bool> done)
+        private IEnumerator Narrate(ProviderProfile narrator, string playerText, TurnBrief brief, VaultTranscript transcript, Action changed, TurnRecord record, Action<bool> done)
         {
             Status = "the storyteller writes the scene…";
             CurrentTool = string.Empty;
             JsonValue messages = BuildNarrationMessages(playerText, brief);
-            // Same model as the tool loop: one profile, one model.
-            string model = Byok.Model.Trim();
+            LastNarrationMessages = messages;
+            string model = narrator.Model.Trim();
+            record.NarratorModel = narrator.Model;
 
             TranscriptSegment live = null;
             Action<string> onDelta = delegate (string delta)
@@ -615,8 +629,8 @@ namespace CampaignVault.UnityClient.AI
             };
             JsonValue response = null;
             string failure = null;
-            yield return RequestReply(
-                delegate (bool stream, bool usageOptions) { return BuildNarrationRequest(messages, model, stream, usageOptions); },
+            yield return RequestReply(narrator,
+                delegate (bool stream, bool usageOptions) { return BuildNarrationRequest(narrator, messages, stream, usageOptions); },
                 onDelta, delegate (JsonValue r, string err) { response = r; failure = err; });
             if (_cancelRequested || failure != null)
             {
@@ -628,12 +642,12 @@ namespace CampaignVault.UnityClient.AI
                     transcript.NotifyUpdated(live);
                 }
                 if (_cancelRequested) { AddStopped(transcript, changed); }
-                else { Fail(transcript, "Storyteller error: " + failure, changed); }
+                else { Fail(transcript, "Storyteller error (" + model + "): " + failure, changed); }
                 done(false);
                 yield break;
             }
             LastResponseJson = CapText(response.ToJson(), 8000);
-            var usage = MeasureUsage(response, model);
+            var usage = MeasureUsage(response, narrator);
             record.Usage.Add(usage);
             RecordUsage(usage, model);
             if (live != null) { transcript.Remove(live); }
@@ -646,7 +660,7 @@ namespace CampaignVault.UnityClient.AI
             if (scene.Length == 0)
             {
                 Fail(transcript, model + " returned an empty scene. Open Inspect for the raw response.", changed,
-                    LlmFailure.Malformed("an empty scene", FailureContext(Byok.ChatUrl(), 1, LastResponseJson)));
+                    LlmFailure.Malformed("an empty scene", FailureContext(narrator, 1, LastResponseJson)));
                 done(false);
                 yield break;
             }
@@ -682,9 +696,9 @@ namespace CampaignVault.UnityClient.AI
             return messages;
         }
 
-        private JsonValue BuildNarrationRequest(JsonValue messages, string model, bool stream, bool usageOptions)
+        private static JsonValue BuildNarrationRequest(ProviderProfile narrator, JsonValue messages, bool stream, bool usageOptions)
         {
-            var request = NewRequest(model, stream, usageOptions);
+            var request = NewRequest(narrator, stream, usageOptions);
             request.ObjectValue["messages"] = messages;
             return request;
         }
@@ -745,7 +759,7 @@ namespace CampaignVault.UnityClient.AI
             LastError = text;
             // A transport failure was already described by RequestReply; anything else gets a generic record here.
             if (failure != null) { LastFailure = failure; }
-            else if (LastFailure == null) { LastFailure = LlmFailure.Other(text, FailureContext(Byok.ChatUrl(), 1, string.Empty)); }
+            else if (LastFailure == null) { LastFailure = LlmFailure.Other(text, FailureContext(Byok.Active, 1, string.Empty)); }
             transcript.Add(new TranscriptSegment { Kind = SegmentKind.System, Text = "⚠ " + text, Failure = LastFailure });
             changed();
         }

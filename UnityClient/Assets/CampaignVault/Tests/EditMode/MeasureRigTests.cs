@@ -38,6 +38,10 @@ namespace CampaignVault.UnityClient.Tests
                         chat.Respond = delegate (JsonValue request, int index)
                         {
                             var messages = request.GetArray("messages");
+                            if (messages.Count > 0 && messages[0].GetString("content", string.Empty) == FaithfulnessJudge.SystemPrompt)
+                            {
+                                return new ScriptedChat.Reply { Body = ScriptedChat.Prose("{\"inventions\":[{\"kind\":\"item\",\"claim\":\"a lantern\",\"quote\":\"lantern light\"}]}") };
+                            }
                             bool storyteller = request.Get("tools").Kind != JsonKind.Array;
                             bool loop = messages.Count > 0 && messages[0].GetString("content", string.Empty).Contains("TURN CONTRACT");
                             if (storyteller) { return new ScriptedChat.Reply { Body = ScriptedChat.Prose(Scene) }; }
@@ -51,7 +55,7 @@ namespace CampaignVault.UnityClient.Tests
                         source.Profiles.Add(new ProviderProfile { Name = "mock", Preset = "custom", BaseUrl = chat.BaseUrl, Model = "mock-model", ApiKey = "k" });
                         source.ActiveIndex = 0;
 
-                        var rig = new MeasureRig(null, source) { ExternalServerUrl = server.Url, ReportsFolder = reports };
+                        var rig = new MeasureRig(null, source) { ExternalServerUrl = server.Url, ReportsFolder = reports, Judge = true };
                         MeasureRun story = null, connector = null, baseline = null;
                         string last = string.Empty;
                         yield return EditModeCoroutines.Drive(rig.Run(MeasureMode.Storyteller, 1, true, delegate (string s) { last = s; }, delegate { }, delegate (MeasureRun r) { story = r; }));
@@ -72,6 +76,17 @@ namespace CampaignVault.UnityClient.Tests
                             }
                         }
                         Assert.AreEqual("mock-model", story.Model);
+
+                        // Faithfulness: every storyteller scene is grounded and judged; the connector has no storyteller call to check.
+                        Assert.AreEqual("mock-model", story.Judge);
+                        foreach (var beat in story.Beats)
+                        {
+                            Assert.IsTrue(beat.Grounded, beat.Beat.Label);
+                            Assert.IsTrue(beat.Judged, beat.Beat.Label + ": " + beat.JudgeError);
+                            Assert.AreEqual("item", beat.Inventions.Single().Kind);
+                        }
+                        Assert.IsFalse(connector.Beats.Any(b => b.Grounded || b.Judged));
+                        Assert.AreEqual(string.Empty, connector.Judge);
                         Assert.AreEqual(0, MeasureReport.Summarize(connector).InlineRolls, "the connector's roll block is not prose");
 
                         // The storyteller requests: the remedies run pins the exemplar and closes on the word target; the baseline does neither.

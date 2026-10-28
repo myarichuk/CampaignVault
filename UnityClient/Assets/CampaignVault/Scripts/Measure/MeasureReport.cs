@@ -24,6 +24,17 @@ namespace CampaignVault.UnityClient.Measure
         public double Cost;
         public string Error = string.Empty;
         public ProseStats Stats = new ProseStats();
+        /// <summary>The scene was checked against what its storyteller was given (storyteller mode, with a scene).</summary>
+        public bool Grounded;
+        /// <summary>Names in the scene that appear nowhere in the storyteller's brief, earlier scenes or character card.</summary>
+        public List<string> Ungrounded = new List<string>();
+        /// <summary>The judge read this scene and answered with a list (possibly empty).</summary>
+        public bool Judged;
+        public List<JudgedInvention> Inventions = new List<JudgedInvention>();
+        /// <summary>Why the judge gave no list for this scene (empty when it did, or did not run).</summary>
+        public string JudgeError = string.Empty;
+        /// <summary>The judge's own call; kept apart from <see cref="Cost"/>, which is what play would cost.</summary>
+        public double JudgeCost;
     }
 
     /// <summary>Everything one run (a mode, over some repeats of the script) produced, plus the provider settings it ran under.</summary>
@@ -35,6 +46,11 @@ namespace CampaignVault.UnityClient.Measure
         public string Provider = string.Empty;
         public string Model = string.Empty;
         public string Settings = string.Empty;
+        /// <summary>The storyteller profile when it is not the rules profile (empty: the rules model writes its own scenes).</summary>
+        public string Narrator = string.Empty;
+        public string NarratorSettings = string.Empty;
+        /// <summary>The model that judged faithfulness (empty: the judge was off).</summary>
+        public string Judge = string.Empty;
         public DateTime StartedUtc = DateTime.UtcNow;
         public int Repeats = 1;
         /// <summary>Why the run stopped before finishing its passes (empty when it ran to the end or was stopped by the player).</summary>
@@ -65,6 +81,17 @@ namespace CampaignVault.UnityClient.Measure
         public double PromptPerTurn;
         public double CompletionPerTurn;
         public double CostTotal;
+        /// <summary>Scenes checked for ungrounded names, the names found, and how many of those scenes had any.</summary>
+        public int GroundedScenes;
+        public int UngroundedNames;
+        public int ScenesWithUngrounded;
+        /// <summary>Scenes the judge answered for, what it found, the scenes it found something in, and the scenes it failed on.</summary>
+        public int JudgedScenes;
+        public int Inventions;
+        public int ScenesWithInventions;
+        public int JudgeFailures;
+        public double JudgeCost;
+        public readonly SortedDictionary<string, int> InventionsByKind = new SortedDictionary<string, int>(StringComparer.Ordinal);
 
         /// <summary>A scene under this many words reads as thin for a beat that is not a bare exchange.</summary>
         public const int ShortWords = 200;
@@ -84,8 +111,28 @@ namespace CampaignVault.UnityClient.Measure
                 turns++;
                 calls += b.ModelCalls; tools += b.ToolCalls; prompt += b.PromptTokens; completion += b.CompletionTokens;
                 s.CostTotal += b.Cost;
+                s.JudgeCost += b.JudgeCost;
                 if (b.Narration.Trim().Length == 0 || b.Error.Length > 0) { s.Failed++; continue; }
                 s.Scenes++;
+                if (b.Grounded)
+                {
+                    s.GroundedScenes++;
+                    s.UngroundedNames += b.Ungrounded.Count;
+                    if (b.Ungrounded.Count > 0) { s.ScenesWithUngrounded++; }
+                }
+                if (b.Judged)
+                {
+                    s.JudgedScenes++;
+                    s.Inventions += b.Inventions.Count;
+                    if (b.Inventions.Count > 0) { s.ScenesWithInventions++; }
+                    foreach (JudgedInvention inv in b.Inventions)
+                    {
+                        int n;
+                        s.InventionsByKind.TryGetValue(inv.Kind, out n);
+                        s.InventionsByKind[inv.Kind] = n + 1;
+                    }
+                }
+                else if (b.JudgeError.Length > 0) { s.JudgeFailures++; }
                 words += b.Stats.Words; paras += b.Stats.Paragraphs; sent += b.Stats.MeanSentence; frag += b.Stats.FragmentRatio;
                 s.InlineRolls += b.Stats.InlineRolls;
                 s.WordsMin = Math.Min(s.WordsMin, b.Stats.Words);
@@ -106,12 +153,14 @@ namespace CampaignVault.UnityClient.Measure
         public static string ToMarkdown(MeasureRun run)
         {
             var sb = new StringBuilder();
-            sb.Append("## ").Append(run.Title).Append(" — ").Append(run.Model).Append('\n');
+            sb.Append("## ").Append(run.Title).Append(" — ").Append(run.Model).Append(run.Narrator.Length > 0 ? ", scenes by " + run.Narrator : string.Empty).Append('\n');
             sb.Append("\n- Provider: ").Append(run.Provider);
             sb.Append("\n- Settings: ").Append(run.Settings);
+            if (run.Narrator.Length > 0) { sb.Append("\n- Storyteller: ").Append(run.Narrator).Append(" (").Append(run.NarratorSettings).Append(')'); }
+            if (run.Judge.Length > 0) { sb.Append("\n- Faithfulness judge: ").Append(run.Judge); }
             sb.Append("\n- Repeats: ").Append(run.Repeats).Append(", started ").Append(run.StartedUtc.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)).Append(" UTC\n");
-            sb.Append("\n| # | beat | words | paras | sent | frag | rolls (verdicts) | calls | tools | prompt | out |\n");
-            sb.Append("|---|------|------:|------:|-----:|-----:|------------------|------:|------:|-------:|----:|\n");
+            sb.Append("\n| # | beat | words | paras | sent | frag | names | judge | rolls (verdicts) | calls | tools | prompt | out |\n");
+            sb.Append("|---|------|------:|------:|-----:|-----:|------:|------:|------------------|------:|------:|-------:|----:|\n");
             int i = 0;
             foreach (BeatResult b in run.Beats)
             {
@@ -121,6 +170,8 @@ namespace CampaignVault.UnityClient.Measure
                 sb.Append("| ").Append(i).Append(" | ").Append(label.Replace("|", "/")).Append(" | ")
                   .Append(b.Stats.Words).Append(" | ").Append(b.Stats.Paragraphs).Append(" | ")
                   .Append(F1(b.Stats.MeanSentence)).Append(" | ").Append(F2(b.Stats.FragmentRatio)).Append(" | ")
+                  .Append(b.Grounded ? b.Ungrounded.Count.ToString(CultureInfo.InvariantCulture) : "–").Append(" | ")
+                  .Append(b.Judged ? b.Inventions.Count.ToString(CultureInfo.InvariantCulture) : b.JudgeError.Length > 0 ? "err" : "–").Append(" | ")
                   .Append(Clip(rolls, 90).Replace("|", "/")).Append(" | ")
                   .Append(b.ModelCalls).Append(" | ").Append(b.ToolCalls).Append(" | ")
                   .Append(b.PromptTokens).Append(" | ").Append(b.CompletionTokens).Append(" |\n");
@@ -142,6 +193,24 @@ namespace CampaignVault.UnityClient.Measure
             sb.Append("- Per turn: ").Append(F1(s.CallsPerTurn)).Append(" model calls, ").Append(F1(s.ToolsPerTurn)).Append(" tool calls, ")
               .Append(Math.Round(s.PromptPerTurn)).Append(" prompt tokens, ").Append(Math.Round(s.CompletionPerTurn)).Append(" completion tokens\n");
             if (s.CostTotal > 0) { sb.Append("- Cost (as priced): $").Append(s.CostTotal.ToString("0.000", CultureInfo.InvariantCulture)).Append('\n'); }
+            if (s.GroundedScenes > 0)
+            {
+                sb.Append("- Ungrounded names: ").Append(s.UngroundedNames).Append(" in ").Append(s.ScenesWithUngrounded).Append(" of ").Append(s.GroundedScenes)
+                  .Append(" scenes (named in the scene, absent from everything the storyteller was given)\n");
+            }
+            if (s.JudgedScenes > 0 || s.JudgeFailures > 0)
+            {
+                sb.Append("- Judged inventions: ").Append(s.Inventions).Append(" in ").Append(s.ScenesWithInventions).Append(" of ").Append(s.JudgedScenes).Append(" scenes");
+                if (s.InventionsByKind.Count > 0)
+                {
+                    var kinds = new List<string>();
+                    foreach (var pair in s.InventionsByKind) { kinds.Add(pair.Key + " " + pair.Value); }
+                    sb.Append(" (").Append(string.Join(", ", kinds.ToArray())).Append(')');
+                }
+                if (s.JudgeFailures > 0) { sb.Append("; the judge failed on ").Append(s.JudgeFailures); }
+                if (s.JudgeCost > 0) { sb.Append("; judging cost $").Append(s.JudgeCost.ToString("0.000", CultureInfo.InvariantCulture)); }
+                sb.Append('\n');
+            }
             return sb.ToString();
         }
 
@@ -159,6 +228,16 @@ namespace CampaignVault.UnityClient.Measure
             Row(sb, "mean sentence length", F1(x.SentenceMean), F1(y.SentenceMean));
             Row(sb, "fragment share", F2(x.FragmentMean), F2(y.FragmentMean));
             Row(sb, "roll numbers in prose", x.InlineRolls.ToString(CultureInfo.InvariantCulture), y.InlineRolls.ToString(CultureInfo.InvariantCulture));
+            if (x.GroundedScenes > 0 || y.GroundedScenes > 0)
+            {
+                Row(sb, "ungrounded names", Measured(x.GroundedScenes, x.UngroundedNames), Measured(y.GroundedScenes, y.UngroundedNames));
+                Row(sb, "scenes with ungrounded names", Measured(x.GroundedScenes, x.ScenesWithUngrounded), Measured(y.GroundedScenes, y.ScenesWithUngrounded));
+            }
+            if (x.JudgedScenes > 0 || y.JudgedScenes > 0)
+            {
+                Row(sb, "judged inventions", Measured(x.JudgedScenes, x.Inventions), Measured(y.JudgedScenes, y.Inventions));
+                Row(sb, "scenes with judged inventions", Measured(x.JudgedScenes, x.ScenesWithInventions), Measured(y.JudgedScenes, y.ScenesWithInventions));
+            }
             Row(sb, "model calls per turn", F1(x.CallsPerTurn), F1(y.CallsPerTurn));
             Row(sb, "prompt tokens per turn", Math.Round(x.PromptPerTurn).ToString(CultureInfo.InvariantCulture), Math.Round(y.PromptPerTurn).ToString(CultureInfo.InvariantCulture));
             Row(sb, "completion tokens per turn", Math.Round(x.CompletionPerTurn).ToString(CultureInfo.InvariantCulture), Math.Round(y.CompletionPerTurn).ToString(CultureInfo.InvariantCulture));
@@ -178,8 +257,29 @@ namespace CampaignVault.UnityClient.Measure
                 sb.Append("\n### ").Append(i).Append(". ").Append(b.Beat.Label).Append(" (repeat ").Append(b.Repeat).Append(")\n\n");
                 sb.Append("> ").Append(b.Beat.Text).Append("\n\n");
                 sb.Append(b.Narration.Trim().Length > 0 ? b.Narration.Trim() : "(no narration)").Append('\n');
+                if (b.Grounded)
+                {
+                    sb.Append("\n**Ungrounded names:** ").Append(b.Ungrounded.Count > 0 ? string.Join(", ", b.Ungrounded.ToArray()) : "none").Append('\n');
+                }
+                if (b.Judged)
+                {
+                    sb.Append("\n**Judged inventions:** ").Append(b.Inventions.Count > 0 ? string.Empty : "none").Append('\n');
+                    foreach (JudgedInvention inv in b.Inventions)
+                    {
+                        sb.Append("- ").Append(inv.Kind).Append(": ").Append(inv.Claim);
+                        if (inv.Quote.Length > 0 && inv.Quote != inv.Claim) { sb.Append(" (“").Append(inv.Quote).Append("”)"); }
+                        sb.Append('\n');
+                    }
+                }
+                else if (b.JudgeError.Length > 0) { sb.Append("\n**Judge failed:** ").Append(b.JudgeError).Append('\n'); }
             }
             return sb.ToString();
+        }
+
+        /// <summary>A count, or a dash when the run never measured it (so a missing check never reads as a clean zero).</summary>
+        private static string Measured(int measured, int count)
+        {
+            return measured > 0 ? count.ToString(CultureInfo.InvariantCulture) : "–";
         }
 
         private static void Row(StringBuilder sb, string metric, string a, string b)
