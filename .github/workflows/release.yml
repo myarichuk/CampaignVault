@@ -33,6 +33,9 @@ jobs:
     timeout-minutes: 90
     strategy:
       fail-fast: false
+      # The legs share one Unity Personal seat (activate + return per leg); serial runs rule out
+      # seat contention while the intermittent Windows "Killed" (exit 137) is being diagnosed.
+      max-parallel: 1
       matrix:
         include:
           - { target: StandaloneWindows64, method: BuildStandaloneWindows64, rid: win-x64,   name: windows-x64 }
@@ -62,8 +65,10 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: UnityClient/Library
-          key: Library-${{ matrix.target }}-${{ hashFiles('UnityClient/Packages/packages-lock.json', 'UnityClient/ProjectSettings/ProjectVersion.txt') }}
-          restore-keys: Library-${{ matrix.target }}-
+          # Bump the v-suffix to discard a suspect Library cache (restore-keys carries it too, so
+          # an older generation is never restored).
+          key: Library-v2-${{ matrix.target }}-${{ hashFiles('UnityClient/Packages/packages-lock.json', 'UnityClient/ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: Library-v2-${{ matrix.target }}-
 
       - uses: game-ci/unity-builder@v6
         env:
@@ -79,6 +84,16 @@ jobs:
           # unity-builder@v6 downloads a separate game-ci CLI; unpinned it follows "latest" and its
           # post-build check (needs "Build succeeded!" in the log, see BuildTools) can change under us.
           cliVersion: v0.1.70
+
+      # Exit 137 is a SIGKILL; the editor log doesn't say who sent it. Leave host-side evidence
+      # (memory, kernel OOM-killer lines, container exit state) for the next failure.
+      - name: Diagnose Unity kill
+        if: failure()
+        run: |
+          free -h
+          df -h /
+          sudo dmesg 2>&1 | grep -iE 'out of memory|oom|killed process' | tail -20 || true
+          docker ps -a --no-trunc --format '{{.Image}} {{.Status}}' | head -5 || true
 
       - name: Package
         env:
