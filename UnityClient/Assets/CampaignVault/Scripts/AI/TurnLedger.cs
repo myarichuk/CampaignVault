@@ -125,6 +125,8 @@ namespace CampaignVault.UnityClient.AI
     {
         public string Player = string.Empty;
         public string Model = string.Empty;
+        /// <summary>The model that wrote the scene in the storyteller pass (empty when no storyteller call was made).</summary>
+        public string NarratorModel = string.Empty;
         public DateTime StartedUtc = DateTime.UtcNow;
         /// <summary>The story text exactly as the model wrote it, before voice splitting.</summary>
         public readonly StringBuilder Narration = new StringBuilder();
@@ -168,7 +170,9 @@ namespace CampaignVault.UnityClient.AI
             {
                 var t = turns[i];
                 sb.Append("\n## Turn ").Append(i + 1).Append('\n');
-                sb.Append("<!-- usage model=").Append(t.Model)
+                sb.Append("<!-- usage model=").Append(t.Model);
+                if (t.NarratorModel.Length > 0 && t.NarratorModel != t.Model) { sb.Append(" narrator=").Append(t.NarratorModel); }
+                sb
                   .Append(" prompt=").Append(t.Usage.Prompt)
                   .Append(" completion=").Append(t.Usage.Completion)
                   .Append(" cached=").Append(t.Usage.Cached)

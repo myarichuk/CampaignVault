@@ -13,6 +13,8 @@ namespace CampaignVault.UnityClient.AI
     [Serializable]
     public class ProviderProfile
     {
+        /// <summary>Stable identity for references between profiles (a name can be renamed or repeated). Files from before it have none: <see cref="ByokSettings.IdOf"/> assigns one.</summary>
+        public string Id = string.Empty;
         public string Name = "Default";
         public string Preset = "custom";
         public string BaseUrl = "https://api.openai.com/v1";
@@ -29,6 +31,12 @@ namespace CampaignVault.UnityClient.AI
         public bool DisableStreaming;
         /// <summary>Legacy: one model call writes both the tool calls and the scene (no storyteller pass).</summary>
         public bool SinglePass;
+        /// <summary>
+        /// The <see cref="Id"/> of the profile whose endpoint, model, key and sampling write the scene in the storyteller pass.
+        /// Empty (or a profile that no longer exists) means this profile narrates too. Only this profile's own value counts:
+        /// the narrator's own Narrator and SinglePass are ignored, so references never chain.
+        /// </summary>
+        public string Narrator = string.Empty;
         /// <summary>Optional prices per million tokens (0 = unset). They win over the bundled table, and are the only way to price a Custom endpoint.</summary>
         public float PriceInPerM;
         public float PriceCachedPerM;
@@ -108,8 +116,37 @@ namespace CampaignVault.UnityClient.AI
 
         public string BaseUrl { get { return Active.BaseUrl; } set { Active.BaseUrl = value ?? string.Empty; } }
         public string Model { get { return Active.Model; } set { Active.Model = value ?? string.Empty; } }
-        public bool HasKey { get { return !string.IsNullOrEmpty(Active.ApiKey); } }
+        public bool HasKey { get { return HasKeyOf(Active); } }
         public bool NeedsKey { get { return PresetFor(Active.Preset).NeedsKey; } }
+
+        public static bool HasKeyOf(ProviderProfile profile) { return !string.IsNullOrEmpty(profile.ApiKey); }
+
+        /// <summary>The profile's id, assigning one to a profile saved before ids existed (it persists with the next Save).</summary>
+        public static string IdOf(ProviderProfile profile)
+        {
+            if (string.IsNullOrEmpty(profile.Id)) { profile.Id = Guid.NewGuid().ToString("N"); }
+            return profile.Id;
+        }
+
+        /// <summary>The saved profile with this id, or null.</summary>
+        public ProviderProfile Find(string id)
+        {
+            if (string.IsNullOrEmpty(id)) { return null; }
+            foreach (ProviderProfile p in Profiles) { if (p.Id == id) { return p; } }
+            return null;
+        }
+
+        /// <summary>Who writes the scene for <paramref name="profile"/>: the profile it names as narrator, or itself when it names none (or one since deleted).</summary>
+        public ProviderProfile NarratorFor(ProviderProfile profile)
+        {
+            return Find(profile.Narrator) ?? profile;
+        }
+
+        /// <summary>The active profile's storyteller (the active profile itself unless it names another).</summary>
+        public ProviderProfile Narrator { get { return NarratorFor(Active); } }
+
+        /// <summary>A turn would make its storyteller call through a different profile than its tool loop.</summary>
+        public bool HasSeparateNarrator { get { return !Active.SinglePass && !ReferenceEquals(Narrator, Active); } }
 
         private void Awake() { Load(); }
 
@@ -128,6 +165,7 @@ namespace CampaignVault.UnityClient.AI
                 BaseUrl = preset.BaseUrl,
                 Model = preset.Model,
             };
+            IdOf(profile);
             Profiles.Add(profile);
             ActiveIndex = Profiles.Count - 1;
             return profile;
@@ -146,8 +184,14 @@ namespace CampaignVault.UnityClient.AI
         public void DeleteActive()
         {
             if (Profiles.Count <= 1) { Profiles[0] = new ProviderProfile(); ActiveIndex = 0; return; }
+            string gone = Active.Id;
             Profiles.RemoveAt(ActiveIndex);
             ActiveIndex = Mathf.Clamp(ActiveIndex, 0, Profiles.Count - 1);
+            // A narrator that no longer exists already falls back to the profile itself; clearing it keeps the file honest.
+            if (!string.IsNullOrEmpty(gone))
+            {
+                foreach (ProviderProfile p in Profiles) { if (p.Narrator == gone) { p.Narrator = string.Empty; } }
+            }
         }
 
         private string UniqueName(string baseName)
@@ -228,29 +272,53 @@ namespace CampaignVault.UnityClient.AI
             catch (Exception) { }
         }
 
+        /// <summary>
+        /// Ready to play: the active profile, and in two-pass mode the profile that writes its scenes. A storyteller that can't be
+        /// reached would only fail after the tool loop had already committed the turn, so it is checked before the turn starts.
+        /// </summary>
         public bool Validate(out string reason)
         {
-            if (!Net.TextSanitizer.IsAllowedHttpUrl(BaseUrl, out reason)) { return false; }
-            if (string.IsNullOrWhiteSpace(Model)) { reason = "Model name is empty."; return false; }
-            if (NeedsKey && !HasKey) { reason = "No API key set for \"" + Active.Name + "\" (add one in Settings)."; return false; }
+            if (!ValidateProfile(Active, out reason)) { return false; }
+            if (HasSeparateNarrator && !ValidateProfile(Narrator, out reason))
+            {
+                reason = "Storyteller profile \"" + Narrator.Name + "\": " + reason;
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>One profile on its own: a usable endpoint, a model, and a key where its preset needs one.</summary>
+        public static bool ValidateProfile(ProviderProfile profile, out string reason)
+        {
+            if (!Net.TextSanitizer.IsAllowedHttpUrl(profile.BaseUrl, out reason)) { return false; }
+            if (string.IsNullOrWhiteSpace(profile.Model)) { reason = "Model name is empty."; return false; }
+            if (PresetFor(profile.Preset).NeedsKey && !HasKeyOf(profile)) { reason = "No API key set for \"" + profile.Name + "\" (add one in Settings)."; return false; }
             reason = string.Empty;
             return true;
         }
 
-        internal string ChatUrl() { return BaseUrl.TrimEnd('/') + "/chat/completions"; }
-        internal string ApiKey() { return Active.ApiKey ?? string.Empty; }
+        internal string ChatUrl() { return ChatUrl(Active); }
+        internal string ApiKey() { return KeyOf(Active); }
+        internal static string ChatUrl(ProviderProfile profile) { return (profile.BaseUrl ?? string.Empty).TrimEnd('/') + "/chat/completions"; }
+        internal static string KeyOf(ProviderProfile profile) { return profile.ApiKey ?? string.Empty; }
+
+        /// <summary>Tests the active profile (see the overload).</summary>
+        public IEnumerator TestConnection(Action<bool, string> done) { return TestConnection(Active, done); }
 
         /// <summary>
-        /// Checks the active profile the way a turn would: a one-token chat completion, which a wrong key or an
+        /// Checks a profile the way a turn would: a one-token chat completion, which a wrong key or an
         /// unknown model refuses even on providers whose /models list is public (A16). When the provider has no
         /// usable answer to that (404/405/400), the older GET {base}/models probe decides.
         /// </summary>
-        public IEnumerator TestConnection(Action<bool, string> done)
+        public IEnumerator TestConnection(ProviderProfile profile, Action<bool, string> done)
         {
             string reason;
-            if (!Validate(out reason)) { done(false, reason); yield break; }
+            if (!ValidateProfile(profile, out reason)) { done(false, reason); yield break; }
+            string baseUrl = profile.BaseUrl;
+            string model = profile.Model.Trim();
+            string key = KeyOf(profile);
             var ping = JsonValue.NewObject();
-            ping.ObjectValue["model"] = JsonValue.FromString(Model.Trim());
+            ping.ObjectValue["model"] = JsonValue.FromString(model);
             var user = JsonValue.NewObject();
             user.ObjectValue["role"] = JsonValue.FromString("user");
             user.ObjectValue["content"] = JsonValue.FromString("ping");
@@ -258,18 +326,18 @@ namespace CampaignVault.UnityClient.AI
             messages.ArrayValue.Add(user);
             ping.ObjectValue["messages"] = messages;
             ping.ObjectValue["max_tokens"] = JsonValue.FromNumber(1);
-            using (UnityWebRequest web = new UnityWebRequest(ChatUrl(), "POST"))
+            using (UnityWebRequest web = new UnityWebRequest(ChatUrl(profile), "POST"))
             {
                 web.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(ping.ToJson()));
                 web.downloadHandler = new DownloadHandlerBuffer();
                 web.SetRequestHeader("Content-Type", "application/json");
-                if (HasKey) { web.SetRequestHeader("Authorization", "Bearer " + ApiKey()); }
+                if (key.Length > 0) { web.SetRequestHeader("Authorization", "Bearer " + key); }
                 web.timeout = 30;
                 yield return web.SendWebRequest();
                 long code = web.responseCode;
                 if (web.result == UnityWebRequest.Result.ConnectionError)
                 {
-                    done(false, "Cannot reach " + BaseUrl + " (" + Net.TextSanitizer.Redact(web.error, ApiKey()) + ").");
+                    done(false, "Cannot reach " + baseUrl + " (" + Net.TextSanitizer.Redact(web.error, key) + ").");
                     yield break;
                 }
                 if (code == 401 || code == 403) { done(false, "The provider rejected the API key (HTTP " + code + ")."); yield break; }
@@ -277,41 +345,44 @@ namespace CampaignVault.UnityClient.AI
                 string detail = string.Empty;
                 JsonValue body;
                 if (JsonValue.TryParse(web.downloadHandler.text ?? string.Empty, out body)) { detail = body.Get("error").GetString("message", string.Empty); }
-                if (code == 404 && detail.ToLowerInvariant().Contains("model")) { done(false, "Connected, but model \"" + Model.Trim() + "\" is unknown to the provider."); yield break; }
+                if (code == 404 && detail.ToLowerInvariant().Contains("model")) { done(false, "Connected, but model \"" + model + "\" is unknown to the provider."); yield break; }
                 if (code != 404 && code != 405 && code != 400)
                 {
-                    done(false, "HTTP " + code + " from " + BaseUrl + (detail.Length > 0 ? ": " + Net.TextSanitizer.Clean(detail, 200) : "."));
+                    done(false, "HTTP " + code + " from " + baseUrl + (detail.Length > 0 ? ": " + Net.TextSanitizer.Clean(detail, 200) : "."));
                     yield break;
                 }
             }
-            yield return ProbeModels(done);
+            yield return ProbeModels(profile, done);
         }
 
         /// <summary>GET {base}/models: reachable / key rejected / model unknown. A 404 is "reachable, unverified".</summary>
-        private IEnumerator ProbeModels(Action<bool, string> done)
+        private static IEnumerator ProbeModels(ProviderProfile profile, Action<bool, string> done)
         {
-            using (UnityWebRequest web = UnityWebRequest.Get(BaseUrl.TrimEnd('/') + "/models"))
+            string baseUrl = profile.BaseUrl;
+            string model = profile.Model.Trim();
+            string key = KeyOf(profile);
+            using (UnityWebRequest web = UnityWebRequest.Get(baseUrl.TrimEnd('/') + "/models"))
             {
-                if (HasKey) { web.SetRequestHeader("Authorization", "Bearer " + ApiKey()); }
+                if (key.Length > 0) { web.SetRequestHeader("Authorization", "Bearer " + key); }
                 web.timeout = 15;
                 yield return web.SendWebRequest();
                 long code = web.responseCode;
                 if (web.result == UnityWebRequest.Result.ConnectionError)
                 {
-                    done(false, "Cannot reach " + BaseUrl + " (" + Net.TextSanitizer.Redact(web.error, ApiKey()) + ").");
+                    done(false, "Cannot reach " + baseUrl + " (" + Net.TextSanitizer.Redact(web.error, key) + ").");
                     yield break;
                 }
                 if (code == 401 || code == 403) { done(false, "The provider rejected the API key (HTTP " + code + ")."); yield break; }
                 if (code == 404 || code == 405) { done(true, "Reachable, but this provider has no /models to verify against."); yield break; }
                 if (web.result != UnityWebRequest.Result.Success)
                 {
-                    done(false, "HTTP " + code + " from " + BaseUrl + ".");
+                    done(false, "HTTP " + code + " from " + baseUrl + ".");
                     yield break;
                 }
                 JsonValue body;
-                if (JsonValue.TryParse(web.downloadHandler.text ?? string.Empty, out body) && ModelListed(body, Model.Trim()) == false)
+                if (JsonValue.TryParse(web.downloadHandler.text ?? string.Empty, out body) && ModelListed(body, model) == false)
                 {
-                    done(false, "Connected, but model \"" + Model.Trim() + "\" is not in the provider's model list.");
+                    done(false, "Connected, but model \"" + model + "\" is not in the provider's model list.");
                     yield break;
                 }
                 done(true, "Connected. Key and model look good.");

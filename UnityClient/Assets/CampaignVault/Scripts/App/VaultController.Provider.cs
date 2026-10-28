@@ -62,6 +62,9 @@ namespace CampaignVault.UnityClient.App
             p.ReasoningEffort = edited.ReasoningEffort ?? string.Empty;
             p.DisableStreaming = edited.DisableStreaming;
             p.SinglePass = edited.SinglePass;
+            // Only a saved profile other than this one can narrate for it; anything else means "this profile narrates".
+            var narrator = _s.Byok.Find(edited.Narrator);
+            p.Narrator = narrator != null && !ReferenceEquals(narrator, p) ? ByokSettings.IdOf(narrator) : string.Empty;
             p.PriceInPerM = Math.Max(0f, edited.PriceInPerM);
             p.PriceCachedPerM = Math.Max(0f, edited.PriceCachedPerM);
             p.PriceOutPerM = Math.Max(0f, edited.PriceOutPerM);
@@ -75,19 +78,30 @@ namespace CampaignVault.UnityClient.App
         }
 
         /// <summary>
-        /// Tests the active profile and records the verdict: a rejected key or an
-        /// unknown model blocks play until fixed; an unreachable provider doesn't
-        /// (networks blip), it only shows in the result.
+        /// Tests the active profile, then the profile that writes its scenes when that is
+        /// another one, and records the verdict: a rejected key or an unknown model blocks
+        /// play until fixed; an unreachable provider doesn't (networks blip), it only shows
+        /// in the result.
         /// </summary>
         public IEnumerator TestProvider(Action<bool, string> done)
         {
-            yield return _s.Byok.TestConnection(delegate (bool ok, string message)
+            bool ok = false;
+            string message = string.Empty;
+            yield return _s.Byok.TestConnection(delegate (bool o, string m) { ok = o; message = m; });
+            if (ok && _s.Byok.HasSeparateNarrator)
             {
-                if (ok) { _s.Driver.ClearProviderProblem(); }
-                else if (IsSettingsProblem(message)) { _s.Driver.ReportProviderProblem(message); }
-                _s.Notify(StateArea.Providers | StateArea.Driver);
-                if (done != null) { done(ok, message); }
-            });
+                ProviderProfile narrator = _s.Byok.Narrator;
+                string first = message;
+                yield return _s.Byok.TestConnection(narrator, delegate (bool o, string m)
+                {
+                    ok = o;
+                    message = o ? first + " Storyteller \"" + narrator.Name + "\": " + m : "Storyteller profile \"" + narrator.Name + "\": " + m;
+                });
+            }
+            if (ok) { _s.Driver.ClearProviderProblem(); }
+            else if (IsSettingsProblem(message)) { _s.Driver.ReportProviderProblem(message); }
+            _s.Notify(StateArea.Providers | StateArea.Driver);
+            if (done != null) { done(ok, message); }
         }
 
         /// <summary>Startup: a configured provider is tested once, quietly, so a dead key shows before the first turn.</summary>

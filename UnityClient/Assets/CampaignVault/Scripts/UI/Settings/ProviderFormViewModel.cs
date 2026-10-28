@@ -10,7 +10,7 @@ namespace CampaignVault.UnityClient.UI.Settings
 {
     /// <summary>
     /// The AI provider editor (Templates/Settings/ProviderForm.uxml): profiles, preset, endpoint, model, sampling,
-    /// streaming, key. Settings and first-run Setup each show one; both follow StateArea.Providers.
+    /// streaming, the storyteller's profile, key. Settings and first-run Setup each show one; both follow StateArea.Providers.
     /// </summary>
     /// <remarks>
     /// The fields hold what's being typed. They take the active profile's values only when the profile changed under
@@ -26,6 +26,7 @@ namespace CampaignVault.UnityClient.UI.Settings
         private List<ChoiceViewModel> _profiles = new List<ChoiceViewModel>();
         private List<ChoiceViewModel> _presets = new List<ChoiceViewModel>();
         private readonly List<ChoiceViewModel> _efforts = new List<ChoiceViewModel>();
+        private List<ChoiceViewModel> _narrators = new List<ChoiceViewModel>();
         private string _name = string.Empty;
         private string _baseUrl = string.Empty;
         private string _model = string.Empty;
@@ -34,6 +35,7 @@ namespace CampaignVault.UnityClient.UI.Settings
         private string _effort = string.Empty;
         private bool _stream = true;
         private bool _storyteller = true;
+        private string _narrator = string.Empty;
         private string _priceIn = string.Empty;
         private string _priceCached = string.Empty;
         private string _priceOut = string.Empty;
@@ -64,6 +66,8 @@ namespace CampaignVault.UnityClient.UI.Settings
             ResetSpend = delegate { controller.ResetCampaignUsage(); };
             Delete = delegate { controller.DeleteProfile(); };
             Note = DisplayText.Plain("Keys are stored as plain text in " + ByokSettings.FilePath + " on this device and are only ever sent to the endpoint above.");
+            NarratorNote = "Another saved profile can write the scenes while this one runs the rules: the scene call has no tools, so a smaller or prose-tuned model works there. "
+                + "It uses that profile's endpoint, model, key, temperature, max tokens, effort and prices.";
             PricesNote = DisplayText.Plain("Leave blank to use the bundled prices (checked " + ModelPricing.Bundled.AsOf + "). Fill these in for a custom endpoint or a model the table doesn't know; they win over the table.");
             Watch(state, StateArea.Providers | StateArea.Driver | StateArea.Campaign);
             Refresh();
@@ -88,6 +92,15 @@ namespace CampaignVault.UnityClient.UI.Settings
         [CreateProperty] public bool Stream { get { return _stream; } set { Set(ref _stream, value); } }
         /// <summary>A separate pass writes the scene from a call that sees no tool data.</summary>
         [CreateProperty] public bool Storyteller { get { return _storyteller; } set { Set(ref _storyteller, value); } }
+        /// <summary>Who writes the scenes: this profile, or another saved one (picked here, saved with the rest).</summary>
+        [CreateProperty] public List<ChoiceViewModel> Narrators { get { return _narrators; } private set { SetList(ref _narrators, value); } }
+        /// <summary>The picked storyteller profile's id; empty = this profile.</summary>
+        public string Narrator
+        {
+            get { return _narrator; }
+            set { if (Set(ref _narrator, value ?? string.Empty)) { PaintNarrators(); } }
+        }
+        [CreateProperty] public string NarratorNote { get; private set; }
         [CreateProperty] public string PriceIn { get { return _priceIn; } set { Set(ref _priceIn, value ?? string.Empty); } }
         [CreateProperty] public string PriceCached { get { return _priceCached; } set { Set(ref _priceCached, value ?? string.Empty); } }
         [CreateProperty] public string PriceOut { get { return _priceOut; } set { Set(ref _priceOut, value ?? string.Empty); } }
@@ -136,6 +149,17 @@ namespace CampaignVault.UnityClient.UI.Settings
             }
             Presets = presets;
 
+            var narrators = new List<ChoiceViewModel>();
+            narrators.Add(FindChoice(_narrators, string.Empty) ?? new ChoiceViewModel(string.Empty, "THIS PROFILE", null, true, delegate { Narrator = string.Empty; }, "narrator-self"));
+            for (int i = 0; i < byok.Profiles.Count; i++)
+            {
+                if (i == byok.ActiveIndex) { continue; }
+                string id = ByokSettings.IdOf(byok.Profiles[i]);
+                narrators.Add(FindChoice(_narrators, id) ?? new ChoiceViewModel(id, string.Empty, null, true, delegate { Narrator = id; }, "narrator-" + i));
+            }
+            Narrators = narrators;
+            PaintNarrators();
+
             bool needsKey = ByokSettings.PresetFor(profile.Preset).NeedsKey;
             KeyPlaceholder = needsKey ? "paste a key to set or replace it" : "not needed for local models";
             KeyState = KeyStateOf(profile);
@@ -165,7 +189,7 @@ namespace CampaignVault.UnityClient.UI.Settings
             {
                 byok.ActiveIndex.ToString(CultureInfo.InvariantCulture), p.Preset, p.Name, p.BaseUrl, p.Model,
                 p.Temperature.ToString("R", CultureInfo.InvariantCulture), p.MaxTokens.ToString(CultureInfo.InvariantCulture),
-                p.ReasoningEffort ?? string.Empty, p.DisableStreaming ? "1" : "0", p.SinglePass ? "1" : "0",
+                p.ReasoningEffort ?? string.Empty, p.DisableStreaming ? "1" : "0", p.SinglePass ? "1" : "0", p.Narrator ?? string.Empty,
                 Price(p.PriceInPerM), Price(p.PriceCachedPerM), Price(p.PriceOutPerM),
             });
         }
@@ -207,6 +231,23 @@ namespace CampaignVault.UnityClient.UI.Settings
             PaintEfforts();
             Stream = !profile.DisableStreaming;
             Storyteller = !profile.SinglePass;
+            // A reference to a deleted profile reads as "this profile", which is what a turn would do with it.
+            ProviderProfile narrator = _s.Byok.NarratorFor(profile);
+            Narrator = ReferenceEquals(narrator, profile) ? string.Empty : narrator.Id;
+        }
+
+        private void PaintNarrators()
+        {
+            foreach (var chip in _narrators)
+            {
+                string label = chip.Key.Length == 0 ? "THIS PROFILE" : NarratorLabel(_s.Byok.Find(chip.Key));
+                chip.Update(label, null, chip.Key == _narrator);
+            }
+        }
+
+        private static string NarratorLabel(ProviderProfile p)
+        {
+            return p == null ? "?" : DisplayText.Plain(p.Name + " · " + p.Model);
         }
 
         private void PaintEfforts()
@@ -230,6 +271,7 @@ namespace CampaignVault.UnityClient.UI.Settings
                 ReasoningEffort = _effort,
                 DisableStreaming = !_stream,
                 SinglePass = !_storyteller,
+                Narrator = _narrator,
                 PriceInPerM = ParsePrice(_priceIn, profile.PriceInPerM),
                 PriceCachedPerM = ParsePrice(_priceCached, profile.PriceCachedPerM),
                 PriceOutPerM = ParsePrice(_priceOut, profile.PriceOutPerM),

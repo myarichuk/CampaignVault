@@ -38,6 +38,9 @@ namespace CampaignVault.UnityClient.Tests
         private string _base;
         private readonly Queue<Func<JsonValue, Reply>> _script = new Queue<Func<JsonValue, Reply>>();
         private readonly List<JsonValue> _chatRequests = new List<JsonValue>();
+        // Per chat request, in order: the path it hit and its Authorization header ("" when none).
+        private readonly List<string> _chatPaths = new List<string>();
+        private readonly List<string> _chatAuth = new List<string>();
         private readonly List<string> _toolCalls = new List<string>();
         private string _toolResult = "{\"success\":true,\"summary\":\"ok\"}";
         private volatile bool _stopping;
@@ -52,6 +55,8 @@ namespace CampaignVault.UnityClient.Tests
             // NUnit reuses one fixture instance across tests.
             _script.Clear();
             _chatRequests.Clear();
+            _chatPaths.Clear();
+            _chatAuth.Clear();
             _toolCalls.Clear();
             _toolResult = "{\"success\":true,\"summary\":\"ok\"}";
             var probe = new TcpListener(IPAddress.Loopback, 0);
@@ -114,12 +119,14 @@ namespace CampaignVault.UnityClient.Tests
                 JsonValue.TryParse(body, out json);
                 Reply reply;
                 string path = ctx.Request.Url.AbsolutePath;
-                if (path == "/v1/chat/completions")
+                if (path == "/v1/chat/completions" || path == NarratorPath + "/chat/completions")
                 {
                     Func<JsonValue, Reply> next;
                     lock (_script)
                     {
                         _chatRequests.Add(json);
+                        _chatPaths.Add(path);
+                        _chatAuth.Add(ctx.Request.Headers["Authorization"] ?? string.Empty);
                         next = _script.Count > 0 ? _script.Dequeue() : null;
                     }
                     reply = next != null ? next(json) : new Reply { Status = 500, Body = "{\"error\":{\"message\":\"script exhausted\"}}" };
@@ -725,6 +732,136 @@ namespace CampaignVault.UnityClient.Tests
             Assert.AreEqual("fake-model", _chatRequests[0].GetString("model", null));
             Assert.AreEqual("fake-model", _chatRequests[1].GetString("model", null));
             Assert.AreEqual("fake-model", _driver.Turns[0].Model);
+        }
+
+        // ---- a separate storyteller profile ----
+
+        /// <summary>A second chat endpoint on the fake, so a test can tell which profile a request went through.</summary>
+        private const string NarratorPath = "/narrator/v1";
+
+        /// <summary>Adds a storyteller profile on its own endpoint, with its own key and sampling, and points the active profile at it.</summary>
+        private ProviderProfile AddNarrator()
+        {
+            var narrator = new ProviderProfile
+            {
+                Name = "Prose", Preset = "custom", BaseUrl = _base + NarratorPath, Model = "narrator-model", ApiKey = "narrator-key",
+                Temperature = 0.7f, MaxTokens = 900,
+            };
+            _driver.Byok.Profiles.Add(narrator);
+            _driver.Byok.Active.Narrator = ByokSettings.IdOf(narrator);
+            return narrator;
+        }
+
+        [UnityTest]
+        public IEnumerator TwoPass_NarratorProfile_WritesTheScene_TheLoopKeepsItsOwn()
+        {
+            TwoPass();
+            AddNarrator();
+            _script.Enqueue(req => ToolCallReply("c1", "take_turn", "{\"narrative\":\"Aric pries the lid off the crate\"}"));
+            _script.Enqueue(req => new Reply { Body = Plain("DONE") });
+            _script.Enqueue(req => Sse(Delta("{\"content\":\"The lid comes away \"}"), Delta("{\"content\":\"with a groan.\"}")));
+
+            yield return Send("I open the crate.");
+
+            Assert.AreEqual(3, _chatRequests.Count);
+            for (int i = 0; i < 2; i++)
+            {
+                Assert.AreEqual("/v1/chat/completions", _chatPaths[i], "the loop stays on its own endpoint");
+                Assert.AreEqual("fake-model", _chatRequests[i].GetString("model", null));
+                Assert.AreEqual(string.Empty, _chatAuth[i], "the narrator's key never goes to the loop's host");
+                Assert.IsTrue(_chatRequests[i].Get("temperature").IsNull, "the loop keeps its own (default) sampling");
+            }
+            var story = _chatRequests[2];
+            Assert.AreEqual(NarratorPath + "/chat/completions", _chatPaths[2]);
+            Assert.AreEqual("narrator-model", story.GetString("model", null));
+            Assert.AreEqual("Bearer narrator-key", _chatAuth[2]);
+            Assert.AreEqual(0.7, story.GetNumber("temperature", 0), 0.001);
+            Assert.AreEqual(900, (int)story.GetNumber("max_tokens", 0));
+            Assert.IsFalse(HasTools(story), "a narrator needs no tool support");
+            StringAssert.Contains("Aric pries the lid off the crate", Content(story.GetArray("messages").Last()), "the storyteller still writes from the loop's brief");
+
+            Assert.AreEqual("The lid comes away with a groan.", _transcript.Segments.Last(s => s.Kind == SegmentKind.Narration).Text);
+            Assert.AreEqual("fake-model", _driver.Turns[0].Model);
+            Assert.AreEqual("narrator-model", _driver.Turns[0].NarratorModel);
+            Assert.AreEqual(Content(story.GetArray("messages").Last()), Content(_driver.LastNarrationMessages.ArrayValue.Last()), "what the storyteller saw is kept for the measurer");
+            StringAssert.Contains("narrator=narrator-model", TranscriptExport.ToMarkdown("c", "dnd5e", _driver.Turns, _driver.SessionUsage));
+        }
+
+        [UnityTest]
+        public IEnumerator TwoPass_NarratorThatIsGone_TheProfileTellsItsOwnStory()
+        {
+            TwoPass();
+            _driver.Byok.Active.Narrator = "deleted-profile";
+            _script.Enqueue(req => new Reply { Body = Plain("DONE") });
+            _script.Enqueue(req => new Reply { Body = Plain("Rain.") });
+            yield return Send("I wait.");
+            Assert.AreEqual(2, _chatRequests.Count);
+            Assert.AreEqual("/v1/chat/completions", _chatPaths[1]);
+            Assert.AreEqual("fake-model", _chatRequests[1].GetString("model", null));
+            Assert.AreEqual("Rain.", _transcript.Segments.Last(s => s.Kind == SegmentKind.Narration).Text);
+        }
+
+        [UnityTest]
+        public IEnumerator TwoPass_NarratorNotReady_BlocksTheTurnBeforeAnythingIsCommitted()
+        {
+            TwoPass();
+            AddNarrator().ApiKey = string.Empty; // a custom endpoint needs a key
+            yield return Send("I open the crate.");
+            Assert.AreEqual(0, _chatRequests.Count, "the loop never ran, so no state was committed for a scene that couldn't be told");
+            Assert.AreEqual(0, _toolCalls.Count);
+            StringAssert.Contains("Storyteller profile \"Prose\"", _driver.LastError);
+        }
+
+        [UnityTest]
+        public IEnumerator SinglePass_IgnoresTheNarrator()
+        {
+            AddNarrator();
+            _script.Enqueue(req => new Reply { Body = Plain("The rain keeps falling.") });
+            yield return Send("I wait.");
+            Assert.AreEqual(1, _chatRequests.Count);
+            Assert.AreEqual("/v1/chat/completions", _chatPaths[0]);
+            Assert.AreEqual(string.Empty, _driver.Turns[0].NarratorModel);
+            Assert.IsNull(_driver.LastNarrationMessages, "no storyteller call, nothing to ground");
+        }
+
+        [UnityTest]
+        public IEnumerator TwoPass_NarratorFails_TheErrorNamesItsModel()
+        {
+            TwoPass();
+            AddNarrator();
+            _driver.Byok.Profiles[1].DisableStreaming = true;
+            _script.Enqueue(req => new Reply { Body = Plain("DONE") });
+            _script.Enqueue(req => new Reply { Status = 404, Body = "{\"error\":{\"message\":\"no such model\"}}" });
+            yield return Send("I wait.");
+            Assert.AreEqual(2, _chatRequests.Count);
+            Assert.IsFalse(_chatRequests[1].GetBool("stream", false), "the narrator's own streaming setting applies");
+            StringAssert.Contains("Storyteller error (narrator-model)", _driver.LastError);
+            StringAssert.Contains("narrator-model", _driver.LastFailure.Technical, "the copyable report names the storyteller's model");
+            StringAssert.Contains(NarratorPath, _driver.LastFailure.Technical, "and its endpoint");
+            StringAssert.Contains("narrator-model", _driver.ProviderProblem, "a refusal names the model that was refused");
+        }
+
+        [UnityTest]
+        public IEnumerator Complete_GoesThroughTheGivenProfile_AndCountsNothing()
+        {
+            var narrator = AddNarrator();
+            _script.Enqueue(req => new Reply { Body = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{}\"}}],\"usage\":{\"prompt_tokens\":10,\"completion_tokens\":2}}" });
+            var messages = JsonValue.NewArray();
+            var m = JsonValue.NewObject();
+            m.ObjectValue["role"] = JsonValue.FromString("user");
+            m.ObjectValue["content"] = JsonValue.FromString("judge this");
+            messages.ArrayValue.Add(m);
+            string content = null, error = null;
+            TokenUsage usage = null;
+            yield return EditModeCoroutines.Drive(_driver.Complete(narrator, messages, null, delegate (string c, TokenUsage u, string e) { content = c; usage = u; error = e; }));
+            Assert.IsNull(error, error);
+            Assert.AreEqual("{}", content);
+            Assert.AreEqual(NarratorPath + "/chat/completions", _chatPaths[0]);
+            Assert.AreEqual("narrator-model", _chatRequests[0].GetString("model", null));
+            Assert.AreEqual(10, usage.Prompt);
+            Assert.AreEqual(0, _driver.SessionUsage.Calls, "the caller decides where a side call's cost belongs");
+            Assert.AreEqual(0, _driver.History.Count, "nothing touches the play history");
+            Assert.IsFalse(_driver.IsBusy);
         }
 
         [UnityTest]
