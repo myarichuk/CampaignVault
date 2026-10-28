@@ -1,5 +1,5 @@
 {
-  "_comment": "USD per 1M tokens. Keys are normalised model ids ('.' written as '-', vendor prefix and ':variant' stripped). Longest key wins; a dated suffix like -20251001 still matches. Missing cachedInput/cacheWrite fall back to input. Sources: Anthropic pricing page and OpenAI API pricing (standard tier), fetched on asOf.",
+  "_comment": "USD per 1M tokens. Keys are normalised model ids ('.' written as '-', vendor prefix and ':variant' stripped). Longest key wins; a dated suffix like -20251001 still matches. Missing cachedInput/cacheWrite fall back to input. An optional longPrompt block ({over, input, output, ...}) prices a whole request whose prompt, cache reads and writes included, is over 'over' tokens. Sources: Anthropic pricing page and OpenAI API pricing (standard tier), fetched on asOf.",
   "asOf": "2026-10-03",
   "models": {
     "claude-fable-5-1": {
@@ -76,7 +76,7 @@
     },
     "claude-sonnet-5-5": {
       "input": 2,
-      "cachedInput": 0.2,
+      "cachedInput": 0.1,
       "cacheWrite": 2.5,
       "output": 10
     },
@@ -103,6 +103,19 @@
       "cachedInput": 0.3,
       "cacheWrite": 3.75,
       "output": 15
+    },
+    "claude-haiku-5-5": {
+      "input": 0.1,
+      "cachedInput": 0.01,
+      "cacheWrite": 0.125,
+      "output": 0.5,
+      "longPrompt": {
+        "over": 100000,
+        "input": 0.5,
+        "cachedInput": 0.05,
+        "cacheWrite": 0.625,
+        "output": 2.5
+      }
     },
     "claude-haiku-4-5": {
       "input": 1,

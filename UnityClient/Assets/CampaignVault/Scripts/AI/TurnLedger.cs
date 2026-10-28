@@ -67,6 +67,9 @@ namespace CampaignVault.UnityClient.AI
             if (ModelPricing.IsLocal(profile) || ModelPricing.IsFreeVariant(model)) { FreeCalls = 1; return; }
             ModelRate rate = ModelPricing.OverrideFor(profile) ?? (pricing != null ? pricing.Find(model) : null);
             if (rate == null) { UnpricedCalls = 1; return; }
+            // The prompt's full length decides a length-tiered price, cache hits included (Anthropic prices each request on its own).
+            int promptTotal = _cacheOutsidePrompt ? Prompt + Cached + CacheWrite : Prompt;
+            if (rate.LongPrompt != null && rate.LongPromptOver > 0 && promptTotal > rate.LongPromptOver) { rate = rate.LongPrompt; }
             int plain = _cacheOutsidePrompt ? Prompt : Math.Max(0, Prompt - Cached - CacheWrite);
             Cost = (plain * rate.Input + Cached * rate.CachedInput + CacheWrite * rate.CacheWrite + Completion * rate.Output) / 1000000.0;
             EstimatedCalls = 1;

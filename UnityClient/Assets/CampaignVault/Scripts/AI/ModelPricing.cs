@@ -12,6 +12,12 @@ namespace CampaignVault.UnityClient.AI
         public double CachedInput;
         public double CacheWrite;
         public double Output;
+        /// <summary>
+        /// Requests whose prompt is over this many input tokens (cache reads and writes included) pay <see cref="LongPrompt"/>'s
+        /// rates for the whole request (Claude Haiku 5.5). Zero: one price at any length.
+        /// </summary>
+        public int LongPromptOver;
+        public ModelRate LongPrompt;
     }
 
     /// <summary>
@@ -53,18 +59,33 @@ namespace CampaignVault.UnityClient.AI
             if (models.Kind != JsonKind.Object) { return pricing; }
             foreach (KeyValuePair<string, JsonValue> entry in models.ObjectValue)
             {
-                double input = entry.Value.GetNumber("input", -1);
-                double output = entry.Value.GetNumber("output", -1);
-                if (input < 0 || output < 0) { continue; }
-                pricing._rates[Normalize(entry.Key)] = new ModelRate
+                ModelRate rate = ParseRate(entry.Value);
+                if (rate == null) { continue; }
+                JsonValue longPrompt = entry.Value.Get("longPrompt");
+                if (longPrompt.Kind == JsonKind.Object)
                 {
-                    Input = input,
-                    Output = output,
-                    CachedInput = entry.Value.GetNumber("cachedInput", input),
-                    CacheWrite = entry.Value.GetNumber("cacheWrite", input),
-                };
+                    // A tier without its threshold or its prices is ignored rather than guessed at.
+                    ModelRate longRate = ParseRate(longPrompt);
+                    double over = longPrompt.GetNumber("over", 0);
+                    if (longRate != null && over > 0) { rate.LongPromptOver = (int)over; rate.LongPrompt = longRate; }
+                }
+                pricing._rates[Normalize(entry.Key)] = rate;
             }
             return pricing;
+        }
+
+        private static ModelRate ParseRate(JsonValue row)
+        {
+            double input = row.GetNumber("input", -1);
+            double output = row.GetNumber("output", -1);
+            if (input < 0 || output < 0) { return null; }
+            return new ModelRate
+            {
+                Input = input,
+                Output = output,
+                CachedInput = row.GetNumber("cachedInput", input),
+                CacheWrite = row.GetNumber("cacheWrite", input),
+            };
         }
 
         /// <summary>Lower-case, no vendor prefix ("anthropic/"), no variant ("…:free"), '.' written as '-'.</summary>
