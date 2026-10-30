@@ -317,13 +317,18 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         damageBonus = damageFold.Bonus;
         bareWarning += damageFold.Suffix;
 
-        var attackRoll = await _rollService.RollAsync(new RollRequest { Tag = "attack", Expression = "1d20", Bonus = attackBonus, Mechanic = attackFold.Mechanic }, ct);
-        
-        var degree = CalculateDegreeOfSuccess(attackRoll, ac);
+        // Auto-hit spell (Force Barrage, "It automatically hits"): no attack roll, so no critical — a plain hit.
+        var autoHit = isSpellAttack && LookupSpell(action)?.RequiresAttackRoll == false;
+        var attackRoll = autoHit
+            ? null
+            : await _rollService.RollAsync(new RollRequest { Tag = "attack", Expression = "1d20", Bonus = attackBonus, Mechanic = attackFold.Mechanic }, ct);
+
+        var degree = attackRoll is null ? Pf2eDegreeOfSuccess.Success : CalculateDegreeOfSuccess(attackRoll, ac);
 
         if (degree == Pf2eDegreeOfSuccess.Failure || degree == Pf2eDegreeOfSuccess.CriticalFailure)
         {
-            return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Missed. ({degree}) Attack {attackRoll.Result} vs AC {ac}. {attackRoll.Summary}{bareWarning}");
+            // Auto-hit spells always succeed, so an attack roll exists on every path that reaches here.
+            return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Missed. ({degree}) Attack {attackRoll!.Result} vs AC {ac}. {attackRoll.Summary}{bareWarning}");
         }
 
         var damageRoll = await _rollService.RollAsync(new RollRequest { Tag = "damage", Expression = damageDice, Bonus = damageBonus, Mechanic = DiceMechanic.Standard }, ct);
@@ -363,7 +368,8 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
 
         mutations.Add(new HpChange { CharacterId = targetId, Delta = -finalDamage, Critical = degree == Pf2eDegreeOfSuccess.CriticalSuccess });
 
-        return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage. ({degree}) Attack {attackRoll.Result} vs AC {ac}.{sneakNote}{bareWarning}");
+        var attackSegment = attackRoll != null ? $"({degree}) Attack {attackRoll.Result} vs AC {ac}." : "(auto-hit)";
+        return ResolverResult.Ok($"{action.ActionName} vs {target.Name}: Hit for {finalDamage} damage. {attackSegment}{sneakNote}{bareWarning}");
     }
 
     protected override async Task<ResolverResult> ResolveSkillCheckAsync(RulesetAction action, IChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)
@@ -856,9 +862,10 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         state.ActionBudget["actions"] -= cost;
 
         // Multiple attack penalty across separate actions: remember Strikes this turn; the resolver reads the count back.
-        // A spell that rolls an attack counts too; a save spell does not.
+        // A spell that rolls an attack counts too; a save spell does not, nor does an auto-hit one (Force Barrage has no attack trait).
         if (action.ActionType == RulesetActionType.Attack
-            || (action.ActionType == RulesetActionType.Spell && SpellResolutionHelper.InferMode(action) == SpellResolutionMode.Attack)
+            || (action.ActionType == RulesetActionType.Spell && SpellResolutionHelper.InferMode(action) == SpellResolutionMode.Attack
+                && LookupSpell(action)?.RequiresAttackRoll != false)
             || EngagementMutationHelper.IsGrappleAction(action) || EngagementMutationHelper.IsEscapeGrappleAction(action))
         {
             var made = state.ActionBudget.GetValueOrDefault(StrikesMade);

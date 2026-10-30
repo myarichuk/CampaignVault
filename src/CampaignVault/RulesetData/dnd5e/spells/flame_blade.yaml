@@ -7,6 +7,7 @@ classes: [druid]
 concentration: true
 castingTime: 1 bonus action
 castKind: bonus
+attackType: melee
 verbal: true
 somatic: true
 material: true

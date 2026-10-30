@@ -20,5 +20,7 @@ damageAtSlotLevel:
   7: 7d10
   8: 8d10
   9: 9d10
+saveType: dex
+saveSuccess: half
 areaOfEffectType: sphere
 areaOfEffectSize: 5

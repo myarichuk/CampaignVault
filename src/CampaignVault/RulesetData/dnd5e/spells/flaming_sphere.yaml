@@ -22,3 +22,5 @@ damageAtSlotLevel:
   7: 7d6
   8: 8d6
   9: 9d6
+saveType: dex
+saveSuccess: half
