@@ -1,3 +1,4 @@
+using System;
 using System.Text.Json;
 using CampaignVault.Schema;
 using Xunit;
@@ -127,10 +128,17 @@ public class ToolSchemaBudgetTests
         Assert.False(doc.RootElement.TryGetProperty("$defs", out _));
         Assert.DoesNotContain("\"hp\"", json);
         // Names are advertised (so a client with no skills can pick a valid $type); fields are not.
-        foreach (var variant in CommitFieldReference.Authorable)
-        {
-            Assert.Contains(variant.Discriminator, json);
-        }
+        // Fixed core verbs, read from the list segment itself: plain substring checks would pass on names that
+        // appear elsewhere in the schema, and enumerating the live registry races with tests that register a
+        // temporary plugin verb.
+        const string marker = "Valid $type values: ";
+        var listStart = json.IndexOf(marker, StringComparison.Ordinal);
+        Assert.True(listStart >= 0, "the stub changes description should list the valid $type names");
+        var listed = json[(listStart + marker.Length)..].Split('.')[0].Split(", ").ToHashSet();
+        Assert.Contains("hp", listed);
+        Assert.Contains("event", listed);
+        Assert.Contains("location_update", listed);
+        Assert.Contains("quest_progress", listed);
         Assert.DoesNotContain("\"const\"", json);
         Assert.Contains("lookup kind=commit_schema", json);
         Assert.Contains("\"forceFullReseed\"", json);
