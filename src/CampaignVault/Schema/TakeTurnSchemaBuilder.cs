@@ -9,10 +9,14 @@ namespace CampaignVault.Schema;
 /// </summary>
 internal static class TakeTurnSchemaBuilder
 {
-    internal const string StubChangesDescription =
-        "World changes to commit. Every item needs '$type'. Verbs and their fields are NOT listed here — consult your " +
+    // Verb names only (~650 chars): enough to pick a valid $type without a skills mechanism. Fields stay in
+    // the skills / lookup kind=commit_schema. Generated from the same list as the error-message hint, so it
+    // can't drift from the server's verbs.
+    internal static readonly string StubChangesDescription =
+        "World changes to commit. Every item needs '$type'. Fields are NOT listed here — consult your " +
         "CampaignVault skills. If unsure or a change fails, call lookup kind=commit_schema (no args = index of $types; type='<one $type>' = its fields). " +
-        "Send sparse objects: $type plus only the fields you mean, no nulls.";
+        "Send sparse objects: $type plus only the fields you mean, no nulls. " +
+        CommitFieldReference.ValidTypesLine();
 
     public static JsonElement Build(JsonSerializerOptions options, ToolSchemaMode mode = ToolSchemaMode.Full)
     {

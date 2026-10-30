@@ -126,6 +126,12 @@ public class ToolSchemaBudgetTests
 
         Assert.False(doc.RootElement.TryGetProperty("$defs", out _));
         Assert.DoesNotContain("\"hp\"", json);
+        // Names are advertised (so a client with no skills can pick a valid $type); fields are not.
+        foreach (var variant in CommitFieldReference.Authorable)
+        {
+            Assert.Contains(variant.Discriminator, json);
+        }
+        Assert.DoesNotContain("\"const\"", json);
         Assert.Contains("lookup kind=commit_schema", json);
         Assert.Contains("\"forceFullReseed\"", json);
         Assert.Contains("\"clientPartyFingerprint\"", json);
