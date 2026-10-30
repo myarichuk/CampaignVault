@@ -971,7 +971,9 @@ public class ActivityChange : WorldChange
 ///   "attackCount"   – max separate attack rolls (multi-target / repeating weapons); defaults to targetIds.Count when multiple targets listed
 ///   "initiativeSkill" – skill name overriding default initiative (PF2e)
 ///   "targetSkill"   – skill name for the target side of a ContestedCheck
-///   "resolution"    – spell routing: attack, save, check, utility, heal (alias: spellResolution)
+///   "resolution"    – spell routing: attack, save, check, utility, heal (alias: spellResolution); unknown values are rejected
+///   "slotLevel"     – spell slot cast at; sets damage tier and Magic Missile's dart count
+///   "outsideCombat" – "true" lets a hostile action resolve with no combat active (coup de grâce, spar)
 ///   "save"          – saving throw ability for save-based spells (5e/PF2e)
 ///   "halfOnSave"    – "true"/"false" — half damage on successful save (default true for 5e spells)
 ///   "healDice"      – healing expression for heal/recovery spells (e.g. "1d8")

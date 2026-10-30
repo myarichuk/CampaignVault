@@ -40,7 +40,7 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
 
     [ToolCategory("Combat & rulesets")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("Combat lifecycle by 'action': start (locationId + combatantIds; rolls initiative), next (advance turn), end, status (read-only). Attacks/spells/checks are NOT here: commit them as ruleset_action via take_turn.")]
+    [Description("Combat lifecycle: start (rolls initiative; required before any hostile act), next, end, status. Attacks/spells/checks are ruleset_action via take_turn.")]
     public Task<ToolResult<object>> Combat(
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,
@@ -53,11 +53,13 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
         [Description("start only: abandon any active combat and start fresh instead of failing.")]
         bool overwriteActive = false,
         [Description("next only: fail if the current active turn does not match this ID (prevents accidental double-advancing).")]
-        string? expectedActiveTurnId = null)
+        string? expectedActiveTurnId = null,
+        [Description("start only, D&D 5e: combatants caught unaware (they hadn't noticed the threat). Each one can't move or act on its first turn and can't react until that turn ends. Must also be in combatantIds.")]
+        List<string>? surprisedIds = null)
     {
         return (action?.Trim().ToLowerInvariant()) switch
         {
-            "start" => Box(StartCombat(locationId ?? "", combatantIds ?? [], campaignName, overwriteActive)),
+            "start" => Box(StartCombat(locationId ?? "", combatantIds ?? [], campaignName, overwriteActive, surprisedIds)),
             "next" => Box(NextTurn(campaignName, expectedActiveTurnId)),
             "end" => Box(EndCombat(campaignName)),
             "status" => GetCombat(campaignName),
@@ -100,7 +102,9 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
         [Description(ToolParameterDescriptions.CampaignNameRequired)]
         string campaignName,
         [Description("If true, abandon any active combat and start fresh. Otherwise, fails if combat already active.")]
-        bool overwriteActive = false)
+        bool overwriteActive = false,
+        [Description("D&D 5e: combatants who are surprised (see Combat's surprisedIds).")]
+        List<string>? surprisedIds = null)
     {
         if (string.IsNullOrWhiteSpace(locationId))
         {
@@ -210,18 +214,42 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
 
             var module = await GetActiveModuleAsync(session, effective);
 
+            var surprised = new HashSet<string>(
+                (surprisedIds ?? []).Where(id => !string.IsNullOrWhiteSpace(id)).Select(id => CanonicalId.NormalizeAlias(id.Trim())),
+                StringComparer.OrdinalIgnoreCase);
+            if (surprised.Count > 0)
+            {
+                // SRD 5.1's surprise rule is a 5e rule; PF2e has no surprise round (an ambusher rolls Stealth for
+                // initiative instead), and other systems have their own.
+                if (!string.Equals(module.System, RulesetSystem.Dnd5e, StringComparison.OrdinalIgnoreCase))
+                {
+                    return new ToolResult<CombatEncounterView>(false, Error: "InvalidInput",
+                        Summary: $"surprisedIds is the D&D 5e surprise rule; this campaign runs {module.System}, which has none. " +
+                                 "Start combat without it and narrate the ambush through the system's own initiative rules.");
+                }
+
+                var strays = surprised.Where(id => !uniqueIds.Contains(id, StringComparer.OrdinalIgnoreCase)).ToList();
+                if (strays.Count > 0)
+                {
+                    return new ToolResult<CombatEncounterView>(false, Error: "InvalidInput",
+                        Summary: $"surprisedIds must also be in combatantIds; not combatants: {string.Join(", ", strays)}.");
+                }
+            }
+
             var combatants = new List<CombatantState>();
             foreach (var character in validCharacters)
             {
                 var initiative = await module.Combat.RollInitiativeAsync(character);
                 var budget = module.Combat.GetTurnActionBudget(character);
+                var isSurprised = surprised.Contains(character.Id);
                 combatants.Add(new CombatantState
                 {
                     CharacterId = character.Id,
                     Initiative = initiative,
                     HasActedThisRound = false,
                     ActionBudget = new Dictionary<string, int>(budget),
-                    ReactionAvailable = true
+                    ReactionAvailable = !isSurprised,
+                    Surprised = isSurprised
                 });
             }
 
@@ -235,10 +263,24 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
             var heldElsewhere = await FindExclusivelyHeldAsync(session, effective);
             encounter.ActiveTurnId = combatants.FirstOrDefault(c => !heldElsewhere.ContainsKey(c.CharacterId))?.CharacterId;
             encounter.IsActive = true;
+            var firstSurprised = combatants.FirstOrDefault(c => c.Surprised && c.CharacterId == encounter.ActiveTurnId);
+            if (firstSurprised != null)
+            {
+                SpendSurprisedTurn(firstSurprised);
+            }
 
             await session.StoreAsync(encounter, encounter.Id);
 
             var summary = $"Combat started at {locationId} with {combatants.Count} combatants.";
+            var surprisedNames = combatants.Where(c => c.Surprised).Select(c => c.CharacterId).ToList();
+            if (surprisedNames.Count > 0)
+            {
+                summary += $" Surprised: {string.Join(", ", surprisedNames)} (no move or action on their first turn, no reaction until it ends).";
+            }
+            if (firstSurprised != null)
+            {
+                summary += $" SURPRISED: {firstSurprised.CharacterId} goes first but can't act; narrate the moment and advance with combat next.";
+            }
             if (droppedForZeroHp.Count > 0)
             {
                 summary += $" Dropped {droppedForZeroHp.Count} combatant(s) with 0 or negative HP: {string.Join(", ", droppedForZeroHp)}.";
@@ -319,6 +361,12 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
             if (current != null)
             {
                 current.HasActedThisRound = true;
+                if (current.Surprised)
+                {
+                    // SRD 5.1: surprise ends with the creature's first turn, and its reaction comes back then.
+                    current.Surprised = false;
+                    current.ReactionAvailable = true;
+                }
             }
 
             var expiredMessages = new List<string>();
@@ -377,6 +425,7 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
             var next = GetNextAliveUnacted();
             var startedNewRound = false;
             Character? dyingTurn = null;
+            string? surprisedTurn = null;
 
             if (next == null)
             {
@@ -392,6 +441,12 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                 foreach (var c in encounter.Combatants)
                 {
                     c.HasActedThisRound = false;
+                    if (c.Surprised)
+                    {
+                        // Its first turn was skipped (held elsewhere, downed): surprise doesn't outlast the first round.
+                        c.Surprised = false;
+                        c.ReactionAvailable = true;
+                    }
                 }
                 next = GetNextAliveUnacted(); // Retrieve the first alive person again
 
@@ -453,7 +508,12 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
                 var freshBudget = module.Combat.GetTurnActionBudget(nextCharacter);
                 next.ActionBudget = new Dictionary<string, int>(freshBudget);
                 next.ReactionAvailable = true; // M-81: a reaction comes back at the start of their own turn, not at the round wrap
-                if (HitPointState.IsDying(nextCharacter))
+                if (next.Surprised)
+                {
+                    SpendSurprisedTurn(next);
+                    surprisedTurn = next.CharacterId;
+                }
+                else if (HitPointState.IsDying(nextCharacter))
                 {
                     HitPointState.SyncDowned(nextCharacter); // a PC downed before the engine flagged them gets the status now
                     // An empty budget means unlimited actions, so a dying turn zeroes every key the ruleset uses.
@@ -478,6 +538,10 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
             {
                 summary += " Skipped (held by an exclusive mode): " +
                            string.Join(", ", skipped.Select(h => $"{h.Key} in '{h.Value}'")) + ".";
+            }
+            if (surprisedTurn != null)
+            {
+                summary += $" SURPRISED: {surprisedTurn} can't move or act this turn; narrate their reaction to the ambush and advance with combat next.";
             }
             if (dyingTurn != null)
             {
@@ -586,6 +650,21 @@ public class CombatTools : CampaignToolBase, IMcpServerTool
             return await PublishCombatEventsAsync(session, effective, [.. tickEvents, CombatEnded(encounter, "ended")],
                 characters.Values.Where(c => c != null)!, encounter, summary);
         });
+    }
+
+    /// <summary>
+    /// A surprised combatant's first turn (SRD 5.1): every action key the ruleset budgets drops to zero, and the reaction
+    /// stays spent until the turn ends. RulesetActionHandler refuses its actions outright while the flag is set, since an
+    /// empty budget would otherwise read as unlimited.
+    /// </summary>
+    private static void SpendSurprisedTurn(CombatantState state)
+    {
+        foreach (var key in state.ActionBudget.Keys.ToList())
+        {
+            state.ActionBudget[key] = 0;
+        }
+
+        state.ReactionAvailable = false;
     }
 
     private static (string, object?) TurnStarted(CombatEncounter encounter, bool newRound) =>

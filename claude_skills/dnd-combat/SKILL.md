@@ -11,7 +11,8 @@ What every ruleset shares. The system's own rules (attack flags, spells, slots, 
 
 ## Flow
 
-1. **Start:** `combat(action: "start", locationId, combatantIds)`; everyone rolls initiative once.
+1. **Start:** `combat(action: "start", locationId, combatantIds)`; everyone rolls initiative once. A hostile act outside combat (an attack, a damaging or save spell, a grapple or shove at someone) starts a fight: start combat first with the attacker, the targets and everyone else present who would join in or run, then commit the act on the attacker's turn. `take_turn` refuses it with `[CombatNotStarted]` otherwise. Initiative decides who goes first, not who struck. Fight or flight is each NPC's choice on its own turn (attack, Dash away, surrender), from its psychology. Only a strike that isn't a fight (a coup de grâce on a lone helpless target, a friendly spar) skips combat, with `parameters.outsideCombat: "true"`.
+   - **Surprise (D&D 5e):** list creatures who hadn't noticed the threat in `surprisedIds` (they must also be combatants). Each can't move or act on its first turn and can't react until that turn ends; the engine refuses their actions and says so when their turn comes. Creatures that see each other coming are never surprised. Other systems have no `surprisedIds`.
 2. **Turns:** `combat(action: "next")` advances the turn and expires round-based statuses.
 3. **Every action is a `ruleset_action`** in `take_turn`. The engine rolls and applies damage, healing, conditions and grapple engagement itself; never add a manual `hp`, `status` or `engagement_relation` for the same character in the same batch (`dnd-world-change`).
 4. **Grapple and shove:** a `ContestedCheck` whose `actionName` says grapple or shove (or `parameters.maneuver: "grapple"`); success applies the engagement. Escaping is `parameters.maneuver: "escape"`. A manual `engagement_relation` is only for restraint that isn't a grapple.
@@ -27,7 +28,7 @@ Reactions and opportunity attacks are a `ruleset_action` with `isReaction: true`
 - **SkillCheck**: `actionName` is the skill; `parameters.dc`. `parameters.skill` only to roll under a different skill than the label.
 - **SavingThrow**: `parameters.save` (one of the six abilities; `dex`/`con` style abbreviations are fine) and `dc`. `save` is required unless the action names a handbook spell with a known save type; an unknown name is rejected.
 - **ContestedCheck** / **OpposedCheck**: the actor's skill against the target's (grapple, shove, escape, a race, hide against search); the target's skill is `parameters.defenderSkill` (5e) or `targetSkill`. Both types resolve the same way.
-- **Spell**: `actionName` is the spell; `parameters.resolution` is attack, save, check, heal or utility.
+- **Spell**: `actionName` is the spell; `parameters.resolution` is attack, save, check, heal or utility, and any other value is rejected. A handbook spell aimed at someone may omit it: the engine reads the spell's save type, attack type and damage. A damage spell aimed at a creature never resolves as utility. Utility rolls and applies nothing.
 - **Recovery**: a self-heal feature (Second Wind needs nothing else; other features pass `healDice`/`healBonus` or `healAmount`).
 - **UseItem**: a consumable or device; a healing one passes `healDice` or `healAmount`, anything else is reported with no HP change.
 

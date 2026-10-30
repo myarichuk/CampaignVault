@@ -29,7 +29,7 @@ Applies **only when the campaign's ruleset is `pf2e`**. Load it with `dnd-combat
 
 - **SkillCheck**: `actionName` is the skill; `parameters.dc`. A skill with no recorded modifier rolls as *untrained* (ability modifier only). Perception uses Wisdom.
 - **SavingThrow**: `save` (Fortitude, Reflex, Will; an ability name such as Constitution maps to its save), `dc`. `save` is required unless the action names a handbook spell with a known save type. Spells with a save use the caster's spell DC if you omit `dc`.
-- **Spell**: `resolution` attack / save / check / heal / utility (`dnd-combat`). Damage from a save is basic-save style: critical success none, success half (`halfOnSave: "false"` for full), failure full, critical failure double — the engine applies it.
+- **Spell**: `resolution` attack / save / check / heal / utility (`dnd-combat`); a spell with targets but no mechanics is rejected rather than resolved as a no-op. Damage from a save is basic-save style: critical success none, success half (`halfOnSave: "false"` for full), failure full, critical failure double — the engine applies it.
 - **Grapple / Escape**: `ContestedCheck` with `skill` (default Athletics). Grapple is against Fortitude DC: critical success restrains, success grabs, critical failure drops the hold (the target may then grab or trip, by hand). Escape (`maneuver: escape`, the escaper's Athletics, Acrobatics or unarmed) is against 10 + the grabber's Athletics. Both take and count toward MAP. Pass `dc` to override.
 - Focus points and slots are resource pools (`focus_points`, `spell_slots_N`); commit the `resource` spend in the same batch.
 

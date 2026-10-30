@@ -176,6 +176,7 @@ public partial class MutationTools : CampaignToolBase, IMcpServerTool
     private readonly FeatDefinitionProvider? _featProvider;
     private readonly ProgressionDefinitionProvider? _progressionProvider;
     private readonly RaceDefinitionProvider? _raceProvider;
+    private readonly SpellDefinitionProvider? _spellProvider;
 
     public MutationTools(
         CampaignRepository repository,
@@ -188,9 +189,11 @@ public partial class MutationTools : CampaignToolBase, IMcpServerTool
         ILogger<MutationTools>? logger = null,
         FeatDefinitionProvider? featProvider = null,
         ProgressionDefinitionProvider? progressionProvider = null,
-        RaceDefinitionProvider? raceProvider = null)
+        RaceDefinitionProvider? raceProvider = null,
+        SpellDefinitionProvider? spellProvider = null)
         : base(repository, keys, logger)
     {
+        _spellProvider = spellProvider;
         _featProvider = featProvider;
         _progressionProvider = progressionProvider;
         _raceProvider = raceProvider;
@@ -1111,11 +1114,35 @@ public partial class MutationTools : CampaignToolBase, IMcpServerTool
         return null;
     }
 
+    /// <summary>See <see cref="CombatStartGuard"/>: a hostile action outside combat is refused until a fight is started.</summary>
+    private async Task<string?> FindCombatStartConflictAsync(TurnContext ctx, WorldChange[] changes)
+    {
+        if (!changes.Any(c => c is RulesetAction))
+        {
+            return null;
+        }
+
+        var encounter = await ctx.Session.LoadAsync<CombatEncounter>(_keys.CombatCurrent(ctx.Campaign));
+        var system = ctx.Config?.ActiveSystem
+                     ?? (await _repository.GetCampaignConfigAsync(new CampaignSession(ctx.Session, ctx.Campaign))).ActiveSystem;
+        return CombatStartGuard.FindConflict(changes, encounter?.IsActive == true, action =>
+            _spellProvider is not null && !string.IsNullOrWhiteSpace(action.ActionName)
+            && _spellProvider.TryGet(system, CastingComponentGate.NormalizeSlug(action.ActionName), out var spell)
+                ? spell
+                : null);
+    }
+
     /// <summary>Stages the batch, logs the narrative event, composes reminders, and saves. Returns a failure result or null on success.</summary>
     private async Task<ToolResult<TurnResult>?> CommitChangesAsync(TurnContext ctx)
     {
         var request = ctx.Request!;
         var changes = request.Changes!;
+
+        if (await FindCombatStartConflictAsync(ctx, changes) is { } combatConflict)
+        {
+            return new ToolResult<TurnResult>(false, new TurnResult(),
+                Summary: "NO CHANGES WERE SAVED — " + combatConflict, Error: ToolErrors.InvalidArgument);
+        }
 
         var timeBefore = await _repository.GetTimeAsync(new CampaignSession(ctx.Session, ctx.Campaign));
         var hoursBefore = timeBefore.TotalDaysElapsed * 24.0 + timeBefore.Hour;

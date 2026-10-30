@@ -406,6 +406,8 @@ public class Dnd5eRulesetResolverTests
         // should warn but still resolve the save as sent (soft warning, not a hard block).
         var rollService = new FakeRollService();
         rollService.NextRolls.Enqueue(new RollOutcome { Result = 15, Summary = "Rolled 15" });
+        // No damageDice sent: the engine takes Fireball's own 8d6 from the handbook entry and rolls it.
+        rollService.NextRolls.Enqueue(new RollOutcome { Result = 28, Summary = "Rolled 28" });
 
         var resolver = new Dnd5eRulesetResolver(rollService, spellDefinitionProvider: CreateSpellProvider());
         var actor = new Character { Id = "char1", SystemStats = new Dnd5eExtension { Level = 5 } };
@@ -733,7 +735,8 @@ public class Dnd5eRulesetResolverTests
             TargetIds = ["char2"],
             ActionType = RulesetActionType.Spell,
             ActionName = "Flame Strike",
-            Parameters = new Dictionary<string, string> { ["bonus"] = "5", ["damageDice"] = "4d6" }
+            // Explicit: without it the spell's own save type routes it down the save path.
+            Parameters = new Dictionary<string, string> { ["resolution"] = "attack", ["bonus"] = "5", ["damageDice"] = "4d6" }
         };
 
         var output = await resolver.ResolveAsync(context, action, TestContext.Current.CancellationToken);

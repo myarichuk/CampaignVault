@@ -589,6 +589,8 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             ? spell
             : null;
 
+    protected override SpellDefinition? LookupSpellDefinition(RulesetAction action) => LookupSpell(action);
+
     protected override async Task<ResolverResult> ResolveSpellSaveAsync(
         RulesetAction action,
         IChangeContext context,
@@ -658,8 +660,21 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
     {
         if (!action.Parameters.ContainsKey("dc"))
         {
+            // Same guard as dnd5e's F1: a targeted spell with no mechanics (Force Barrage with only targetIds) would
+            // otherwise succeed as a no-op. An explicit resolution=utility opts out (a buff committed as a status).
+            if (action.TargetIds.Count > 0
+                && !action.Parameters.ContainsKey("resolution")
+                && !action.Parameters.ContainsKey("spellResolution"))
+            {
+                return ResolverResult.Fail("InvalidParameter",
+                    $"Error: {action.ActionName} targets {action.TargetIds.Count} character(s) but supplies no spell mechanics, " +
+                    "so there is nothing to resolve. Fix: pass the spell's mechanics explicitly — resolution=attack plus damageDice " +
+                    "for a spell attack roll, resolution=save plus save (and damageDice, basicSave) for a saving-throw spell, " +
+                    "or resolution=utility for a genuine non-damaging effect (which needs no targets).");
+            }
+
             return ResolverResult.Ok(
-                $"{action.ActionName}: Non-combat spell (detect aura, prestidigitation, message). Narrate effect; commit status or knowledge_update if the world changes.");
+                $"{action.ActionName}: utility effect, nothing rolled or applied (detect aura, prestidigitation, message). Narrate it; commit status or knowledge_update if the world changes.");
         }
 
         var skillName = action.Parameters.GetValueOrDefault("skill", "Arcana");

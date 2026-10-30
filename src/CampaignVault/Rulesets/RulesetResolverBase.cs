@@ -150,6 +150,12 @@ public abstract class RulesetResolverBase<TStats> : IHostRulesetModule, IActionR
     protected virtual SpellDefinition? LookupSummonSpell(RulesetAction action) => null;
 
     /// <summary>
+    /// The handbook entry for the cast spell, so routing can follow the spell's own mechanics when the caller
+    /// sends no resolution. Null in the base (no catalog); system resolvers with a provider override it.
+    /// </summary>
+    protected virtual SpellDefinition? LookupSpellDefinition(RulesetAction action) => null;
+
+    /// <summary>
     /// Handbook creature catalog for resolving a summon's <c>creatures</c> refs.
     /// Null means catalog lookups are skipped: the cast then needs an inline seed
     /// or an explicit <c>maxHp</c> parameter, and says so when neither is present.
@@ -231,7 +237,10 @@ public abstract class RulesetResolverBase<TStats> : IHostRulesetModule, IActionR
             return await ResolveSummonAsync(action, context, actorStats, summonSpell, mutations, ct);
         }
 
-        var mode = SpellResolutionHelper.InferMode(action);
+        if (!SpellResolutionHelper.TryInferMode(action, LookupSpellDefinition(action), out var mode, out var modeError))
+        {
+            return ResolverResult.Fail("InvalidParameter", modeError!);
+        }
 
         switch (mode)
         {
@@ -723,7 +732,7 @@ public abstract class RulesetResolverBase<TStats> : IHostRulesetModule, IActionR
         }
 
         return ResolverResult.Ok(
-            $"{action.ActionName}: Non-combat utility spell — no DC supplied. Narrate the outcome; commit status/effects separately if needed.");
+            $"{action.ActionName}: utility effect, nothing rolled or applied. Narrate it; commit status/effects separately if needed.");
     }
 
     protected virtual async Task<ResolverResult> ResolveSpellHealAsync(

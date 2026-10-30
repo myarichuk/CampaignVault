@@ -169,6 +169,13 @@ public sealed class RulesetActionHandler(
                     $"[NotInCombat] {action.CharacterId} is not on the active combat roster.");
             }
 
+            if (combatantState.Surprised)
+            {
+                return ChangeHandlerResult.Failure(
+                    $"[Surprised] {action.CharacterId} is surprised: no move, action or reaction until its first turn ends. " +
+                    "Narrate it reeling and advance with combat(action: \"next\").");
+            }
+
             // Turn ownership check (unless this is a reaction). A bound minion acts
             // on its controller's turn via the same ordinary ruleset_action — no new
             // action type. The exception is deliberately narrow: the actor must be

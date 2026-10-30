@@ -53,7 +53,8 @@ Note: `world_build.quests[].objectives[]` only needs `description` (+ optional `
 | `actionType` | Attack, Spell, SkillCheck, ContestedCheck, OpposedCheck (alias), UseItem, Recovery, SavingThrow |
 | `actionCategory` | Melee, Ranged, Spell, Maneuver, Social, Survival |
 | `advantageState` | None, Advantage, Disadvantage |
-| `parameters.resolution` (Spell) | attack, save, check, utility, heal — **set explicitly** |
+| `parameters.resolution` (Spell) | attack, save, check, utility, heal; any other value is rejected. Auto-hit spells (Magic Missile) are attack (the engine skips the roll). May be omitted for a handbook spell with targets (the engine reads the spell). |
+| `parameters.outsideCombat` | "true" only for a strike that isn't a fight (coup de grâce, spar); otherwise a hostile action needs `combat start` first |
 | `parameters.save` | Required unless the named spell's handbook entry declares its saveType. 5e: Strength/Dexterity/Constitution/Intelligence/Wisdom/Charisma; PF2e: Fortitude/Reflex/Will (an ability name maps to its save). Unknown names are rejected, never rolled at +0 |
 | `parameters.halfOnSave` | true/false — 5e defaults **true** (half damage on successful save) |
 | `parameters.healDice` / `healBonus` / `healAmount` | Healing spells (5e/PF2e) |

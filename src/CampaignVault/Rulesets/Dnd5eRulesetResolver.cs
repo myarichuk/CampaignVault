@@ -156,6 +156,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             return await ResolveMultiInstanceAttackAsync(action, spell, context, actorStats, mutations, ct);
         }
 
+        FillSpellDamageDefault(action, spell, actorStats.Level);
         var targets = AttackTargetHelper.SelectAttackInstances(action);
         if (targets.Count == 0)
         {
@@ -625,6 +626,8 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         return _spellDefinitionProvider.TryGet(System, slug, out var spell) ? spell : null;
     }
 
+    protected override SpellDefinition? LookupSpellDefinition(RulesetAction action) => LookupSpell(action);
+
     protected override SpellDefinition? LookupSummonSpell(RulesetAction action)
     {
         var spell = LookupSpell(action);
@@ -635,6 +638,42 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
 
     protected override void ApplySummonedDefense(Dnd5eExtension stats, int defense) =>
         stats.ArmorClass = defense;
+
+    /// <summary>
+    /// A handbook spell cast without damageDice takes its dice from the entry, so routing a bare "Fire Bolt at the
+    /// goblin" by spell data rolls the real damage, not the resolver's generic 1d4. Cantrips use the caster-level
+    /// tier; leveled spells the slot in <c>slotLevel</c>, else the base slot. Multi-instance and multi-pool spells
+    /// derive their own dice already, and heal-style strings carrying MOD are left alone.
+    /// </summary>
+    private static void FillSpellDamageDefault(RulesetAction action, SpellDefinition? spell, int? casterLevel)
+    {
+        if (action.ActionType != RulesetActionType.Spell || spell is null || action.Parameters.ContainsKey("damageDice")
+            || HasInstanceData(spell) || HasPoolData(spell))
+        {
+            return;
+        }
+
+        string? dice = null;
+        if (spell.DamageAtCharacterLevel is { Count: > 0 } byCharacter)
+        {
+            var tier = byCharacter.Keys.Where(l => l <= (casterLevel ?? 1)).DefaultIfEmpty(byCharacter.Keys.Min()).Max();
+            dice = byCharacter[tier];
+        }
+        else if (spell.DamageAtSlotLevel is { Count: > 0 } bySlot)
+        {
+            var slot = ExplicitSlotLevel(action) is { } chosen && bySlot.ContainsKey(chosen) ? chosen : bySlot.Keys.Min();
+            dice = bySlot[slot];
+        }
+
+        if (!string.IsNullOrWhiteSpace(dice) && !dice.Contains("MOD", StringComparison.OrdinalIgnoreCase))
+        {
+            action.Parameters["damageDice"] = NormalizeDice(dice);
+        }
+    }
+
+    /// <summary>The caller's <c>slotLevel</c>, when it is a whole number.</summary>
+    private static int? ExplicitSlotLevel(RulesetAction action) =>
+        TryGetParameter(action.Parameters, out var raw, "slotLevel") && int.TryParse(raw, out var slot) ? slot : null;
 
     private static bool HasInstanceData(SpellDefinition spell) =>
         spell.InstanceCountAtSlotLevel is { Count: > 0 }
@@ -780,8 +819,12 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             // so infer the tier from the caller's summed total — the same value the old single-roll
             // shape sent ("5d4+5" matches slot 3's total, resolving 5 darts). Falls back to the
             // base slot when nothing matches (e.g. the caller already sent per-instance dice).
+            // An explicit slotLevel wins: per-dart dice ("1d4+1") match no summed tier, so a 4th-level
+            // Magic Missile used to fire the base 3 darts.
             action.Parameters.TryGetValue("damageDice", out var sent);
-            var slot = MatchSummedTier(spell, sent) ?? bySlot.Keys.Min();
+            var slot = ExplicitSlotLevel(action) is { } chosen && bySlot.ContainsKey(chosen)
+                ? chosen
+                : MatchSummedTier(spell, sent) ?? bySlot.Keys.Min();
 
             var count = bySlot.TryGetValue(slot, out var resolvedCount) ? resolvedCount : bySlot[bySlot.Keys.Min()];
             var dice = slotDice.TryGetValue(slot, out var resolvedDice) ? resolvedDice : slotDice[slotDice.Keys.Min()];
@@ -1438,6 +1481,8 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             return ResolverResult.Fail("InvalidTarget", "Error: Spell save requires at least one target in targetIds.");
         }
 
+        FillSpellDamageDefault(action, spell, actorStats.Level);
+
         var dc = ResolveSpellSaveDc(actorStats, action);
         if (dc <= 0)
         {
@@ -1525,6 +1570,23 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
     {
         if (!action.Parameters.ContainsKey("dc"))
         {
+            // A handbook damage spell aimed at someone is never a utility cast, even when the caller says so:
+            // resolution=utility on Magic Missile used to succeed with no damage at all. Self-targeted riders
+            // (Divine Favor) carry damage data too, so only a target other than the caster counts.
+            var spell = LookupSpell(action);
+            if (SpellResolutionHelper.HasDamageData(spell)
+                && action.TargetIds.Any(id => !string.Equals(id, action.CharacterId, StringComparison.OrdinalIgnoreCase)))
+            {
+                var fix = !string.IsNullOrWhiteSpace(spell!.SaveType)
+                    ? "resolution=save (the engine reads the save type and damage from the spell)"
+                    : spell.RequiresAttackRoll == false
+                        ? "resolution=attack (it never misses: the engine skips the attack roll and applies the damage)"
+                        : "resolution=attack (the engine rolls the spell attack and applies the damage)";
+                return ResolverResult.Fail("InvalidParameter",
+                    $"Error: {action.ActionName} is a damage spell aimed at {action.TargetIds.Count} target(s), so it can't resolve as utility (that applies no damage). " +
+                    $"Fix: use {fix}, or omit resolution and the engine picks it from the spell.");
+            }
+
             // F1: a targeted spell with no mechanics (e.g. Fire Bolt with targetIds and no
             // parameters) used to resolve as a utility no-op — no roll, but the action was
             // still consumed. Fail with a fix hint instead of silently doing nothing.
@@ -1542,7 +1604,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             }
 
             return ResolverResult.Ok(
-                $"{action.ActionName}: Utility spell cast outside combat. Narrate scouting, communication, or ward effects; commit status or knowledge_update if the scene changes.");
+                $"{action.ActionName}: utility effect, nothing rolled or applied. Narrate scouting, communication, or ward effects; commit status or knowledge_update if the scene changes.");
         }
 
         var skillName = action.Parameters.TryGetValue("skill", out var skill)

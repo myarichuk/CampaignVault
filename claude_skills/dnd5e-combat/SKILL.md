@@ -27,6 +27,19 @@ The derived attack bonus is ability + proficiency + fighting style + weapon ench
 }
 ```
 
+**Magic Missile** (auto-hit: `resolution: "attack"`, and the engine skips the roll because the spell never misses; `slotLevel` sets the dart count, one more per slot above 1st; darts split across the listed targets):
+```json
+{
+  "$type": "ruleset_action",
+  "characterId": "chars/mage",
+  "targetIds": ["chars/goblin-1"],
+  "actionType": "Spell",
+  "actionName": "Magic Missile",
+  "parameters": { "resolution": "attack", "slotLevel": 3 }
+}
+```
+Leave out `damageDice` for a handbook spell and the engine uses the spell's own dice for the slot (or for the caster's level, for a cantrip).
+
 **Cantrip damage scales with character level, not spell level:** 1 die at levels 1–4, 2 at 5–10, 3 at 11–16, 4 at 17–20, and no ability modifier on the damage. Every SRD spell carries its damage and save data, so the engine warns when the dice or save you send disagree with the spell; the damage still applies as sent, and homebrew spells cast normally.
 
 **Fireball** (save, all targets; omit `dc` and the caster's spell save DC is used):
