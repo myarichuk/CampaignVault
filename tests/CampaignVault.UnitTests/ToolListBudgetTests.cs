@@ -25,7 +25,9 @@ public class ToolListBudgetTests(ITestOutputHelper output)
     // (NARRATION_LENGTH_PLAN.md, D2). Deliberate, not a regression.
     // 3e (2026-10-15): hand-written schemas for lookup/combat/advance_world/create_campaign/start_session/get_entity,
     // take_turn description cut to the essentials, /build examples moved to help: 21_364 → 17_332. Budgets lock it.
-    private const int ToolListCharBudget = 17_500;
+    // take_turn's changes description now lists the authorable $type names (~650 chars) so a client without
+    // skills can pick a valid verb; fields stay in skills / lookup. 17_500 → 18_200 (tools/list 18_146). Deliberate.
+    private const int ToolListCharBudget = 18_200;
     // Raised from 13_000 for take_turn's includeCombatDetail parameter + descriptions:
     // deliberate surface growth, not a regression. Keep the tripwire tight — bump in 100s, not 1000s.
     // 13_100 → 13_200 for the same narrative wording.
