@@ -94,7 +94,9 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
             new RulesetAction
             {
                 CharacterId = attackerId, TargetIds = [defenderId],
-                ActionName = "longsword", ActionType = RulesetActionType.Attack
+                ActionName = "longsword", ActionType = RulesetActionType.Attack,
+                // No combat here: this test is about the duplication guard, not CombatStartGuard.
+                Parameters = new Dictionary<string, string> { [CombatStartGuard.OutsideCombatParameter] = "true" }
             },
             new HpChange { CharacterId = bystanderId, Delta = -3 }
         };
@@ -102,6 +104,41 @@ public class CampaignToolsTests : IClassFixture<RavenDBFixture>
         var result = await tools.Commit(changes, "Attack + unrelated bystander HP change", slug);
 
         Assert.True(result.Success, $"Should not be blocked by unrelated-target HP change: {result.Summary}");
+    }
+
+
+    [Fact]
+    public async Task Commit_HostileActionWithNoCombat_IsRefusedUntilCombatStarts()
+    {
+        var repo = _fixture.CreateRepository();
+        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        var slug = "combat-guard-world-" + Guid.NewGuid().ToString("N")[..8];
+        var attackerId = "chars/" + Guid.NewGuid().ToString("N")[..8];
+        var defenderId = "chars/" + Guid.NewGuid().ToString("N")[..8];
+
+        await tools.SetActiveSystem(RulesetSystem.Dnd5e, null, slug);
+        var worldBuilder = TestCampaignToolsFactory.CreateWorldBuilderTools(_fixture, repo);
+        await worldBuilder.UpsertCharacter(new CharacterUpsertRequest
+        {
+            Id = attackerId, Name = "Attacker", MaxHp = 20, CurrentHp = 20, SystemStats = new Dnd5eExtension { ArmorClass = 10 }
+        }, slug);
+        await worldBuilder.UpsertCharacter(new CharacterUpsertRequest
+        {
+            Id = defenderId, Name = "Defender", MaxHp = 20, CurrentHp = 20, SystemStats = new Dnd5eExtension { ArmorClass = 10 }
+        }, slug);
+
+        var result = await tools.Commit(
+        [
+            new RulesetAction
+            {
+                CharacterId = attackerId, TargetIds = [defenderId],
+                ActionName = "longsword", ActionType = RulesetActionType.Attack
+            }
+        ], "Attacker stabs Defender out of nowhere", slug);
+
+        Assert.False(result.Success);
+        Assert.Contains("[CombatNotStarted]", result.Summary);
+        Assert.Contains(defenderId, result.Summary);
     }
 
     /// <summary>

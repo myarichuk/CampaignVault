@@ -65,6 +65,18 @@ corrected base pools — still additive, since the flat table keeps the raw
 API strings for reference. Ice Storm's and Meteor Swarm's pools need no
 overlay entry at all: both pools come straight from the API.
 
+It also fills **API gaps** spell routing depends on: `saveType` /
+`saveSuccess` / `attackType` for spells whose text names a save or spell
+attack the API omits (Call Lightning, Flaming Sphere, Flame Blade, Scorching
+Ray). Without them a bare cast at a target is routed from the damage table
+alone, i.e. to a spell attack. The file's header lists the audited spells
+deliberately left alone (self riders, retaliation, mishap damage) and why.
+
+The pf2e twin, `spell_damage_overlay_pf2e.yaml`, takes the same schema and is
+merged by `generate_pf2e()`; today it holds only Force Barrage's
+`requiresAttackRoll: false` ("It automatically hits"), the one Player Core /
+Player Core 2 spell with that text.
+
 Evidentiary standard: every entry cites the exact SRD rules text backing it —
 no entry without a quote. After any regen, diff-review: every file except the
 overlay-flagged spells (plus any new `damagePools` the API grew) must be

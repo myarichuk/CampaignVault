@@ -18,6 +18,14 @@ public class CombatantState
 
     [JsonPropertyName("reactionAvailable")]
     public bool ReactionAvailable { get; set; } = true;
+
+    /// <summary>
+    /// Surprised at the start of combat (D&amp;D 5e, SRD 5.1): no movement or action on its first turn, and no reaction
+    /// until that turn ends. Cleared when its first turn ends.
+    /// </summary>
+    [JsonPropertyName("surprised")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Surprised { get; set; }
 }
 
 public class CombatEncounter

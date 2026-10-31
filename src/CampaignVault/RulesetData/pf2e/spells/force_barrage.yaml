@@ -13,3 +13,4 @@ verbal: false
 somatic: true
 material: false
 materialConsumed: false
+requiresAttackRoll: false

@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DND5E_DIR = ROOT / "src/CampaignVault/RulesetData/dnd5e/spells"
 PF2E_DIR = ROOT / "src/CampaignVault/RulesetData/pf2e/spells"
 OVERLAY_PATH = ROOT / "scripts" / "spell_damage_overlay.yaml"
+PF2E_OVERLAY_PATH = ROOT / "scripts" / "spell_damage_overlay_pf2e.yaml"
 SUMMON_OVERLAY_PATH = ROOT / "scripts" / "spell_summon_overlay.yaml"
 SUMMON_PF2E_OVERLAY_PATH = ROOT / "scripts" / "spell_summon_overlay_pf2e.yaml"
 
@@ -242,7 +243,9 @@ def parse_gp_cost(text: str) -> float | None:
 # parses the file's small controlled subset directly: 2-space-indented nested
 # maps, scalar leaves, `#` comments. Anything outside this schema fails loudly.
 OVERLAY_BOOL_KEYS = {"requiresAttackRoll", "damageIsPool"}
-OVERLAY_STR_KEYS = {"onMiss"}
+# saveType/saveSuccess/attackType fill API gaps (a spell whose text names a save or spell attack the API omits);
+# they still only ADD, so an API that later grows the field fails the regen instead of being overridden.
+OVERLAY_STR_KEYS = {"onMiss", "saveType", "saveSuccess", "attackType"}
 OVERLAY_INT_TABLE_KEYS = {"instanceCountAtSlotLevel", "instanceCountAtCharacterLevel"}
 OVERLAY_STR_TABLE_KEYS = {"perInstanceDamageAtSlotLevel", "perInstanceDamageAtCharacterLevel"}
 OVERLAY_TICK_SCALAR_TYPES = {"damageType": "str", "triggerAt": "str", "requiresInitialHit": "bool"}
@@ -251,6 +254,12 @@ OVERLAY_POOL_KEYS = {"damagePools"}
 OVERLAY_CHOICE_KEYS = {"upcastChoice"}
 OVERLAY_CHOICE_STR_KEYS = {"bonusDicePerSlot"}
 VALID_ON_MISS = {"none", "half"}
+VALID_OVERLAY_VALUES = {
+    "onMiss": VALID_ON_MISS,
+    "saveType": {"str", "dex", "con", "int", "wis", "cha", "fortitude", "reflex", "will"},
+    "saveSuccess": {"none", "half", "other"},
+    "attackType": {"melee", "ranged"},
+}
 VALID_TRIGGER_AT = {"endOfTargetNextTurn"}
 
 
@@ -284,24 +293,24 @@ def _parse_overlay_scalar(text: str, kind: str, where: str):
     return text
 
 
-def load_damage_overlay() -> dict[str, dict]:
-    """Parse scripts/spell_damage_overlay.yaml into {slug: {camelCaseKey: value}}."""
-    if not OVERLAY_PATH.exists():
+def load_damage_overlay(path: Path = OVERLAY_PATH) -> dict[str, dict]:
+    """Parse a spell damage overlay (scripts/spell_damage_overlay*.yaml) into {slug: {camelCaseKey: value}}."""
+    if not path.exists():
         return {}
     overlay: dict[str, dict] = {}
     slug: str | None = None
     section: str | None = None
     tick_table: str | None = None
     pool_name: str | None = None
-    for lineno, raw in enumerate(OVERLAY_PATH.read_text(encoding="utf-8").splitlines(), 1):
+    for lineno, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         line = _strip_overlay_comment(raw).rstrip()
         if not line.strip():
             continue
         indent = len(line) - len(line.lstrip(" "))
         if indent % 2 or indent > 6:
-            raise ValueError(f"{OVERLAY_PATH.name}:{lineno}: bad indent (use 2 spaces/level)")
+            raise ValueError(f"{path.name}:{lineno}: bad indent (use 2 spaces/level)")
         content = line.strip()
-        where = f"{OVERLAY_PATH.name}:{lineno}"
+        where = f"{path.name}:{lineno}"
         if indent == 0:
             if not content.endswith(":"):
                 raise ValueError(f"{where}: expected 'slug:'")
@@ -374,8 +383,9 @@ def load_damage_overlay() -> dict[str, dict]:
             else:
                 raise ValueError(f"{where}: nested entry outside diceExpressionAtSlotLevel or damagePools")
     for name, entry in overlay.items():
-        if "onMiss" in entry and entry["onMiss"] not in VALID_ON_MISS:
-            raise ValueError(f"{name}: onMiss must be one of {sorted(VALID_ON_MISS)}")
+        for key, allowed in VALID_OVERLAY_VALUES.items():
+            if key in entry and entry[key] not in allowed:
+                raise ValueError(f"{name}: {key} must be one of {sorted(allowed)}")
         for count_key, dice_key in (("instanceCountAtSlotLevel", "perInstanceDamageAtSlotLevel"),
                                     ("instanceCountAtCharacterLevel", "perInstanceDamageAtCharacterLevel")):
             if count_key in entry:
@@ -412,7 +422,8 @@ def apply_damage_overlay(slug: str, body: dict, overlay: dict[str, dict]) -> Non
     if not entry:
         return
     for key, value in entry.items():
-        if key in body:
+        # The API body carries absent fields as None (attackType always has a key); only a real value collides.
+        if body.get(key) is not None:
             raise ValueError(f"overlay for {slug!r} collides with API-derived key {key!r}")
         body[key] = value
 
@@ -874,10 +885,16 @@ def generate_pf2e() -> int:
             "materialConsumed": bool(cost_text),
         }
 
+    damage_overlay = load_damage_overlay(PF2E_OVERLAY_PATH)
     summon_overlay = load_summon_overlay_file(
         SUMMON_PF2E_OVERLAY_PATH, PF2E_DIR.parent / "creatures", 10)
     for slug, body in generated.items():
+        apply_damage_overlay(slug, body, damage_overlay)
         apply_summon_overlay(slug, body, summon_overlay)
+
+    unused_damage = sorted(set(damage_overlay) - set(generated))
+    if unused_damage:
+        raise ValueError(f"pf2e damage overlay entries match no AoN spell: {', '.join(unused_damage)}")
 
     unused_summon = sorted(set(summon_overlay) - set(generated))
     if unused_summon:

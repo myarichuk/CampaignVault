@@ -1,0 +1,15 @@
+# Hand-authored rules metadata for pf2e Player Core / Player Core 2 spells that
+# AoN's spell documents carry only as prose. NEVER regenerated from an API —
+# merged into the generated pf2e spell YAMLs by generate_spells.py's
+# generate_pf2e(), same schema and additive-only rule as
+# spell_damage_overlay.yaml (the dnd5e twin).
+#
+# Evidentiary standard: every entry cites the exact Player Core rules text.
+# Audit source: AoN search over category:spell, Player Core + Player Core 2,
+# common rarity, phrase "automatically hits" (2026-10): Force Barrage is the
+# only match.
+
+force_barrage:
+  # Player Core pg. 332: "You fire a shard of solidified magic toward a creature
+  # that you can see. It automatically hits and deals 1d4+1 force damage."
+  requiresAttackRoll: false

@@ -158,8 +158,9 @@ public class CampaignTools(
 
     // --- Combat ---
     public Task<ToolResult<CombatEncounterView>> StartCombat(string locationId, string[] participantIds,
-        string? campaignName = TestDefaultCampaignSlug) =>
-        combat.StartCombat(locationId, participantIds?.ToList() ?? [], ResolveCampaign(campaignName));
+        string? campaignName = TestDefaultCampaignSlug, string[]? surprisedIds = null) =>
+        combat.StartCombat(locationId, participantIds?.ToList() ?? [], ResolveCampaign(campaignName),
+            surprisedIds: surprisedIds?.ToList());
 
     public Task<ToolResult<CombatEncounterView>>
         NextTurn(string? expectedActiveTurnId = null, string? campaignName = TestDefaultCampaignSlug) =>
