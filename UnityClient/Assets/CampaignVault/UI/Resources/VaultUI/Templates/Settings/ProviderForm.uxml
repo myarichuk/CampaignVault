@@ -77,6 +77,22 @@
                 <ui:DataBinding property="value" data-source-path="Storyteller" binding-mode="TwoWay" />
             </Bindings>
         </cv:VaultSwitch>
+        <ui:VisualElement name="provider-narrator">
+            <Bindings>
+                <cv:ClassBinding property="cls-hidden" data-source-path="Storyteller" class-name="cv-hidden" invert="true" />
+            </Bindings>
+            <ui:Label text="STORYTELLER (WHO WRITES THE SCENES)" class="cv-caption" />
+            <cv:Repeater name="provider-narrators" item-template="Common/Choice" class="cv-choices cv-form__group">
+                <Bindings>
+                    <ui:DataBinding property="itemsSource" data-source-path="Narrators" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:Repeater>
+            <ui:Label class="cv-body cv-muted">
+                <Bindings>
+                    <ui:DataBinding property="text" data-source-path="NarratorNote" binding-mode="ToTarget" />
+                </Bindings>
+            </ui:Label>
+        </ui:VisualElement>
 
         <ui:Label text="PRICES, USD PER 1M TOKENS (OPTIONAL)" class="cv-caption" />
         <ui:VisualElement class="cv-row">

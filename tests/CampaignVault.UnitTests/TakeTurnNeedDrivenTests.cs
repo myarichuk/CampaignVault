@@ -192,6 +192,8 @@ public class TakeTurnNeedDrivenTests : IClassFixture<RavenDBFixture>
         {
             var stillHasField = await session.Advanced
                 .AsyncRawQuery<Item>($"from '{collection}' where id() = '{itemId}' and exists(Hidden)")
+                // The auto-index can still hold the pre-patch document under a loaded suite; wait it out like the query below.
+                .WaitForNonStaleResults(TimeSpan.FromSeconds(5))
                 .CountAsync(ct);
             Assert.Equal(0, stillHasField); // the document really is legacy-shaped now
 

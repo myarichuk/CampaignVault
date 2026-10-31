@@ -158,7 +158,8 @@ namespace CampaignVault.UnityClient.UI.Shell
             if (!ready) { return "No working Dungeon Master: " + reason + " Click to set one up."; }
             var driver = _s.Driver;
             string state = driver == null ? "ready" : driver.IsBusy ? "thinking…" : !string.IsNullOrEmpty(driver.LastError) ? "last turn failed: " + driver.LastError : "ready";
-            return "Dungeon Master: " + _s.Byok.Model + ", " + state + ". Click to change it.";
+            string storyteller = _s.Byok.HasSeparateNarrator ? " (scenes by " + _s.Byok.Narrator.Model + ")" : string.Empty;
+            return "Dungeon Master: " + _s.Byok.Model + storyteller + ", " + state + ". Click to change it.";
         }
     }
 }

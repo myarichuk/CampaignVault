@@ -33,6 +33,11 @@ namespace CampaignVault.UnityClient.Measure
         public string ExternalServerUrl;
         /// <summary>Tests: where reports go (defaults to <see cref="ReportsDir"/>).</summary>
         public string ReportsFolder;
+        /// <summary>
+        /// After each storyteller scene, ask the rules profile to list what the scene invented (one more paid call per beat).
+        /// The free name check runs either way.
+        /// </summary>
+        public bool Judge;
 
         /// <summary>The run in flight; it gains a beat each time <c>changed</c> fires.</summary>
         public MeasureRun Current { get; private set; }
@@ -74,14 +79,28 @@ namespace CampaignVault.UnityClient.Measure
             var run = new MeasureRun { Mode = mode, Remedies = remedies, Repeats = repeats };
             Current = run;
             ProviderProfile profile = _source.Active;
+            ProviderProfile narrator = mode == MeasureMode.Storyteller ? _source.NarratorFor(profile) : profile;
             run.Provider = profile.Name + " (" + profile.BaseUrl + ")";
             run.Model = profile.Model;
             run.Settings = DescribeSettings(profile);
+            if (!ReferenceEquals(narrator, profile))
+            {
+                run.Narrator = narrator.Model + " via " + narrator.Name + " (" + narrator.BaseUrl + ")";
+                run.NarratorSettings = DescribeSettings(narrator);
+            }
+            if (Judge && mode == MeasureMode.Storyteller) { run.Judge = profile.Model; }
 
             string reason;
             if (!_source.Validate(out reason))
             {
                 progress("The provider isn't ready: " + reason);
+                done(null);
+                yield break;
+            }
+            // Storyteller mode plays two-pass even when the profile itself is single-pass, so its storyteller is checked here too.
+            if (!ReferenceEquals(narrator, profile) && !ByokSettings.ValidateProfile(narrator, out reason))
+            {
+                progress("The storyteller profile \"" + narrator.Name + "\" isn't ready: " + reason);
                 done(null);
                 yield break;
             }
@@ -95,9 +114,17 @@ namespace CampaignVault.UnityClient.Measure
             var state = boot.State;
             try
             {
-                // The rig's own copy of the active profile (Awake just loaded the player's file; this replaces it, and nothing saves).
+                // The rig's own copies of the active profile and its storyteller (Awake just loaded the player's file; this replaces it, and nothing saves).
                 state.Byok.Profiles.Clear();
-                state.Byok.Profiles.Add(JsonUtility.FromJson<ProviderProfile>(JsonUtility.ToJson(profile)));
+                ProviderProfile loopCopy = JsonUtility.FromJson<ProviderProfile>(JsonUtility.ToJson(profile));
+                state.Byok.Profiles.Add(loopCopy);
+                loopCopy.Narrator = string.Empty;
+                if (!ReferenceEquals(narrator, profile))
+                {
+                    ProviderProfile narratorCopy = JsonUtility.FromJson<ProviderProfile>(JsonUtility.ToJson(narrator));
+                    state.Byok.Profiles.Add(narratorCopy);
+                    loopCopy.Narrator = ByokSettings.IdOf(narratorCopy);
+                }
                 state.Byok.ActiveIndex = 0;
                 state.Byok.Active.SinglePass = mode == MeasureMode.Connector;
                 state.Driver.SinglePassNoteOverride = mode == MeasureMode.Connector ? string.Empty : null;
@@ -140,7 +167,13 @@ namespace CampaignVault.UnityClient.Measure
                         progress(label + ", beat " + index + "/" + MeasureScript.Beats.Count + ": " + beat.Label + "…");
                         int before = state.Driver.Turns.Count;
                         yield return boot.Controller.SendPlayerTextRoutine(beat.Text);
-                        run.Beats.Add(Collect(state.Driver, before, beat, repeat));
+                        BeatResult result = Collect(state.Driver, before, beat, repeat);
+                        run.Beats.Add(result);
+                        if (mode == MeasureMode.Storyteller)
+                        {
+                            if (Judge && !_cancel) { progress(label + ", beat " + index + "/" + MeasureScript.Beats.Count + ": judging the scene…"); }
+                            yield return CheckFaithfulness(state.Driver, Judge ? state.Byok.Active : null, result);
+                        }
                         changed();
                     }
                     yield return boot.Controller.DeleteCampaign(slug);
@@ -197,6 +230,30 @@ namespace CampaignVault.UnityClient.Measure
             else if (driver.Turns.Count <= turnsBefore) { result.Error = "the model gave no reply"; }
             result.Stats = ProseStats.Measure(result.Narration);
             return result;
+        }
+
+        /// <summary>
+        /// Grounds the beat's scene against what its storyteller call was given, then, with a judge profile, asks it for the
+        /// scene's inventions. A beat without a storyteller call (failed, or out of character) is left unchecked, not counted clean.
+        /// </summary>
+        private IEnumerator CheckFaithfulness(OpenAiChatDriver driver, ProviderProfile judge, BeatResult result)
+        {
+            if (result.Error.Length > 0 || result.Narration.Trim().Length == 0 || driver.LastNarrationMessages == null) { yield break; }
+            NarrationInput input = NarrationInput.From(driver.LastNarrationMessages, driver.PcCard);
+            result.Grounded = true;
+            result.Ungrounded = SceneGrounding.Ungrounded(result.Narration, input.Grounds(MeasureScript.CampaignName));
+            if (judge == null || _cancel) { yield break; }
+            string reply = null;
+            string error = null;
+            TokenUsage usage = null;
+            yield return driver.Complete(judge, FaithfulnessJudge.Messages(input, result.Narration), null,
+                delegate (string content, TokenUsage u, string e) { reply = content; usage = u; error = e; });
+            if (usage != null) { result.JudgeCost = usage.Cost; }
+            List<JudgedInvention> found;
+            string parseError;
+            if (error != null) { result.JudgeError = error; }
+            else if (FaithfulnessJudge.TryParse(reply, out found, out parseError)) { result.Judged = true; result.Inventions = found; }
+            else { result.JudgeError = parseError; }
         }
 
         private static string LastLine(VaultSmokeScenario scenario)

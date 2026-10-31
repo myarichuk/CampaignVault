@@ -2,7 +2,7 @@
     <!-- MeasurePage (debug and editor builds): plays the eight-beat script on a scratch world and compares the DM's scenes. -->
     <ui:VisualElement>
         <cv:VaultCard title="NARRATION MEASURER">
-            <ui:Label text="Plays the same eight player lines twice with the active provider: as this client plays (a tool loop, then a separate storyteller) and as a web connector would (one model, tools and scene together). Then it counts words, paragraphs, sentence length and stacked fragments in the scenes." class="cv-body cv-muted" />
+            <ui:Label text="Plays the same eight player lines twice with the active provider: as this client plays (a tool loop, then a separate storyteller) and as a web connector would (one model, tools and scene together). Then it counts words, paragraphs, sentence length and stacked fragments in the scenes, and names each storyteller scene uses that appear nowhere in what its storyteller was given." class="cv-body cv-muted" />
             <ui:Label name="measure-provider" class="cv-body cv-form__status">
                 <Bindings>
                     <ui:DataBinding property="text" data-source-path="Provider" binding-mode="ToTarget" />
@@ -16,6 +16,12 @@
             <cv:VaultSwitch name="measure-remedies" text="Narration remedies on (off records a baseline)">
                 <Bindings>
                     <ui:DataBinding property="value" data-source-path="Remedies" binding-mode="TwoWay" />
+                    <cv:ClassBinding property="cls-hidden" data-source-path="Idle" class-name="cv-hidden" invert="true" />
+                </Bindings>
+            </cv:VaultSwitch>
+            <cv:VaultSwitch name="measure-judge" text="Judge faithfulness: the rules model lists what each scene invented (one more call per beat)">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="Judge" binding-mode="TwoWay" />
                     <cv:ClassBinding property="cls-hidden" data-source-path="Idle" class-name="cv-hidden" invert="true" />
                 </Bindings>
             </cv:VaultSwitch>

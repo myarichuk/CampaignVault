@@ -9,10 +9,16 @@ namespace CampaignVault.Schema;
 /// </summary>
 internal static class TakeTurnSchemaBuilder
 {
-    internal const string StubChangesDescription =
-        "World changes to commit. Every item needs '$type'. Verbs and their fields are NOT listed here — consult your " +
+    // Verb names only (~650 chars): enough to pick a valid $type without a skills mechanism. Fields stay in
+    // the skills / lookup kind=commit_schema. Generated from the same list as the error-message hint, and
+    // computed per call (not frozen) so it reflects the registry when the schema is built; McpSchemaInstaller
+    // caches the built schema per mode. A client that caches tools/list across releases or plugin changes can
+    // hold a stale name list; an unknown $type still fails at bind time with the full valid-types hint.
+    internal static string StubChangesDescription =>
+        "World changes to commit. Every item needs '$type'. Fields are NOT listed here — consult your " +
         "CampaignVault skills. If unsure or a change fails, call lookup kind=commit_schema (no args = index of $types; type='<one $type>' = its fields). " +
-        "Send sparse objects: $type plus only the fields you mean, no nulls.";
+        "Send sparse objects: $type plus only the fields you mean, no nulls. " +
+        CommitFieldReference.ValidTypesLine();
 
     public static JsonElement Build(JsonSerializerOptions options, ToolSchemaMode mode = ToolSchemaMode.Full)
     {
@@ -147,7 +153,7 @@ internal static class TakeTurnSchemaBuilder
 
         if (mode == ToolSchemaMode.Stub)
         {
-            // Constant on purpose: no verb list, so a client-side cached copy can never go stale.
+            // No per-verb field defs: verb names only (see StubChangesDescription), fields via skills / lookup.
             requestProperties["changes"] = new JsonObject
             {
                 ["type"] = "array",

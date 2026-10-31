@@ -3,12 +3,13 @@ using System.IO;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEngine;
+using CampaignVault.UnityClient.AI;
 using CampaignVault.UnityClient.Json;
 using CampaignVault.UnityClient.Measure;
 
 namespace CampaignVault.UnityClient.Tests
 {
-    /// <summary>The debug narration measurer's pure parts (NARRATION_LENGTH_PLAN.md, L1): the prose statistics, the script and the report.</summary>
+    /// <summary>The debug narration measurer's pure parts (NARRATION_LENGTH_PLAN.md, L1): the prose statistics, the script, the faithfulness checks and the report.</summary>
     public class MeasureTests
     {
         // The expected numbers come from scripts/measure/prose_stats.py on the same text.
@@ -65,7 +66,7 @@ namespace CampaignVault.UnityClient.Tests
         public void ReleaseBuilds_ContainNoMeasurerCode()
         {
             string scripts = Path.Combine(Application.dataPath, "CampaignVault", "Scripts");
-            var tokens = new[] { "MeasurePage", "MeasureRig", "MeasureScript", "MeasureReport", "MeasureRun", "MeasureBeat", "MeasureMode", "ProseStats", "MeasureTab" };
+            var tokens = new[] { "MeasurePage", "MeasureRig", "MeasureScript", "MeasureReport", "MeasureRun", "MeasureBeat", "MeasureMode", "ProseStats", "MeasureTab", "SceneGrounding", "FaithfulnessJudge", "JudgedInvention", "NarrationInput" };
             var gated = new Regex(@"#if UNITY_EDITOR \|\| DEVELOPMENT_BUILD.*?(?:#else|#endif)", RegexOptions.Singleline);
             var problems = new List<string>();
             int wholeFile = 0;
@@ -155,6 +156,145 @@ namespace CampaignVault.UnityClient.Tests
             string export = MeasureReport.Export(a);
             StringAssert.Contains("## Scenes", export);
             StringAssert.Contains(MeasureScript.Beats[0].Text, export);
+        }
+
+        // ---- faithfulness: names with no grounds, and the judge ----
+
+        private const string Grounds = "The player says:\nI ask the miller who's been on the road.\n\nWho is present or involved:\n- Hesper Dunmore (mood: wary)\n"
+            + "Where:\n- Millbrook (A small town of timber and thatch around a mill pond)\n";
+
+        [Test]
+        public void Grounding_FlagsAnInventedName_AndOnlyThat()
+        {
+            string scene = "Hesper wipes her hands on her apron. “Ask Tomas Reed,” she says. “He keeps the ferry below Millbrook.”\n\n"
+                + "The pond is still. You nod.";
+            CollectionAssert.AreEqual(new[] { "Tomas Reed" }, SceneGrounding.Ungrounded(scene, Grounds));
+        }
+
+        [Test]
+        public void Grounding_IgnoresSentenceOpeners_ButNotANameUsedAsOne()
+        {
+            Assert.IsEmpty(SceneGrounding.Ungrounded("Somewhere a dog barks. Rain starts. Behind you, the door creaks.", Grounds),
+                "a capital that only ever opens a sentence is grammar");
+            CollectionAssert.AreEqual(new[] { "Varn" }, SceneGrounding.Ungrounded("Varn steps out of the dark. You watch Varn go.", Grounds),
+                "the same word mid-sentence elsewhere shows it is a name");
+        }
+
+        [Test]
+        public void Grounding_ReadsPossessivesAndTitles()
+        {
+            Assert.IsEmpty(SceneGrounding.Ungrounded("You catch Mistress Hesper's eye across Millbrook's square.", Grounds),
+                "a title before a grounded name, and possessives, are grounded");
+            CollectionAssert.AreEqual(new[] { "Captain Orrin" }, SceneGrounding.Ungrounded("You think of old Captain Orrin and his boat.", Grounds));
+            Assert.IsEmpty(SceneGrounding.Ungrounded("The stranger bows to the Lady and the Captain.", Grounds), "titles alone name no one");
+        }
+
+        [Test]
+        public void Grounding_SplitsRunsAtPunctuation()
+        {
+            CollectionAssert.AreEqual(new[] { "Bram", "Ilsa" }, SceneGrounding.Ungrounded("You signal to Hesper, Bram, and Ilsa.", Grounds));
+        }
+
+        private static JsonValue Msg(string role, string content)
+        {
+            var m = JsonValue.NewObject();
+            m.ObjectValue["role"] = JsonValue.FromString(role);
+            m.ObjectValue["content"] = JsonValue.FromString(content);
+            return m;
+        }
+
+        [Test]
+        public void NarrationInput_LeavesTheGuideAndTheExemplarOut()
+        {
+            var messages = JsonValue.NewArray();
+            messages.ArrayValue.Add(Msg("system", "You are the storyteller… worked example: Mirelle the smith"));
+            messages.ArrayValue.Add(Msg("user", "The player says:\n" + Storyteller.ExemplarPlayer));
+            messages.ArrayValue.Add(Msg("assistant", Storyteller.ExemplarScene));
+            messages.ArrayValue.Add(Msg("user", "The player says:\nI knock."));
+            messages.ArrayValue.Add(Msg("assistant", "Bram opens the door."));
+            messages.ArrayValue.Add(Msg("user", Grounds));
+            var input = NarrationInput.From(messages, "Wren Ashdown, a lean ranger");
+
+            Assert.AreEqual(Grounds, input.Brief);
+            StringAssert.Contains("Bram opens the door.", input.Earlier);
+            StringAssert.DoesNotContain("ferryman", input.Earlier, "the pinned exemplar is style, not world");
+            CollectionAssert.AreEqual(new[] { "Mirelle" }, SceneGrounding.Ungrounded("Wren takes a horseshoe from Mirelle while Bram watches.", input.Grounds(string.Empty)),
+                "a name copied out of the guide's examples is an invention");
+        }
+
+        [Test]
+        public void Judge_ParsesTheList_ToleratingAFenceAndUnknownKinds()
+        {
+            List<JudgedInvention> found;
+            string error;
+            string reply = "Here you go:\n```json\n{\"inventions\":[{\"kind\":\"Item\",\"claim\":\"a dagger on the table\",\"quote\":\"a dagger glints\"},"
+                + "{\"kind\":\"vibes\",\"claim\":\"an omen\"},{\"kind\":\"entity\"}]}\n```";
+            Assert.IsTrue(FaithfulnessJudge.TryParse(reply, out found, out error), error);
+            Assert.AreEqual(2, found.Count, "an entry with neither claim nor quote is dropped");
+            Assert.AreEqual("item", found[0].Kind);
+            Assert.AreEqual("a dagger glints", found[0].Quote);
+            Assert.AreEqual("other", found[1].Kind);
+
+            Assert.IsTrue(FaithfulnessJudge.TryParse("{\"inventions\":[]}", out found, out error));
+            Assert.IsEmpty(found, "a clean scene");
+            Assert.IsFalse(FaithfulnessJudge.TryParse("The scene looks faithful to me.", out found, out error));
+            Assert.IsFalse(FaithfulnessJudge.TryParse("{\"verdict\":\"fine\"}", out found, out error), "no list is not a clean scene");
+        }
+
+        [Test]
+        public void Judge_SeesTheBriefTheEarlierScenesAndTheScene()
+        {
+            var input = new NarrationInput { Brief = "BRIEF-TEXT", Earlier = "EARLIER-TEXT", PcCard = "PC-CARD" };
+            var messages = FaithfulnessJudge.Messages(input, "SCENE-TEXT").ArrayValue;
+            Assert.AreEqual(2, messages.Count);
+            Assert.AreEqual(FaithfulnessJudge.SystemPrompt, messages[0].GetString("content", null));
+            string user = messages[1].GetString("content", string.Empty);
+            foreach (string part in new[] { "BRIEF-TEXT", "EARLIER-TEXT", "PC-CARD", "SCENE-TEXT" }) { StringAssert.Contains(part, user); }
+            Assert.Less(user.IndexOf("BRIEF-TEXT"), user.IndexOf("SCENE-TEXT"), "the scene comes last");
+        }
+
+        [Test]
+        public void Report_CountsFaithfulness_AndNeverShowsAMissingCheckAsZero()
+        {
+            var a = RunOf(MeasureMode.Storyteller, 300, 300, 300);
+            a.Narrator = "small-model via Prose (http://x)";
+            a.Judge = "big-model";
+            a.Beats[0].Grounded = true;
+            a.Beats[0].Ungrounded.AddRange(new[] { "Tomas Reed", "Varn" });
+            a.Beats[0].Judged = true;
+            a.Beats[0].Inventions.Add(new JudgedInvention { Kind = "item", Claim = "a dagger", Quote = "a dagger glints" });
+            a.Beats[0].JudgeCost = 0.002;
+            a.Beats[1].Grounded = true;
+            a.Beats[1].Judged = true;
+            a.Beats[2].Grounded = true;
+            a.Beats[2].JudgeError = "the judge's reply was not JSON";
+
+            var s = MeasureReport.Summarize(a);
+            Assert.AreEqual(3, s.GroundedScenes);
+            Assert.AreEqual(2, s.UngroundedNames);
+            Assert.AreEqual(1, s.ScenesWithUngrounded);
+            Assert.AreEqual(2, s.JudgedScenes);
+            Assert.AreEqual(1, s.Inventions);
+            Assert.AreEqual(1, s.JudgeFailures);
+            Assert.AreEqual(1, s.InventionsByKind["item"]);
+            Assert.AreEqual(0.002, s.JudgeCost, 1e-9);
+            Assert.AreEqual(0.0, s.CostTotal, 1e-9, "judging is not what play costs");
+
+            string md = MeasureReport.ToMarkdown(a);
+            StringAssert.Contains("scenes by small-model", md);
+            StringAssert.Contains("Faithfulness judge: big-model", md);
+            StringAssert.Contains("Ungrounded names: 2 in 1 of 3 scenes", md);
+            StringAssert.Contains("Judged inventions: 1 in 1 of 2 scenes (item 1); the judge failed on 1", md);
+            string export = MeasureReport.Export(a);
+            StringAssert.Contains("**Ungrounded names:** Tomas Reed, Varn", export);
+            StringAssert.Contains("- item: a dagger (“a dagger glints”)", export);
+            StringAssert.Contains("**Judge failed:** the judge's reply was not JSON", export);
+
+            var b = RunOf(MeasureMode.Connector, 300);
+            string cmp = MeasureReport.Compare(a, b);
+            StringAssert.Contains("| ungrounded names | 2 | – |", cmp, "the connector run was never grounded: a dash, not a clean zero");
+            StringAssert.Contains("| judged inventions | 1 | – |", cmp);
+            StringAssert.DoesNotContain("ungrounded", MeasureReport.SummaryLines(MeasureReport.Summarize(b)).ToLowerInvariant());
         }
     }
 }

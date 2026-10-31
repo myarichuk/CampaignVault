@@ -178,5 +178,59 @@ namespace CampaignVault.UnityClient.Tests
             Assert.AreEqual("0.042", TokenUsage.FormatMoney(0.042));
             Assert.AreEqual("0.0004", TokenUsage.FormatMoney(0.0004));
         }
+
+        [Test]
+        public void Bundled_CurrentClaudeRows_MatchThePricingPage()
+        {
+            var bundled = ModelPricing.Bundled;
+            var sonnet = bundled.Find("claude-sonnet-5-5");
+            Assert.AreEqual(0.1, sonnet.CachedInput, 1e-9, "Sonnet 5.5 reads its cache at 0.05x input, not the usual 0.1x");
+
+            var haiku = bundled.Find("anthropic/claude-haiku-5.5");
+            Assert.AreEqual(0.1, haiku.Input, 1e-9);
+            Assert.AreEqual(0.01, haiku.CachedInput, 1e-9);
+            Assert.AreEqual(0.125, haiku.CacheWrite, 1e-9);
+            Assert.AreEqual(0.5, haiku.Output, 1e-9);
+            Assert.AreEqual(100000, haiku.LongPromptOver);
+            Assert.AreEqual(0.5, haiku.LongPrompt.Input, 1e-9);
+            Assert.AreEqual(0.05, haiku.LongPrompt.CachedInput, 1e-9);
+            Assert.AreEqual(0.625, haiku.LongPrompt.CacheWrite, 1e-9);
+            Assert.AreEqual(2.5, haiku.LongPrompt.Output, 1e-9);
+        }
+
+        private const string TieredTable = "{\"models\":{\"tiered\":{\"input\":0.1,\"cachedInput\":0.01,\"cacheWrite\":0.125,\"output\":0.5,"
+            + "\"longPrompt\":{\"over\":100000,\"input\":0.5,\"cachedInput\":0.05,\"cacheWrite\":0.625,\"output\":2.5}},"
+            + "\"broken\":{\"input\":1,\"output\":2,\"longPrompt\":{\"input\":9,\"output\":9}}}}";
+
+        [Test]
+        public void ApplyPrice_ALongPrompt_PaysTheLongRates_CacheHitsCountTowardTheLength()
+        {
+            var tiered = ModelPricing.Parse(TieredTable);
+            // Anthropic shape: 1,000 plain + 99,500 cache reads = 100,500 prompt tokens, over the line.
+            var over = Usage("{\"input_tokens\":1000,\"cache_read_input_tokens\":99500,\"output_tokens\":100}");
+            over.ApplyPrice(tiered, Profile("anthropic", "https://api.anthropic.com/v1"), "tiered");
+            Assert.AreEqual((1000 * 0.5 + 99500 * 0.05 + 100 * 2.5) / 1e6, over.Cost, 1e-12);
+
+            var under = Usage("{\"input_tokens\":1000,\"cache_read_input_tokens\":90000,\"output_tokens\":100}");
+            under.ApplyPrice(tiered, Profile("anthropic", "https://api.anthropic.com/v1"), "tiered");
+            Assert.AreEqual((1000 * 0.1 + 90000 * 0.01 + 100 * 0.5) / 1e6, under.Cost, 1e-12);
+
+            // OpenAI shape counts cached tokens inside prompt_tokens; exactly at the line is not over it.
+            var atLine = Usage("{\"prompt_tokens\":100000,\"completion_tokens\":0}");
+            atLine.ApplyPrice(tiered, Profile(), "tiered");
+            Assert.AreEqual(100000 * 0.1 / 1e6, atLine.Cost, 1e-12);
+            var pastLine = Usage("{\"prompt_tokens\":100001,\"completion_tokens\":0}");
+            pastLine.ApplyPrice(tiered, Profile(), "tiered");
+            Assert.AreEqual(100001 * 0.5 / 1e6, pastLine.Cost, 1e-12);
+        }
+
+        [Test]
+        public void Parse_ATierWithoutItsThreshold_IsIgnored()
+        {
+            var broken = ModelPricing.Parse(TieredTable).Find("broken");
+            Assert.AreEqual(1.0, broken.Input, 1e-9);
+            Assert.IsNull(broken.LongPrompt);
+            Assert.AreEqual(0, broken.LongPromptOver);
+        }
     }
 }

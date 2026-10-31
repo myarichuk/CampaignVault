@@ -123,6 +123,46 @@ namespace CampaignVault.UnityClient.Tests
         }
 
         [Test]
+        public void ProviderForm_StorytellerProfile_OffersTheOthers_AndSavesThePick()
+        {
+            var form = new ProviderFormViewModel(_s, _c);
+            form.NewProfile();
+            var prose = _s.Byok.Profiles[1];
+            prose.Model = "small-prose";
+            _c.SelectProfile(0);
+            Assert.AreEqual(2, form.Narrators.Count, "this profile, then each other one");
+            Assert.AreEqual("narrator-self", form.Narrators[0].Name);
+            Assert.IsTrue(form.Narrators[0].Selected, "a profile narrates itself until told otherwise");
+            StringAssert.Contains("small-prose", form.Narrators[1].Label);
+
+            form.Narrators[1].Pick();
+            Assert.IsTrue(form.Narrators[1].Selected);
+            Assert.AreEqual(string.Empty, _s.Byok.Active.Narrator, "a pick changes the form only, until Save");
+            _s.Notify(StateArea.Providers);
+            Assert.IsTrue(form.Narrators[1].Selected, "a refresh the form didn't cause keeps the pick");
+
+            form.Save();
+            Assert.AreEqual(prose.Id, _s.Byok.Active.Narrator);
+            Assert.AreSame(prose, _s.Byok.Narrator);
+
+            form.Narrators[0].Pick();
+            form.Save();
+            Assert.AreEqual(string.Empty, _s.Byok.Active.Narrator, "back to this profile");
+            form.Dispose();
+        }
+
+        [Test]
+        public void SaveProfile_NeverStoresASelfReference_OrAnUnknownOne()
+        {
+            var self = _s.Byok.Active;
+            string reason;
+            _c.SaveProfile(new ProviderProfile { Name = self.Name, BaseUrl = self.BaseUrl, Model = self.Model, Narrator = ByokSettings.IdOf(self) }, string.Empty, out reason);
+            Assert.AreEqual(string.Empty, self.Narrator);
+            _c.SaveProfile(new ProviderProfile { Name = self.Name, BaseUrl = self.BaseUrl, Model = self.Model, Narrator = "no-such-profile" }, string.Empty, out reason);
+            Assert.AreEqual(string.Empty, self.Narrator);
+        }
+
+        [Test]
         public void ServerPage_TypedAddressSurvivesRefresh_AndConnectorFollowsTheChoice()
         {
             var page = new ServerPage(_s, _c);

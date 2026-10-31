@@ -22,6 +22,7 @@ namespace CampaignVault.UnityClient.UI.Settings
         private MeasureRig _rig;
         private bool _busy;
         private bool _remedies = true;
+        private bool _judge;
         private int _repeats = 1;
         private string _status = "Idle.";
         private string _result = string.Empty;
@@ -55,6 +56,9 @@ namespace CampaignVault.UnityClient.UI.Settings
         /// <summary>Off records a baseline: the storyteller's length target, pinned exemplar and passage filter are left out.</summary>
         [CreateProperty] public bool Remedies { get { return _remedies; } set { Set(ref _remedies, value); } }
 
+        /// <summary>After each storyteller scene, the rules model lists what the scene invented (one more call per beat).</summary>
+        [CreateProperty] public bool Judge { get { return _judge; } set { Set(ref _judge, value); } }
+
         public int Repeats
         {
             get { return _repeats; }
@@ -72,7 +76,9 @@ namespace CampaignVault.UnityClient.UI.Settings
         public override void Refresh()
         {
             var p = _s.Byok.Active;
-            Provider = DisplayText.Plain(p.Name + " · " + p.Model + " · " + MeasureRig.DescribeSettings(p));
+            var narrator = _s.Byok.NarratorFor(p);
+            string scenes = ReferenceEquals(narrator, p) ? string.Empty : " · scenes by " + narrator.Name + " · " + narrator.Model;
+            Provider = DisplayText.Plain(p.Name + " · " + p.Model + " · " + MeasureRig.DescribeSettings(p) + scenes);
             Warning = "Real model calls: one pass is about eight turns and costs what eight turns cost, doubled by tool loops. "
                 + "It runs on a scratch campaign and a second server of its own; your campaigns are not touched. "
                 + "The first run unpacks a copy of the server (about 1 GB) under " + DisplayText.Plain(MeasureRig.Root) + ".";
@@ -83,7 +89,7 @@ namespace CampaignVault.UnityClient.UI.Settings
         private void Start(MeasureMode[] modes)
         {
             if (_busy) { return; }
-            _rig = new MeasureRig(_s.Driver, _s.Byok);
+            _rig = new MeasureRig(_s.Driver, _s.Byok) { Judge = _judge };
             _runs.Clear();
             Result = string.Empty;
             ReportPath = string.Empty;
