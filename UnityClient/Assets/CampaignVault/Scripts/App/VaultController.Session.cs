@@ -278,6 +278,7 @@ namespace CampaignVault.UnityClient.App
             var update = _s.Session.ApplyTurn(args, data);
             if (_s.Session.Fingerprint.Length > 0) { _s.Prompts.PartyFingerprint = _s.Session.Fingerprint; }
             if (!update.Any) { return; }
+            if (update.ContentLevel != null) { ApplyContentLevel(update.ContentLevel); }
             foreach (string who in update.Downed) { AddEventLine("☠ " + who + " is down. A death save is due on their turn."); }
             if (update.Time) { _s.SessionStatus = DescribeSession(_s.Session); }
             AnnounceLevelUps(_s.Session);

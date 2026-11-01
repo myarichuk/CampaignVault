@@ -115,6 +115,41 @@ public class SessionHandoffTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
+    public async Task StartSession_ReportsOpen_ForACampaignThatAlreadyHadAnAdultModeOn()
+    {
+        var (slug, session, _) = await NewCampaignAsync("content-legacy");
+        await StoreAsync(Pc(slug, $"chars/{slug}-pc", "Tamsin"));
+        using (var s = _fixture.Store.OpenAsyncSession())
+        {
+            var id = new CampaignDocumentKeys().Config(slug);
+            var config = await s.LoadAsync<CampaignConfig>(id);
+            if (config == null)
+            {
+                config = new CampaignConfig { Id = id };
+                await s.StoreAsync(config, id);
+            }
+
+            config.EnabledModeIds = ["lewd_encounter"]; // enabled before contentLevel existed: nothing stored
+            config.ContentLevel = null;
+            await s.SaveChangesAsync();
+        }
+
+        var saved = CampaignVault.Plugins.PluginDataRoots.AdultModeIds;
+        CampaignVault.Plugins.PluginDataRoots.AdultModeIds = new HashSet<string>(["lewd_encounter"], StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            var started = await session.StartSession(slug);
+            Assert.True(started.Success, started.Summary);
+            Assert.Equal("open", started.Data!.Campaign.ContentLevel);
+            Assert.Null(started.Data.Campaign.ContentNote);
+        }
+        finally
+        {
+            CampaignVault.Plugins.PluginDataRoots.AdultModeIds = saved;
+        }
+    }
+
+    [Fact]
     public async Task EndSession_Handoff_RoundTripsIntoNextStartSession()
     {
         var (slug, session, _) = await NewCampaignAsync("handoff-roundtrip");

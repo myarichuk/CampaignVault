@@ -106,12 +106,17 @@ namespace CampaignVault.UnityClient.Flows
         public readonly List<string> Downed = new List<string>();
         /// <summary>Quests the turn opened that the table has no title for yet; fetched on demand with get_entity.</summary>
         public readonly List<string> NewQuestIds = new List<string>();
-        public bool Any { get { return Party || Quests || Time || People; } }
+        /// <summary>The server changed the campaign's content level this turn ("fade" or "open"), e.g. enabling an adult mode; null when it did not.</summary>
+        public string ContentLevel;
+        public bool Any { get { return Party || Quests || Time || People || ContentLevel != null; } }
     }
 
     public sealed class SessionDigest
     {
         /// <summary>take_turn's summary line when the clock moved: "Clock: +8h. It is now Day 3, Month 1, Year 1 — Morning, hour 7."</summary>
+        /// <summary>campaign_update's summary line: "Content level set to 'open' for this campaign (adult mode lewd_encounter enabled)."</summary>
+        private static readonly Regex ContentLevelLine = new Regex(@"Content level set to '(?<level>fade|open)'", RegexOptions.CultureInvariant);
+
         private static readonly Regex ClockLine = new Regex(@"It is now (?<when>.+?), hour \d+", RegexOptions.CultureInvariant);
 
         /// <summary>
@@ -139,6 +144,8 @@ namespace CampaignVault.UnityClient.Flows
                 if (line.Kind != JsonKind.String) { continue; }
                 var m = ClockLine.Match(line.StringValue);
                 if (m.Success) { Time = m.Groups["when"].Value.Trim(); update.Time = true; }
+                var level = ContentLevelLine.Match(line.StringValue);
+                if (level.Success) { update.ContentLevel = level.Groups["level"].Value; }
             }
             if (NoteNpcs(data)) { update.People = true; }
             var ready = Pick(data, "levelUpReady", "LevelUpReady");

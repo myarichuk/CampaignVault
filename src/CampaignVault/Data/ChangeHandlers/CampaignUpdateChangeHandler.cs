@@ -76,6 +76,32 @@ public sealed class CampaignUpdateChangeHandler(CampaignDocumentKeys keys) : IWo
             playerOwned.Add("contentLevel");
         }
 
+        // Adult modes are player-owned too, and switching one ON is the table's opt-in to contentLevel "open".
+        var newAdultModes = new List<string>();
+        if (cu.EnabledModeIds is not null && PluginDataRoots.AdultModeIds.Count > 0)
+        {
+            var enabledBefore = (await EnsureConfigAsync(ctx, ct)).EnabledModeIds ?? [];
+            newAdultModes.AddRange(PluginDataRoots.AdultModeIds
+                .Where(m => cu.EnabledModeIds.Contains(m, StringComparer.OrdinalIgnoreCase)
+                            && !enabledBefore.Contains(m, StringComparer.OrdinalIgnoreCase)));
+            playerOwned.AddRange(newAdultModes.Select(m => $"adult mode {m}"));
+        }
+
+        // The two switches must not contradict each other: no "fade" while an adult mode stays enabled.
+        if (contentLevel == ContentLevels.Fade && PluginDataRoots.AdultModeIds.Count > 0)
+        {
+            var enabledAfter = cu.EnabledModeIds ?? (await EnsureConfigAsync(ctx, ct)).EnabledModeIds ?? [];
+            var stillAdult = PluginDataRoots.AdultModeIds
+                .Where(m => enabledAfter.Contains(m, StringComparer.OrdinalIgnoreCase))
+                .ToList();
+            if (stillAdult.Count > 0)
+            {
+                return ChangeHandlerResult.Failure(
+                    $"contentLevel 'fade' contradicts the enabled adult mode(s): {string.Join(", ", stillAdult)}. " +
+                    "Switch them off first (enabledModeIds, in this same campaign_update or an earlier commit).");
+            }
+        }
+
         if (cu.EnabledModeIds is not null && PluginDataRoots.PlayerOnlyModeIds.Count > 0)
         {
             var before = (await EnsureConfigAsync(ctx, ct)).EnabledModeIds ?? [];
@@ -175,6 +201,16 @@ public sealed class CampaignUpdateChangeHandler(CampaignDocumentKeys keys) : IWo
             var config = await EnsureConfigAsync(ctx, ct);
             config.ContentLevel = contentLevel;
             ctx.RecordMessage($"Content level set to '{contentLevel}' for this campaign.");
+        }
+        else if (newAdultModes.Count > 0)
+        {
+            var config = await EnsureConfigAsync(ctx, ct);
+            if (!string.Equals(config.ContentLevel, ContentLevels.Open, StringComparison.Ordinal))
+            {
+                config.ContentLevel = ContentLevels.Open;
+                // Wording is parsed by the Unity client (it follows the turn's summary lines): keep "Content level set to '<level>'".
+                ctx.RecordMessage($"Content level set to '{ContentLevels.Open}' for this campaign (adult mode {string.Join(", ", newAdultModes)} enabled).");
+            }
         }
 
         if (touchesClock)

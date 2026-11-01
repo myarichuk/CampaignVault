@@ -47,5 +47,21 @@ namespace CampaignVault.UnityClient.Tests
             Assert.IsTrue(JsonValue.TryParse(json, out root));
             Assert.AreEqual(expected, SessionDigest.FromResult(root).ContentLevel);
         }
+
+        [TestCase("Content level set to 'open' for this campaign (adult mode lewd_encounter enabled).", "open")]
+        [TestCase("Content level set to 'fade' for this campaign.", "fade")]
+        [TestCase("Scene cue off for this campaign.", null)]
+        [TestCase("Content level set to 'anything-goes' for this campaign.", null)]
+        public void ATurnSummary_TellsTheClientWhenTheServerChangedTheLevel(string line, string expected)
+        {
+            JsonValue data;
+            Assert.IsTrue(JsonValue.TryParse("{\"summary\":[" + JsonValue.FromString(line).ToJson() + "]}", out data));
+            var digest = new SessionDigest();
+
+            var update = digest.ApplyTurn(null, data);
+
+            Assert.AreEqual(expected, update.ContentLevel);
+            Assert.AreEqual(expected != null, update.Any, "a level change alone is a table update");
+        }
     }
 }

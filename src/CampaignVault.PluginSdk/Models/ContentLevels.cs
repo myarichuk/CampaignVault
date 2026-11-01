@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
 namespace CampaignVault.Models;
 
 /// <summary>
@@ -13,6 +17,21 @@ public static class ContentLevels
 
     /// <summary>The player chose to go beyond fade-to-black, on a provider that allows it.</summary>
     public const string Open = "open";
+
+    /// <summary>
+    /// The level in force: "open" while any adult mode is enabled (turning one on is the table's opt-in, and a campaign that had one
+    /// on before this setting existed must keep behaving as it did), otherwise the stored choice. Null means the player has never chosen.
+    /// </summary>
+    public static string? Effective(string? stored, IEnumerable<string>? enabledModeIds, IReadOnlyCollection<string>? adultModeIds)
+    {
+        if (adultModeIds is { Count: > 0 } && enabledModeIds is not null
+            && enabledModeIds.Any(m => adultModeIds.Contains(m, StringComparer.OrdinalIgnoreCase)))
+        {
+            return Open;
+        }
+
+        return Normalize(stored);
+    }
 
     /// <summary>The canonical value for user input ("OPEN", " fade "), or null when it is neither.</summary>
     public static string? Normalize(string? value)

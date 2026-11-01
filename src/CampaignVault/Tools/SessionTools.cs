@@ -165,7 +165,7 @@ public class SessionTools : CampaignToolBase, IMcpServerTool
             var itemsByHolder = heldItems.ToLookup(i => i.HolderId, StringComparer.OrdinalIgnoreCase);
 
             var rules = await session.LoadAsync<CampaignConfig>(_keys.Config(effective));
-            var level = ContentLevels.Normalize(rules?.ContentLevel);
+            var level = ContentLevels.Effective(rules?.ContentLevel, rules?.EnabledModeIds, PluginDataRoots.AdultModeIds);
             view.Campaign = view.Campaign with { ContentLevel = level, ContentNote = level is null ? SessionCampaignView.UnsetNote : null };
             view.Party =
             [

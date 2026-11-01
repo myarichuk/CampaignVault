@@ -15,6 +15,9 @@ public static class PluginDataRoots
     /// <summary>Mode IDs plugins declared <c>playerOnlyModeIds</c>: only the player switches them on or off.</summary>
     public static IReadOnlyCollection<string> PlayerOnlyModeIds { get; set; } = [];
 
+    /// <summary>Mode IDs plugins declared <c>adultModeIds</c>: enabling one opts the campaign into contentLevel "open".</summary>
+    public static IReadOnlyCollection<string> AdultModeIds { get; set; } = [];
+
     /// <summary>Ids (plugin.json <c>id</c>) of every loaded plugin, for feat <c>requires.plugin</c> gating.</summary>
     public static IReadOnlyCollection<string> LoadedPluginIds { get; set; } = [];
 
