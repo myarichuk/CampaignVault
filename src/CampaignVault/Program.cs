@@ -148,6 +148,14 @@ builder.Logging.AddConsole(options =>
     // (e.g. embedding failures) were easy to miss in a terminal only displaying stdout.
     options.LogToStandardErrorThreshold = enableStdioTransport ? LogLevel.Trace : LogLevel.None;
 });
+// A file copy outlives the terminal, so a play session's failed commits can be reviewed afterwards.
+var logDirectory = FileLoggerProvider.ResolveDirectory(
+    builder.Configuration["CAMPAIGN_LOG_DIR"], AppContext.BaseDirectory);
+if (logDirectory is not null)
+{
+    builder.Logging.AddProvider(new FileLoggerProvider(logDirectory));
+    Console.Error.WriteLine($"[Startup] Logging to {logDirectory}");
+}
 builder.Logging.AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Warning);
 builder.Logging.AddFilter("ModelContextProtocol", LogLevel.Warning);
 builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
