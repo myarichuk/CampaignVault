@@ -371,6 +371,38 @@ public class CharacterWiringAuditorTests
         Assert.True(hank.SystemStats.ResourcePools.ContainsKey("action_surge"));
     }
 
+    [Fact]
+    public void Dnd5e_LeveledPcWithNoClass_FlagsClassMissing()
+    {
+        var (auditor, _) = Create();
+        var maeve = new Character
+        {
+            Id = "chars/maeve",
+            Name = "Maeve",
+            IsPc = true,
+            MaxHp = 38,
+            SystemStats = new Dnd5eExtension { Level = 6, Intelligence = 18 },
+        };
+
+        var finding = Assert.Single(auditor.Audit(maeve, RulesetSystem.Dnd5e, null), f => f.Code == "class_missing");
+        Assert.Contains("\"level\": 6", finding.Message);
+    }
+
+    [Fact]
+    public void Dnd5e_LeveledNpcWithNoClass_IsNotFlagged()
+    {
+        var (auditor, _) = Create();
+        var ogre = new Character
+        {
+            Id = "chars/ogre",
+            Name = "Ogre",
+            MaxHp = 59,
+            SystemStats = new Dnd5eExtension { Level = 6 },
+        };
+
+        Assert.DoesNotContain(auditor.Audit(ogre, RulesetSystem.Dnd5e, null), f => f.Code == "class_missing");
+    }
+
     private static ChangeContext CreateContext(params Character[] characters) => new(
         sessionForTests: null,
         characters: characters.ToDictionary(c => c.Id),

@@ -57,9 +57,84 @@ internal static class McpToolTelemetryFilter
                         result?.IsError == true,
                         failure ?? "-");
                 }
+
+                // isError alone says nothing about why, and a take_turn that fails validation returns success:false
+                // with isError unset, so without this the reason a batch was rejected never reached any log.
+                if (logger is not null && DescribeFailure(result) is { } reason)
+                {
+                    logger.LogWarning("tool={ToolName} failed: {Reason}", request.Params?.Name ?? "unknown", reason);
+                }
             }
         });
     }
+
+    private const int MaxReasonChars = 4000;
+
+    /// <summary>
+    /// The error text of a failed call: the message of an isError result, or error + summary of a ToolResult that came
+    /// back with success:false. Reads StructuredContent, else the text block (McpResponseCleaner may have moved it there).
+    /// Null for a successful call.
+    /// </summary>
+    internal static string? DescribeFailure(CallToolResult? result)
+    {
+        if (result is null)
+        {
+            return null;
+        }
+
+        var text = result.Content?.OfType<TextContentBlock>().FirstOrDefault()?.Text;
+        if (result.IsError == true)
+        {
+            return Clip(text ?? "(no message)");
+        }
+
+        try
+        {
+            JsonElement root;
+            if (result.StructuredContent is { } structured)
+            {
+                root = structured;
+            }
+            else if (text is not null && text.TrimStart().StartsWith('{'))
+            {
+                using var doc = JsonDocument.Parse(text);
+                root = doc.RootElement.Clone();
+            }
+            else
+            {
+                return null;
+            }
+
+            if (root.ValueKind != JsonValueKind.Object
+                || Property(root, "success") is not { ValueKind: JsonValueKind.False })
+            {
+                return null;
+            }
+
+            var error = Property(root, "error") is { ValueKind: JsonValueKind.String } e ? e.GetString() : null;
+            var summary = Property(root, "summary") is { ValueKind: JsonValueKind.String } s ? s.GetString() : null;
+            return Clip($"{error ?? "failed"}: {summary ?? "(no summary)"}");
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static JsonElement? Property(JsonElement obj, string name)
+    {
+        foreach (var property in obj.EnumerateObject())
+        {
+            if (property.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+            {
+                return property.Value;
+            }
+        }
+
+        return null;
+    }
+
+    private static string Clip(string text) => text.Length <= MaxReasonChars ? text : text[..MaxReasonChars] + "…";
 
     private static int MeasureResponseChars(CallToolResult? result)
     {

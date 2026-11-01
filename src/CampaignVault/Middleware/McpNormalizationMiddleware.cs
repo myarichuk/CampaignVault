@@ -1,13 +1,16 @@
 using System.Text;
 using System.Text.Json.Nodes;
+using CampaignVault.Data;
+using CampaignVault.Models;
 using CampaignVault.Tools;
+using Raven.Client.Documents;
 
 namespace CampaignVault.Middleware;
 
 /// <summary>
 /// Middleware to normalize MCP tool call arguments before binding.
 /// Handles synonym rewrites (npcId→characterId), legacy upsert wrappers (l→location),
-/// and flattened upsert payloads.
+/// flattened upsert payloads, and systemStats sent without the campaign's "$system" marker.
 /// </summary>
 public class McpNormalizationMiddleware(RequestDelegate next, ILogger<McpNormalizationMiddleware> logger)
 {
@@ -39,10 +42,20 @@ public class McpNormalizationMiddleware(RequestDelegate next, ILogger<McpNormali
 
                             if (toolName is not null && paramsObj?["arguments"] is JsonObject argumentsObj)
                             {
-                                var modified = ToolCallExamples.TryNormalize(toolName, argumentsObj, out var rewrites);
+                                var modified = ToolCallExamples.TryNormalize(toolName, argumentsObj, out var normalized);
+                                var rewrites = normalized.ToList();
+                                var unmarked = ToolCallExamples.SystemStatsWithoutMarker(toolName, argumentsObj);
+                                if (unmarked.Count > 0
+                                    && await ActiveStatsSystemAsync(context, argumentsObj) is { } system)
+                                {
+                                    ToolCallExamples.ApplySystemMarker(unmarked, system, rewrites);
+                                    modified = true;
+                                }
+
                                 if (rewrites.Count > 0)
                                 {
-                                    logger.LogDebug(
+                                    // Information, not Debug: which aliases fire in real play is what decides the alias table.
+                                    logger.LogInformation(
                                         "McpNormalization: applied {RewriteCount} rewrite(s) for tool '{ToolName}': {Rewrites}",
                                         rewrites.Count,
                                         toolName,
@@ -74,5 +87,21 @@ public class McpNormalizationMiddleware(RequestDelegate next, ILogger<McpNormali
         }
 
         await next(context);
+    }
+
+    /// <summary>The campaign's ruleset when it has typed stats (dnd5e/pf2e); null when unknown, so binding reports it.</summary>
+    private static async Task<string?> ActiveStatsSystemAsync(HttpContext context, JsonObject arguments)
+    {
+        if (arguments["campaignName"]?.GetValueKind() != System.Text.Json.JsonValueKind.String
+            || arguments["campaignName"]!.GetValue<string>() is not { Length: > 0 } campaignName)
+        {
+            return null;
+        }
+
+        var store = context.RequestServices.GetRequiredService<IDocumentStore>();
+        var keys = context.RequestServices.GetRequiredService<CampaignDocumentKeys>();
+        using var session = store.OpenAsyncSession();
+        var config = await session.LoadAsync<CampaignConfig>(keys.Config(campaignName), context.RequestAborted);
+        return config?.ActiveSystem is RulesetSystem.Dnd5e or RulesetSystem.Pathfinder2e ? config.ActiveSystem : null;
     }
 }
