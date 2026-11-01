@@ -12,7 +12,9 @@ steps:
   - { key: deity, kind: pickOne, source: deities, optional: true, prompt: Deity }
   - { key: patron, kind: pickOne, source: patrons, optional: true, prompt: Patron }
   - { key: lineage, kind: pickOne, source: lineages, optional: true, prompt: Lineage }
-  - { key: background, kind: pickOne, source: backgrounds, prompt: Background }
+  # Optional: SRD 5.1 ships one background (acolyte), which fits few characters. Skipping it means no background
+  # skills, tools, languages, gear or gold; a plugin or homebrew background adds more to pick from.
+  - { key: background, kind: pickOne, source: backgrounds, optional: true, prompt: Background }
   - key: abilities
     kind: abilityScores
     prompt: Ability scores

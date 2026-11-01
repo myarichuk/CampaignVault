@@ -191,7 +191,33 @@ public class CharacterCreationTests : IDisposable
     {
         var issues = Service().Validate(RulesetSystem.Dnd5e, new CharacterDraft { Kind = "pc" });
 
-        Assert.Equal(["race", "class", "background", "abilities", "skills", "spells", "identity"], issues.Select(i => i.Step).Distinct());
+        // No background: it is optional (SRD 5.1 ships only acolyte, which fits few characters).
+        Assert.Equal(["race", "class", "abilities", "skills", "spells", "identity"], issues.Select(i => i.Step).Distinct());
+    }
+
+    [Fact]
+    public async Task Dnd5e_BackgroundIsOptional_ACharacterWithoutOneBuildsCleanWithoutItsGrants()
+    {
+        var service = Service();
+        var step = Assert.Single(service.Steps(RulesetSystem.Dnd5e, new CharacterDraft { Kind = "pc" }), s => s.Key == "background");
+        Assert.True(step.Optional);
+
+        var rogue = new CharacterDraft { Kind = "pc", Name = "Kael", Level = 1 }
+            .With("race", "human").With("class", "rogue")
+            .With("abilities", new AbilityScoreChoice
+            {
+                Method = "standardArray",
+                Scores = new() { ["Strength"] = 8, ["Dexterity"] = 15, ["Constitution"] = 14, ["Intelligence"] = 12, ["Wisdom"] = 13, ["Charisma"] = 10 },
+            })
+            .With("skills", new[] { "Stealth", "Perception", "Deception", "Acrobatics" });
+        var preview = await service.PreviewAsync(RulesetSystem.Dnd5e, rogue);
+
+        Assert.DoesNotContain(preview.Errors, i => i.Step == "background");
+        var stats = Assert.IsType<Dnd5eExtension>(preview.Character.SystemStats);
+        Assert.True(string.IsNullOrEmpty(stats.Background));
+        Assert.DoesNotContain("Religion", stats.SkillModifiers.Keys); // acolyte's grants never ride in
+        Assert.DoesNotContain("Insight", stats.SkillModifiers.Keys);
+        Assert.Contains("Stealth", stats.SkillModifiers.Keys);
     }
 
     [Fact]

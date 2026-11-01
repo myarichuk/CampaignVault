@@ -191,7 +191,8 @@ namespace CampaignVault.UnityClient.UI.Builder
             {
                 return Fail(Step.Optional ? "Nothing to choose here. Skip it." : "Nothing to choose for the character as it is. An earlier step may still be open.", false);
             }
-            Notice = string.Empty;
+            // An optional pick (a background a character may not have) says so: otherwise it reads as a step to finish.
+            Notice = Step.Optional && Step.Kind == StepKinds.PickOne ? "Optional. Leave it empty, or click your pick again to clear it." : string.Empty;
             NoticeIsError = false;
             return opts;
         }
