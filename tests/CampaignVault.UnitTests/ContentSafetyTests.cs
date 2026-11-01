@@ -282,4 +282,79 @@ public class ContentSafetyTests
             PluginDataRoots.DeclaredCampaignOptions = saved;
         }
     }
+
+    // ---- contentLevel: the table's choice of how far intimate scenes go (player-owned) ----
+
+    [Theory]
+    [InlineData("open", "fade")]
+    [InlineData("fade", "open")]
+    public async Task CampaignUpdate_ContentLevel_NeedsThePlayersWords_InBothDirections(string requested, string current)
+    {
+        var handler = new CampaignUpdateChangeHandler(new CampaignDocumentKeys());
+        var config = new CampaignConfig { Id = "campaigns/test/config", ContentLevel = current };
+
+        var result = await handler.ApplyAsync(new CampaignUpdateChange { ContentLevel = requested },
+            ChangeContextTestHelper.Create(campaignName: "test", config: config), TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("playerRequest", result.Message);
+        Assert.Equal(current, config.ContentLevel);
+    }
+
+    [Theory]
+    [InlineData(" OPEN ", "open")]
+    [InlineData("Fade", "fade")]
+    public async Task CampaignUpdate_ContentLevel_WithThePlayersWords_IsStoredNormalized(string given, string stored)
+    {
+        var handler = new CampaignUpdateChangeHandler(new CampaignDocumentKeys());
+        var config = new CampaignConfig { Id = "campaigns/test/config" };
+        var context = ChangeContextTestHelper.Create(campaignName: "test", config: config);
+
+        var result = await handler.ApplyAsync(new CampaignUpdateChange { ContentLevel = given, PlayerRequest = "yes, that setting" },
+            context, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(stored, config.ContentLevel);
+    }
+
+    [Fact]
+    public async Task CampaignUpdate_ContentLevel_RejectsAnythingButFadeOrOpen()
+    {
+        var handler = new CampaignUpdateChangeHandler(new CampaignDocumentKeys());
+        var config = new CampaignConfig { Id = "campaigns/test/config" };
+
+        var result = await handler.ApplyAsync(new CampaignUpdateChange { ContentLevel = "anything-goes", PlayerRequest = "yes" },
+            ChangeContextTestHelper.Create(campaignName: "test", config: config), TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("must be 'fade' or 'open'", result.Message);
+        Assert.Null(config.ContentLevel);
+    }
+
+    [Fact]
+    public async Task CampaignUpdate_ContentLevel_RefusesToRideInsideAStoryCommit()
+    {
+        var handler = new CampaignUpdateChangeHandler(new CampaignDocumentKeys());
+        var update = new CampaignUpdateChange { ContentLevel = "open", PlayerRequest = "go further" };
+        var config = new CampaignConfig { Id = "campaigns/test/config" };
+        var context = ChangeContextTestHelper.Create(campaignName: "test", config: config);
+        context.Batch = [update, new HpChange { CharacterId = "chars/a", Delta = -1 }];
+
+        var result = await handler.ApplyAsync(update, context, TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("own commit", result.Message);
+        Assert.Null(config.ContentLevel);
+    }
+
+    [Theory]
+    [InlineData("open", "open")]
+    [InlineData(" Fade", "fade")]
+    [InlineData("explicit", null)]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public void ContentLevels_Normalize_OnlyKnowsFadeAndOpen(string? given, string? expected)
+    {
+        Assert.Equal(expected, ContentLevels.Normalize(given));
+    }
 }

@@ -59,8 +59,17 @@ public record SessionCampaignView(
     string System,
     List<string>? NarrativeFocus,
     Dictionary<string, string>? SystemOptions,
-    CampaignEntryHint EntryHint)
+    CampaignEntryHint EntryHint,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [property: Description("How far this table takes intimate scenes: 'fade' (romance written, anything explicit cut away) or 'open' (the player opted past fade-to-black, within what the model provider permits; the rule about children never changes). Absent while the player has never chosen, which behaves as 'fade'.")]
+    string? ContentLevel = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [property: Description("Present only while contentLevel is unset: intimate scenes fade to black by default. Do not raise it unprompted; if the player asks for more, offer the choice and set it with campaign_update contentLevel plus their own words as playerRequest.")]
+    string? ContentNote = null)
 {
+    public const string UnsetNote =
+        "Content level not chosen: intimate scenes fade to black by default. If the player asks for more, offer the choice (it depends on their model provider's rules).";
+
     public static SessionCampaignView From(Campaign campaign, CampaignPosture posture) => new(
         posture.Slug,
         posture.DisplayName,

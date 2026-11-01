@@ -1974,6 +1974,10 @@ public class CampaignUpdateChange : WorldChange
     [JsonPropertyName("sceneCueEnabled")]
     public bool? SceneCueEnabled { get; set; }
 
+    [Description("How far this table takes intimate scenes: 'fade' (the default: romance is written, anything explicit cuts away) or 'open' (the player opted past fade-to-black, on a model provider that permits it; the provider's rules and the rule about children still hold). The player owns this: send it only when the player asks, with playerRequest set to their words, as its own commit.")]
+    [JsonPropertyName("contentLevel")]
+    public string? ContentLevel { get; set; }
+
     [Description("Set the campaign calendar's year (lore date), e.g. 1492. Relabels the clock; days elapsed are untouched. Omit to keep.")]
     [JsonPropertyName("loreYear")]
     public int? LoreYear { get; set; }

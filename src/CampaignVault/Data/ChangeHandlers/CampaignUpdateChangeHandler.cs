@@ -24,10 +24,21 @@ public sealed class CampaignUpdateChangeHandler(CampaignDocumentKeys keys) : IWo
         var touchesClock = cu.LoreYear is not null || cu.LoreMonth is not null || cu.LoreDay is not null
                            || cu.Hour is not null || cu.LoreEpoch is not null;
         if (cu.NarrativeFocus is null && cu.EnabledModeIds is null && cu.SystemOptions is null && cu.SceneCueEnabled is null
-            && !touchesClock)
+            && cu.ContentLevel is null && !touchesClock)
         {
             return ChangeHandlerResult.Failure(
-                "campaign_update has nothing to apply — set narrativeFocus, enabledModeIds, systemOptions, sceneCueEnabled and/or the calendar (loreYear, loreMonth, loreDay, hour, loreEpoch).");
+                "campaign_update has nothing to apply — set narrativeFocus, enabledModeIds, systemOptions, sceneCueEnabled, contentLevel and/or the calendar (loreYear, loreMonth, loreDay, hour, loreEpoch).");
+        }
+
+        string? contentLevel = null;
+        if (cu.ContentLevel is not null)
+        {
+            contentLevel = ContentLevels.Normalize(cu.ContentLevel);
+            if (contentLevel is null)
+            {
+                return ChangeHandlerResult.Failure(
+                    $"campaign_update.contentLevel must be '{ContentLevels.Fade}' or '{ContentLevels.Open}' (got '{cu.ContentLevel}').");
+            }
         }
 
         if (cu.LoreMonth is < 1 or > 12)
@@ -59,6 +70,12 @@ public sealed class CampaignUpdateChangeHandler(CampaignDocumentKeys keys) : IWo
             .Where(k => !string.IsNullOrWhiteSpace(k) && IsPlayerOnly(k.Trim()))
             .Select(k => $"systemOptions.{k.Trim()}")
             .ToList() ?? [];
+        // Either direction: a model must not open the table up, and must not quietly undo the player's choice either.
+        if (contentLevel is not null)
+        {
+            playerOwned.Add("contentLevel");
+        }
+
         if (cu.EnabledModeIds is not null && PluginDataRoots.PlayerOnlyModeIds.Count > 0)
         {
             var before = (await EnsureConfigAsync(ctx, ct)).EnabledModeIds ?? [];
@@ -151,6 +168,13 @@ public sealed class CampaignUpdateChangeHandler(CampaignDocumentKeys keys) : IWo
             var config = await EnsureConfigAsync(ctx, ct);
             config.SceneCueEnabled = sceneCue;
             ctx.RecordMessage(sceneCue ? "Scene cue on." : "Scene cue off for this campaign.");
+        }
+
+        if (contentLevel is not null)
+        {
+            var config = await EnsureConfigAsync(ctx, ct);
+            config.ContentLevel = contentLevel;
+            ctx.RecordMessage($"Content level set to '{contentLevel}' for this campaign.");
         }
 
         if (touchesClock)

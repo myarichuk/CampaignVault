@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using CampaignVault.Data;
 using CampaignVault.Middleware;
 using CampaignVault.Models;
 using CampaignVault.Tools;
@@ -75,6 +76,43 @@ public class SessionHandoffTests : IClassFixture<RavenDBFixture>
         PartyIntent = "Stake out the warehouse at night tide.",
         Tone = "Low-magic harbor mystery.",
     };
+
+    [Fact]
+    public async Task StartSession_SurfacesTheContentLevel_AndNotesItOnlyWhileUnset()
+    {
+        var (slug, session, _) = await NewCampaignAsync("content-level");
+        await StoreAsync(Pc(slug, $"chars/{slug}-pc", "Tamsin"));
+
+        var unset = await session.StartSession(slug);
+        Assert.True(unset.Success, unset.Summary);
+        Assert.Null(unset.Data!.Campaign.ContentLevel);
+        Assert.Equal(SessionCampaignView.UnsetNote, unset.Data.Campaign.ContentNote);
+        var unsetJson = JsonSerializer.Serialize(unset.Data.Campaign, WireOptions);
+        Assert.Contains("contentNote", unsetJson);
+        Assert.DoesNotContain("contentLevel", unsetJson, StringComparison.Ordinal);
+
+        using (var s = _fixture.Store.OpenAsyncSession())
+        {
+            var id = new CampaignDocumentKeys().Config(slug);
+            var config = await s.LoadAsync<CampaignConfig>(id);
+            if (config == null)
+            {
+                config = new CampaignConfig { Id = id };
+                await s.StoreAsync(config, id);
+            }
+
+            config.ContentLevel = ContentLevels.Open;
+            await s.SaveChangesAsync();
+        }
+
+        var open = await session.StartSession(slug);
+        Assert.True(open.Success, open.Summary);
+        Assert.Equal("open", open.Data!.Campaign.ContentLevel);
+        Assert.Null(open.Data.Campaign.ContentNote);
+        var openJson = JsonSerializer.Serialize(open.Data.Campaign, WireOptions);
+        Assert.Contains("\"contentLevel\":\"open\"", openJson);
+        Assert.DoesNotContain("contentNote", openJson, StringComparison.Ordinal);
+    }
 
     [Fact]
     public async Task EndSession_Handoff_RoundTripsIntoNextStartSession()
