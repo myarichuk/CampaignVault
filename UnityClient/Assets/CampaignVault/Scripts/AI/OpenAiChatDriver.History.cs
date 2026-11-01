@@ -26,11 +26,23 @@ namespace CampaignVault.UnityClient.AI
         {
             if (IsBusy || CurrentTurn == null) { return false; }
             if (_turnStart >= 0 && _turnStart < _history.Count) { _history.RemoveRange(_turnStart, _history.Count - _turnStart); }
-            if (_passages.Count > 0 && _passages[_passages.Count - 1].Key == CurrentTurn.Player) { _passages.RemoveAt(_passages.Count - 1); }
+            // Only a scene this turn actually added: after a refused narration nothing was, and a repeated line must not pop the last turn's.
+            if (CurrentTurn.PassageAdded && _passages.Count > 0) { _passages.RemoveAt(_passages.Count - 1); }
             CurrentTurn = null;
             LastError = string.Empty;
             LastFailure = null;
             return true;
+        }
+
+        /// <summary>
+        /// The provider refused a turn that changed nothing: the user message and everything after it leave the model's memory, as
+        /// if the line had never been sent. <paramref name="trimNoteRode"/> puts back the "history was trimmed" flag the dropped user
+        /// message carried, or the model would never be told to reseed. _turnStart is the right anchor: TrimToBudget keeps it correct.
+        /// </summary>
+        internal void RewindTurn(bool trimNoteRode)
+        {
+            if (_turnStart >= 0 && _turnStart < _history.Count) { _history.RemoveRange(_turnStart, _history.Count - _turnStart); }
+            if (trimNoteRode) { _historyTrimmed = true; }
         }
 
         public void RestorePassages(IList<KeyValuePair<string, string>> passages)

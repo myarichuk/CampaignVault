@@ -914,5 +914,121 @@ namespace CampaignVault.UnityClient.Tests
             Assert.IsNull(_driver.CurrentTurn);
             Assert.IsFalse(_driver.DropLastTurn(), "nothing left to drop");
         }
+
+        // ---- provider refusals ----
+
+        private static Reply RefusalField(string text)
+        {
+            return new Reply { Body = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":null,\"refusal\":" + JsonValue.FromString(text).ToJson() + "},\"finish_reason\":\"stop\"}]}" };
+        }
+
+        private static Reply ContentFilter()
+        {
+            return new Reply { Body = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"\"},\"finish_reason\":\"content_filter\"}]}" };
+        }
+
+        [UnityTest]
+        public IEnumerator Refusal_IsRetriedOnceWithAOneShotNote_AndNeverEntersHistory()
+        {
+            _script.Enqueue(req => RefusalField("I can't help with that."));
+            _script.Enqueue(req => new Reply { Body = Plain("The door closes softly behind you, and the lamp burns low.") });
+            yield return Send("I follow her upstairs.");
+
+            Assert.AreEqual(2, _chatRequests.Count);
+            StringAssert.DoesNotContain(Storyteller.RefusalRetryNote, Content(_chatRequests[0].GetArray("messages")[0]));
+            StringAssert.Contains(Storyteller.RefusalRetryNote, Content(_chatRequests[1].GetArray("messages")[0]), "the note rides the retry's system message");
+            Assert.AreEqual(1, UserMessages(_chatRequests[1]), "the retry is the same single user message");
+            Assert.IsFalse(_driver.History.Any(m => Content(m).Contains("can't help")), "the refusal is never remembered");
+            Assert.IsFalse(_driver.History.Any(m => Content(m).Contains("provider declined")), "the one-shot note is never remembered");
+            StringAssert.Contains("lamp burns low", _transcript.Segments.Last(s => s.Kind == SegmentKind.Narration).Text);
+            Assert.IsEmpty(_driver.LastError);
+        }
+
+        [UnityTest]
+        public IEnumerator Refusal_Twice_WithNothingCommitted_RewindsTheWholeTurn()
+        {
+            _script.Enqueue(req => ContentFilter());
+            _script.Enqueue(req => ContentFilter());
+            yield return Send("hello");
+
+            Assert.AreEqual(2, _chatRequests.Count);
+            Assert.AreEqual(0, _driver.History.Count, "the user message is gone too, so the next send starts clean");
+            Assert.IsNotNull(_driver.LastFailure);
+            Assert.AreEqual(LlmFailureKind.Refused, _driver.LastFailure.Kind);
+            Assert.IsTrue(_driver.LastFailure.Retryable, "nothing was committed, so a resend is safe");
+            Assert.AreEqual(0, _driver.Turns.Count, "a rewound turn leaves no record");
+        }
+
+        [UnityTest]
+        public IEnumerator HttpRefusal_IsNotRepostedByTheStreamFallbacks_ThenRetriedOnce()
+        {
+            string policy = "{\"error\":{\"message\":\"Your request was flagged.\",\"metadata\":{\"error_type\":\"content_policy_violation\"}}}";
+            _script.Enqueue(req => new Reply { Status = 400, Body = policy });
+            _script.Enqueue(req => new Reply { Body = Plain("The scene cuts to morning.") });
+            yield return Send("hello");
+
+            Assert.AreEqual(2, _chatRequests.Count, "one refused post and one retry: no stream_options or non-stream re-posts of a refusal");
+            StringAssert.Contains("cuts to morning", _transcript.Segments.Last(s => s.Kind == SegmentKind.Narration).Text);
+        }
+
+        [UnityTest]
+        public IEnumerator TwoPass_NarratorRefusesTwice_KeepsTheCommitAndSaysSo()
+        {
+            TwoPass();
+            _script.Enqueue(req => ToolCallReply("c1", "take_turn", "{\"narrative\":\"They talk late into the night\"}"));
+            _script.Enqueue(req => new Reply { Body = Plain("DONE") });
+            _script.Enqueue(req => ContentFilter());
+            _script.Enqueue(req => ContentFilter());
+            yield return Send("I stay.");
+
+            Assert.AreEqual(1, _toolCalls.Count, "the commit happened once and is never repeated");
+            Assert.AreEqual(4, _chatRequests.Count);
+            StringAssert.DoesNotContain(Storyteller.RefusalRetryNote, Content(_chatRequests[2].GetArray("messages").Last()));
+            StringAssert.Contains(Storyteller.RefusalRetryNote, Content(_chatRequests[3].GetArray("messages").Last()), "the second attempt's brief carries the note");
+            Assert.AreEqual(LlmFailureKind.Refused, _driver.LastFailure.Kind);
+            Assert.IsFalse(_driver.LastFailure.Retryable, "resending would commit the world twice");
+            StringAssert.Contains("saved", _driver.LastFailure.Friendly);
+            Assert.AreEqual("DONE", Content(_driver.History.Last()), "the loop's history stays valid and closed");
+        }
+
+        [UnityTest]
+        public IEnumerator SoftRefusal_IsRetriedOnce_ThenAcceptedAsWritten()
+        {
+            const string apology = "I'm sorry, but I can't continue with this scene.";
+            _script.Enqueue(req => new Reply { Body = Plain(apology) });
+            _script.Enqueue(req => new Reply { Body = Plain(apology) });
+            yield return Send("hello");
+
+            Assert.AreEqual(2, _chatRequests.Count);
+            Assert.IsEmpty(_driver.LastError, "a heuristic never fails a turn");
+            Assert.IsTrue(_transcript.Segments.Any(s => s.Kind == SegmentKind.Narration));
+        }
+
+        [UnityTest]
+        public IEnumerator AShortSceneWithAnNpcSayingNo_IsNotARefusal()
+        {
+            _script.Enqueue(req => new Reply { Body = Plain("\"I can't let you through,\" the guard says, hand on his hilt.") });
+            yield return Send("I try the gate.");
+
+            Assert.AreEqual(1, _chatRequests.Count, "no retry for a scene that merely contains a refusal");
+        }
+
+        [UnityTest]
+        public IEnumerator DropLastTurn_AfterARefusedNarration_DoesNotPopTheEarlierScene()
+        {
+            TwoPass();
+            _driver.NarrationRemedies = false;
+            _script.Enqueue(req => new Reply { Body = Plain("DONE") });
+            _script.Enqueue(req => new Reply { Body = Plain("Scene one.") });
+            _script.Enqueue(req => new Reply { Body = Plain("DONE") });
+            _script.Enqueue(req => ContentFilter());
+            _script.Enqueue(req => ContentFilter());
+            yield return Send("First.");
+            yield return Send("First.");
+
+            Assert.AreEqual("Scene one.", _driver.LastPassage);
+            Assert.IsTrue(_driver.DropLastTurn());
+            Assert.AreEqual("Scene one.", _driver.LastPassage, "the repeated line must not pop the previous turn's scene");
+        }
     }
 }

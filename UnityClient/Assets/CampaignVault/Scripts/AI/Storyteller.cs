@@ -84,6 +84,15 @@ namespace CampaignVault.UnityClient.AI
             "Never lecture or break the fiction to refuse: let an NPC deflect, an interruption land, or the scene cut. " +
             "If the CAMPAIGN line says \"Content: open\", the table chose to go beyond this within what its model provider permits; follow the provider's rules and the child rule, and cut away wherever the provider would stop you.";
 
+        /// <summary>
+        /// Added to ONE request (never stored in the conversation) when the provider declined the previous attempt at the beat.
+        /// It asks for the same beat again, carried to its threshold and cut away.
+        /// </summary>
+        public const string RefusalRetryNote =
+            "NOTE: the provider declined your previous attempt at this beat. Write it again so that any romantic or intimate moment is carried " +
+            "through emotion and sensation only up to its threshold, then cut away (a closed door, a shift to morning) and continue with the aftermath. " +
+            "Nothing explicit, in prose or in any field you commit.";
+
         /// <summary>Appended to the loop's system prompt (before the CAMPAIGN line) in two-pass mode.</summary>
         public const string LoopContract =
             "# TURN CONTRACT (this client)\n" +

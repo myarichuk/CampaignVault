@@ -99,11 +99,15 @@ namespace CampaignVault.UnityClient.AI
         }
 
         /// <summary>A reply that was a refusal (finish_reason, a refusal field, or a decline in prose), found after the transport succeeded.</summary>
-        public static LlmFailure Refused(string what, Context context)
+        public static LlmFailure Refused(string what, Context context, bool worldChanged = false)
         {
             context = context ?? new Context();
             var failure = new LlmFailure { Kind = LlmFailureKind.Refused, Status = 200 };
-            failure.Friendly = FriendlyFor(LlmFailureKind.Refused, context.Model);
+            failure.Friendly = worldChanged
+                ? "The AI provider declined to write that scene, even after being asked to cut away. What the DM committed is saved, so there is nothing to redo: "
+                    + "send a new line (what your character does next) and the story carries on from here."
+                : FriendlyFor(LlmFailureKind.Refused, context.Model);
+            failure.Retryable = !worldChanged;
             failure.Technical = TechnicalFor(failure, what, context);
             return failure;
         }

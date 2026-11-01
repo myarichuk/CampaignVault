@@ -243,6 +243,9 @@ namespace CampaignVault.UnityClient.AI
             bool twoPass = !loop.SinglePass;
             bool oocPlayer = twoPass && Storyteller.IsOocPlayer(playerText);
             bool handToStoryteller = false;
+            int refusalRetries = 0;
+            bool refusedEnd = false;
+            bool trimNoteRode = false;
             var brief = new TurnBrief();
             var record = new TurnRecord { Player = playerText ?? string.Empty, Model = loop.Model };
             LastNarrationMessages = null;
@@ -273,6 +276,7 @@ namespace CampaignVault.UnityClient.AI
                 // Trimming is silent to the model, so the prompt's "after a compaction send forceFullReseed" never fired (A20).
                 string trimNote = _historyTrimmed ? "\n\n" + TrimmedNote : string.Empty;
                 _historyTrimmed = false;
+                trimNoteRode = trimNote.Length > 0;
                 userMessage = RoleMessage("user", (twoPass ? Storyteller.LoopUserMessage(LastPassage, cleanPlayer) : cleanPlayer) + trimNote);
                 _history.Add(userMessage);
                 TrimToBudget();
@@ -314,6 +318,28 @@ namespace CampaignVault.UnityClient.AI
                     yield return RequestReply(loop,
                         delegate (bool stream, bool usageOptions) { return BuildRequest(loop, systemPrompt, stream, usageOptions); },
                         onDelta, delegate (JsonValue r, string err) { response = r; failure = err; });
+                    _oneShotNote = string.Empty;
+
+                    if (!_cancelRequested && failure != null && LastFailure != null && LastFailure.Kind == LlmFailureKind.Refused)
+                    {
+                        // A refusal that came back as an HTTP error: what streamed before it is not a result to keep on screen.
+                        if (live != null) { transcript.Remove(live); live = null; }
+                        if (refusalRetries == 0)
+                        {
+                            refusalRetries++;
+                            _oneShotNote = Storyteller.RefusalRetryNote;
+                            AddSystem(transcript, RefusalRetryLine);
+                            changed();
+                            turn--;
+                            continue;
+                        }
+                        RefusalEnd httpEnd = EndRefusedTurn(twoPass, oocPlayer, record, trimNoteRode, transcript, changed, failure, FailureContext(loop, 2, _lastBody));
+                        refusedEnd = true;
+                        anyOutput = true;
+                        if (httpEnd == RefusalEnd.FailTurn) { assistantReplied = false; }
+                        if (httpEnd == RefusalEnd.HandToStoryteller) { handToStoryteller = true; } else { loopFailed = true; }
+                        break;
+                    }
 
                     if (_cancelRequested || failure != null)
                     {
@@ -351,6 +377,35 @@ namespace CampaignVault.UnityClient.AI
                     string reasoning;
                     ExtractContent(message, out content, out reasoning);
                     var toolCalls = message.GetArray("tool_calls");
+                    {
+                        // A refusal never enters the conversation: a provider that refused once keeps refusing a conversation that holds it.
+                        // Hard signals win even beside tool calls (a content_filter stop can cut the arguments), and even for an OOC line.
+                        // The prose heuristic runs only where prose is expected, and a second soft verdict is accepted as written.
+                        string probe = content.Trim();
+                        string probeOoc = string.Empty;
+                        bool proseExpected = toolCalls.Count == 0 && !oocPlayer
+                            && (!twoPass || (!Storyteller.TryOocReply(probe, out probeOoc) && !Storyteller.IsDone(probe)));
+                        RefusalVerdict verdict = RefusalDetector.Inspect(firstChoice, content, toolCalls.Count > 0, proseExpected);
+                        if (verdict.IsRefusal && !(verdict.Kind == RefusalKind.Soft && refusalRetries > 0))
+                        {
+                            if (live != null) { transcript.Remove(live); live = null; }
+                            LogTool("refusal: " + verdict.Reason);
+                            if (refusalRetries == 0)
+                            {
+                                refusalRetries++;
+                                _oneShotNote = Storyteller.RefusalRetryNote;
+                                if (verdict.Kind == RefusalKind.Hard) { AddSystem(transcript, RefusalRetryLine); changed(); }
+                                turn--;
+                                continue;
+                            }
+                            RefusalEnd replyEnd = EndRefusedTurn(twoPass, oocPlayer, record, trimNoteRode, transcript, changed, verdict.Reason, FailureContext(loop, 2, LastResponseJson));
+                            refusedEnd = true;
+                            anyOutput = true;
+                            if (replyEnd == RefusalEnd.FailTurn) { assistantReplied = false; }
+                            if (replyEnd == RefusalEnd.HandToStoryteller) { handToStoryteller = true; } else { loopFailed = true; }
+                            break;
+                        }
+                    }
                     // A reply cut off at the output limit: its tool arguments are incomplete and its prose ends mid-sentence (A5).
                     bool cutOff = firstChoice.GetString("finish_reason", string.Empty) == "length";
                     if (cutOff && toolCalls.Count == 0)
@@ -546,7 +601,7 @@ namespace CampaignVault.UnityClient.AI
                     narrated = told;
                     anyOutput = true;
                 }
-                else if (!twoPass && !narrated && lastAside != null && !_cancelRequested)
+                else if (!twoPass && !narrated && lastAside != null && !_cancelRequested && !refusedEnd)
                 {
                     // The model told the story alongside its tool calls and then
                     // went quiet: that aside was the narration after all.
@@ -610,69 +665,114 @@ namespace CampaignVault.UnityClient.AI
         {
             Status = "the storyteller writes the scene…";
             CurrentTool = string.Empty;
-            JsonValue messages = BuildNarrationMessages(playerText, brief);
-            LastNarrationMessages = messages;
             string model = narrator.Model.Trim();
             record.NarratorModel = narrator.Model;
+            bool worldChanged = CampaignVault.UnityClient.App.VaultController.ChangedTheWorld(record);
 
-            TranscriptSegment live = null;
-            Action<string> onDelta = delegate (string delta)
+            // The narrator pass touches no conversation state, so a refusal needs no rewind: the second attempt builds a new message
+            // array (the note is never in the first one, which the measurer reads) and the refused text is never kept.
+            string note = string.Empty;
+            for (int attempt = 0; attempt < 2; attempt++)
             {
-                if (live == null)
+                JsonValue messages = BuildNarrationMessages(playerText, brief, note);
+                LastNarrationMessages = messages;
+
+                TranscriptSegment live = null;
+                Action<string> onDelta = delegate (string delta)
                 {
-                    live = new TranscriptSegment { Kind = SegmentKind.Narration, Streaming = true };
-                    transcript.Add(live);
-                }
-                live.Text += delta;
-                transcript.NotifyUpdated(live);
-                changed();
-            };
-            JsonValue response = null;
-            string failure = null;
-            yield return RequestReply(narrator,
-                delegate (bool stream, bool usageOptions) { return BuildNarrationRequest(narrator, messages, stream, usageOptions); },
-                onDelta, delegate (JsonValue r, string err) { response = r; failure = err; });
-            if (_cancelRequested || failure != null)
-            {
-                if (live != null)
-                {
-                    live.Streaming = false;
-                    live.Kind = SegmentKind.Aside;
-                    live.Text = live.Text.TrimEnd() + " …";
+                    if (live == null)
+                    {
+                        live = new TranscriptSegment { Kind = SegmentKind.Narration, Streaming = true };
+                        transcript.Add(live);
+                    }
+                    live.Text += delta;
                     transcript.NotifyUpdated(live);
+                    changed();
+                };
+                JsonValue response = null;
+                string failure = null;
+                yield return RequestReply(narrator,
+                    delegate (bool stream, bool usageOptions) { return BuildNarrationRequest(narrator, messages, stream, usageOptions); },
+                    onDelta, delegate (JsonValue r, string err) { response = r; failure = err; });
+                if (_cancelRequested || failure != null)
+                {
+                    bool refusedHttp = !_cancelRequested && LastFailure != null && LastFailure.Kind == LlmFailureKind.Refused;
+                    if (live != null)
+                    {
+                        if (refusedHttp) { transcript.Remove(live); }
+                        else
+                        {
+                            live.Streaming = false;
+                            live.Kind = SegmentKind.Aside;
+                            live.Text = live.Text.TrimEnd() + " …";
+                            transcript.NotifyUpdated(live);
+                        }
+                    }
+                    if (refusedHttp && attempt == 0)
+                    {
+                        note = Storyteller.RefusalRetryNote;
+                        AddSystem(transcript, RefusalRetryLine);
+                        changed();
+                        continue;
+                    }
+                    if (refusedHttp)
+                    {
+                        Fail(transcript, "The AI provider declined to write this scene.", changed, LlmFailure.Refused(failure, FailureContext(narrator, 2, _lastBody), worldChanged));
+                    }
+                    else if (_cancelRequested) { AddStopped(transcript, changed); }
+                    else { Fail(transcript, "Storyteller error (" + model + "): " + failure, changed); }
+                    done(false);
+                    yield break;
                 }
-                if (_cancelRequested) { AddStopped(transcript, changed); }
-                else { Fail(transcript, "Storyteller error (" + model + "): " + failure, changed); }
-                done(false);
+                LastResponseJson = CapText(response.ToJson(), 8000);
+                var usage = MeasureUsage(response, narrator);
+                record.Usage.Add(usage);
+                RecordUsage(usage, model);
+                if (live != null) { transcript.Remove(live); live = null; }
+                var choices = response.GetArray("choices");
+                JsonValue choice = choices.Count > 0 ? choices[0] : JsonValue.Null;
+                JsonValue message = choice.IsNull ? JsonValue.Null : choice.Get("message");
+                string content = string.Empty;
+                string reasoning;
+                if (!message.IsNull) { ExtractContent(message, out content, out reasoning); }
+                string scene = content.Trim();
+
+                // Before the empty-scene test: a content_filter stop is an empty reply that means something else. A second SOFT verdict
+                // is accepted as written (a good scene must never be thrown away on a heuristic); a second HARD one is final.
+                RefusalVerdict verdict = RefusalDetector.Inspect(choice, scene, false, true);
+                if (verdict.IsRefusal && (attempt == 0 || verdict.Kind == RefusalKind.Hard))
+                {
+                    LogTool("refusal (storyteller): " + verdict.Reason);
+                    if (attempt == 0)
+                    {
+                        note = Storyteller.RefusalRetryNote;
+                        if (verdict.Kind == RefusalKind.Hard) { AddSystem(transcript, RefusalRetryLine); changed(); }
+                        continue;
+                    }
+                    Fail(transcript, model + " declined to write this scene.", changed, LlmFailure.Refused(verdict.Reason, FailureContext(narrator, 2, LastResponseJson), worldChanged));
+                    done(false);
+                    yield break;
+                }
+                if (scene.Length == 0)
+                {
+                    Fail(transcript, model + " returned an empty scene. Open Inspect for the raw response.", changed,
+                        LlmFailure.Malformed("an empty scene", FailureContext(narrator, 1, LastResponseJson)));
+                    done(false);
+                    yield break;
+                }
+                SegmentSplitter.AddNarration(transcript, scene);
+                record.AddNarration(scene);
+                _passages.Add(new KeyValuePair<string, string>(playerText, Storyteller.Cap(scene, Storyteller.MaxPassageChars)));
+                record.PassageAdded = true;
+                while (_passages.Count > Storyteller.MaxPassages) { _passages.RemoveAt(0); }
+                changed();
+                done(true);
                 yield break;
             }
-            LastResponseJson = CapText(response.ToJson(), 8000);
-            var usage = MeasureUsage(response, narrator);
-            record.Usage.Add(usage);
-            RecordUsage(usage, model);
-            if (live != null) { transcript.Remove(live); }
-            var choices = response.GetArray("choices");
-            JsonValue message = choices.Count > 0 ? choices[0].Get("message") : JsonValue.Null;
-            string content = string.Empty;
-            string reasoning;
-            if (!message.IsNull) { ExtractContent(message, out content, out reasoning); }
-            string scene = content.Trim();
-            if (scene.Length == 0)
-            {
-                Fail(transcript, model + " returned an empty scene. Open Inspect for the raw response.", changed,
-                    LlmFailure.Malformed("an empty scene", FailureContext(narrator, 1, LastResponseJson)));
-                done(false);
-                yield break;
-            }
-            SegmentSplitter.AddNarration(transcript, scene);
-            record.AddNarration(scene);
-            _passages.Add(new KeyValuePair<string, string>(playerText, Storyteller.Cap(scene, Storyteller.MaxPassageChars)));
-            while (_passages.Count > Storyteller.MaxPassages) { _passages.RemoveAt(0); }
-            changed();
-            done(true);
+            done(false);
         }
 
-        internal JsonValue BuildNarrationMessages(string playerText, TurnBrief brief)
+        internal JsonValue BuildNarrationMessages(string playerText, TurnBrief brief, string note = "")
         {
             string skill;
             string examples;
@@ -692,7 +792,10 @@ namespace CampaignVault.UnityClient.AI
                 messages.ArrayValue.Add(RoleMessage("user", "The player says:\n" + passage.Key));
                 messages.ArrayValue.Add(RoleMessage("assistant", passage.Value));
             }
-            messages.ArrayValue.Add(RoleMessage("user", brief.Build(playerText, Storyteller.MaxBriefChars, NarrationRemedies)));
+            string request = brief.Build(playerText, Storyteller.MaxBriefChars, NarrationRemedies);
+            // The note is the last thing read, as the length request is: it rides this one call and nothing stored.
+            if (!string.IsNullOrEmpty(note)) { request += "\n\n" + note; }
+            messages.ArrayValue.Add(RoleMessage("user", request));
             return messages;
         }
 
@@ -711,6 +814,43 @@ namespace CampaignVault.UnityClient.AI
 
         /// <summary>The current turn is the two-pass loop: no narration sections in its prompt, no narration skills in its menu (A24).</summary>
         private bool _loopTurn;
+
+        /// <summary>
+        /// A note for the NEXT request only, set after the provider declined an attempt. BuildRequest puts it on that request's
+        /// system message; it is never stored in _history, so no later turn replays it.
+        /// </summary>
+        private string _oneShotNote = string.Empty;
+
+        private const string RefusalRetryLine = "The provider declined that beat; asking the DM to carry it to the door and cut away…";
+        private const string RefusedClosure = "(The provider declined to continue this beat; no scene was written.)";
+
+        private enum RefusalEnd { FailTurn, HandToStoryteller, FailKeepTurn }
+
+        /// <summary>
+        /// The provider refused twice. Restores the conversation to something valid and says what the turn does next.
+        /// A turn that changed nothing is rewound whole (the user message included), so the next send starts clean. A turn that
+        /// already wrote to the world keeps its tool calls and results (the pairing stays valid) and is closed with a neutral
+        /// assistant message, because resending it would commit the world twice.
+        /// </summary>
+        private RefusalEnd EndRefusedTurn(bool twoPass, bool oocPlayer, TurnRecord record, bool trimNoteRode, VaultTranscript transcript, Action changed, string reason, LlmFailure.Context context)
+        {
+            if (!CampaignVault.UnityClient.App.VaultController.ChangedTheWorld(record))
+            {
+                RewindTurn(trimNoteRode);
+                Fail(transcript, "The AI provider declined this turn.", changed, LlmFailure.Refused(reason, context, false));
+                return RefusalEnd.FailTurn;
+            }
+            bool toStoryteller = twoPass && !oocPlayer;
+            _history.Add(RoleMessage("assistant", toStoryteller ? Storyteller.DoneWord : RefusedClosure));
+            if (toStoryteller)
+            {
+                AddSystem(transcript, "The provider declined the DM's last reply; narrating what was committed.");
+                changed();
+                return RefusalEnd.HandToStoryteller;
+            }
+            Fail(transcript, "The AI provider declined this turn.", changed, LlmFailure.Refused(reason, context, true));
+            return RefusalEnd.FailKeepTurn;
+        }
 
         private static JsonValue LoadSkillDefinition(List<string> skillNames)
         {
