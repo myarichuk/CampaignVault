@@ -38,6 +38,9 @@ namespace CampaignVault.UnityClient.App
                 if (string.IsNullOrEmpty(system)) { _s.Prompts.Ruleset = string.Empty; }
                 _s.Prompts.PartyLine = string.Empty;
                 _s.Prompts.PartyFingerprint = string.Empty;
+                // Fail-safe: another table's "open" must never ride into this one's prompt before the server has said.
+                _s.ContentLevel = string.Empty;
+                _s.Prompts.ContentLevel = string.Empty;
                 _s.Session = null;
                 _s.SessionStatus = string.Empty;
                 _s.SetupPending = false;
@@ -108,6 +111,9 @@ namespace CampaignVault.UnityClient.App
         {
             _s.Session = digest;
             _s.Prompts.PartyFingerprint = digest.Fingerprint;
+            _s.ContentLevel = digest.ContentLevel;
+            _s.Prompts.ContentLevel = digest.ContentLevel;
+            MaybeHintContentLevel();
             if (!string.IsNullOrEmpty(digest.System)) { _s.Prompts.Ruleset = digest.System; }
             var roster = new List<string>();
             bool pcStillInParty = false;

@@ -79,6 +79,8 @@ namespace CampaignVault.UnityClient.UI.Settings
         private string _notice = string.Empty;
         private string _prompt = string.Empty;
         private string _promptTone = "muted";
+        private bool _openContent;
+        private bool _contentAvailable;
 
         public AdvancedPage(VaultAppState state, VaultController controller, Action closeAndSetup)
         {
@@ -89,7 +91,7 @@ namespace CampaignVault.UnityClient.UI.Settings
             RunSetup = closeAndSetup;
             AppData = DisplayText.Plain(Application.persistentDataPath);
             Licensing = DisplayText.Plain(LoadNotice());
-            Watch(state, StateArea.Tools);
+            Watch(state, StateArea.Tools | StateArea.Session);
             Refresh();
         }
 
@@ -120,6 +122,19 @@ namespace CampaignVault.UnityClient.UI.Settings
         [CreateProperty] public string AppData { get; private set; }
         /// <summary>The notices the bundled game content's licenses require (NOTICE.md, staged next to the prompt).</summary>
         [CreateProperty] public string Licensing { get; private set; }
+        /// <summary>
+        /// The table's choice to go past fade-to-black (only meaningful on an AI provider that permits it). Two-way: flipping it
+        /// asks the server to store it (a player-owned campaign setting), and a refusal flips it back on the next refresh.
+        /// </summary>
+        [CreateProperty]
+        public bool OpenContent
+        {
+            get { return _openContent; }
+            set { if (Set(ref _openContent, value)) { _c.SetContentLevel(value ? ContentLevelRequest.Open : ContentLevelRequest.Fade); } }
+        }
+
+        /// <summary>The switch needs a campaign to hold the setting.</summary>
+        [CreateProperty] public bool ContentAvailable { get { return _contentAvailable; } private set { Set(ref _contentAvailable, value); } }
         [CreateProperty] public Action EnableAll { get; private set; }
         [CreateProperty] public Action ReloadTools { get; private set; }
         [CreateProperty] public Action RunSetup { get; private set; }
@@ -131,6 +146,9 @@ namespace CampaignVault.UnityClient.UI.Settings
 
         public override void Refresh()
         {
+            // Set the backing field directly: this mirrors the server's answer and must not send the change back.
+            Set(ref _openContent, _s.ContentLevel == ContentLevelRequest.Open, "OpenContent");
+            ContentAvailable = _s.HasCampaign;
             int count;
             string names;
             bool ok = _s.Prompts.TryGetSkillStatus(out count, out names) && count > 0;

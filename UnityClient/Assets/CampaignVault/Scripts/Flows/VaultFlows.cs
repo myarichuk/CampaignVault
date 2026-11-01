@@ -1,3 +1,4 @@
+using CampaignVault.UnityClient.App;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using CampaignVault.UnityClient.Json;
@@ -345,6 +346,8 @@ namespace CampaignVault.UnityClient.Flows
         public string CampaignSlug = string.Empty;
         public string CampaignDisplay = string.Empty;
         public string System = string.Empty;
+        /// <summary>"fade", "open", or empty while the player has never chosen (behaves as fade).</summary>
+        public string ContentLevel = string.Empty;
         public string Fingerprint = string.Empty;
         public string RecentDigest = string.Empty;
         public HandoffDigest Handoff;
@@ -374,6 +377,7 @@ namespace CampaignVault.UnityClient.Flows
                 digest.CampaignSlug = campaign.GetStringAny(new[] { "slug", "Slug" }, string.Empty);
                 digest.CampaignDisplay = campaign.GetStringAny(new[] { "displayName", "DisplayName", "name", "Name" }, string.Empty);
                 digest.System = campaign.GetStringAny(new[] { "system", "System" }, string.Empty);
+                digest.ContentLevel = ContentLevelRequest.Normalize(campaign.GetStringAny(new[] { "contentLevel", "ContentLevel" }, string.Empty)) ?? string.Empty;
                 CollectMembers(Pick(campaign, "pcs", "Pcs"), digest.Pcs);
                 CollectMembers(Pick(campaign, "companions", "Companions"), digest.Companions);
             }

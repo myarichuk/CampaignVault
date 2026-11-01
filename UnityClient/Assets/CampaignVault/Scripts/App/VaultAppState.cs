@@ -422,6 +422,8 @@ namespace CampaignVault.UnityClient.App
         }
         public SessionDigest Session;
         public string SessionStatus = string.Empty;
+        /// <summary>The active campaign's content level as the server last said it: "fade", "open", or empty (never chosen; behaves as fade).</summary>
+        public string ContentLevel = string.Empty;
         /// <summary>
         /// The campaign has no player character yet (fresh from onboarding): lines go
         /// to the DM as out-of-character setup talk, and the first session opens once

@@ -9,6 +9,15 @@
                 </Bindings>
             </ui:Label>
         </cv:VaultCard>
+        <cv:VaultCard title="CONTENT">
+            <ui:Label text="By default romance and flirting are written and anything explicit fades to black. Turn this on only if your AI provider allows adult content; the provider's own rules still apply, and nothing here ever covers children." class="cv-body cv-muted" />
+            <cv:VaultSwitch name="content-open" text="Allow scenes beyond fade-to-black (this campaign)">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="OpenContent" binding-mode="TwoWay" />
+                    <ui:DataBinding property="enabledSelf" data-source-path="ContentAvailable" binding-mode="ToTarget" />
+                </Bindings>
+            </cv:VaultSwitch>
+        </cv:VaultCard>
         <cv:VaultCard title="WHAT THE DUNGEON MASTER CAN DO">
             <ui:VisualElement class="cv-row cv-plugins__intro">
                 <ui:Label text="Switch off anything you don't want the Dungeon Master to do. Switched-off abilities are never offered to the model." class="cv-body cv-muted cv-grow" />
