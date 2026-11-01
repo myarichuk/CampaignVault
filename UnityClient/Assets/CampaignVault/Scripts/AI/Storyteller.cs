@@ -70,6 +70,20 @@ namespace CampaignVault.UnityClient.AI
             return words;
         }
 
+        /// <summary>
+        /// Content limits for every model-facing surface of this client. Many providers forbid explicit sexual content, and a
+        /// player's request (or an NPC's in-fiction behaviour) can steer a scene there, so the default is: romance on the page,
+        /// explicit content cut away, nothing sexual involving anyone not clearly an adult. A table may opt up ("Content: open" on
+        /// the CAMPAIGN line, see SystemPromptProvider.ContentLevel) for a provider that permits more; the child rule never moves.
+        /// </summary>
+        public const string ContentLimits =
+            "Violence, menace, flirting, desire, kisses and embraces are story material: give them full weight. " +
+            "Sexual content stops at the door: when a scene turns toward sex or anything explicit, carry it through emotion and sensation, " +
+            "then cut away (a closed door, the fire burning low, a shift to morning) and play the aftermath. Describe no bodies or acts explicitly, in prose or in any committed field. " +
+            "Anyone who is a child, or not clearly an adult, gets no romantic or sexual content at all. " +
+            "Never lecture or break the fiction to refuse: let an NPC deflect, an interruption land, or the scene cut. " +
+            "If the CAMPAIGN line says \"Content: open\", the table chose to go beyond this within what its model provider permits; follow the provider's rules and the child rule, and cut away wherever the provider would stop you.";
+
         /// <summary>Appended to the loop's system prompt (before the CAMPAIGN line) in two-pass mode.</summary>
         public const string LoopContract =
             "# TURN CONTRACT (this client)\n" +
@@ -80,6 +94,7 @@ namespace CampaignVault.UnityClient.AI
             "The storyteller only knows what the tools returned and the narrative line you pass to take_turn, so put the concrete content of the beat in that line " +
             "(up to about 500 characters): who does what, each thing found with its quality, what an NPC says or decides, in their own words where the words matter.\n" +
             "Ignore the sceneCue field in take_turn results: it is for clients without a storyteller, and you do not write the scene.\n" +
+            "Content limits for the narrative line and every committed field: " + ContentLimits + "\n" +
             "If the player spoke out of character (a rules question, a request about the game itself), answer them in plain words, starting with " +
             OocPrefix + " and that answer is shown as is.";
 
@@ -87,7 +102,8 @@ namespace CampaignVault.UnityClient.AI
         public const string SinglePassNote =
             "# THIS CLIENT\n" +
             "The player sees every roll as a card beside your text, so leave out the roll block and keep the numbers, the DCs and the words " +
-            "success and failure out of the prose; show what each roll did in the fiction.";
+            "success and failure out of the prose; show what each roll did in the fiction.\n" +
+            "Content limits: " + ContentLimits;
 
         /// <summary>The storyteller's own instructions; the narration skill follows it.</summary>
         public const string NarrationHeader =
@@ -100,6 +116,7 @@ namespace CampaignVault.UnityClient.AI
             "The brief's lines are log notes, clipped on purpose: they are material for the scene, not its style.\n\n" +
             "This client shows every roll as a card beside your text, so the prose carries no numbers, DCs, or the words success and failure. " +
             "Where the guide mentions the engine or the log, that part has already happened here.\n\n" +
+            "Content limits: " + ContentLimits + "\n\n" +
             "Reply with the scene and nothing else: no headings, no notes to the player, no summary of the state.";
 
         /// <summary>The loop's final reply meant "I'm done, hand over to the storyteller".</summary>

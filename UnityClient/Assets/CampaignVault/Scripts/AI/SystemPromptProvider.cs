@@ -35,6 +35,9 @@ namespace CampaignVault.UnityClient.AI
         [Tooltip("Ruleset for the RULESET line, from the campaign's system (dnd5e, pf2e, narrative).")]
         public string Ruleset = string.Empty;
 
+        [Tooltip("Empty = fade-to-black (the default). \"open\" = the table opted past it, within what its model provider permits; see Storyteller.ContentLimits.")]
+        public string ContentLevel = string.Empty;
+
         [Tooltip("Party fingerprint from the last start_session; take_turn echoes it as clientPartyFingerprint.")]
         public string PartyFingerprint = string.Empty;
 
@@ -86,6 +89,10 @@ namespace CampaignVault.UnityClient.AI
             sb.Append(CampaignSlug.Trim()).Append('"');
             sb.Append(" | PCs: ").Append(PartyLine.Trim());
             sb.Append(" | Ruleset: ").Append(string.IsNullOrEmpty(Ruleset) ? "(unknown: read it from start_session)" : Ruleset.Trim());
+            if (string.Equals(ContentLevel.Trim(), "open", StringComparison.OrdinalIgnoreCase))
+            {
+                sb.Append(" | Content: open");
+            }
             if (!string.IsNullOrEmpty(PartyFingerprint))
             {
                 sb.Append(" | clientPartyFingerprint=\"").Append(PartyFingerprint.Trim()).Append('"');
