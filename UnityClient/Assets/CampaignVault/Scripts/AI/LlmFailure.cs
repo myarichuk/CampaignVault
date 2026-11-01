@@ -16,6 +16,8 @@ namespace CampaignVault.UnityClient.AI
         Malformed,
         Cancelled,
         Setup,
+        /// <summary>The provider or model declined the scene (content policy). Not a key, quota or outage problem.</summary>
+        Refused,
         Other,
     }
 
@@ -75,7 +77,9 @@ namespace CampaignVault.UnityClient.AI
         public static LlmFailure From(long status, string raw, Context context)
         {
             context = context ?? new Context();
-            var failure = new LlmFailure { Kind = KindFor(status, raw), Status = status };
+            // Before the status mapping: OpenRouter answers a policy block with a 403, which is not a rejected key.
+            bool refused = RefusalDetector.LooksLikeRefusalError(status, raw, context.Body);
+            var failure = new LlmFailure { Kind = refused ? LlmFailureKind.Refused : KindFor(status, raw), Status = status };
             failure.Friendly = FriendlyFor(failure.Kind, context.Model);
             failure.Retryable = failure.Kind != LlmFailureKind.Auth
                 && failure.Kind != LlmFailureKind.ModelNotFound
@@ -90,6 +94,16 @@ namespace CampaignVault.UnityClient.AI
             context = context ?? new Context();
             var failure = new LlmFailure { Kind = LlmFailureKind.Malformed, Status = 200 };
             failure.Friendly = "The AI answered, but not with anything the DM could use (" + what + "). Nothing was lost: press RETRY to ask again, or try another model in Settings.";
+            failure.Technical = TechnicalFor(failure, what, context);
+            return failure;
+        }
+
+        /// <summary>A reply that was a refusal (finish_reason, a refusal field, or a decline in prose), found after the transport succeeded.</summary>
+        public static LlmFailure Refused(string what, Context context)
+        {
+            context = context ?? new Context();
+            var failure = new LlmFailure { Kind = LlmFailureKind.Refused, Status = 200 };
+            failure.Friendly = FriendlyFor(LlmFailureKind.Refused, context.Model);
             failure.Technical = TechnicalFor(failure, what, context);
             return failure;
         }
@@ -139,6 +153,9 @@ namespace CampaignVault.UnityClient.AI
                     return "The AI provider doesn't know the model \"" + model + "\" (or this endpoint). Open Settings and pick another model, then retry.";
                 case LlmFailureKind.BadRequest:
                     return "The AI provider refused the request. Press RETRY once; if it happens again, try another model in Settings and open Details for the provider's reason.";
+                case LlmFailureKind.Refused:
+                    return "The AI provider declined to write that scene (its content policy, or the model's own limits), even after the DM was asked to cut away. "
+                        + "Rephrase the action, or press RETRY to ask for a version that stops at the door. Open Details if you think this was a mistake.";
                 case LlmFailureKind.Malformed:
                     return "The AI service sent back something unreadable. " + again;
                 default:
