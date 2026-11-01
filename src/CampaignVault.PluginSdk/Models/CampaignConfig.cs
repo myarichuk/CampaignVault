@@ -71,6 +71,13 @@ public class CampaignConfig
     public bool SceneCueEnabled { get; set; } = true;
 
     /// <summary>
+    /// How far the table has chosen to take intimate scenes (<see cref="ContentLevels"/>): "fade" or "open". Null means the
+    /// player has never chosen, which behaves as "fade" and lets a client offer the choice once. Player-owned: campaign_update
+    /// changes it only with the player's own words as playerRequest.
+    /// </summary>
+    public string? ContentLevel { get; set; }
+
+    /// <summary>
     /// The number of in-game days a pressure nag is suppressed after being surfaced.
     /// Defaults to 1 (meaning it stays hidden for 1 day, then reappears if ignored).
     /// </summary>

@@ -88,7 +88,10 @@ namespace CampaignVault.UnityClient.AI
             int attempts = 0;
             Action<JsonValue, string, long> keep = delegate (JsonValue r, string err, long code) { response = r; failure = err; status = code; attempts++; };
             yield return PostChat(profile, request, stream, trackDelta, keep);
-            if (usageOptions && failure != null && !streamedText && !_cancelRequested && (status == 400 || status == 422))
+            // A refusal is the same refusal on any transport: re-posting it twice (no stream_options, then no stream) wastes calls,
+            // and a moderation pass on the third try would switch streaming off for this endpoint for the rest of the run.
+            bool refusalLike = failure != null && RefusalDetector.LooksLikeRefusalError(status, failure, _lastBody);
+            if (usageOptions && failure != null && !refusalLike && !streamedText && !_cancelRequested && (status == 400 || status == 422))
             {
                 // Some endpoints stream fine but reject stream_options: drop it before giving up on streaming.
                 request = build(true, false);
@@ -96,7 +99,7 @@ namespace CampaignVault.UnityClient.AI
                 yield return PostChat(profile, request, true, trackDelta, keep);
                 if (failure == null) { _noStreamOptions.Add(endpoint); }
             }
-            if (stream && failure != null && !streamedText && !_cancelRequested && (status == 400 || status == 422))
+            if (stream && failure != null && !refusalLike && !streamedText && !_cancelRequested && (status == 400 || status == 422))
             {
                 request = build(false, false);
                 LastRequestMeta = DescribeRequest(request) + " · stream retry";
@@ -104,7 +107,7 @@ namespace CampaignVault.UnityClient.AI
                 if (failure == null) { _noStreamEndpoints.Add(endpoint); }
             }
             // A busy provider (free models especially) drops or refuses requests that work a moment later: try again, quietly.
-            for (int attempt = 1; attempt <= MaxTransientRetries && _retryBusy && failure != null && !streamedText && !_cancelRequested && IsTransient(status) && !_permanentStreamError; attempt++)
+            for (int attempt = 1; attempt <= MaxTransientRetries && _retryBusy && failure != null && !refusalLike && !streamedText && !_cancelRequested && IsTransient(status) && !_permanentStreamError; attempt++)
             {
                 Status = "the provider is busy: trying again (" + attempt + "/" + MaxTransientRetries + ")…";
                 float until = Time.realtimeSinceStartup + 2f * attempt;
@@ -232,7 +235,8 @@ namespace CampaignVault.UnityClient.AI
         {
             var request = NewRequest(loop, stream, usageOptions);
             var messages = JsonValue.NewArray();
-            messages.ArrayValue.Add(RoleMessage("system", systemPrompt));
+            // The one-shot note rides this request's system message only; it is never stored in _history.
+            messages.ArrayValue.Add(RoleMessage("system", _oneShotNote.Length > 0 ? systemPrompt + "\n\n" + _oneShotNote : systemPrompt));
             for (int i = 0; i < _history.Count; i++) { messages.ArrayValue.Add(_history[i]); }
             request.ObjectValue["messages"] = messages;
 

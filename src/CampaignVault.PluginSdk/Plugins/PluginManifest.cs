@@ -40,6 +40,15 @@ public sealed class PluginManifest
     public List<string> PlayerOnlyModeIds { get; set; } = [];
 
     /// <summary>
+    /// Modes (a subset of <see cref="ModeIds"/>) that carry adult content. They are player-owned like
+    /// <see cref="PlayerOnlyModeIds"/> without also being listed there, and switching one on is the table's opt-in: the same
+    /// <c>campaign_update</c> sets the campaign's <c>contentLevel</c> to "open". While one is enabled the level cannot go back to
+    /// "fade". Switching one off leaves the level alone. The level is a prompt-level setting; the model provider's policy still decides.
+    /// </summary>
+    [JsonPropertyName("adultModeIds")]
+    public List<string> AdultModeIds { get; set; } = [];
+
+    /// <summary>
     /// ActiveSystem values this plugin applies to (open strings, e.g. "dnd5e"; compared case-insensitively). Empty
     /// means every system. In a campaign whose system is not listed the host skips the plugin's handlers, observers,
     /// event handlers, contributors and guidance, and leaves its verbs out of the schema (0.8.0).

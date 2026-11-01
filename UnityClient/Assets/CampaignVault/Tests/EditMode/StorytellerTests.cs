@@ -117,6 +117,22 @@ namespace CampaignVault.UnityClient.Tests
             StringAssert.Contains("sceneCue", Storyteller.LoopContract);
         }
 
+        [Test]
+        public void EveryModelFacingSurface_CarriesTheContentLimits_AndTheChildRule()
+        {
+            StringAssert.Contains("cut away", Storyteller.ContentLimits);
+            StringAssert.Contains("child", Storyteller.ContentLimits);
+            StringAssert.Contains(Storyteller.ContentLimits, Storyteller.NarrationHeader);
+            StringAssert.Contains(Storyteller.ContentLimits, Storyteller.LoopContract);
+        }
+
+        [Test]
+        public void ContentLimits_DoNotDeclawViolence()
+        {
+            StringAssert.Contains("Violence", Storyteller.ContentLimits);
+            StringAssert.DoesNotContain("refuse violence", Storyteller.ContentLimits);
+        }
+
         [TestCase("DONE", true)]
         [TestCase("  **Done.**  ", true)]
         [TestCase("", true)]

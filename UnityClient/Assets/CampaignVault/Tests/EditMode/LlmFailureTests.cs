@@ -42,6 +42,30 @@ namespace CampaignVault.UnityClient.Tests
         }
 
         [Test]
+        public void APolicy403_IsARefusal_NotARejectedKey()
+        {
+            var refused = LlmFailure.From(403, "HTTP 403 from chat endpoint", Context("{\"error\":{\"metadata\":{\"error_type\":\"content_policy_violation\"}}}"));
+            Assert.AreEqual(LlmFailureKind.Refused, refused.Kind);
+            Assert.IsTrue(refused.Retryable);
+            Assert.IsFalse(refused.NeedsSettings, "a refusal is not fixed in Settings");
+            StringAssert.DoesNotContain("API key", refused.Friendly);
+
+            // The same status without a policy body is still a rejected key.
+            Assert.AreEqual(LlmFailureKind.Auth, LlmFailure.From(403, "HTTP 403 from chat endpoint", Context()).Kind);
+            Assert.AreEqual(LlmFailureKind.Auth, LlmFailure.From(401, "moderation", Context("content policy")).Kind);
+        }
+
+        [Test]
+        public void RefusedFactory_IsRetryable_AndKeepsTheKeyOutOfTheReport()
+        {
+            var failure = LlmFailure.Refused("finish_reason=content_filter", Context());
+            Assert.AreEqual(LlmFailureKind.Refused, failure.Kind);
+            Assert.IsTrue(failure.Retryable);
+            StringAssert.Contains("content_filter", failure.Technical);
+            StringAssert.DoesNotContain(Key, failure.Technical);
+        }
+
+        [Test]
         public void Technical_HasTheFactsAMaintainerNeeds()
         {
             var failure = LlmFailure.From(429, "HTTP 429 from chat endpoint: slow down", Context("{\"error\":{\"message\":\"slow down\"}}"));

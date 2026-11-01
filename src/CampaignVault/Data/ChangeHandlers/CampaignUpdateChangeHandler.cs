@@ -24,10 +24,21 @@ public sealed class CampaignUpdateChangeHandler(CampaignDocumentKeys keys) : IWo
         var touchesClock = cu.LoreYear is not null || cu.LoreMonth is not null || cu.LoreDay is not null
                            || cu.Hour is not null || cu.LoreEpoch is not null;
         if (cu.NarrativeFocus is null && cu.EnabledModeIds is null && cu.SystemOptions is null && cu.SceneCueEnabled is null
-            && !touchesClock)
+            && cu.ContentLevel is null && !touchesClock)
         {
             return ChangeHandlerResult.Failure(
-                "campaign_update has nothing to apply — set narrativeFocus, enabledModeIds, systemOptions, sceneCueEnabled and/or the calendar (loreYear, loreMonth, loreDay, hour, loreEpoch).");
+                "campaign_update has nothing to apply — set narrativeFocus, enabledModeIds, systemOptions, sceneCueEnabled, contentLevel and/or the calendar (loreYear, loreMonth, loreDay, hour, loreEpoch).");
+        }
+
+        string? contentLevel = null;
+        if (cu.ContentLevel is not null)
+        {
+            contentLevel = ContentLevels.Normalize(cu.ContentLevel);
+            if (contentLevel is null)
+            {
+                return ChangeHandlerResult.Failure(
+                    $"campaign_update.contentLevel must be '{ContentLevels.Fade}' or '{ContentLevels.Open}' (got '{cu.ContentLevel}').");
+            }
         }
 
         if (cu.LoreMonth is < 1 or > 12)
@@ -59,6 +70,38 @@ public sealed class CampaignUpdateChangeHandler(CampaignDocumentKeys keys) : IWo
             .Where(k => !string.IsNullOrWhiteSpace(k) && IsPlayerOnly(k.Trim()))
             .Select(k => $"systemOptions.{k.Trim()}")
             .ToList() ?? [];
+        // Either direction: a model must not open the table up, and must not quietly undo the player's choice either.
+        if (contentLevel is not null)
+        {
+            playerOwned.Add("contentLevel");
+        }
+
+        // Adult modes are player-owned too, and switching one ON is the table's opt-in to contentLevel "open".
+        var newAdultModes = new List<string>();
+        if (cu.EnabledModeIds is not null && PluginDataRoots.AdultModeIds.Count > 0)
+        {
+            var enabledBefore = (await EnsureConfigAsync(ctx, ct)).EnabledModeIds ?? [];
+            newAdultModes.AddRange(PluginDataRoots.AdultModeIds
+                .Where(m => cu.EnabledModeIds.Contains(m, StringComparer.OrdinalIgnoreCase)
+                            && !enabledBefore.Contains(m, StringComparer.OrdinalIgnoreCase)));
+            playerOwned.AddRange(newAdultModes.Select(m => $"adult mode {m}"));
+        }
+
+        // The two switches must not contradict each other: no "fade" while an adult mode stays enabled.
+        if (contentLevel == ContentLevels.Fade && PluginDataRoots.AdultModeIds.Count > 0)
+        {
+            var enabledAfter = cu.EnabledModeIds ?? (await EnsureConfigAsync(ctx, ct)).EnabledModeIds ?? [];
+            var stillAdult = PluginDataRoots.AdultModeIds
+                .Where(m => enabledAfter.Contains(m, StringComparer.OrdinalIgnoreCase))
+                .ToList();
+            if (stillAdult.Count > 0)
+            {
+                return ChangeHandlerResult.Failure(
+                    $"contentLevel 'fade' contradicts the enabled adult mode(s): {string.Join(", ", stillAdult)}. " +
+                    "Switch them off first (enabledModeIds, in this same campaign_update or an earlier commit).");
+            }
+        }
+
         if (cu.EnabledModeIds is not null && PluginDataRoots.PlayerOnlyModeIds.Count > 0)
         {
             var before = (await EnsureConfigAsync(ctx, ct)).EnabledModeIds ?? [];
@@ -151,6 +194,23 @@ public sealed class CampaignUpdateChangeHandler(CampaignDocumentKeys keys) : IWo
             var config = await EnsureConfigAsync(ctx, ct);
             config.SceneCueEnabled = sceneCue;
             ctx.RecordMessage(sceneCue ? "Scene cue on." : "Scene cue off for this campaign.");
+        }
+
+        if (contentLevel is not null)
+        {
+            var config = await EnsureConfigAsync(ctx, ct);
+            config.ContentLevel = contentLevel;
+            ctx.RecordMessage($"Content level set to '{contentLevel}' for this campaign.");
+        }
+        else if (newAdultModes.Count > 0)
+        {
+            var config = await EnsureConfigAsync(ctx, ct);
+            if (!string.Equals(config.ContentLevel, ContentLevels.Open, StringComparison.Ordinal))
+            {
+                config.ContentLevel = ContentLevels.Open;
+                // Wording is parsed by the Unity client (it follows the turn's summary lines): keep "Content level set to '<level>'".
+                ctx.RecordMessage($"Content level set to '{ContentLevels.Open}' for this campaign (adult mode {string.Join(", ", newAdultModes)} enabled).");
+            }
         }
 
         if (touchesClock)

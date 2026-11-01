@@ -38,6 +38,9 @@ namespace CampaignVault.UnityClient.App
                 if (string.IsNullOrEmpty(system)) { _s.Prompts.Ruleset = string.Empty; }
                 _s.Prompts.PartyLine = string.Empty;
                 _s.Prompts.PartyFingerprint = string.Empty;
+                // Fail-safe: another table's "open" must never ride into this one's prompt before the server has said.
+                _s.ContentLevel = string.Empty;
+                _s.Prompts.ContentLevel = string.Empty;
                 _s.Session = null;
                 _s.SessionStatus = string.Empty;
                 _s.SetupPending = false;
@@ -108,6 +111,9 @@ namespace CampaignVault.UnityClient.App
         {
             _s.Session = digest;
             _s.Prompts.PartyFingerprint = digest.Fingerprint;
+            _s.ContentLevel = digest.ContentLevel;
+            _s.Prompts.ContentLevel = digest.ContentLevel;
+            MaybeHintContentLevel();
             if (!string.IsNullOrEmpty(digest.System)) { _s.Prompts.Ruleset = digest.System; }
             var roster = new List<string>();
             bool pcStillInParty = false;
@@ -272,6 +278,7 @@ namespace CampaignVault.UnityClient.App
             var update = _s.Session.ApplyTurn(args, data);
             if (_s.Session.Fingerprint.Length > 0) { _s.Prompts.PartyFingerprint = _s.Session.Fingerprint; }
             if (!update.Any) { return; }
+            if (update.ContentLevel != null) { ApplyContentLevel(update.ContentLevel); }
             foreach (string who in update.Downed) { AddEventLine("☠ " + who + " is down. A death save is due on their turn."); }
             if (update.Time) { _s.SessionStatus = DescribeSession(_s.Session); }
             AnnounceLevelUps(_s.Session);

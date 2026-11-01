@@ -26,6 +26,8 @@ namespace CampaignVault.UnityClient.App
         public const string PcId = "vault.pcid";
         public const string Companions = "vault.companions";
         public const string Fx = "vault.fx";
+        /// <summary>Prefix; the campaign slug is appended. Set once the "intimate scenes fade to black" hint was shown for that campaign.</summary>
+        public const string ContentHint = "vault.contenthint.";
         public const string Sfx = "vault.sfx";
         public const string StoryTextSize = "vault.storytext";
         public const string EmbeddedPort = "vault.embedded.port";

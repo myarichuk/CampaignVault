@@ -139,6 +139,8 @@ namespace CampaignVault.UnityClient.AI
         /// <summary>The tools that returned success this turn, in order; a failed or aborted call is only in <see cref="Tools"/>.</summary>
         public readonly List<string> Succeeded = new List<string>();
         public readonly TokenUsage Usage = new TokenUsage();
+        /// <summary>The storyteller's scene was accepted into the driver's passages; Undo pops one only if this turn added it.</summary>
+        public bool PassageAdded;
 
         public void AddNarration(string text)
         {

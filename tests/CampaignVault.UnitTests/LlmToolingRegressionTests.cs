@@ -226,6 +226,31 @@ public class LlmToolingRegressionTests
         }
     }
 
+    // Many model providers forbid explicit sexual content, so the shipped prompts default to fade-to-black, keep the
+    // minors rule unconditional, and never instruct a model to narrate lewdity as-is.
+    [Theory]
+    [InlineData("recommended-system-prompt.md")]
+    [InlineData("recommended-system-prompt.narrative.md")]
+    [InlineData("recommended-system-prompt.opencode.md")]
+    public void Prompts_DefaultToFadeToBlack_AndNeverAskForLewdity(string file)
+    {
+        var text = File.ReadAllText(Path.Combine(FindRepoRoot(), file));
+        Assert.Contains("CONTENT LIMITS", text);
+        Assert.Contains("cut away", text);
+        Assert.Contains("not clearly adult", text);
+        Assert.DoesNotContain("lewdity", text, StringComparison.OrdinalIgnoreCase);
+        // The section rides in the cacheable prefix and must survive the loop's section stripping.
+        Assert.True(text.IndexOf("CONTENT LIMITS (", StringComparison.Ordinal) > text.IndexOf("NARRATION (", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void NarrationSkill_HasTheRomanceBoundary_AndTheChildRule()
+    {
+        var text = File.ReadAllText(Path.Combine(FindRepoRoot(), "claude_skills/dnd-narration/SKILL.md"));
+        Assert.Contains("cut away", text);
+        Assert.Contains("not clearly an adult", text);
+    }
+
     // Length is asked for in words, near where the prose is written, and the log field never reads as the scene's template
     // (NARRATION_LENGTH_PLAN.md, D1/D2).
     [Theory]

@@ -88,9 +88,14 @@ namespace CampaignVault.UnityClient.AI
         private readonly StringBuilder _content = new StringBuilder();
         private readonly StringBuilder _reasoning = new StringBuilder();
         private readonly List<JsonValue> _reasoningDetails = new List<JsonValue>();
+        /// <summary>OpenAI streams a refusal in delta.refusal, not delta.content; without this it arrives as an empty reply.</summary>
+        private readonly StringBuilder _refusal = new StringBuilder();
         private readonly SortedDictionary<int, CallBuilder> _calls = new SortedDictionary<int, CallBuilder>();
 
         public string FinishReason = string.Empty;
+        /// <summary>Gateways (OpenRouter) pass the upstream reason through; Anthropic's "refusal" can arrive only here or as stop_reason.</summary>
+        public string NativeFinishReason = string.Empty;
+        public string StopReason = string.Empty;
         /// <summary>The usage object, when the provider sends one (stream_options.include_usage, OpenRouter always).</summary>
         public JsonValue Usage;
         /// <summary>A mid-stream error object (OpenRouter sends these as a data event).</summary>
@@ -119,6 +124,10 @@ namespace CampaignVault.UnityClient.AI
             var choice = choices[0];
             string finish = choice.GetString("finish_reason", null);
             if (!string.IsNullOrEmpty(finish)) { FinishReason = finish; }
+            string nativeFinish = choice.GetString("native_finish_reason", null);
+            if (!string.IsNullOrEmpty(nativeFinish)) { NativeFinishReason = nativeFinish; }
+            string stop = choice.GetString("stop_reason", null);
+            if (!string.IsNullOrEmpty(stop)) { StopReason = stop; }
             var delta = choice.Get("delta");
             if (delta.IsNull) { return string.Empty; }
 
@@ -145,6 +154,9 @@ namespace CampaignVault.UnityClient.AI
                 var extra = call.Get("extra_content");
                 if (!extra.IsNull) { builder.Extra = extra; }
             }
+
+            string refusal = delta.GetString("refusal", null);
+            if (!string.IsNullOrEmpty(refusal)) { _refusal.Append(refusal); }
 
             string content = delta.GetString("content", null);
             if (string.IsNullOrEmpty(content)) { return string.Empty; }
@@ -188,6 +200,7 @@ namespace CampaignVault.UnityClient.AI
             message.ObjectValue["role"] = JsonValue.FromString("assistant");
             message.ObjectValue["content"] = JsonValue.FromString(_content.ToString());
             if (_reasoning.Length > 0) { message.ObjectValue["reasoning_content"] = JsonValue.FromString(_reasoning.ToString()); }
+            if (_refusal.Length > 0) { message.ObjectValue["refusal"] = JsonValue.FromString(_refusal.ToString()); }
             if (_reasoningDetails.Count > 0)
             {
                 var details = JsonValue.NewArray();
@@ -216,6 +229,8 @@ namespace CampaignVault.UnityClient.AI
             var choice = JsonValue.NewObject();
             choice.ObjectValue["message"] = message;
             choice.ObjectValue["finish_reason"] = JsonValue.FromString(FinishReason);
+            if (NativeFinishReason.Length > 0) { choice.ObjectValue["native_finish_reason"] = JsonValue.FromString(NativeFinishReason); }
+            if (StopReason.Length > 0) { choice.ObjectValue["stop_reason"] = JsonValue.FromString(StopReason); }
             var choices = JsonValue.NewArray();
             choices.ArrayValue.Add(choice);
             var response = JsonValue.NewObject();

@@ -282,4 +282,186 @@ public class ContentSafetyTests
             PluginDataRoots.DeclaredCampaignOptions = saved;
         }
     }
+
+    // ---- contentLevel: the table's choice of how far intimate scenes go (player-owned) ----
+
+    [Theory]
+    [InlineData("open", "fade")]
+    [InlineData("fade", "open")]
+    public async Task CampaignUpdate_ContentLevel_NeedsThePlayersWords_InBothDirections(string requested, string current)
+    {
+        var handler = new CampaignUpdateChangeHandler(new CampaignDocumentKeys());
+        var config = new CampaignConfig { Id = "campaigns/test/config", ContentLevel = current };
+
+        var result = await handler.ApplyAsync(new CampaignUpdateChange { ContentLevel = requested },
+            ChangeContextTestHelper.Create(campaignName: "test", config: config), TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("playerRequest", result.Message);
+        Assert.Equal(current, config.ContentLevel);
+    }
+
+    [Theory]
+    [InlineData(" OPEN ", "open")]
+    [InlineData("Fade", "fade")]
+    public async Task CampaignUpdate_ContentLevel_WithThePlayersWords_IsStoredNormalized(string given, string stored)
+    {
+        var handler = new CampaignUpdateChangeHandler(new CampaignDocumentKeys());
+        var config = new CampaignConfig { Id = "campaigns/test/config" };
+        var context = ChangeContextTestHelper.Create(campaignName: "test", config: config);
+
+        var result = await handler.ApplyAsync(new CampaignUpdateChange { ContentLevel = given, PlayerRequest = "yes, that setting" },
+            context, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(stored, config.ContentLevel);
+    }
+
+    [Fact]
+    public async Task CampaignUpdate_ContentLevel_RejectsAnythingButFadeOrOpen()
+    {
+        var handler = new CampaignUpdateChangeHandler(new CampaignDocumentKeys());
+        var config = new CampaignConfig { Id = "campaigns/test/config" };
+
+        var result = await handler.ApplyAsync(new CampaignUpdateChange { ContentLevel = "anything-goes", PlayerRequest = "yes" },
+            ChangeContextTestHelper.Create(campaignName: "test", config: config), TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("must be 'fade' or 'open'", result.Message);
+        Assert.Null(config.ContentLevel);
+    }
+
+    [Fact]
+    public async Task CampaignUpdate_ContentLevel_RefusesToRideInsideAStoryCommit()
+    {
+        var handler = new CampaignUpdateChangeHandler(new CampaignDocumentKeys());
+        var update = new CampaignUpdateChange { ContentLevel = "open", PlayerRequest = "go further" };
+        var config = new CampaignConfig { Id = "campaigns/test/config" };
+        var context = ChangeContextTestHelper.Create(campaignName: "test", config: config);
+        context.Batch = [update, new HpChange { CharacterId = "chars/a", Delta = -1 }];
+
+        var result = await handler.ApplyAsync(update, context, TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("own commit", result.Message);
+        Assert.Null(config.ContentLevel);
+    }
+
+    [Theory]
+    [InlineData("open", "open")]
+    [InlineData(" Fade", "fade")]
+    [InlineData("explicit", null)]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public void ContentLevels_Normalize_OnlyKnowsFadeAndOpen(string? given, string? expected)
+    {
+        Assert.Equal(expected, ContentLevels.Normalize(given));
+    }
+
+    // ---- adult modes and contentLevel are linked ----
+
+    private static async Task<(CampaignConfig Config, Data.ChangeHandlers.ChangeHandlerResult Result)> AdultUpdateAsync(
+        CampaignConfig config, CampaignUpdateChange update, bool alone = true)
+    {
+        var saved = PluginDataRoots.AdultModeIds;
+        PluginDataRoots.AdultModeIds = new HashSet<string>(["lewd_encounter"], System.StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            var handler = new CampaignUpdateChangeHandler(new CampaignDocumentKeys());
+            var context = ChangeContextTestHelper.Create(campaignName: "test", config: config);
+            if (!alone) { context.Batch = [update, new HpChange { CharacterId = "chars/a", Delta = -1 }]; }
+            return (config, await handler.ApplyAsync(update, context, TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            PluginDataRoots.AdultModeIds = saved;
+        }
+    }
+
+    [Fact]
+    public async Task EnablingAnAdultMode_NeedsThePlayersWords()
+    {
+        var config = new CampaignConfig { Id = "campaigns/test/config" };
+
+        var (_, result) = await AdultUpdateAsync(config, new CampaignUpdateChange { EnabledModeIds = ["lewd_encounter"] });
+
+        Assert.False(result.Success);
+        Assert.Contains("playerRequest", result.Message);
+        Assert.Contains("lewd_encounter", result.Message);
+        Assert.Empty(config.EnabledModeIds);
+        Assert.Null(config.ContentLevel);
+    }
+
+    [Fact]
+    public async Task EnablingAnAdultMode_OptsTheCampaignIntoOpen_InTheSameCommit()
+    {
+        var config = new CampaignConfig { Id = "campaigns/test/config" };
+
+        var (_, result) = await AdultUpdateAsync(config,
+            new CampaignUpdateChange { EnabledModeIds = ["lewd_encounter"], PlayerRequest = "let's turn that on" });
+
+        Assert.True(result.Success, result.Message);
+        Assert.Contains("lewd_encounter", config.EnabledModeIds);
+        Assert.Equal("open", config.ContentLevel);
+    }
+
+    [Fact]
+    public async Task EnablingANormalMode_LeavesTheContentLevelAlone()
+    {
+        var config = new CampaignConfig { Id = "campaigns/test/config" };
+
+        var (_, result) = await AdultUpdateAsync(config, new CampaignUpdateChange { EnabledModeIds = ["crafting"] });
+
+        Assert.True(result.Success, result.Message);
+        Assert.Null(config.ContentLevel);
+    }
+
+    [Fact]
+    public async Task DisablingAnAdultMode_NeedsNoRequest_AndLeavesTheLevelWhereItWas()
+    {
+        var config = new CampaignConfig { Id = "campaigns/test/config", EnabledModeIds = ["lewd_encounter"], ContentLevel = "open" };
+
+        var (_, result) = await AdultUpdateAsync(config, new CampaignUpdateChange { EnabledModeIds = [] });
+
+        Assert.True(result.Success, result.Message);
+        Assert.Empty(config.EnabledModeIds);
+        Assert.Equal("open", config.ContentLevel);
+    }
+
+    [Fact]
+    public async Task FadeIsRefused_WhileAnAdultModeIsOn_ButAllowedWhenTheSameUpdateSwitchesItOff()
+    {
+        var config = new CampaignConfig { Id = "campaigns/test/config", EnabledModeIds = ["lewd_encounter"], ContentLevel = "open" };
+
+        var (_, refused) = await AdultUpdateAsync(config, new CampaignUpdateChange { ContentLevel = "fade", PlayerRequest = "back to fade" });
+        Assert.False(refused.Success);
+        Assert.Contains("lewd_encounter", refused.Message);
+        Assert.Equal("open", config.ContentLevel);
+
+        var (_, allowed) = await AdultUpdateAsync(config,
+            new CampaignUpdateChange { ContentLevel = "fade", EnabledModeIds = [], PlayerRequest = "off, and back to fade" });
+        Assert.True(allowed.Success, allowed.Message);
+        Assert.Equal("fade", config.ContentLevel);
+        Assert.Empty(config.EnabledModeIds);
+    }
+
+    [Theory]
+    [InlineData(null, new[] { "lewd_encounter" }, "open")] // a campaign that had the mode on before the setting existed
+    [InlineData("fade", new[] { "LEWD_ENCOUNTER" }, "open")] // the mode being on is the stronger statement; ids compare case-insensitively
+    [InlineData(null, new[] { "crafting" }, null)]
+    [InlineData("open", new string[0], "open")]
+    [InlineData("fade", new string[0], "fade")]
+    [InlineData("explicit", new string[0], null)]
+    public void Effective_FollowsAnEnabledAdultMode_ElseTheStoredChoice(string? stored, string[] enabled, string? expected)
+    {
+        var adult = new HashSet<string>(["lewd_encounter"], System.StringComparer.OrdinalIgnoreCase);
+        Assert.Equal(expected, ContentLevels.Effective(stored, enabled, adult));
+    }
+
+    [Fact]
+    public void Effective_WithNoAdultModesDeclared_IsJustTheStoredChoice()
+    {
+        Assert.Null(ContentLevels.Effective(null, ["lewd_encounter"], new HashSet<string>()));
+        Assert.Equal("open", ContentLevels.Effective("open", ["lewd_encounter"], null));
+    }
 }

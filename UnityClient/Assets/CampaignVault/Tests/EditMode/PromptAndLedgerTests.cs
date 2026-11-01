@@ -77,6 +77,17 @@ namespace CampaignVault.UnityClient.Tests
             Assert.IsFalse(body.Split('\n').Any(l => l.TrimStart().StartsWith("CAMPAIGN:")));
         }
 
+        [TestCase("", false)]
+        [TestCase("open", true)]
+        [TestCase("  OPEN ", true)]
+        [TestCase("anything-else", false)]
+        public void CampaignLine_NamesTheContentLevel_OnlyWhenTheTableOptedUp(string level, bool shown)
+        {
+            var p = Provider();
+            p.ContentLevel = level;
+            Assert.AreEqual(shown, p.CampaignLine().Contains("| Content: open"));
+        }
+
         [Test]
         public void BuildSystemPrompt_OneCampaignLine_NoInstallerNotes()
         {
