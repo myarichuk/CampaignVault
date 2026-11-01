@@ -233,7 +233,10 @@ internal static class WorldChangeNormalizer
                 if (known.Contains(key))
                     continue;
                 unknown ??= [];
-                unknown.Add((i, discriminator, key, Tools.CommitBindingError.Suggest(key, variant.Fields.Select(f => f.JsonName))));
+                var suggestion = Tools.ToolCallExamples.TryGetFieldAlias(discriminator, key, out var canonical)
+                    ? canonical
+                    : Tools.CommitBindingError.Suggest(key, variant.Fields.Select(f => f.JsonName));
+                unknown.Add((i, discriminator, key, suggestion));
             }
         }
 

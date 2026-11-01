@@ -56,7 +56,12 @@ internal static partial class CommitBindingError
         {
             var field = unknownMember.Groups[1].Value;
             var clrName = unknownMember.Groups[2].Value;
-            variant = CommitSchemaModel.Variants.FirstOrDefault(v => v.ClrType.FullName == clrName) ?? variant;
+            if (DescribeSystemStatsField(field, path, clrName) is { } statsMessage)
+            {
+                return Clip(statsMessage);
+            }
+
+            variant =CommitSchemaModel.Variants.FirstOrDefault(v => v.ClrType.FullName == clrName) ?? variant;
             var sb = new StringBuilder();
             sb.Append("Unknown field '").Append(field).Append('\'');
             if (!string.IsNullOrWhiteSpace(path)) sb.Append(" at ").Append(path);
@@ -92,6 +97,38 @@ internal static partial class CommitBindingError
         }
 
         return Clip(enriched);
+    }
+
+    /// <summary>
+    /// A field that failed inside systemStats. Without this the message listed the enclosing change's fields, which
+    /// never contain the nested name. The usual cause is a missing "$system" marker: the stats then bind as the bare
+    /// base type, which has no ruleset fields at all.
+    /// </summary>
+    private static string? DescribeSystemStatsField(string field, string? path, string clrName)
+    {
+        var at = string.IsNullOrWhiteSpace(path) ? "" : $" at {path}";
+        if (clrName == typeof(SystemExtension).FullName)
+        {
+            return $"Unknown field '{field}'{at}: systemStats has no \"$system\" marker, so no ruleset field binds. "
+                + $"Put \"$system\": \"{RulesetSystem.Dnd5e}\" (or \"{RulesetSystem.Pathfinder2e}\") first inside systemStats. "
+                + "The batch was not applied.";
+        }
+
+        var statsType = clrName == typeof(Dnd5eExtension).FullName ? typeof(Dnd5eExtension)
+            : clrName == typeof(Pf2eExtension).FullName ? typeof(Pf2eExtension)
+            : null;
+        if (statsType is null)
+        {
+            return null;
+        }
+
+        var fields = statsType.GetProperties()
+            .Select(p => p.GetCustomAttributes(typeof(System.Text.Json.Serialization.JsonPropertyNameAttribute), true)
+                .OfType<System.Text.Json.Serialization.JsonPropertyNameAttribute>().FirstOrDefault()?.Name)
+            .OfType<string>();
+        var suggestion = Suggest(field, fields);
+        var hint = suggestion is null ? "" : $". Did you mean '{suggestion}'";
+        return $"Unknown field '{field}'{at} in systemStats ({statsType.Name}){hint}. The batch was not applied.";
     }
 
     private static CommitVariantModel? VariantAtPath(string? path, JsonElement? changes)

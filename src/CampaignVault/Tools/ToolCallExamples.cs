@@ -165,6 +165,123 @@ internal static class ToolCallExamples
         return modified;
     }
 
+    /// <summary>
+    /// Top-level field names models keep sending for a change type, by $type → canonical field → aliases. Only names
+    /// seen in play or unambiguous for that type belong here; a miss still fails with a "Did you mean" (see
+    /// <see cref="TryGetFieldAlias"/>). Every canonical name must be a real field of its type (a test enforces it).
+    /// A singular alias of a list field ("sourceEventId") is wrapped into a one-element array.
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<string, Dictionary<string, string[]>> ChangeFieldAliases =
+        new Dictionary<string, Dictionary<string, string[]>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["activity"] = new(StringComparer.Ordinal)
+            {
+                ["newActivity"] = ["activity", "currentActivity", "current_activity", "new_activity"],
+                ["newLocationId"] = ["locationId", "new_location_id"],
+            },
+            ["knowledge_update"] = new(StringComparer.Ordinal)
+            {
+                ["details"] = ["content", "text", "body", "memory", "description"],
+                ["topic"] = ["subject"],
+                ["sourceEventIds"] = ["sourceEventId", "eventIds", "eventId"],
+                ["relatedEntityIds"] = ["relatedEntityId", "entityIds"],
+            },
+            ["resource"] = new(StringComparer.Ordinal)
+            {
+                ["poolName"] = ["resource", "pool", "resourceName", "resource_name", "pool_name"],
+                ["delta"] = ["amount", "change"],
+            },
+        };
+
+    /// <summary>
+    /// systemStats objects sent without a "$system" marker: take_turn changes (character_update, character_create) and
+    /// world_build characters[]. Unmarked stats bind as the bare base type, which rejects every ruleset field, though the
+    /// server already knows the campaign's ruleset. Run after <see cref="TryNormalize"/> so a flattened call is wrapped.
+    /// </summary>
+    internal static List<JsonObject> SystemStatsWithoutMarker(string toolName, JsonObject arguments)
+    {
+        JsonArray? entries = toolName switch
+        {
+            "take_turn" => (arguments["request"] as JsonObject)?["changes"] as JsonArray,
+            "world_build" => (arguments["batch"] as JsonObject)?["characters"] as JsonArray,
+            _ => null,
+        };
+
+        return entries is null
+            ? []
+            : [.. entries.OfType<JsonObject>()
+                .Select(e => e["systemStats"] as JsonObject)
+                .OfType<JsonObject>()
+                .Where(s => !s.ContainsKey("$system"))];
+    }
+
+    /// <summary>Marks each unmarked systemStats with the campaign's ruleset; the discriminator must be the first property.</summary>
+    internal static void ApplySystemMarker(IEnumerable<JsonObject> unmarked, string system, ICollection<string> applied)
+    {
+        foreach (var stats in unmarked)
+        {
+            stats.Insert(0, "$system", system);
+            applied.Add($"systemStats+$system:{system}");
+        }
+    }
+
+    /// <summary>The canonical field a known alias stands for on this $type, for hints when the alias could not be applied.</summary>
+    internal static bool TryGetFieldAlias(string changeType, string field, out string canonical)
+    {
+        canonical = "";
+        if (!ChangeFieldAliases.TryGetValue(changeType, out var aliases))
+        {
+            return false;
+        }
+
+        foreach (var (name, names) in aliases)
+        {
+            if (names.Contains(field, StringComparer.OrdinalIgnoreCase))
+            {
+                canonical = name;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ApplyChangeFieldAliases(
+        JsonObject changeObj, string changeType, Dictionary<string, string[]> aliases, List<string> applied)
+    {
+        var modified = false;
+        foreach (var (canonical, names) in aliases)
+        {
+            // Both sent: leave the alias for the unknown-field sweep to report rather than guess which one was meant.
+            if (changeObj.ContainsKey(canonical))
+            {
+                continue;
+            }
+
+            foreach (var alias in names)
+            {
+                if (!changeObj.TryGetPropertyValue(alias, out var value))
+                {
+                    continue;
+                }
+
+                var copy = value?.DeepClone();
+                if (canonical.EndsWith("Ids", StringComparison.Ordinal) && copy is JsonValue single)
+                {
+                    copy = new JsonArray(single);
+                }
+
+                changeObj[canonical] = copy;
+                changeObj.Remove(alias);
+                applied.Add($"{changeType}.{alias}→{canonical}");
+                modified = true;
+                break;
+            }
+        }
+
+        return modified;
+    }
+
     private static bool NormalizeCommitChangesArray(JsonArray changesArray, List<string> applied)
     {
         var modified = false;
@@ -178,6 +295,12 @@ internal static class ToolCallExamples
             if (!TryGetChangeType(changeObj, out var changeType))
             {
                 continue;
+            }
+
+            if (ChangeFieldAliases.TryGetValue(changeType, out var fieldAliases)
+                && ApplyChangeFieldAliases(changeObj, changeType, fieldAliases, applied))
+            {
+                modified = true;
             }
 
             if (string.Equals(changeType, "ruleset_action", StringComparison.OrdinalIgnoreCase))
