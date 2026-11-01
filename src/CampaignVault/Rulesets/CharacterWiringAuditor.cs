@@ -2,6 +2,7 @@ using CampaignVault.Data.Templates;
 using CampaignVault.Models;
 using CampaignVault.Rulesets.Bootstrap;
 using CampaignVault.Services;
+using Raven.Client.Documents;
 
 namespace CampaignVault.Rulesets;
 
@@ -59,6 +60,14 @@ public sealed class CharacterWiringAuditor(
                 $"classLevel '{character.ClassLevel}' names a class but no level could be read, so no class pools, proficiency or "
                 + "caster data are derived. Write it as e.g. 'Fighter 4 / Rogue 3' or set systemStats.level."));
         }
+        // Party members only: a leveled NPC without a class is a legitimate stat-block creature.
+        else if ((character.IsPc || character.IsPartyCompanion) && RecordedLevel(character.SystemStats) is int level and > 0)
+        {
+            findings.Add(new WiringFinding("class_missing",
+                $"systemStats.level is {level} but no class is recorded, so no class pools (spell slots, ...), saves, proficiency "
+                + "or caster data are derived. Patch it with character_update systemStats "
+                + $"{{\"classLevels\": [{{\"class\": \"<Class>\", \"level\": {level}}}]}}."));
+        }
 
         AuditReferences(character.SystemStats, system, findings, catalog);
         return findings;
@@ -72,8 +81,50 @@ public sealed class CharacterWiringAuditor(
         var catalog = feats is null || character.SystemStats is null
             ? null
             : await FeatEffectRules.CatalogAsync(session, feats, system, campaignName);
-        return Audit(character, system, config, catalog);
+        var findings = Audit(character, system, config, catalog);
+
+        if (SpellsOf(character.SystemStats) is not { } spells
+            || spells.Cantrips.Count > 0 || spells.Known.Count > 0 || spells.Prepared.Count > 0)
+        {
+            return findings;
+        }
+
+        // Spells written only into an item's prose are invisible to the rules: no bookkeeping, no spell data on casts.
+        var spellbook = await session.Query<Item>()
+            .Where(i => (i.CampaignName == campaignName || i.CampaignName == null)
+                && i.HolderId == character.Id && i.Tags.Contains(SpellbookTag))
+            .Select(i => i.Id)
+            .FirstOrDefaultAsync();
+        if (spellbook is null)
+        {
+            return findings;
+        }
+
+        return
+        [
+            .. findings,
+            new WiringFinding("spells_on_item",
+                $"{spellbook} lists spells but systemStats.spells is empty, so casts are never checked against what they know. "
+                + "Copy them onto the sheet with character_update systemStats "
+                + "{\"spells\": {\"cantrips\": [\"fire bolt\"], \"known\": [...], \"prepared\": [...]}}."),
+        ];
     }
+
+    private const string SpellbookTag = "spellbook";
+
+    private static int? RecordedLevel(SystemExtension? stats) => stats switch
+    {
+        Dnd5eExtension d => d.Level,
+        Pf2eExtension p => p.Level,
+        _ => null,
+    };
+
+    private static SpellRepertoire? SpellsOf(SystemExtension? stats) => stats switch
+    {
+        Dnd5eExtension d => d.Spells,
+        Pf2eExtension p => p.Spells,
+        _ => null,
+    };
 
     public static string Format(Character character, IReadOnlyList<WiringFinding> findings) =>
         $"{character.Name}: " + string.Join(" ", findings.Select(f => $"[{f.Code}] {f.Message}"));
@@ -103,12 +154,7 @@ public sealed class CharacterWiringAuditor(
         }
 
         var total = declared.Sum(e => e.Level);
-        var recordedLevel = stats switch
-        {
-            Dnd5eExtension d => d.Level,
-            Pf2eExtension p => p.Level,
-            _ => null,
-        };
+        var recordedLevel = RecordedLevel(stats);
 
         if (recordedLevel is int level && level != total)
         {
