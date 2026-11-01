@@ -18,8 +18,10 @@ namespace CampaignVault.UnityClient.AI
     /// model turns per player message, one tool timeout each.
     ///
     /// Token budget, since every model call resends everything:
-    /// - only the active connector's tools are offered (/play by default; the
-    ///   server's profiles exist so a playing client doesn't pay for /build);
+    /// - only one connector's tools are offered per turn: the active one (/play
+    ///   by default; the server's profiles exist so a playing client doesn't pay
+    ///   for /build), or <see cref="ConnectorOverride"/> while the campaign is
+    ///   still being set up (world_build lives on /build only);
     /// - skills load on demand through the local load_skill tool instead of
     ///   riding in the system prompt;
     /// - finished turns are compacted: tool results shrink to their envelope
@@ -48,6 +50,21 @@ namespace CampaignVault.UnityClient.AI
         public VaultClientConfig Vault;
         public McpClient Mcp;
         public SystemPromptProvider Prompts;
+
+        /// <summary>
+        /// The connector this player message runs on instead of the active one; empty = <see cref="VaultClientConfig.ActiveConnector"/>.
+        /// The controller sets "build" for setup turns (before the party exists): seeding a fresh campaign needs world_build,
+        /// which /play deliberately does not serve, so a setup turn on /play left the DM unable to seed anything.
+        /// Read once at the start of a turn, so the whole turn lists and calls tools on one connector.
+        /// </summary>
+        public string ConnectorOverride = string.Empty;
+
+        /// <summary>The connector the next player message runs on: the override when set, else the active one.</summary>
+        public string TurnConnector()
+        {
+            if (ConnectorOverride == "build" || ConnectorOverride == "play") { return ConnectorOverride; }
+            return Vault.ActiveConnector();
+        }
 
         /// <summary>Empty = every advertised tool is offered to the model.</summary>
         public HashSet<string> AllowedTools = new HashSet<string>();
@@ -202,9 +219,10 @@ namespace CampaignVault.UnityClient.AI
         /// <summary>Force a fresh tools/list on the next message (server, connector or plugins changed).</summary>
         public void InvalidateTools() { _toolCacheKey = string.Empty; }
 
-        public IEnumerator RefreshTools(Action<McpOutcome<int>> done)
+        public IEnumerator RefreshTools(Action<McpOutcome<int>> done) { return RefreshTools(TurnConnector(), done); }
+
+        private IEnumerator RefreshTools(string connector, Action<McpOutcome<int>> done)
         {
-            string connector = Vault.ActiveConnector();
             McpOutcome<List<McpToolInfo>> listed = null;
             yield return Mcp.ListTools(Vault, connector, delegate (McpOutcome<List<McpToolInfo>> o) { listed = o; });
             if (listed == null || !listed.Ok || listed.Data.Count == 0)
@@ -248,6 +266,8 @@ namespace CampaignVault.UnityClient.AI
             bool trimNoteRode = false;
             var brief = new TurnBrief();
             var record = new TurnRecord { Player = playerText ?? string.Empty, Model = loop.Model };
+            // Fixed for the whole turn like the profiles: tools/list and every tools/call hit the same connector.
+            string connector = TurnConnector();
             LastNarrationMessages = null;
             CurrentTurn = record;
             try
@@ -258,11 +278,11 @@ namespace CampaignVault.UnityClient.AI
                     Fail(transcript, "Chat blocked: " + reason, changed);
                     yield break;
                 }
-                if (_toolCacheKey != Vault.ConnectorPath(Vault.ActiveConnector()))
+                if (_toolCacheKey != Vault.ConnectorPath(connector))
                 {
                     Status = "reaching CampaignVault tools…";
                     McpOutcome<int> refresh = null;
-                    yield return RefreshTools(delegate (McpOutcome<int> o) { refresh = o; });
+                    yield return RefreshTools(connector, delegate (McpOutcome<int> o) { refresh = o; });
                     if (refresh == null || !refresh.Ok)
                     {
                         Fail(transcript, "Chat blocked: cannot reach CampaignVault tools (" + (refresh != null ? refresh.ErrorMessage : "?") + ").", changed);
@@ -540,7 +560,7 @@ namespace CampaignVault.UnityClient.AI
                             transcript.Add(new TranscriptSegment { Kind = SegmentKind.ToolData, Text = "⚙ " + toolName });
                             changed();
                             McpOutcome<string> call = null;
-                            yield return Mcp.CallTool(Vault, Vault.ActiveConnector(), toolName, args,
+                            yield return Mcp.CallTool(Vault, connector, toolName, args,
                                 delegate (McpOutcome<string> o) { call = o; }, McpOwner);
                             if (call != null && call.Ok)
                             {

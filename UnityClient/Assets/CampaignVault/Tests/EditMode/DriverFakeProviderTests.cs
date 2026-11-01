@@ -42,6 +42,8 @@ namespace CampaignVault.UnityClient.Tests
         private readonly List<string> _chatPaths = new List<string>();
         private readonly List<string> _chatAuth = new List<string>();
         private readonly List<string> _toolCalls = new List<string>();
+        // Per MCP request, in order: "<path> <method>".
+        private readonly List<string> _mcpHits = new List<string>();
         private string _toolResult = "{\"success\":true,\"summary\":\"ok\"}";
         private volatile bool _stopping;
 
@@ -58,6 +60,7 @@ namespace CampaignVault.UnityClient.Tests
             _chatPaths.Clear();
             _chatAuth.Clear();
             _toolCalls.Clear();
+            lock (_mcpHits) { _mcpHits.Clear(); }
             _toolResult = "{\"success\":true,\"summary\":\"ok\"}";
             var probe = new TcpListener(IPAddress.Loopback, 0);
             probe.Start();
@@ -131,9 +134,10 @@ namespace CampaignVault.UnityClient.Tests
                     }
                     reply = next != null ? next(json) : new Reply { Status = 500, Body = "{\"error\":{\"message\":\"script exhausted\"}}" };
                 }
-                else if (path == "/play")
+                else if (path == "/play" || path == "/build")
                 {
-                    reply = Mcp(json, ctx.Response);
+                    lock (_mcpHits) { _mcpHits.Add(path + " " + json.GetString("method", string.Empty)); }
+                    reply = Mcp(json, ctx.Response, path == "/build" ? "world_build" : "take_turn");
                 }
                 else
                 {
@@ -150,7 +154,7 @@ namespace CampaignVault.UnityClient.Tests
             catch (Exception) { /* client aborted: expected in the Stop test */ }
         }
 
-        private Reply Mcp(JsonValue rpc, HttpListenerResponse response)
+        private Reply Mcp(JsonValue rpc, HttpListenerResponse response, string tool)
         {
             string method = rpc.GetString("method", string.Empty);
             string id = rpc.Get("id").IsNull ? "null" : rpc.Get("id").ToJson();
@@ -162,7 +166,7 @@ namespace CampaignVault.UnityClient.Tests
                 case "notifications/initialized":
                     return new Reply { Status = 202, Body = string.Empty };
                 case "tools/list":
-                    return Rpc(id, "{\"tools\":[{\"name\":\"take_turn\",\"description\":\"act\",\"inputSchema\":{\"type\":\"object\"}}]}");
+                    return Rpc(id, "{\"tools\":[{\"name\":\"" + tool + "\",\"description\":\"act\",\"inputSchema\":{\"type\":\"object\"}}]}");
                 case "tools/call":
                     lock (_toolCalls) { _toolCalls.Add(rpc.Get("params").ToJson()); }
                     var text = JsonValue.NewObject();
@@ -210,6 +214,34 @@ namespace CampaignVault.UnityClient.Tests
         }
 
         // ---- tests ----
+
+        [UnityTest]
+        public IEnumerator SetupTurn_ListsAndCallsToolsOnBuild_ThenPlayTurnsGoBackToPlay()
+        {
+            // Seeding a fresh campaign needs world_build, which /play does not serve: a setup turn on /play left the DM stuck.
+            _driver.ConnectorOverride = "build";
+            _script.Enqueue(req => new Reply { Body = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":null,\"tool_calls\":"
+                + "[{\"id\":\"c1\",\"type\":\"function\",\"function\":{\"name\":\"world_build\",\"arguments\":\"{}\"}}]}}]}" });
+            _script.Enqueue(req => new Reply { Body = Plain("Seeded.") });
+
+            yield return Send("OOC: set up the campaign.");
+
+            Assert.AreEqual("world_build", _chatRequests[0].GetArray("tools")[0].Get("function").GetString("name", null),
+                "the setup turn offers /build's tools");
+            List<string> hits;
+            lock (_mcpHits) { hits = new List<string>(_mcpHits); }
+            Assert.IsTrue(hits.Contains("/build tools/list"));
+            Assert.IsTrue(hits.Contains("/build tools/call"), "world_build went to /build");
+            Assert.IsFalse(hits.Any(h => h.StartsWith("/play", StringComparison.Ordinal)), "nothing on /play during setup");
+            Assert.AreEqual(1, _toolCalls.Count);
+
+            _driver.ConnectorOverride = string.Empty;
+            _script.Enqueue(req => new Reply { Body = Plain("The hall is quiet.") });
+            yield return Send("I look around.");
+
+            Assert.AreEqual("take_turn", _chatRequests[2].GetArray("tools")[0].Get("function").GetString("name", null),
+                "back on the active connector (/play) once setup is over");
+        }
 
         [UnityTest]
         public IEnumerator StreamedToolLoop_AsideRollAndVoices()

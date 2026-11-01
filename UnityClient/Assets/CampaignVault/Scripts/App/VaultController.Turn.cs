@@ -149,11 +149,14 @@ namespace CampaignVault.UnityClient.App
             {
                 _s.Transcript.Add(player);
                 _s.Notify(StateArea.Driver);
+                // Setup talk seeds the world (world_build), which only /build serves; play turns stay on the chosen connector.
+                _s.Driver.ConnectorOverride = setup ? "build" : string.Empty;
                 yield return _s.Driver.SendPlayerText(sent, _s.Transcript, delegate { _s.Notify(StateArea.Driver); });
             }
             finally
             {
                 _turnActive = false;
+                _s.Driver.ConnectorOverride = string.Empty;
                 // A failed attempt that can be retried is not chronicle yet: the retry replaces it on screen, and the
                 // file would otherwise keep both (A21). A failure after a commit stays: the world did change.
                 if (!CanRetryLastTurn) { SaveTurn(slug, player); }

@@ -24,6 +24,12 @@ namespace CampaignVault.UnityClient.Model
 
         private readonly string _dir;
 
+        /// <summary>
+        /// Line counts by file path, kept current by every write this store makes. LineCount runs on each Driver notify
+        /// (every streamed token, through "is there an earlier page"); reading a multi-MB file for it froze the UI.
+        /// </summary>
+        private readonly Dictionary<string, int> _lineCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+
         public TranscriptStore(string dir) { _dir = dir; }
 
         public string Directory { get { return _dir; } }
@@ -59,19 +65,25 @@ namespace CampaignVault.UnityClient.Model
         {
             if (string.IsNullOrEmpty(slug)) { return false; }
             var sb = new StringBuilder();
+            int added = 0;
             foreach (var seg in segments)
             {
-                if (Persists(seg)) { sb.Append(ToJson(seg).ToJson()).Append('\n'); }
+                // One line per segment: the JSON writer escapes newlines inside strings.
+                if (Persists(seg)) { sb.Append(ToJson(seg).ToJson()).Append('\n'); added++; }
             }
             if (sb.Length == 0) { return true; }
+            string path = PathFor(slug);
             try
             {
                 System.IO.Directory.CreateDirectory(_dir);
-                File.AppendAllText(PathFor(slug), sb.ToString(), Encoding.UTF8);
+                File.AppendAllText(path, sb.ToString(), Encoding.UTF8);
+                int known;
+                if (_lineCounts.TryGetValue(path, out known)) { _lineCounts[path] = known + added; }
                 return true;
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
             {
+                _lineCounts.Remove(path); // a partial append: count it from the file next time
                 return false;
             }
         }
@@ -83,12 +95,15 @@ namespace CampaignVault.UnityClient.Model
             try
             {
                 string path = PathFor(slug);
+                int count;
+                if (_lineCounts.TryGetValue(path, out count)) { return count; }
                 if (!File.Exists(path)) { return 0; }
-                int count = 0;
+                count = 0;
                 using (var reader = new StreamReader(path, Encoding.UTF8))
                 {
                     while (reader.ReadLine() != null) { count++; }
                 }
+                _lineCounts[path] = count;
                 return count;
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
@@ -118,9 +133,11 @@ namespace CampaignVault.UnityClient.Model
                     File.WriteAllLines(path, kept, Encoding.UTF8);
                     lines = kept;
                 }
+                _lineCounts[path] = lines.Length;
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
             {
+                _lineCounts.Remove(path);
                 return result;
             }
             int end = Math.Max(0, lines.Length - Math.Max(0, skipFromEnd));
@@ -158,10 +175,12 @@ namespace CampaignVault.UnityClient.Model
                 if (cut < 0) { return false; }
                 lines.RemoveRange(cut, lines.Count - cut);
                 File.WriteAllText(path, lines.Count > 0 ? string.Join("\n", lines.ToArray()) + "\n" : string.Empty, Encoding.UTF8);
+                _lineCounts[path] = lines.Count;
                 return true;
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
             {
+                _lineCounts.Remove(path);
                 return false;
             }
         }
@@ -171,6 +190,7 @@ namespace CampaignVault.UnityClient.Model
             try
             {
                 string path = PathFor(slug);
+                _lineCounts.Remove(path);
                 if (File.Exists(path)) { File.Delete(path); }
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { }
