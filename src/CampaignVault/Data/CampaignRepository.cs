@@ -1189,6 +1189,8 @@ public class CampaignRepository
 
             existing.Notes = character.Notes ?? existing.Notes;
             existing.CurrentAppearance = character.CurrentAppearance ?? existing.CurrentAppearance;
+            existing.Gender = Identity(character.Gender) ?? existing.Gender;
+            existing.Pronouns = Identity(character.Pronouns) ?? existing.Pronouns;
             existing.VisualTags = character.VisualTags ?? existing.VisualTags;
             existing.DistinctiveFeatures = character.DistinctiveFeatures ?? existing.DistinctiveFeatures;
             existing.Schedule = character.Schedule ?? existing.Schedule;
@@ -1245,6 +1247,8 @@ public class CampaignRepository
                 MaxHp = character.MaxHp ?? 0,
                 Notes = character.Notes,
                 CurrentAppearance = character.CurrentAppearance,
+                Gender = Identity(character.Gender),
+                Pronouns = Identity(character.Pronouns),
                 VisualTags = character.VisualTags ?? [],
                 DistinctiveFeatures = character.DistinctiveFeatures ?? [],
                 Schedule = character.Schedule,
@@ -2330,6 +2334,9 @@ public class CampaignRepository
             problems = [$"No {system} class matches '{className}'. Name one the ruleset has."];
         }
 
+        if (problems.Count == 0 && kind == HomebrewKinds.Background && HomebrewTemplates.ReadBackground(request.Yaml) is { } background)
+            problems = HomebrewTemplates.BackgroundProblems(background, system, ItemTemplateExists(system));
+
         if (problems.Count > 0)
             throw new ArgumentException("Homebrew not saved: " + string.Join(" ", problems));
 
@@ -2351,6 +2358,25 @@ public class CampaignRepository
         if (existing == null)
             await session.StoreAsync(result);
         return result;
+    }
+
+    /// <summary>A gender or pronouns value as stored: trimmed, capped, null when blank.</summary>
+    internal static string? Identity(string? value)
+    {
+        var text = value?.Trim();
+        if (string.IsNullOrEmpty(text))
+            return null;
+        return text.Length > IdentityCap ? text[..IdentityCap] : text;
+    }
+
+    /// <summary>Longest gender or pronouns text kept: a few words, not a biography.</summary>
+    internal const int IdentityCap = 40;
+
+    /// <summary>Whether an item template id resolves for the system, or null (skip the check) when the system ships no items.</summary>
+    private Func<string, bool>? ItemTemplateExists(string system)
+    {
+        var items = _itemDefinitionProvider.GetItemsForSystem(system);
+        return items.Count == 0 ? null : id => items.ContainsKey(id.Trim());
     }
 
     /// <summary>The homebrew a campaign offers (archived ones left out), as the template providers read it (<see cref="HomebrewScope"/>).</summary>

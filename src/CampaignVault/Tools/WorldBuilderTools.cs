@@ -33,7 +33,7 @@ public class WorldBuilderTools : CampaignToolBase, IMcpServerTool
 
     [ToolCategory("World builder")]
     [McpServerTool(UseStructuredContent = true)]
-    [Description("Batch-create/update entities (locations, factions, characters, items, quests, plotThreads, worldEvents, lore, rumors, creatures, spells, feats, homebrew subclasses/ancestries/powers) in one atomic call, dispatched in dependency order; one failure rolls back the batch. Max 100 entries. Seed any person or place before naming it in narration.\n\nHARD CONSTRAINTS: (1) combat-capable NPCs need systemStats for the campaign's ruleset. (2) characters[] has no gear fields: equipment is a separate items[] entry in the SAME batch with holderId set.\n\nFull example and per-ruleset systemStats: lookup kind=help topic=world-building.")]
+    [Description("Batch-create/update entities (locations, factions, characters, items, quests, plotThreads, worldEvents, lore, rumors, creatures, spells, feats, homebrew subclasses/ancestries/powers/backgrounds) in one atomic call, dispatched in dependency order; one failure rolls back the batch. Max 100 entries. Seed any person or place before naming it in narration.\n\nHARD CONSTRAINTS: (1) combat-capable NPCs need systemStats for the campaign's ruleset. (2) characters[] has no gear fields: equipment is a separate items[] entry in the SAME batch with holderId set.\n\nFull example and per-ruleset systemStats: lookup kind=help topic=world-building.")]
     public Task<ToolResult<WorldBuildResult>> WorldBuild(
         [Description("Entities to create/update, grouped by kind. Every array is optional.")]
         WorldBuildBatch batch,

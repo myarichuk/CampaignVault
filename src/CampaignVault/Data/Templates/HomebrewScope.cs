@@ -12,7 +12,10 @@ public static class HomebrewKinds
     /// <summary>A named power (god, patron, lineage): a <c>powers/</c> file.</summary>
     public const string Power = "power";
 
-    public static readonly IReadOnlyList<string> All = [Ancestry, ClassOption, Power];
+    /// <summary>A background: a <c>backgrounds/</c> file. Checked against the ruleset's budget (<see cref="HomebrewTemplates.BackgroundProblems"/>).</summary>
+    public const string Background = "background";
+
+    public static readonly IReadOnlyList<string> All = [Ancestry, ClassOption, Power, Background];
 
     /// <summary>The canonical spelling of a kind (any case), or null for something that isn't one.</summary>
     public static string? Canonical(string? kind) =>

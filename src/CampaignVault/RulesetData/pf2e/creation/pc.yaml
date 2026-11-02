@@ -13,6 +13,9 @@ name: pc
 system: pf2e
 maxLevel: 20
 steps:
+  # Who they are comes first (name, concept, look, gender, pronouns): everything after it can be fitted to the
+  # concept, and the DM writes homebrew backgrounds for it.
+  - { key: identity, kind: identity, prompt: Who they are }
   - { key: ancestry, kind: pickOne, source: races, prompt: Ancestry }
   - { key: heritage, kind: pickOne, source: heritages, prompt: Heritage }
   - { key: background, kind: pickOne, source: backgrounds, prompt: Background }
@@ -40,4 +43,3 @@ steps:
   - { key: skillFeats, kind: feats, source: skillFeats, prompt: Skill feat, validators: [pf2e.featEligibility] }
   - { key: generalFeats, kind: feats, source: generalFeats, prompt: General feat, validators: [pf2e.featEligibility] }
   - { key: spells, kind: spells, source: spells, when: "class.casterType != None", prompt: Spells }
-  - { key: identity, kind: identity, prompt: Who they are }

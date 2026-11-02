@@ -810,11 +810,13 @@ steps+:
   **Homebrew tag.** Anything that didn't come from the host's own data (a plugin's template or option) is offered with a
   "homebrew" tag in the builder, because the shipped rules are the free-licensed ones.
 
-  **The DM's own homebrew.** A campaign can hold its own subclasses (class options), ancestries and named powers, written
+  **The DM's own homebrew.** A campaign can hold its own subclasses (class options), ancestries, named powers and backgrounds, written
   as the same YAML a plugin file holds and saved with the campaign by `world_build`:
-  `homebrew: [{ kind: classOption | ancestry | power, system: dnd5e, yaml: "name: ember_knight\nclass: fighter\n..." }]`.
+  `homebrew: [{ kind: classOption | ancestry | power | background, system: dnd5e, yaml: "name: ember_knight\nclass: fighter\n..." }]`.
   The YAML is read as that template and refused with the reason when it has no name, a class option names no class the
-  ruleset has, or a power has no valid type. Saving the same kind, system and name again replaces it; `isArchived: true`
+  ruleset has, a power has no valid type, or a background is outside the ruleset's budget (dnd5e: exactly 2 skills, at most
+  2 tool proficiencies and languages between them, at most 8 starting items and 25 gp; pf2e: 2 different boost
+  abilities or none, one trained skill or a choice of two, a Lore and a skill feat, no gold). Saving the same kind, system and name again replaces it; `isArchived: true`
   stops offering it (characters that have it keep it). The campaign's builder lists it, tagged homebrew, and no other
   campaign sees it. It is the last layer, so a homebrew name replaces a shipped or plugin template of the same name, and
   a homebrew ancestry or power can `inherits:` from one. The campaign's own feats and spells (`upsert_feat`, `upsert_spell`) are offered in its builder too, tagged homebrew: a feat among a 5e improvement's feats, a spell in a caster's list when its `classes` name the class and its level fits. A PF2e feat has no category, so it isn't offered in the ancestry, class, skill or general feat steps.

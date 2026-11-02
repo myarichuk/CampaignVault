@@ -78,6 +78,8 @@ public class CharacterCreateHandler : IWorldChangeHandler
             }
 
             existing.LifeStage = mergedStage;
+            existing.Gender = CampaignRepository.Identity(cc.Gender) ?? existing.Gender;
+            existing.Pronouns = CampaignRepository.Identity(cc.Pronouns) ?? existing.Pronouns;
 
             if (cc.IsPc || cc.IsPartyCompanion || existing.IsPc || existing.IsPartyCompanion)
             {
@@ -204,6 +206,8 @@ public class CharacterCreateHandler : IWorldChangeHandler
             IsPc = cc.IsPc,
             IsPartyCompanion = cc.IsPartyCompanion,
             LifeStage = cc.LifeStage,
+            Gender = CampaignRepository.Identity(cc.Gender),
+            Pronouns = CampaignRepository.Identity(cc.Pronouns),
             Schedule = cc.Schedule,
             Psychology = cc.Psychology ?? new PsychologyProfile(),
             ClassLevel = cc.ClassLevel,
@@ -756,6 +760,9 @@ public class CharacterUpdateHandler : IWorldChangeHandler
 
             character.LifeStage = stage;
         }
+
+        character.Gender = CampaignRepository.Identity(cu.Gender) ?? character.Gender;
+        character.Pronouns = CampaignRepository.Identity(cu.Pronouns) ?? character.Pronouns;
 
         var appearanceBefore = character.CurrentAppearance;
         var tagsBefore = new HashSet<string>(character.VisualTags);

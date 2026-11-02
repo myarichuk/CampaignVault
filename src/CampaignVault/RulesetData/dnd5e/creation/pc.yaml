@@ -6,6 +6,9 @@ system: dnd5e
 # Levels 2-20: the levels step asks for every choice the class's progression makes up to the draft's level.
 maxLevel: 20
 steps:
+  # Who they are comes first (name, concept, look, gender, pronouns): everything after it can be fitted to the
+  # concept, and the DM writes homebrew backgrounds for it.
+  - { key: identity, kind: identity, prompt: Who they are }
   - { key: race, kind: pickOne, source: races, prompt: Race }
   - { key: class, kind: pickOne, source: classes, prompt: Class }
   # Named powers (gods, patrons, bloodlines) are plugin or homebrew content, so these steps show only when one fits the class.
@@ -36,4 +39,3 @@ steps:
   # Before spells, so an improvement to the casting ability is in the prepared count.
   - { key: levels, kind: levelChoices, prompt: Level choices }
   - { key: spells, kind: spells, source: spells, when: "spellcasting != None", prompt: Spells }
-  - { key: identity, kind: identity, prompt: Who they are }

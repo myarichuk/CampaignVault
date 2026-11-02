@@ -38,7 +38,9 @@ public record NpcCard(
     /// <summary>What this NPC's own (non-default) needs mean, e.g. "boredom": "restless without a task".</summary>
     Dictionary<string, string>? NeedNotes = null,
     /// <summary>At most two memories, "topic: details".</summary>
-    List<string>? Memories = null)
+    List<string>? Memories = null,
+    /// <summary>The pronouns narration uses ("she/her"); null when not given.</summary>
+    string? Pronouns = null)
 {
     /// <summary>Hash of the stable fields only. Mood, activity, needs and memories change turn to turn and
     /// travel elsewhere (roster, context lines), so they must not force a resend.</summary>
@@ -48,7 +50,7 @@ public record NpcCard(
         // (RelationshipTierContextContributor), so it stays out; so do item counts (an arrow shot). A new
         // or lost item is news. The card's display keeps the numbers.
         var gearNames = Gear == null ? null : System.Text.RegularExpressions.Regex.Replace(Gear, @" x\d+", "");
-        var text = string.Join("|", Traits, SystemTraits, Wants, Fears, Notes, Appearance,
+        var text = string.Join("|", Traits, SystemTraits, Wants, Fears, Notes, Appearance, Pronouns,
             Stats?.ArmorClass, Stats?.Level, gearNames,
             NeedNotes == null ? null : string.Join(",", NeedNotes.OrderBy(kv => kv.Key).Select(kv => kv.Key + "=" + kv.Value)));
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..12];
@@ -133,6 +135,7 @@ internal static class NpcCardFactory
             Stance: stance.Count > 0 ? string.Join("; ", stance) : null,
             Notes: string.IsNullOrWhiteSpace(notes) ? null : notes,
             Appearance: string.IsNullOrWhiteSpace(npc.CurrentAppearance) ? null : npc.CurrentAppearance,
+            Pronouns: string.IsNullOrWhiteSpace(npc.Pronouns) ? null : npc.Pronouns,
             SystemTraits: JoinSystemTraits(npc, modeParticipants),
             Stats: NpcStatLine.From(npc.SystemStats),
             Gear: gear.Count > 0 ? string.Join(", ", gear) : null,

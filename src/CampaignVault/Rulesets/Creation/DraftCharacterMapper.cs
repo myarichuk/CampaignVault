@@ -46,6 +46,8 @@ internal static class DraftCharacterMapper
             Name = string.IsNullOrWhiteSpace(draft.Name) ? "Unnamed" : draft.Name.Trim(),
             Notes = string.IsNullOrWhiteSpace(draft.Concept) ? null : draft.Concept.Trim(),
             CurrentAppearance = string.IsNullOrWhiteSpace(draft.Look) ? null : draft.Look.Trim(),
+            Gender = string.IsNullOrWhiteSpace(draft.Gender) ? null : draft.Gender.Trim(),
+            Pronouns = string.IsNullOrWhiteSpace(draft.Pronouns) ? null : draft.Pronouns.Trim(),
             IsPc = draft.Kind.Equals(RecipeCharacterCreation.PcKind, StringComparison.OrdinalIgnoreCase),
             IsPartyCompanion = draft.Kind.Equals(RecipeCharacterCreation.CompanionKind, StringComparison.OrdinalIgnoreCase),
             SystemStats = stats,

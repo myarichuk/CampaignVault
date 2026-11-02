@@ -12,6 +12,7 @@ public class BackgroundDefinitionProvider : IRulesetYamlProvider
     private readonly RulesetContentLayers<BackgroundDefinition> _layers;
     private readonly Dictionary<string, IReadOnlyDictionary<string, BackgroundDefinition>?> _cache =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<(string, string), IReadOnlyDictionary<string, BackgroundDefinition>> _campaignCache = [];
     private readonly object _lock = new();
     private readonly ILogger? _logger;
 
@@ -25,13 +26,21 @@ public class BackgroundDefinitionProvider : IRulesetYamlProvider
     {
         lock (_lock)
         {
-            if (_cache.TryGetValue(system, out var cached) && cached != null)
+            if (!_cache.TryGetValue(system, out var cached) || cached == null)
+                _cache[system] = cached = _layers.Resolve(system);
+
+            // The campaign's own backgrounds, when it has any (HomebrewScope), are layered on for that call only.
+            var homebrew = HomebrewScope.Current;
+            var entries = homebrew?.For(HomebrewKinds.Background, system) ?? [];
+            if (homebrew is null || entries.Count == 0)
                 return cached;
 
-            var resolved = _layers.Resolve(system);
-
-            _cache[system] = resolved;
-            return resolved;
+            if (_campaignCache.Count > 16)
+                _campaignCache.Clear();
+            var key = (homebrew.Stamp, system);
+            if (!_campaignCache.TryGetValue(key, out var withHomebrew))
+                _campaignCache[key] = withHomebrew = _layers.Resolve(system, [.. entries.Select(e => e.Yaml)]);
+            return withHomebrew;
         }
     }
 
@@ -44,6 +53,9 @@ public class BackgroundDefinitionProvider : IRulesetYamlProvider
     public void Reload()
     {
         lock (_lock)
+        {
             _cache.Clear();
+            _campaignCache.Clear();
+        }
     }
 }

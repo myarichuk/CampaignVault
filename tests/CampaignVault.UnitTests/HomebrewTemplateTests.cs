@@ -87,6 +87,68 @@ public class HomebrewTemplateTests(RavenDBFixture fixture) : IClassFixture<Raven
         Assert.Contains(reason, result.Summary);
     }
 
+    private const string Smuggler =
+        "name: tidewater_smuggler\nlabel: Tidewater Smuggler\ndescription: You ran untaxed cargo through the reed channels.\n"
+        + "skillProficiencies: [Stealth, Deception]\ntoolProficiencies: [Navigator's tools]\nlanguages: [One of your choice]\n"
+        + "feature: Channel Friends\nequipment:\n  - { name: Oilskin coat }\n  - { item: dagger }\ngold: 10\n";
+
+    [Fact]
+    public async Task ABackground_IsOfferedBesideTheShippedOnes_AndItsGrantsLandOnTheCharacter()
+    {
+        var slug = Slug();
+        var worldBuilder = TestCampaignToolsFactory.CreateWorldBuilderTools(fixture);
+        var saved = await worldBuilder.WorldBuild(Batch(new HomebrewTemplateUpsertRequest { Kind = "background", System = "dnd5e", Yaml = Smuggler }), slug);
+        Assert.True(saved.Success, saved.Summary);
+
+        var builder = TestCampaignToolsFactory.CreateTool<CharacterBuilderTools>(fixture);
+        var backgrounds = (await builder.CharacterBuilder("options", new CharacterDraft { Kind = "pc" }, slug, "background")).Data!.Options!;
+        Assert.True(backgrounds.Single(o => o.Id == "tidewater_smuggler").Homebrew);
+        Assert.False(backgrounds.Single(o => o.Id == "acolyte").Homebrew, "the shipped background stays");
+        var elsewhere = (await builder.CharacterBuilder("options", new CharacterDraft { Kind = "pc" }, Slug(), "background")).Data!.Options!;
+        Assert.DoesNotContain(elsewhere, o => o.Id == "tidewater_smuggler");
+
+        var draft = CharacterCreationTests.Wizard().With("background", "tidewater_smuggler");
+        var preview = await builder.CharacterBuilder("preview", draft, slug);
+        Assert.True(preview.Success, preview.Summary);
+        Assert.DoesNotContain(preview.Data!.Errors, e => e.Step == "background");
+        var stats = Assert.IsType<CampaignVault.Models.Dnd5eExtension>(preview.Data.Character!.SystemStats);
+        Assert.Equal("tidewater_smuggler", stats.Background);
+        Assert.Contains("Stealth", stats.SkillModifiers.Keys);
+        Assert.Contains("Deception", stats.SkillModifiers.Keys);
+        Assert.Equal(10, stats.ResourcePools["gold"].Current);
+    }
+
+    [Theory]
+    [InlineData("dnd5e", "skillProficiencies: [Stealth, Deception, Arcana]\n", "exactly 2 skill proficiencies")]
+    [InlineData("dnd5e", "skillProficiencies: [Stealth, Smuggling]\n", "'Smuggling' is not a dnd5e skill")]
+    [InlineData("dnd5e", "skillProficiencies: [Stealth, Deception]\ntoolProficiencies: [Thieves' tools, Navigator's tools]\nlanguages: [Elvish]\n", "at most 2 tool proficiencies and languages")]
+    [InlineData("dnd5e", "skillProficiencies: [Stealth, Deception]\ngold: 200\n", "0 to 25 gp")]
+    [InlineData("dnd5e", "skillProficiencies: [Stealth, Deception]\nequipment:\n  - { item: not_an_item_at_all }\n", "No item template 'not_an_item_at_all'")]
+    [InlineData("dnd5e", "skillProficiencies: [Stealth, Deception]\nskillFeat: assurance\n", "pf2e fields")]
+    [InlineData("pf2e", "boosts: [Dexterity, Charisma]\nskillProficiencies: [Stealth, Deception]\nlore: Smuggling Lore\nskillFeat: experienced_smuggler\n", "trains one skill")]
+    [InlineData("pf2e", "boosts: [Dexterity]\nskillProficiencies: [Stealth]\nlore: Smuggling Lore\nskillFeat: experienced_smuggler\n", "two different abilities")]
+    [InlineData("pf2e", "boosts: [Dexterity, Charisma]\nskillProficiencies: [Stealth]\nskillFeat: experienced_smuggler\n", "set lore")]
+    [InlineData("pf2e", "boosts: [Dexterity, Charisma]\nskillProficiencies: [Stealth]\nlore: Smuggling Lore\n", "set skillFeat")]
+    public async Task ABackgroundOutsideTheRulesetsBudget_IsRefused_WithTheReason(string system, string fields, string reason)
+    {
+        var worldBuilder = TestCampaignToolsFactory.CreateWorldBuilderTools(fixture);
+        var yaml = "name: overloaded\ndescription: Too much.\n" + fields;
+
+        var result = await worldBuilder.WorldBuild(Batch(new HomebrewTemplateUpsertRequest { Kind = "background", System = system, Yaml = yaml }), Slug());
+
+        Assert.False(result.Success);
+        Assert.Contains(reason, result.Summary);
+    }
+
+    [Fact]
+    public void APf2eBackground_InsideTheBudget_HasNoProblems()
+    {
+        var background = CampaignVault.Data.Templates.HomebrewTemplates.ReadBackground(
+            "name: river_pilot\ndescription: You steered barges.\nboosts: [Dexterity, Wisdom]\nskillOptions: [Athletics, Survival]\nlore: River Lore\nskillFeat: assurance\n")!;
+
+        Assert.Empty(CampaignVault.Data.Templates.HomebrewTemplates.BackgroundProblems(background, "pf2e"));
+    }
+
     [Fact]
     public async Task AnAncestry_AndAnAncestorsPower_AreOffered_ByTheCampaignsBuilder()
     {

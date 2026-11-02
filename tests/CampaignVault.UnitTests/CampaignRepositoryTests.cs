@@ -2071,6 +2071,30 @@ public class CampaignRepositoryTests : IClassFixture<RavenDBFixture>
 
 
     [Fact]
+    public async Task CharacterCreateAndUpdate_SetPronouns_AndAnOmittedValueKeepsThem()
+    {
+        var repo = _fixture.CreateRepository();
+        using var session = _store.OpenAsyncSession();
+        var id = "chars/pronouns-" + Guid.NewGuid().ToString("N")[..8];
+
+        var created = await repo.StageChangesAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), [
+            new CharacterCreate { CharacterId = id, Name = "Wren", LifeStage = LifeStage.Adult, Gender = "woman", Pronouns = "she/her" }
+        ]);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        Assert.True(created.Success);
+
+        var updated = await repo.StageChangesAsync(_fixture.CreateCampaignSession(session, TestCampaignDefaults.Slug), [
+            new CharacterUpdate { CharacterId = id, Pronouns = "they/them" }
+        ]);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        Assert.True(updated.Success);
+
+        var wren = await session.LoadAsync<Character>(id, TestContext.Current.CancellationToken);
+        Assert.Equal("they/them", wren!.Pronouns);
+        Assert.Equal("woman", wren.Gender);
+    }
+
+    [Fact]
     public async Task CharacterUpdate_AppearanceChange_AutoLogsTrivialEvent_ButNoOpDoesNot()
     {
         var repo = _fixture.CreateRepository();

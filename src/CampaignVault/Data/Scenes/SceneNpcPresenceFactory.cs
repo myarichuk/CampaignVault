@@ -92,7 +92,8 @@ public sealed class SceneNpcPresenceFactory
                 CarriedItems: carriedItems,
                 TurnIntent: enrichment.TurnIntent,
                 Soil: SoilHelpers.Summarize(npc.Dirt),
-                Piercings: PiercingHelpers.Summarize(npc.Piercings)
+                Piercings: PiercingHelpers.Summarize(npc.Piercings),
+                Pronouns: npc.Pronouns
             ));
         }
 

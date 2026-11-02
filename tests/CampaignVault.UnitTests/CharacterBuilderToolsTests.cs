@@ -392,7 +392,8 @@ public class CharacterBuilderToolsTests(RavenDBFixture fixture) : IClassFixture<
 
         Assert.True(steps.Success, steps.Summary);
         Assert.Equal("dnd5e", steps.Data!.System);
-        Assert.Equal("race", steps.Data.Steps![0].Key);
+        Assert.Equal("identity", steps.Data.Steps![0].Key); // who they are first: the rest is fitted to the concept
+        Assert.Equal("race", steps.Data.Steps![1].Key);
         Assert.Contains(classes.Data!.Options!, o => o.Id == "wizard" && o.Label == "Wizard");
         Assert.Equal(3, spells.Data!.GroupCounts![SpellGroups.Cantrips]);
         Assert.Equal(6, spells.Data.GroupCounts[SpellGroups.Known]);
@@ -413,6 +414,35 @@ public class CharacterBuilderToolsTests(RavenDBFixture fixture) : IClassFixture<
 
         // No pf2e recipe yet (phase 6), but it is the pf2e one that was asked for, not a silent 5e sheet.
         Assert.False(steps.Success && steps.Data!.System == "dnd5e", steps.Summary);
+    }
+
+    [Fact]
+    public async Task GenderAndPronouns_RideFromTheDraft_AndWorldBuild_AndShowOnTheSheet()
+    {
+        var slug = "builder-pronouns-" + Guid.NewGuid().ToString("N")[..8];
+        var builder = TestCampaignToolsFactory.CreateTool<CharacterBuilderTools>(fixture);
+        var worldBuilder = TestCampaignToolsFactory.CreateWorldBuilderTools(fixture);
+
+        var committed = await builder.CharacterBuilder("commit", CharacterCreationTests.Wizard() with { Gender = " woman ", Pronouns = "she/her" }, slug);
+        Assert.True(committed.Success, committed.Summary);
+        Assert.Equal("she/her", committed.Data!.Character!.Pronouns);
+        var pc = await Load(slug, committed.Data.Character.Id);
+        Assert.Equal("woman", pc.Gender);
+        Assert.Equal("she/her", pc.Pronouns);
+
+        var built = await worldBuilder.WorldBuild(new WorldBuildBatch
+        {
+            Characters = [new CharacterUpsertRequest { Id = "chars/ferryman", Name = "Odo", Pronouns = "they/them", Gender = new string('x', 90) }],
+        }, slug);
+        Assert.True(built.Success, built.Summary);
+        var npc = await Load(slug, "chars/ferryman");
+        Assert.Equal("they/them", npc.Pronouns);
+        Assert.Equal(CampaignRepository.IdentityCap, npc.Gender!.Length);
+
+        // A partial update that omits them keeps them.
+        await worldBuilder.WorldBuild(new WorldBuildBatch { Characters = [new CharacterUpsertRequest { Id = "chars/ferryman", Notes = "Owes the toll." }] }, slug);
+        Assert.Equal("they/them", (await Load(slug, "chars/ferryman")).Pronouns);
+        Assert.Equal("they/them", CharacterDetailView.From(await Load(slug, "chars/ferryman")).Pronouns);
     }
 
     private async Task<Character> Load(string slug, string id)

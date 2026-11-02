@@ -97,6 +97,15 @@ public class Character : ICampaignScopedEntity, IHasDirt
     /// never relabelled adult by a commit — see <see cref="LifeStageRules.TryChange"/>.
     /// </summary>
     public LifeStage LifeStage { get; set; } = LifeStage.Unspecified;
+
+    /// <summary>
+    /// Gender in the character's own (or the setting's) words, free text ("woman", "man", "nonbinary"...). Null when not
+    /// given. Context for the story and for what fits the character; no rule reads it.
+    /// </summary>
+    public string? Gender { get; set; }
+
+    /// <summary>The pronouns narration uses for the character ("she/her", "he/him", "they/them"...). Null when not given.</summary>
+    public string? Pronouns { get; set; }
     
     public Schedule? Schedule { get; set; }
 
