@@ -151,6 +151,7 @@ Generated from the server: `name:type [req] (enum values) {object shape}`. Unkno
 - newActivity:string
 - newLocationId:string
 - updateLocation:bool
+- departing:bool
 - reason:string
 
 **engagement_relation** — Establish, update, or remove a pairwise engagement state…
@@ -173,6 +174,11 @@ Generated from the server: `name:type [req] (enum values) {object shape}`. Unkno
 - perceptible:string
 - attention:string
 - crowdModifier:int
+- appeal:string
+- appealIntensity:string
+- deceptive:bool
+- appealSubject:string
+- reception:map<string,string>
 - relatedLocationIds:string[]
 - impliesPersistentPhysicalChange:bool
 - eventId:string

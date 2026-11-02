@@ -123,9 +123,13 @@ Old Wenna — uneasy (distrusts magic): withdraws. Narrate each; already recorde
   against a flat 10, every untrained listener saw through every untrained liar. Habituation is ÷ (1 + repeats/2), not ÷ (1 + repeats):
   halving on the second identical scare was too steep. D6's ally count is not built (no allegiance data outside combat, and the
   encounter's sides aren't read yet): flight reads morale and wounds only.
-- [ ] **I6. Overrides, disbelief, docs.** `reception` applied; a SkillCheck with `disbelieve` (the illusion's caster id) that
+- [x] **I6. Overrides, disbelief, docs.** `reception` applied; a SkillCheck with `disbelieve` (the illusion's caster id) that
   meets the caster's spell DC turns that observer's impression into seen-through. `DmHelpManual`, `CommitEnumCheatSheet`,
   the skills in `claude_skills/` and the `recommended-system-prompt*.md` files: one rule each. `WITNESS_CHANNEL_PLAN.md` line 155
   ("react as the targets do") corrected.
+  *As built:* `reception` and `disbelieve` landed with I4/I5 (`Appeal`, `ImpressionStep.SettleDisbeliefAsync`); a disbelief that
+  meets the DC turns the observer's latest believed impression of that caster to seen-through ("faint to them", SRD 5.1). Docs: the
+  three system prompts, `dnd-combat` and `dnd-npc-interaction` skills, `DmHelpManual`, `CommitEnumCheatSheet`; the generated Fields
+  section of `dnd-world-change` regenerated (`CV_WRITE_SKILL_FIELDS=1`), within its budget.
 - [ ] **I7. Verification.** `/verify` once, no parallel builds; every failure reported. A scratch-campaign playtest test: the
   night road, the caravan Far and departing, butterflies for a child, then the ghost against the scout.

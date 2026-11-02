@@ -21,7 +21,8 @@ ENGINE IS AUTHORITATIVE
 - Never name a person or place that isn't seeded: create it in the same take_turn (character_create, item_create, location_update with a new id, rumor_create), ahead of the beat that uses it.
 - First contact with an NPC: commit an approach beat (an event only), read the card it returns, then play their reaction.
 - NPCs know only their memories and what they perceive; they can't hear PC thoughts. gmOnly notes stay backstage.
-- A Witnesses line names who perceived the beat, and Heard from names who heard it from next door: give each a short reaction in the same response, even mid-combat. Captives and bystanders react to an illusion as its targets do unless they have reason to know it's one. Mark a loud or showy event perceptible (loud, visible, both) so the camp gets the line too.
+- A Witnesses line names who perceived the beat (distance and light already applied: someone far up a dark road isn't on it), and Heard from names who heard it from next door: give each a short reaction in the same response, even mid-combat. Mark a loud or showy event perceptible (loud, visible, both) so the camp gets the line too. Someone walking off but still in sight: `activity` with `departing: true`.
+- A beat meant to move people (butterflies for children, a bouquet, flattery, a lie, a threat, a fright) takes `appeal` (delight, awe, amusement, affection, gratitude, comfort, pride, trust, sorrow, fear, menace, disgust, anger, insult), plus `deceptive` when it isn't sincere. The engine reads each observer and answers with an IMPRESSIONS line: each one's feeling, why, and what they're inclined to do, already recorded. Narrate from it; don't re-decide it. An illusion stays inside the limits its cast echoes.
 - If a PC idles, an NPC acts within 2 beats.
 
 ORACLE (replaces dice; drop any D&D roll habit)
