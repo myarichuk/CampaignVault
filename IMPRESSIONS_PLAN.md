@@ -131,5 +131,28 @@ Old Wenna — uneasy (distrusts magic): withdraws. Narrate each; already recorde
   meets the DC turns the observer's latest believed impression of that caster to seen-through ("faint to them", SRD 5.1). Docs: the
   three system prompts, `dnd-combat` and `dnd-npc-interaction` skills, `DmHelpManual`, `CommitEnumCheatSheet`; the generated Fields
   section of `dnd-world-change` regenerated (`CV_WRITE_SKILL_FIELDS=1`), within its budget.
-- [ ] **I7. Verification.** `/verify` once, no parallel builds; every failure reported. A scratch-campaign playtest test: the
+- [x] **I7. Verification.** `/verify` once, no parallel builds; every failure reported. A scratch-campaign playtest test: the
   night road, the caravan Far and departing, butterflies for a child, then the ghost against the scout.
+  *As built:* `NightRoadPlaytestTests.The_night_road_playtest`. Full suite: 3004 total, 2998 passed, 0 failed, 6 skipped
+  (pre-existing attribute skips: four MCP server integration tests, two rate-limit tests). The one break the suite found was
+  intended: a Performance check now carries `delight` (D2), so `CrowdDrawTests` reads the song's audience from the IMPRESSIONS line,
+  which now also says "drawing attention". Playtest lines:
+
+  ```
+  [butterflies] IMPRESSIONS (minor illusion by Maeve, delight): Brenna: very delighted (a child; +4 toward Maeve) → draws closer,
+    enchanted | Goblin Scout: delighted (+2 toward Maeve) → lingers to watch | Ilsa: delighted (+2 toward Maeve) → lingers to watch.
+  [ghost 1] IMPRESSIONS (minor illusion by Maeve, fear, deceptive): Goblin Scout: very frightened (believes it; examining it takes
+    an action: Investigation vs DC 13; morale low) → flees | Brenna: overwhelmingly frightened (...; a child) → flees | Ilsa: very
+    frightened (...) → retreats.
+  [ghost 4] ... Goblin Scout: frightened (...; morale low; seen it 3 times) → backs away | ...
+  ```
+  Lys, Sera (departing) and Corren (Far, dark) appear in none of them; the caravan is off the road after two beats.
+
+## Open questions from the playtest
+
+- A hostile scout with no recorded opinion of Maeve warms to her (+2) over a butterfly meant for the child. D3 says a visible beat
+  reaches everyone; whether enmity should be recorded first (relationship) or inferred from being a combatant is open.
+- Ilsa, standing Close, believes the ghost although she could watch Maeve's somatic gesture. A visible caster isn't yet a reason to
+  suspect an illusion.
+- D6's ally count (a lone scout breaks sooner) still needs the encounter's sides read.
+

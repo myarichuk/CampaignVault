@@ -102,7 +102,8 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
 
         var named = entries.Count > MaxNamed ? [.. entries.Take(MaxNamed), $"+{entries.Count - MaxNamed} others"] : entries;
         var by = actor != null ? $" by {actor.Name}" : "";
-        ctx.RecordMessage($"IMPRESSIONS ({cause}{by}, {appeal.Tone.Name}{(appeal.Deceptive ? ", deceptive" : "")}): {string.Join(" | ", named)}. "
+        var drawing = beat?.Draws == true ? ", drawing attention" : "";
+        ctx.RecordMessage($"IMPRESSIONS ({cause}{by}, {appeal.Tone.Name}{(appeal.Deceptive ? ", deceptive" : "")}{drawing}): {string.Join(" | ", named)}. "
                           + "Recorded (opinions, moods). Narrate each: the reaction is a tendency, not a script.");
     }
 

@@ -217,13 +217,16 @@ public class CrowdDrawTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task The_witness_line_says_the_song_is_drawing_attention()
+    public async Task The_impressions_line_says_the_song_is_drawing_attention()
     {
         var t = await SeedTavernAsync();
 
         var sing = await WithRollAsync(0.99, () => SingAsync(t));
 
-        var line = Assert.Single(sing.Data!.Context ?? [], l => l.StartsWith("Witnesses"));
-        Assert.StartsWith("Witnesses (perform a ballad by Maeve, loud+visible, drawing attention): Holt", line);
+        // A Performance check carries an appeal (delight, IMPRESSIONS_PLAN.md D2), so its audience is reported per listener in
+        // the IMPRESSIONS line instead of the witness line.
+        Assert.DoesNotContain(sing.Data!.Context ?? [], l => l.StartsWith("Witnesses"));
+        var line = Assert.Single(sing.Data!.Summary ?? [], l => l.StartsWith("IMPRESSIONS"));
+        Assert.StartsWith("IMPRESSIONS (perform a ballad by Maeve, delight, drawing attention): Holt:", line);
     }
 }
