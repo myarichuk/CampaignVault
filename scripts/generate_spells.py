@@ -20,6 +20,8 @@ OVERLAY_PATH = ROOT / "scripts" / "spell_damage_overlay.yaml"
 PF2E_OVERLAY_PATH = ROOT / "scripts" / "spell_damage_overlay_pf2e.yaml"
 SUMMON_OVERLAY_PATH = ROOT / "scripts" / "spell_summon_overlay.yaml"
 SUMMON_PF2E_OVERLAY_PATH = ROOT / "scripts" / "spell_summon_overlay_pf2e.yaml"
+PERCEPTION_OVERLAY_PATH = ROOT / "scripts" / "spell_perception_overlay.yaml"
+PERCEPTION_PF2E_OVERLAY_PATH = ROOT / "scripts" / "spell_perception_overlay_pf2e.yaml"
 
 DND5E_HEADER = (
     "# Source: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0\n"
@@ -120,6 +122,13 @@ def write_spell(path: Path, header: str, body: dict) -> None:
         lines.append(f"areaOfEffectType: {yaml_quote(body['areaOfEffectType'])}")
     if body.get("areaOfEffectSize") is not None:
         lines.append(f"areaOfEffectSize: {body['areaOfEffectSize']}")
+    if body.get("perceptible"):
+        lines.append(f"perceptible: {body['perceptible']}")
+    modes = body.get("perceptibleModes")
+    if modes:
+        lines.append("perceptibleModes:")
+        for mode in sorted(modes):
+            lines.append(f"  {mode}: {modes[mode]}")
     for key in ("instanceCountAtSlotLevel", "instanceCountAtCharacterLevel"):
         table = body.get(key)
         if table:
@@ -601,6 +610,83 @@ def apply_summon_overlay(slug: str, body: dict, overlay: dict[str, dict]) -> Non
     body["summon"] = entry["summon"]
 
 
+PERCEPTIBLE_VALUES = {"loud", "visible", "both", "none"}
+
+# PF2e damage traits whose area effect is a spectacle (a burst of fire, a crack of lightning).
+# Vitality, void, mental, spirit and poison are left out: nothing nearby need see or hear them.
+PF2E_SPECTACLE_DAMAGE_TRAITS = {"acid", "cold", "electricity", "fire", "force", "sonic"}
+
+
+def combine_perceptible(loud: bool, visible: bool) -> str:
+    return "both" if loud and visible else "loud" if loud else "visible" if visible else "none"
+
+
+def derive_perceptible_dnd5e(body: dict) -> str:
+    """Same rule as Perceptibility.OfSpell's fallback: illusion → both, area damage → both, thunder → loud.
+    A verbal component is speech, not a spectacle, so it never counts."""
+    illusion = body.get("school") == "illusion"
+    damaging = bool(body.get("damageAtSlotLevel") or body.get("damageAtCharacterLevel") or body.get("damagePools"))
+    area_damage = damaging and bool(body.get("areaOfEffectType"))
+    thunder = body.get("damageType") == "thunder"
+    return combine_perceptible(illusion or area_damage or thunder, illusion or area_damage)
+
+
+def derive_perceptible_pf2e(spell: dict) -> str:
+    """From AoN traits. On an illusion, visual/auditory name the illusion's own form (Illusory Object is visual,
+    Ventriloquism auditory), so they say what bystanders perceive; elsewhere they only gate who is affected, so
+    they're ignored. An area spell with a spectacle damage trait is both; sonic is loud."""
+    traits = {t.lower() for t in spell.get("trait") or []}
+    if "illusion" in traits:
+        visual, auditory = "visual" in traits, "auditory" in traits
+        if not visual and not auditory:
+            return "both"
+        return combine_perceptible(auditory, visual)
+    area = bool(spell.get("area"))
+    spectacle = area and bool(traits & PF2E_SPECTACLE_DAMAGE_TRAITS)
+    return combine_perceptible(spectacle or "sonic" in traits, spectacle)
+
+
+def load_perception_overlay(path: Path) -> dict[str, dict]:
+    """slug: {perceptible: value} or {perceptibleModes: {mode: value}}; comments and blank lines ignored."""
+    overlay: dict[str, dict] = {}
+    slug = None
+    in_modes = False
+    for number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        line = raw.split("#", 1)[0].rstrip()
+        if not line.strip():
+            continue
+        where = f"{path.name}:{number}"
+        indent = len(line) - len(line.lstrip())
+        key, _, value = line.strip().partition(":")
+        value = value.strip()
+        if indent == 0:
+            slug, in_modes = key, False
+            overlay[slug] = {}
+        elif slug is None:
+            raise ValueError(f"{where}: field outside a spell entry")
+        elif indent == 2 and key == "perceptible":
+            if value not in PERCEPTIBLE_VALUES:
+                raise ValueError(f"{where}: perceptible must be one of {sorted(PERCEPTIBLE_VALUES)}")
+            overlay[slug]["perceptible"] = value
+            in_modes = False
+        elif indent == 2 and key == "perceptibleModes" and not value:
+            overlay[slug]["perceptibleModes"] = {}
+            in_modes = True
+        elif indent == 4 and in_modes:
+            if value not in PERCEPTIBLE_VALUES:
+                raise ValueError(f"{where}: mode value must be one of {sorted(PERCEPTIBLE_VALUES)}")
+            overlay[slug]["perceptibleModes"][key] = value
+        else:
+            raise ValueError(f"{where}: unknown key {key!r}")
+    return overlay
+
+
+def apply_perception(slug: str, body: dict, derived: str, overlay: dict[str, dict]) -> None:
+    entry = overlay.get(slug, {})
+    body["perceptibleModes"] = entry.get("perceptibleModes")
+    body["perceptible"] = entry.get("perceptible") or ("both" if body["perceptibleModes"] else derived)
+
+
 def parse_dnd5e_mechanics(detail: dict) -> dict:
     """Pull damage/save/heal/AoE off the already-fetched dnd5eapi.co spell detail JSON.
     Confirmed live: damage is always keyed by slot level for leveled spells, even
@@ -691,6 +777,7 @@ def generate_dnd5e() -> int:
     DND5E_DIR.mkdir(parents=True, exist_ok=True)
     overlay = load_damage_overlay()
     summon_overlay = load_summon_overlay()
+    perception_overlay = load_perception_overlay(PERCEPTION_OVERLAY_PATH)
 
     def load_spell(entry: dict) -> tuple[str, dict]:
         detail = fetch_json(f"https://www.dnd5eapi.co{entry['url']}")
@@ -730,6 +817,7 @@ def generate_dnd5e() -> int:
                 print(f"  dnd5e: {slug} has multi-entry damage but no clean pools and no overlay — flat first-entry only")
             apply_damage_overlay(slug, body, overlay)
             apply_summon_overlay(slug, body, summon_overlay)
+            apply_perception(slug, body, derive_perceptible_dnd5e(body), perception_overlay)
             generated[slug] = body
             if i % 50 == 0:
                 print(f"  dnd5e: {i}/{len(spells)}")
@@ -740,6 +828,9 @@ def generate_dnd5e() -> int:
     unused_summon = sorted(set(summon_overlay) - set(generated))
     if unused_summon:
         raise ValueError(f"summon overlay entries match no API spell: {', '.join(unused_summon)}")
+    unused_perception = sorted(set(perception_overlay) - set(generated))
+    if unused_perception:
+        raise ValueError(f"perception overlay entries match no API spell: {', '.join(unused_perception)}")
 
     # Hand-kept tags (charm, compulsion, fear, mental: the effect vocabulary's spell categories) are not in the API;
     # they survive regeneration by being read back from the files on disk.
@@ -830,7 +921,7 @@ def fetch_aon_spells() -> list[dict]:
                 ]
             }
         },
-        "_source": ["name", "level", "trait", "tradition", "actions", "cost", "range", "saving_throw"],
+        "_source": ["name", "level", "trait", "tradition", "actions", "cost", "range", "saving_throw", "area"],
     }
     result = fetch_json(AON_SEARCH_URL, data=json.dumps(query).encode("utf-8"))
     return [hit["_source"] for hit in result["hits"]["hits"]]
@@ -883,14 +974,22 @@ def generate_pf2e() -> int:
             "materialText": cost_text,
             "materialCost": parse_gp_cost(cost_text) if cost_text else None,
             "materialConsumed": bool(cost_text),
+            # Private: popped before write; the perceptibility derivation needs the raw traits and area.
+            "_perceptible": derive_perceptible_pf2e(spell),
         }
 
     damage_overlay = load_damage_overlay(PF2E_OVERLAY_PATH)
     summon_overlay = load_summon_overlay_file(
         SUMMON_PF2E_OVERLAY_PATH, PF2E_DIR.parent / "creatures", 10)
+    perception_overlay = load_perception_overlay(PERCEPTION_PF2E_OVERLAY_PATH)
     for slug, body in generated.items():
         apply_damage_overlay(slug, body, damage_overlay)
         apply_summon_overlay(slug, body, summon_overlay)
+        apply_perception(slug, body, body.pop("_perceptible"), perception_overlay)
+
+    unused_perception = sorted(set(perception_overlay) - set(generated))
+    if unused_perception:
+        raise ValueError(f"pf2e perception overlay entries match no AoN spell: {', '.join(unused_perception)}")
 
     unused_damage = sorted(set(damage_overlay) - set(generated))
     if unused_damage:

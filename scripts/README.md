@@ -82,6 +82,18 @@ no entry without a quote. After any regen, diff-review: every file except the
 overlay-flagged spells (plus any new `damagePools` the API grew) must be
 byte-identical to before.
 
+### `spell_perception_overlay.yaml` / `spell_perception_overlay_pf2e.yaml` (hand-authored, never regenerated)
+
+Every generated spell carries `perceptible` (`loud`, `visible`, `both`, `none`): what bystanders perceive when it is cast,
+read by the witness channel (`WITNESS_CHANNEL_PLAN.md`).
+
+- **dnd5e derivation:** illusion school → both; area damage → both; thunder damage → loud; otherwise none.
+- **pf2e derivation (AoN traits):** an illusion is visible with `visual`, loud with `auditory`, both with neither. An area spell with a fire, cold, electricity, acid, force or sonic trait → both. `sonic` → loud.
+
+These overlays override the derived value for the spells it gets wrong (`perceptible: <value>`). They can also add caster-chosen
+forms (`perceptibleModes: {image: visible, sound: loud}`, picked by the cast's `parameters.mode`) for spells like Minor Illusion
+and Figment. Every entry quotes its rules text, and an entry that matches no spell fails the run.
+
 ### `spell_summon_overlay.yaml` (hand-authored, never regenerated)
 
 Same pattern as the damage overlay, but for **summoning**: `generate_dnd5e()`
