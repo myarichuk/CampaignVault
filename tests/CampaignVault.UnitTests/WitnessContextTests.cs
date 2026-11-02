@@ -2,10 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Autofac;
+using CampaignVault.Data;
 using CampaignVault.Data.Context;
 using CampaignVault.Data.Templates;
 using CampaignVault.Rulesets;
 using CampaignVault.Services;
+using System.Threading;
 using System.Threading.Tasks;
 using CampaignVault.Models;
 using CampaignVault.Tools;
@@ -27,11 +30,14 @@ public class WitnessContextTests : IClassFixture<RavenDBFixture>
     private sealed record Camp(string Slug, CampaignTools Tools, string LocId, string PcId, string GoblinId);
 
     /// <summary>A night camp: the PC (Maeve), two traders who aren't fighting, and a goblin scout.</summary>
-    private async Task<Camp> SeedCampAsync(bool withTraders = true, string? correnCondition = null)
+    private async Task<Camp> SeedCampAsync(bool withTraders = true, string? correnCondition = null, bool startCombat = true, int? correnPassive = null,
+        IRollService? rolls = null)
     {
         var slug = "witness-" + Guid.NewGuid().ToString("N")[..8];
-        var repo = _fixture.CreateRepository();
-        var tools = TestCampaignToolsFactory.Create(_fixture, repository: repo);
+        var repo = rolls == null
+            ? _fixture.CreateRepository()
+            : _fixture.CreateRepository(overrides: b => b.RegisterInstance(rolls).As<IRollService>());
+        var tools = TestCampaignToolsFactory.Create(_fixture, rollService: rolls, repository: repo);
         await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
 
         var locId = $"locations/{slug}-camp";
@@ -60,9 +66,7 @@ public class WitnessContextTests : IClassFixture<RavenDBFixture>
                 await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
                 {
                     Id = $"chars/{slug}-corren", Name = "Corren", CurrentLocationId = locId, MaxHp = 9, CurrentHp = 9,
-                    SystemStats = correnCondition == null
-                        ? null
-                        : new Dnd5eExtension { StatusEffects = [new StatusEffect { Name = correnCondition, Category = "Condition", ConditionName = correnCondition }] }
+                    SystemStats = CorrenStats(correnCondition, correnPassive)
                 });
                 await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
                 {
@@ -73,6 +77,11 @@ public class WitnessContextTests : IClassFixture<RavenDBFixture>
         }
 
         await tools.TakeTurn(new TakeTurnRequest { FullDetailLocationId = locId }, slug);
+        if (!startCombat)
+        {
+            return new Camp(slug, tools, locId, pcId, goblinId);
+        }
+
         var started = await tools.StartCombat(locId, [pcId, goblinId], slug);
         Assert.True(started.Success, started.Summary);
         var camp = new Camp(slug, tools, locId, pcId, goblinId);
@@ -91,6 +100,27 @@ public class WitnessContextTests : IClassFixture<RavenDBFixture>
         }
 
         Assert.Equal(c.PcId, active, ignoreCase: true);
+    }
+
+    private static Dnd5eExtension? CorrenStats(string? condition, int? passive)
+    {
+        if (condition == null && passive == null)
+        {
+            return null;
+        }
+
+        var stats = new Dnd5eExtension();
+        if (condition != null)
+        {
+            stats.StatusEffects.Add(new StatusEffect { Name = condition, Category = "Condition", ConditionName = condition });
+        }
+
+        if (passive != null)
+        {
+            stats.Attributes["passivePerception"] = passive.Value;
+        }
+
+        return stats;
     }
 
     private static Task<ToolResult<TurnResult>> CastFireballAsync(Camp c) =>
@@ -218,6 +248,225 @@ public class WitnessContextTests : IClassFixture<RavenDBFixture>
         var line = Assert.Single(first.Data!.Context ?? [], l => l.StartsWith("Witnesses"));
         Assert.StartsWith("Witnesses (a fight breaks out, loud+visible):", line);
         Assert.DoesNotContain(second.Data!.Context ?? [], l => l.StartsWith("Witnesses"));
+    }
+
+    // ---- A1–A4: sleep, waking and hiding ----
+
+    private static Task<ToolResult<TurnResult>> CommitAsync(Camp c, string narrative, params WorldChange[] changes) =>
+        c.Tools.TakeTurn(new TakeTurnRequest { Changes = [.. changes], Narrative = narrative }, c.Slug);
+
+    private static string Messages(ToolResult<TurnResult> result) => string.Join("\n", result.Data?.Summary ?? []);
+
+    private async Task<Character> LoadAsync(string id)
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        return (await session.LoadAsync<Character>(id, TestContext.Current.CancellationToken))!;
+    }
+
+    [Fact]
+    public async Task A_sleeping_trader_is_woken_by_the_fireball_and_listed_as_woken()
+    {
+        var c = await SeedCampAsync();
+        var correnId = $"chars/{c.Slug}-corren";
+        var sleep = await CommitAsync(c, "Corren dozes by the wagon.", new AwarenessChange { CharacterId = correnId, State = "asleep" });
+        Assert.True(sleep.Success, sleep.Summary);
+        Assert.Equal(AwarenessState.Asleep, (await LoadAsync(correnId)).Awareness?.State);
+
+        var cast = await CastFireballAsync(c);
+
+        Assert.True(cast.Success, cast.Summary);
+        Assert.Contains("WOKEN by fireball: Corren", Messages(cast));
+        Assert.Contains("Corren", Assert.Single(cast.Data!.Context ?? [], l => l.StartsWith("Witnesses")));
+        Assert.Null((await LoadAsync(correnId)).Awareness);
+    }
+
+    [Fact]
+    public async Task A_sleeper_sleeps_through_a_silent_image()
+    {
+        var c = await SeedCampAsync(startCombat: false);
+        var correnId = $"chars/{c.Slug}-corren";
+        await CommitAsync(c, "Corren dozes by the wagon.", new AwarenessChange { CharacterId = correnId, State = "asleep" });
+
+        var cast = await CommitAsync(c, "A ghostly wolf shape pads silently past the fire.",
+            new RulesetAction
+            {
+                CharacterId = c.PcId, ActionType = RulesetActionType.Spell, ActionCategory = ActionCategory.Spell, ActionName = "silent_image",
+                Parameters = new Dictionary<string, string> { ["resolution"] = "utility", ["innate"] = "true" }
+            });
+
+        Assert.True(cast.Success, cast.Summary);
+        var line = Assert.Single(cast.Data!.Context ?? [], l => l.StartsWith("Witnesses"));
+        Assert.StartsWith("Witnesses (silent image by Maeve, visible):", line);
+        Assert.DoesNotContain("Corren", line);
+        Assert.Equal(AwarenessState.Asleep, (await LoadAsync(correnId)).Awareness?.State);
+    }
+
+    /// <summary>A5: rest at the camp, interrupted, with the approach's Stealth pinned.</summary>
+    private static async Task<ToolResult<TurnResult>> InterruptedRestAsync(Camp c, int approachStealth, params string[] watcherIds)
+    {
+        EncounterResolver.RollOverrideForTests = () => 0.0;
+        EncounterResolver.ApproachStealthOverrideForTests = () => approachStealth;
+        try
+        {
+            return await CommitAsync(c, "Maeve beds down by the fire.",
+                new RestChange
+                {
+                    CharacterId = c.PcId, LocationId = c.LocId, IntendedHours = 8, RestType = RestType.LongRest,
+                    WatcherIds = watcherIds.Length > 0 ? [.. watcherIds] : null
+                });
+        }
+        finally
+        {
+            EncounterResolver.RollOverrideForTests = null;
+            EncounterResolver.ApproachStealthOverrideForTests = null;
+        }
+    }
+
+    [Fact]
+    public async Task With_nobody_on_watch_a_quiet_approach_finds_the_pc_asleep_and_surprised()
+    {
+        var c = await SeedCampAsync(startCombat: false);
+
+        var rest = await InterruptedRestAsync(c, approachStealth: 15);
+
+        Assert.True(rest.Success, rest.Summary);
+        var messages = Messages(rest);
+        Assert.Contains("NOTICING (approach Stealth 15):", messages);
+        Assert.Contains("did NOT notice: ", messages);
+        Assert.Contains("Maeve (asleep, passive Perception 5 vs Stealth 15)", messages);
+        Assert.Contains("surprisedIds", messages);
+        Assert.DoesNotContain("woke to it", messages);
+        Assert.Equal(AwarenessState.Asleep, (await LoadAsync(c.PcId)).Awareness?.State);
+    }
+
+    [Fact]
+    public async Task A_sharp_watcher_notices_what_the_sleeper_does_not()
+    {
+        var c = await SeedCampAsync(startCombat: false, correnPassive: 16);
+        var correnId = $"chars/{c.Slug}-corren";
+
+        var rest = await InterruptedRestAsync(c, 15, correnId);
+
+        var messages = Messages(rest);
+        Assert.Contains("noticed it: ", messages);
+        Assert.Contains("Corren (on watch, passive Perception 16 vs Stealth 15)", messages);
+        Assert.Contains("Maeve (asleep, passive Perception 5 vs Stealth 15)", messages);
+        Assert.Null((await LoadAsync(correnId)).Awareness);
+    }
+
+    [Fact]
+    public async Task A_clumsy_approach_wakes_the_sleeper()
+    {
+        var c = await SeedCampAsync(startCombat: false);
+
+        var rest = await InterruptedRestAsync(c, approachStealth: 3);
+
+        Assert.Contains("woke to it: ", Messages(rest));
+        Assert.Contains("Maeve (asleep, passive Perception 5 vs Stealth 3)", Messages(rest));
+        Assert.Null((await LoadAsync(c.PcId)).Awareness);
+    }
+
+    [Fact]
+    public async Task A_stealth_check_hides_the_actor_until_they_attack()
+    {
+        var c = await SeedCampAsync(startCombat: false);
+
+        var sneak = await CommitAsync(c, "Maeve melts into the dark beyond the firelight.",
+            new RulesetAction
+            {
+                CharacterId = c.PcId, ActionName = "Hide", ActionType = RulesetActionType.SkillCheck,
+                Parameters = new Dictionary<string, string> { ["skill"] = "Stealth", ["dc"] = "10" }
+            });
+        Assert.True(sneak.Success, sneak.Summary);
+        var hidden = (await LoadAsync(c.PcId)).Concealment;
+        Assert.NotNull(hidden);
+
+        var stab = await CommitAsync(c, "Maeve lunges from the dark.",
+            new RulesetAction
+            {
+                CharacterId = c.PcId, TargetIds = [c.GoblinId], ActionType = RulesetActionType.Attack, ActionCategory = ActionCategory.Melee,
+                ActionName = "Dagger",
+                Parameters = new Dictionary<string, string> { ["attackBonus"] = "4", ["damageDice"] = "1d4", ["outsideCombat"] = "true" }
+            });
+
+        Assert.True(stab.Success, stab.Summary);
+        Assert.Null((await LoadAsync(c.PcId)).Concealment);
+    }
+
+    [Fact]
+    public async Task Awareness_change_rejects_an_unknown_state_and_reveals_a_hider()
+    {
+        var c = await SeedCampAsync(startCombat: false);
+
+        var bad = await CommitAsync(c, "?", new AwarenessChange { CharacterId = c.PcId, State = "drowsy" });
+        Assert.False(bad.Success);
+
+        await CommitAsync(c, "Maeve hides.",
+            new RulesetAction
+            {
+                CharacterId = c.PcId, ActionName = "Hide", ActionType = RulesetActionType.SkillCheck,
+                Parameters = new Dictionary<string, string> { ["skill"] = "Stealth", ["dc"] = "10" }
+            });
+        var spotted = await CommitAsync(c, "A lantern swings her way.", new AwarenessChange { CharacterId = c.PcId, Revealed = true });
+
+        Assert.True(spotted.Success, spotted.Summary);
+        Assert.Null((await LoadAsync(c.PcId)).Concealment);
+    }
+
+    // ---- A6: sneaking and sleight of hand, PCs included ----
+
+    private sealed class FixedRollService(int result) : IRollService
+    {
+        public Task<RollOutcome> RollAsync(RollRequest request, CancellationToken ct = default) =>
+            Task.FromResult(new RollOutcome { Tag = request.Tag, Result = result + request.Bonus });
+
+        public async Task<IReadOnlyList<RollOutcome>> RollBatchAsync(IEnumerable<RollRequest> requests, CancellationToken ct = default)
+        {
+            var outcomes = new List<RollOutcome>();
+            foreach (var request in requests)
+            {
+                outcomes.Add(await RollAsync(request, ct));
+            }
+
+            return outcomes;
+        }
+    }
+
+    private static RulesetAction GoblinCheck(Camp c, string skill) => new()
+    {
+        CharacterId = c.GoblinId, ActionName = skill, ActionType = RulesetActionType.SkillCheck,
+        Parameters = new Dictionary<string, string> { ["skill"] = skill, ["bonus"] = "2", ["dc"] = "10" }
+    };
+
+    [Fact]
+    public async Task A_haggling_pc_misses_the_pickpocket_that_a_sharp_trader_catches()
+    {
+        var c = await SeedCampAsync(startCombat: false, correnPassive: 16, rolls: new FixedRollService(10));
+        var ilsaId = $"chars/{c.Slug}-ilsa";
+
+        var beat = await CommitAsync(c, "While Maeve haggles with Ilsa over a bolt of wool, the goblin's fingers find her purse.",
+            new EventOccurred { Summary = "Maeve haggles with Ilsa", Category = EventCategory.Conversation, Involved = [c.PcId, ilsaId] },
+            GoblinCheck(c, "Sleight of Hand"));
+
+        Assert.True(beat.Success, beat.Summary);
+        var line = Assert.Single(beat.Data!.Context ?? [], l => l.StartsWith("Noticing Goblin Scout's Sleight of Hand (12)"));
+        Assert.Contains("notices: Corren (passive Perception 16 vs Sleight of Hand 12)", line);
+        Assert.Contains("Maeve (distracted, passive Perception 5 vs Sleight of Hand 12)", line);
+        Assert.Contains("Ilsa (distracted, passive Perception 5 vs Sleight of Hand 12)", line);
+    }
+
+    [Fact]
+    public async Task A_sneaking_goblin_is_noticed_by_whoever_beats_its_stealth_pc_or_not()
+    {
+        var c = await SeedCampAsync(startCombat: false, correnPassive: 16, rolls: new FixedRollService(10));
+
+        var sneak = await CommitAsync(c, "The goblin creeps along the wagon's shadow.", GoblinCheck(c, "Stealth"));
+
+        Assert.True(sneak.Success, sneak.Summary);
+        var line = Assert.Single(sneak.Data!.Context ?? [], l => l.StartsWith("Noticing Goblin Scout's Stealth (12)"));
+        Assert.Contains("notices: Corren (passive Perception 16 vs Stealth 12)", line);
+        Assert.Contains("does NOT notice: ", line);
+        Assert.Contains("Maeve (passive Perception 10 vs Stealth 12)", line);
     }
 
     // ---- W2: what a cast gives off ----

@@ -1,6 +1,6 @@
 # Witness channel, social spectacle and awareness
 
-Groomed 2026-11-01. W0–W4 and S1–S2 are implemented (2026-11-02); everything else is not.
+Groomed 2026-11-01. W0–W4, S1–S2 and A0–A6 are implemented (2026-11-02); W5–W8 are not.
 
 ## The playtest that prompted it
 
@@ -166,6 +166,9 @@ Each phase ships on its own with a green suite. Check every box before calling i
 - **D4. Generalize perception, and model sleep.** Being asleep is one case of "who notices what". Others are a distracted PC failing a passive check, an NPC sneaking around, and an invisible caster. All of them should run through one awareness model (Part A). Sleep is modelled there, and the night-ambush fix is a consumer of that model, not a separate plan.
 - **D5. The engine rolls the crowd draw** on `draw` beats (S2), and the LLM can buff or debuff that roll with a `crowdModifier` (see S2). The LLM can still call `scene_interrupt_check` on its own.
 
+- **D6. Sleep in 5e mirrors Player Core (house rule).** A sleeper can't see and has passive Perception −5 (disadvantage). Loud signals wake them; a quiet intruder wakes them only if that passive score meets the intruder's Stealth. PF2e uses the Player Core rule as written: unconscious, −4 Perception, blinded, and Perception vs the noise DC or the quiet creatures' Stealth DCs. Engine simplification for both systems: a loud signal wakes automatically, since the engine has no noise DCs.
+- **D7. Distracted is implied and explicit.** Absorbing actions (haggling or conversation, Performance, Investigation/Search and lore checks, or `parameters.absorbed: true`) make the actor distracted for that beat. The LLM can also set or clear it with `awareness_change`. Distracted means passive Perception −5.
+
 ## Part S: social spectacle and crowd draw
 
 Some beats are not only perceived: they **pull attention**. Examples: a song in a tavern, a shouting match with a companion, loud haggling at a market stall. In a crowded place someone should come over, and the engine should make that happen, not leave it to the LLM's memory.
@@ -211,7 +214,7 @@ One resolver answers "does observer O perceive signal S from source X?" Every co
 
 The concepts mirror PF2e's observed / hidden / undetected / unnoticed (Player Core, ORC) and map onto 5e's hiding, passive Perception and conditions (SRD 5.1). Every rule cites SRD or ORC text. Anything that is a house rule (sleep depth, how a distracted character's attention drops) is labelled as one and set in `CampaignConfig`, so the free-rules boundary stays visible.
 
-- [ ] **A0. Rules audit (read-only).** Write a table of the exact SRD 5.1 / Player Core text for:
+- [x] **A0. Rules audit (read-only).** Write a table of the exact SRD 5.1 / Player Core text for:
   - passive checks (advantage +5 / disadvantage −5);
   - hiding (Stealth vs Perception; you can't hide from someone who sees you clearly);
   - invisible (heavily obscured for hiding; noise and tracks still give you away);
@@ -222,7 +225,24 @@ The concepts mirror PF2e's observed / hidden / undetected / unnoticed (Player Co
   Sleep has no SRD perception rule as far as I know; confirm, and if so it's a house rule.
   *Output:* a short table in this file. It decides which A-rules are cited and which are house rules.
 
-- [ ] **A1. Observer awareness state.**
+  **A0 result (2026-11-02).** Sources: SRD 5.1 via `www.dnd5eapi.co/api/rules` and `/api/conditions`; Player Core via AoN (`category: condition`). Quotes are trimmed to the operative clause.
+
+  | Topic | dnd5e (SRD 5.1) | pf2e (Player Core) | Engine use |
+  |---|---|---|---|
+  | Passive check | "If the character has advantage on the check, add 5. For disadvantage, subtract 5." (Passive Checks) | Perception DC = 10 + Perception modifier | Rule. Disadvantage on a passive score = −5. |
+  | Hiding vs noticing | Stealth check "compares … with that creature's passive Wisdom (Perception) score" (Dexterity › Hiding) | Hide makes you hidden; unnoticed means "no idea you are present at all" | Rule. Concealment total vs each observer's passive Perception. |
+  | Noise breaks hiding | "you give away your position if you make noise, such as shouting a warning" (Hiding) | n/a (Sneak/Hide fail on noise is GM call) | Rule. A loud action or attack by the hidden source clears concealment. |
+  | Attack reveals | "If you are hidden … when you make an attack, you give away your location" (Unseen Attackers) | Hidden/undetected end when you act openly | Rule. |
+  | Can't hide in plain view | "You can't hide from a creature that can see you clearly" | Observed: "Anything in plain view is observed by you." | Rule. Concealment needs cover, darkness or invisibility (the LLM's call when it commits the Stealth check). |
+  | Invisible | "impossible to see … For the purpose of hiding, the creature is heavily obscured. The creature's location can be detected by any noise it makes" | Invisible: undetected by sight; noise still gives you away (hidden) | Rule. Invisible hides the visual channel only. |
+  | Blinded / deafened | "can't see" / "can't hear" | same | Rule. Already in W1. |
+  | Unconscious | "unaware of its surroundings" | "You're sleeping or have been knocked out … –4 status penalty to … Perception … blinded" | Rule for knocked-out characters: perceives nothing. |
+  | Sleep | **No SRD rule.** (The Sleep spell applies unconscious; natural sleep is unstated.) | Sleep **is** unconscious. Wakes on damage, healing, being shaken (Interact), or "Loud noise … you automatically attempt a Perception check against the noise's DC … If creatures are attempting to stay quiet around you, this Perception check uses their Stealth DCs." | pf2e: rule as written. dnd5e: **house rule** needed (see A-decisions). |
+  | Distracted | Only GM discretion: "the GM might allow you to stay hidden as you approach a creature that is distracted"; travel at a fast pace "makes characters less perceptive" (−5 passive Perception in the Travel Pace table) | No general rule; specific activities (e.g. exploration activities) | **House rule**: distracted = disadvantage on passive Perception = −5, by the SRD's own passive-check rule and its fast-pace precedent. |
+  | Surprise | "compares the Dexterity (Stealth) checks of anyone hiding with the passive Wisdom (Perception) score of each creature … Any character or monster that doesn't notice a threat is surprised" | No surprise round; Stealth for initiative | Rule (dnd5e) for A5. |
+  | Standing watch | Long rest allows "standing watch for no more than 2 hours" | Watches are normal during rest | Rule: a watcher is awake/alert; rotation detail is the LLM's. |
+
+- [x] **A1. Observer awareness state.**
   - Add `Awareness { State: Alert | Distracted | Asleep, Reason, SinceTurn }` on `Character` (`PluginSdk/Models/Character.cs`). Default `Alert`, and a document missing the field reads as Alert, so no migration is needed.
   - New change `awareness_change` (characterId, state, reason). Add it to the schema and cheat sheet.
   - `RestChange` sets `Asleep` for the resting characters (all of them, minus `watcherIds`, see A5) while the rest runs. A completed rest sets `Alert`. An interrupted rest leaves sleepers asleep until A3 says a signal wakes them.
@@ -230,7 +250,7 @@ The concepts mirror PF2e's observed / hidden / undetected / unnoticed (Player Co
 
   *Done when:* there are tests for each transition, and for an old document deserializing as Alert.
 
-- [ ] **A2. Source concealment.**
+- [x] **A2. Source concealment.**
   - A `SkillCheck` on Stealth with a total stores `Concealment { StealthTotal, Mode: Hidden, SinceTurn }` on the actor.
   - The `invisible` condition counts as concealment for the visual channel only.
   - Concealment is cleared by an attack or a spell with a verbal component (5e: hiding ends when you make noise or attack), by an explicit change, or when the LLM moves the character into the open (`Parameters["revealed"]`).
@@ -238,7 +258,7 @@ The concepts mirror PF2e's observed / hidden / undetected / unnoticed (Player Co
 
   *Done when:* there are tests for set, clear on attack, and invisibility hiding sight but not sound.
 
-- [ ] **A3. `IAwarenessResolver`** in `Data/Awareness/`.
+- [x] **A3. `IAwarenessResolver`** in `Data/Awareness/`.
   - Input: observer, source, signal (`visible`/`loud` plus an optional `quiet` for footsteps or whispers).
   - Output: `Perceives | PerceivesEffectNotSource | Misses | Wakes`, with a short reason.
   - The rules are the A0 table:
@@ -252,13 +272,13 @@ The concepts mirror PF2e's observed / hidden / undetected / unnoticed (Player Co
 
   *Done when:* a table-driven test covers each row of A0.
 
-- [ ] **A4. Witness line on the resolver.** W1's condition filter is replaced with A3.
+- [x] **A4. Witness line on the resolver.** W1's condition filter is replaced with A3.
   - Wording gains the outcomes: `Bren (asleep) wakes to the blast`, `the traders see the fire but not who cast it`.
   - A loud beat that wakes someone also commits `awareness_change → Alert` for them, so the next turn is consistent.
 
   *Done when:* the W0 tests pass unchanged, plus new asleep/invisible cases.
 
-- [ ] **A5. Night ambush noticing (the original "PC always wakes up" bug).**
+- [x] **A5. Night ambush noticing (the original "PC always wakes up" bug).**
   - Add `RestChange.watcherIds` (on watch, so Alert, not asleep).
   - On a rest interrupt, the resolver checks the approaching encounter (a stealth total rolled by the engine, or a quiet-approach default when the encounter has no stat block yet) against each watcher's passive Perception and each sleeper's state.
   - The interrupt result and directive list: who notices and when, who is still asleep, and suggested `surprisedIds` for the `combat start` call.
@@ -267,13 +287,34 @@ The concepts mirror PF2e's observed / hidden / undetected / unnoticed (Player Co
 
   *Done when:* there are tests with a fixed RNG. With no watchers, sleepers are reported asleep and suggested as surprised. A watcher with high passive Perception notices, and the PC is not singled out.
 
-- [ ] **A6. Sneaking and sleight of hand against PCs.**
+- [x] **A6. Sneaking and sleight of hand against PCs.**
   - When an NPC's commit carries concealment (A2), or a Sleight of Hand check, the response gets a per-observer line, PCs included:
     `Maeve (distracted, passive Perception 13−5) does not notice; Corren (passive Perception 15) does`.
   - The LLM narrates only what the PC perceived.
   - This turns "the PC fails a passive check" into an engine fact instead of the narrator's whim.
 
   *Done when:* there are tests for a distracted PC missing it, an alert companion catching it, and an invisible NPC's footsteps heard but not seen.
+
+- **As built (A1–A6), 2026-11-02**, on branch `claude/awareness-model` (stacked on PR #28):
+  - **Models.** `Awareness` / `Concealment` in `PluginSdk/Models/Awareness.cs`. A null `Character.Awareness` means alert.
+  - **`awareness_change`.** Implemented in `AwarenessChangeHandler`: state alert/distracted/asleep, and `revealed` ends hiding.
+  - **Rules.** `AwarenessResolver` is a static class in `Data/Context/AwarenessResolver.cs`.
+    - Deviation: the house-rule numbers (−5, pf2e −4) are constants there, not `CampaignConfig`. They are the SRD's disadvantage value and Player Core's unconscious penalty, so there was nothing to configure.
+  - **Shared beat detection.** `PerceptibleBeats` (`Data/Context/PerceptibleBeats.cs`) is used by both the witness line and the dispatcher.
+  - **A1, sleep from rest.** An interrupted long rest (not short, intended ≥ 6 h) sets asleep for the rester, the party companions here and `sleeperIds`, minus `watcherIds`. A completed rest clears it.
+    - Deviation: sleep isn't modelled *during* a rest that completes, since it completes inside one commit.
+  - **A2, hiding.** A Stealth check stores `Concealment.StealthTotal`. It is cleared by an attack, a spell with a verbal component, a loud or attention-drawing action, or `revealed`.
+    - Not done: automatically revealing someone who walks into the open.
+  - **A4, waking.** `WorldChangeDispatcher.ApplyWakingAsync` wakes sleepers who can hear a loud beat, inside the commit, and reports `WOKEN by …`.
+  - **A5, noticing an approach.** On a rest interrupt the approach's Stealth is d20 + 2 (`EncounterResolver.RollApproachStealth`), and every occupant is checked against it.
+    - The result lists who noticed, who woke, and who didn't (5e: suggested `surprisedIds`; pf2e: a no-surprise note).
+    - The occupant lookup is advisory: a failure falls back to the commit's characters.
+    - Known gap: hostiles who were already at the location are listed as observers too.
+  - **A6, who notices a sneak.** `NoticingContextContributor` replaced `StealthContextContributor`. It handles Stealth (via concealment) and Sleight of Hand; the total is recorded on the action as `parameters.engineRollTotal` by `RulesetActionHandler`. The line lists who notices and who doesn't, PCs included, with the D7 absorption (haggling, searching) applied.
+  - **Tests:**
+    - `AwarenessResolverTests` (13), one row per line of the A0 table;
+    - `WitnessContextTests` gained the waking, silent image, rest, hiding, `awareness_change`, A5 and A6 cases;
+    - `TakeTurnNeedDrivenTests`' stealth test now asserts the new line.
 
 ## Suggested order
 

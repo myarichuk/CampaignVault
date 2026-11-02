@@ -100,6 +100,17 @@ Note: `world_build.quests[].objectives[]` only needs `description` (+ optional `
 |-------|----------------|
 | `climateZone` | Arctic, Tundra, Temperate, Desert, Tropical, Alpine, Subterranean |
 
+### awareness_change (`$type: awareness_change`)
+| Field | Valid values |
+|-------|----------------|
+| `state` | alert, distracted, asleep. Asleep: can't see, passive Perception −5, woken by loud beats. Distracted: passive Perception −5. The engine already sets asleep on an interrupted long rest, wakes sleepers on loud beats, and treats haggling/performing/searching as distracting for that beat |
+| `revealed` | true ends the character's hiding (a Stealth check hides them until they attack or make noise) |
+
+### rest (who notices an interruption)
+| Field | Valid values |
+|-------|----------------|
+| `watcherIds` | Characters standing watch: awake, so likeliest to notice a quiet approach. Everyone else bedded down (party companions automatically, plus `sleeperIds`) is asleep. The interrupt result says who noticed, who woke and who didn't (suggested `surprisedIds`) |
+
 ### scene_interrupt_check (`$type: scene_interrupt_check`)
 | Field | Notes |
 |-------|--------|

@@ -12,6 +12,16 @@ public class EncounterResolver
     /// <summary>Test seam for the DI-constructed resolver: when set, replaces the random roll.</summary>
     internal static Func<double>? RollOverrideForTests { get; set; }
 
+    /// <summary>Test seam: when set, replaces the approach's Stealth roll.</summary>
+    internal static Func<int>? ApproachStealthOverrideForTests { get; set; }
+
+    /// <summary>Bonus on the Stealth of an approach the engine has no stat block for yet: a generic quiet sneak.</summary>
+    public const int DefaultApproachStealthBonus = 2;
+
+    /// <summary>The Stealth total of something approaching a resting party (d20 + 2): what watchers and sleepers must notice.</summary>
+    public int RollApproachStealth() =>
+        ApproachStealthOverrideForTests?.Invoke() ?? 1 + (int)Math.Min(19, _nextDouble() * 20) + DefaultApproachStealthBonus;
+
     public EncounterResolver() : this(() => (RollOverrideForTests ?? Random.Shared.NextDouble)())
     {
     }

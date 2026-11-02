@@ -1,3 +1,4 @@
+using CampaignVault.Data.Context;
 using System.Reflection;
 using CampaignVault.Data.Events;
 using CampaignVault.Data.Pressure;
@@ -40,7 +41,8 @@ public sealed class WorldChangeDispatcher(
     IEnumerable<IPluginTraitsUpgrader>? traitsUpgraders = null,
     IInteractionModeSelector? modeSelector = null,
     IEnumerable<IWorldTimeObserver>? timeObservers = null,
-    RollModifierPipeline? rollModifiers = null)
+    RollModifierPipeline? rollModifiers = null,
+    PerceptibleBeats? perceptibleBeats = null)
 {
     /// <summary>
     /// Events at this depth are dropped instead of delivered: batch change (0) → reaction (1) → reaction (2)
@@ -495,6 +497,7 @@ public sealed class WorldChangeDispatcher(
         {
             await ApplyMicroTimeNudgeAsync(context, changes, getCurrentTimeAsync);
             ApplyMomentumTracking(context, changes);
+            await ApplyWakingAsync(context, changes);
             if (!await ApplyCrowdDrawAsync(context, changes, getCurrentTimeAsync))
             {
                 await ApplyAmbientInterruptCheckAsync(context, changes, getCurrentTimeAsync);
@@ -829,6 +832,53 @@ public sealed class WorldChangeDispatcher(
         }
 
         return ids;
+    }
+
+    /// <summary>
+    /// A4 (WITNESS_CHANNEL_PLAN.md): a loud beat wakes everyone asleep at its location who can hear it (D6). Done here, inside the
+    /// commit, so the witness line and the next turn both see them awake. Sleepers set asleep earlier in this batch (an interrupted
+    /// rest) are in the context, not yet in the index, so both are checked.
+    /// </summary>
+    private async Task ApplyWakingAsync(IChangeContext context, WorldChange[] changes)
+    {
+        var ctx = (ChangeContext)context;
+        if (perceptibleBeats is null || ctx.Session is null)
+        {
+            return;
+        }
+
+        foreach (var beat in perceptibleBeats.Detect(changes, context.Config?.ActiveSystem).Where(b => (b.Signal & Perceptible.Loud) != 0))
+        {
+            context.Characters.TryGetValue(beat.ActorId, out var actor);
+            var locationId = beat.LocationId ?? actor?.CurrentLocationId;
+            if (string.IsNullOrEmpty(locationId))
+            {
+                continue;
+            }
+
+            var indexed = await ctx.Session.Query<Character>()
+                .Where(c => c.CampaignName == context.CampaignName && c.CurrentLocationId == locationId
+                            && c.Awareness != null && c.Awareness.State == AwarenessState.Asleep)
+                .Take(25)
+                .ToListAsync();
+            var sleepers = indexed
+                .Concat(context.Characters.Values.Where(c => c.CurrentLocationId == locationId && AwarenessResolver.IsAsleep(c)))
+                .DistinctBy(c => c.Id, StringComparer.OrdinalIgnoreCase)
+                .Where(c => !string.Equals(c.Id, beat.ActorId, StringComparison.OrdinalIgnoreCase)
+                            && AwarenessResolver.Perceive(c, beat.Signal).Outcome == Noticed.Wakes)
+                .ToList();
+            foreach (var sleeper in sleepers)
+            {
+                sleeper.Awareness = null;
+            }
+
+            if (sleepers.Count > 0)
+            {
+                context.RecordMessage(
+                    $"WOKEN by {(beat.CombatNoise ? "the fighting" : beat.Cause)}: {string.Join(", ", sleepers.Select(c => c.Name))}. "
+                    + "They wake disoriented; narrate it.");
+            }
+        }
     }
 
     /// <summary>

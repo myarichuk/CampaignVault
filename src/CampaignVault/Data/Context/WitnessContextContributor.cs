@@ -1,6 +1,5 @@
 using CampaignVault.Data.Templates;
 using CampaignVault.Models;
-using CampaignVault.Services;
 
 namespace CampaignVault.Data.Context;
 
@@ -83,22 +82,15 @@ public static class Perceptibility
 /// Witness channel (WITNESS_CHANNEL_PLAN.md): when a beat is loud or visible, name everyone else at the actor's location who
 /// perceived it, so the narrator gives the camp, the captives and the passers-by a reaction instead of narrating only the fight.
 /// Separate from the one-NPC initiative slot, which can't carry a whole crowd. Combatants are left out (they get their own turns),
-/// and so are PCs (the player decides what they do).
+/// and so are PCs (the player decides what they do). Who perceived what is <see cref="AwarenessResolver"/>'s call.
 /// </summary>
-internal sealed class WitnessContextContributor(SpellDefinitionProvider spells, CampaignDocumentKeys keys) : IContextContributor
+internal sealed class WitnessContextContributor(PerceptibleBeats beats, CampaignDocumentKeys keys) : IContextContributor
 {
     private const int MaxNames = 6;
 
-    /// <summary>Who can't perceive at all, and which sense a condition takes away. Core rules shared by every creature, so code, not data.</summary>
-    private static readonly HashSet<string> Insensible = new(StringComparer.OrdinalIgnoreCase) { "unconscious", "petrified", "paralyzed" };
-
-    private sealed record Trigger(
-        string ActorId, string Cause, Perceptible Signal, IReadOnlyCollection<string> Excluded, bool CombatNoise, string? LocationId = null,
-        bool Draws = false);
-
     public async Task<IEnumerable<ContextItem>> ContributeAsync(ContextTurn turn, CancellationToken ct = default)
     {
-        var triggers = Triggers(turn).ToList();
+        var triggers = beats.Detect(turn.AppliedChanges, turn.Config?.ActiveSystem).ToList();
         if (triggers.Count == 0)
         {
             return [];
@@ -112,12 +104,12 @@ internal sealed class WitnessContextContributor(SpellDefinitionProvider spells, 
         var items = new List<ContextItem>();
         foreach (var group in (await WithLocationsAsync(turn, triggers, ct)).GroupBy(t => t.LocationId, StringComparer.OrdinalIgnoreCase))
         {
-            var located = group.Select(t => t.Trigger).ToList();
+            var located = group.ToList();
             // Fighting noise is said once per fight; a spell, a death or an event is said every beat it happens.
-            var spectacle = located.Where(t => !t.CombatNoise).ToList();
+            var spectacle = located.Where(t => !t.Beat.CombatNoise).ToList();
             var said = spectacle.Count > 0 ? spectacle : [located[0]];
-            var signal = said.Aggregate(Perceptible.None, (s, t) => s | t.Signal);
-            var excluded = new HashSet<string>(said.SelectMany(t => t.Excluded.Append(t.ActorId)), StringComparer.OrdinalIgnoreCase);
+            var signal = said.Aggregate(Perceptible.None, (s, t) => s | t.Beat.Signal);
+            var excluded = new HashSet<string>(said.SelectMany(t => t.Beat.Excluded.Append(t.Beat.ActorId)), StringComparer.OrdinalIgnoreCase);
             excluded.UnionWith(combatantIds);
 
             var line = await WitnessLineAsync(turn, group.Key, said, signal, excluded, ct);
@@ -135,84 +127,34 @@ internal sealed class WitnessContextContributor(SpellDefinitionProvider spells, 
         return items;
     }
 
-    private IEnumerable<Trigger> Triggers(ContextTurn turn)
-    {
-        var system = turn.Config?.ActiveSystem;
-        foreach (var change in turn.AppliedChanges)
-        {
-            switch (change)
-            {
-                case RulesetAction { ActionType: RulesetActionType.Spell } cast:
-                {
-                    SpellDefinition? spell = null;
-                    if (system != null && !string.IsNullOrWhiteSpace(cast.ActionName))
-                    {
-                        spells.TryGet(system, CastingComponentGate.NormalizeSlug(cast.ActionName), out spell);
-                    }
+    private sealed record Located(PerceptibleBeat Beat, string Cause, Character? Actor, string LocationId);
 
-                    var signal = Perceptibility.OfSpell(spell, cast);
-                    if (signal != Perceptible.None)
-                    {
-                        yield return new Trigger(cast.CharacterId, cast.ActionName.Replace('_', ' ').ToLowerInvariant(), signal, cast.TargetIds, false);
-                    }
-
-                    break;
-                }
-                case RulesetAction { ActionType: RulesetActionType.Attack } attack:
-                    yield return new Trigger(attack.CharacterId, "fighting", Perceptible.Both, attack.TargetIds, true);
-                    break;
-                case RulesetAction action when CrowdDraw.Draws(action) || action.Parameters.ContainsKey("perceptible"):
-                {
-                    // A performance, haggling at full voice, a juggling act: S1's social spectacle.
-                    var draws = CrowdDraw.Draws(action);
-                    var signal = CrowdDraw.Signal(action.Parameters.GetValueOrDefault("perceptible"), draws);
-                    if (signal != Perceptible.None)
-                    {
-                        yield return new Trigger(action.CharacterId, action.ActionName.ToLowerInvariant(), signal, action.TargetIds, false,
-                            Draws: draws);
-                    }
-
-                    break;
-                }
-                case DeathChange { Revive: false } death:
-                    yield return new Trigger(death.CharacterId, "dies", Perceptible.Visible, [death.KillerId ?? ""], false);
-                    break;
-                case EventOccurred ev when CrowdDraw.Signal(ev.Perceptible, CrowdDraw.Draws(ev)) != Perceptible.None:
-                    var actor = ev.InitiatorId ?? ev.Involved?.FirstOrDefault() ?? "";
-                    yield return new Trigger(actor, Short(ev.Summary), CrowdDraw.Signal(ev.Perceptible, CrowdDraw.Draws(ev)), ev.Involved ?? [], false,
-                        ev.LocationId, CrowdDraw.Draws(ev));
-                    break;
-            }
-        }
-    }
-
-    /// <summary>Each trigger happens where its actor is (not where the party is: a split party matters), falling back to the event's
+    /// <summary>Each beat happens where its actor is (not where the party is: a split party matters), falling back to the event's
     /// own location and then the party's.</summary>
-    private static async Task<List<(Trigger Trigger, string LocationId)>> WithLocationsAsync(
-        ContextTurn turn, List<Trigger> triggers, CancellationToken ct)
+    private static async Task<List<Located>> WithLocationsAsync(ContextTurn turn, List<PerceptibleBeat> triggers, CancellationToken ct)
     {
-        var located = new List<(Trigger, string)>();
-        foreach (var trigger in triggers)
+        var located = new List<Located>();
+        foreach (var beat in triggers)
         {
-            var actor = string.IsNullOrEmpty(trigger.ActorId) ? null : await turn.LoadCharacterAsync(trigger.ActorId, ct);
-            var locationId = trigger.LocationId ?? actor?.CurrentLocationId ?? turn.PartyLocationId;
+            var actor = string.IsNullOrEmpty(beat.ActorId) ? null : await turn.LoadCharacterAsync(beat.ActorId, ct);
+            var locationId = beat.LocationId ?? actor?.CurrentLocationId ?? turn.PartyLocationId;
             if (!string.IsNullOrEmpty(locationId))
             {
-                located.Add((trigger with { ActorId = actor?.Id ?? trigger.ActorId, Cause = Cause(trigger, actor) }, locationId));
+                located.Add(new Located(beat with { ActorId = actor?.Id ?? beat.ActorId }, Cause(beat, actor), actor, locationId));
             }
         }
 
         return located;
     }
 
-    private static string Cause(Trigger trigger, Character? actor) =>
-        trigger.CombatNoise ? "a fight breaks out"
-        : trigger.Cause == "dies" ? $"{actor?.Name ?? "someone"} dies"
-        : actor != null && !trigger.Cause.Contains(actor.Name, StringComparison.OrdinalIgnoreCase)
-            ? $"{trigger.Cause} by {actor.Name}"
-            : trigger.Cause;
+    private static string Cause(PerceptibleBeat beat, Character? actor) =>
+        beat.CombatNoise ? "a fight breaks out"
+        : beat.Cause == "dies" ? $"{actor?.Name ?? "someone"} dies"
+        : actor != null && !beat.Cause.Contains(actor.Name, StringComparison.OrdinalIgnoreCase)
+            ? $"{beat.Cause} by {actor.Name}"
+            : beat.Cause;
 
-    private static async Task<string?> WitnessLineAsync(ContextTurn turn, string locationId, List<Trigger> said, Perceptible signal,
+    private static async Task<string?> WitnessLineAsync(ContextTurn turn, string locationId, List<Located> said, Perceptible signal,
         HashSet<string> excluded, CancellationToken ct)
     {
         var here = await turn.Session.Query<Character>()
@@ -220,38 +162,18 @@ internal sealed class WitnessContextContributor(SpellDefinitionProvider spells, 
             .Take(25)
             .ToListAsync(ct);
 
+        // The source the witnesses look at: an invisible caster's effect is seen, the caster isn't. A death has no source to hide.
+        var source = said.Select(t => t.Actor).FirstOrDefault(a => a != null && said.Any(t => t.Actor == a && t.Beat.Cause != "dies"));
         var witnesses = new List<string>();
         foreach (var c in here.Where(c => !excluded.Contains(c.Id))
                      .OrderByDescending(c => c.IsPartyCompanion || c.KeepAlive)
                      .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase))
         {
-            var conditions = (c.SystemStats?.StatusEffects ?? [])
-                .Select(e => e.ConditionName ?? e.Name)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            if (conditions.Overlaps(Insensible))
+            var notice = AwarenessResolver.Perceive(c, signal, source);
+            if (notice.Perceived)
             {
-                continue;
+                witnesses.Add(notice.Note == null ? c.Name : $"{c.Name} ({notice.Note})");
             }
-
-            var perceived = signal;
-            if (conditions.Contains("blinded"))
-            {
-                perceived &= ~Perceptible.Visible;
-            }
-
-            if (conditions.Contains("deafened"))
-            {
-                perceived &= ~Perceptible.Loud;
-            }
-
-            if (perceived == Perceptible.None)
-            {
-                continue;
-            }
-
-            witnesses.Add(perceived == signal || signal != Perceptible.Both
-                ? c.Name
-                : $"{c.Name} ({(perceived == Perceptible.Loud ? "blinded: heard it only" : "deafened: saw it only")})");
         }
 
         if (witnesses.Count == 0)
@@ -263,11 +185,8 @@ internal sealed class WitnessContextContributor(SpellDefinitionProvider spells, 
             ? string.Join(", ", witnesses.Take(MaxNames)) + $" +{witnesses.Count - MaxNames} others"
             : string.Join(", ", witnesses);
         var causes = string.Join("; ", said.Select(t => t.Cause).Distinct(StringComparer.OrdinalIgnoreCase));
-        var drawing = said.Any(t => t.Draws) ? ", drawing attention" : "";
+        var drawing = said.Any(t => t.Beat.Draws) ? ", drawing attention" : "";
         return $"Witnesses ({causes}, {Perceptibility.Describe(signal)}{drawing}): {names}. "
                + "Give each a short reaction in this response, even mid-combat.";
     }
-
-    private static string Short(string? text) =>
-        string.IsNullOrWhiteSpace(text) ? "something" : text.Length <= 60 ? text.TrimEnd('.') : text[..57] + "...";
 }

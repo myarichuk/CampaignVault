@@ -1,3 +1,5 @@
+using CampaignVault.Data.Context;
+using CampaignVault.Data.Pressure;
 using CampaignVault.Events;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
@@ -98,6 +100,11 @@ public class RestChangeHandler : IWorldChangeHandler
 
         if (!interrupted)
         {
+            if (character.Awareness?.State == AwarenessState.Asleep)
+            {
+                character.Awareness = null;
+            }
+
             // Mark the day when the rest was completed (for spell slot recovery)
             character.LastRestedDay = (int)time.TotalDaysElapsed;
 
@@ -194,7 +201,9 @@ public class RestChangeHandler : IWorldChangeHandler
                 $"Rest completed safely. {hoursRested} hours passed ({restType} rest). {recoverySummary}");
         }
 
-        return new ChangeHandlerResult(true, $"Rest INTERRUPTED after {hoursRested} hours! Encounter spawned. Do NOT apply healing commits yet; resolve the encounter first.");
+        var noticing = await ResolveAmbushNoticingAsync(rc, character, location, ctx, time.TotalDaysElapsed * 24.0 + time.Hour, ct);
+        return new ChangeHandlerResult(true,
+            $"Rest INTERRUPTED after {hoursRested} hours! Encounter spawned. Do NOT apply healing commits yet; resolve the encounter first. {noticing}");
 
         int CalculateRestHours(RestChange restChange)
         {
@@ -251,6 +260,99 @@ public class RestChangeHandler : IWorldChangeHandler
         {
             ctx.RecordMessage($"{character.Name} is conscious again; dying ends and they are now wounded {wounded}.");
         }
+    }
+
+    /// <summary>Everyone else at the location. The noticing report is advisory, so a failed lookup falls back to the characters
+    /// already in this commit instead of failing the rest.</summary>
+    private static async Task<List<Character>> OccupantsAsync(ChangeContext ctx, string locationId, CancellationToken ct)
+    {
+        if (ctx.Session == null)
+        {
+            return [];
+        }
+
+        try
+        {
+            return await PressureQueryHelper.QueryPresentNpcsAsync(ctx.Session, locationId, ct) ?? [];
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// A5 (WITNESS_CHANNEL_PLAN.md): who notices the thing that interrupted the rest. A long rest is sleep, so the resting character,
+    /// the party companions here and any sleeperIds are asleep, minus the watchers. The approach's Stealth is rolled (d20 + 2: no
+    /// stat block yet), and every observer here checks their passive Perception against it (asleep −5, pf2e −4: D6). That replaces
+    /// the narrator's habit of having the PC wake up: SRD 5.1 Surprise compares "the Dexterity (Stealth) checks of anyone hiding
+    /// with the passive Wisdom (Perception) score of each creature on the opposing side".
+    /// </summary>
+    private async Task<string> ResolveAmbushNoticingAsync(
+        RestChange rc, Character resting, Location location, ChangeContext ctx, double now, CancellationToken ct)
+    {
+        var watchers = new HashSet<string>(rc.WatcherIds ?? [], StringComparer.OrdinalIgnoreCase);
+        var present = (await OccupantsAsync(ctx, location.Id, ct))
+            .Concat(ctx.Characters.Values.Where(c => string.Equals(c.CurrentLocationId, location.Id, StringComparison.OrdinalIgnoreCase)))
+            .Append(resting)
+            .DistinctBy(c => c.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(c => ctx.Characters.TryGetValue(c.Id, out var tracked) ? tracked : c)
+            .Where(c => !c.IsDead && !c.Id.Contains("transient_encounter_", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var sleeping = rc.RestType != RestType.ShortRest && rc.IntendedHours >= 6;
+        if (sleeping)
+        {
+            var sleeperIds = new HashSet<string>(rc.SleeperIds ?? [], StringComparer.OrdinalIgnoreCase) { resting.Id };
+            foreach (var c in present.Where(c => (c.IsPartyCompanion || sleeperIds.Contains(c.Id)) && !watchers.Contains(c.Id)))
+            {
+                c.Awareness = new Awareness { State = AwarenessState.Asleep, Reason = "asleep when the rest was interrupted", SinceHour = now };
+            }
+        }
+
+        var stealth = _resolver.RollApproachStealth();
+        var approach = new Character { Id = "approach", Name = "the approach", Concealment = new Concealment { StealthTotal = stealth } };
+        var system = ctx.Config?.ActiveSystem;
+        var noticed = new List<string>();
+        var woken = new List<string>();
+        var missed = new List<string>();
+        foreach (var observer in present.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            var role = watchers.Contains(observer.Id) ? "on watch, " : AwarenessResolver.IsAsleep(observer) ? "asleep, " : "";
+            var notice = AwarenessResolver.NoticePresence(observer, approach, system: system);
+            var entry = $"{observer.Name} ({role}{notice.Note})";
+            switch (notice.Outcome)
+            {
+                case Noticed.Wakes:
+                    observer.Awareness = null;
+                    woken.Add(entry);
+                    break;
+                case Noticed.Misses:
+                    missed.Add(entry);
+                    break;
+                default:
+                    noticed.Add(entry);
+                    break;
+            }
+        }
+
+        var parts = new List<string> { $"NOTICING (approach Stealth {stealth}):" };
+        parts.Add(noticed.Count > 0 ? $"noticed it: {string.Join(", ", noticed)};" : "nobody awake noticed it;");
+        if (woken.Count > 0)
+        {
+            parts.Add($"woke to it: {string.Join(", ", woken)};");
+        }
+
+        if (missed.Count > 0)
+        {
+            parts.Add($"did NOT notice: {string.Join(", ", missed)}.");
+            parts.Add(string.Equals(system, RulesetSystem.Pathfinder2e, StringComparison.OrdinalIgnoreCase)
+                ? "PF2e has no surprise round: those who didn't notice are unaware of it until it acts or someone wakes them."
+                : "If it comes to a fight, pass those who didn't notice as surprisedIds on combat start.");
+        }
+
+        parts.Add("Narrate only what the ones who noticed perceive; nobody else wakes or reacts until something loud happens or they are shaken awake.");
+        return string.Join(" ", parts);
     }
 
     private static bool HasHitDice(Character character) =>

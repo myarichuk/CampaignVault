@@ -68,6 +68,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(XpGrantChange), "xp_grant")]
 [JsonDerivedType(typeof(NpcInitiativeNudge), "npc_initiative_nudge")]
 [JsonDerivedType(typeof(ModeTransitionChange), "mode_transition")]
+[JsonDerivedType(typeof(AwarenessChange), "awareness_change")]
 public abstract class WorldChange
 {
     /// <summary>
@@ -121,6 +122,14 @@ public class RestChange : WorldChange
     [Description("Narrative description of how the character rests.")]
     [JsonPropertyName("narrativeNote")]
     public string? NarrativeNote { get; set; }
+
+    [Description("Optional: characters standing watch (awake and alert). If the rest is interrupted, they are the likeliest to notice a quiet approach; everyone else bedded down is asleep.")]
+    [JsonPropertyName("watcherIds")]
+    public List<string>? WatcherIds { get; set; }
+
+    [Description("Optional: others sleeping here who aren't resting with their own rest change (fellow travellers, rescued captives). Party companions here are included automatically.")]
+    [JsonPropertyName("sleeperIds")]
+    public List<string>? SleeperIds { get; set; }
 }
 
 /// <summary>
@@ -185,6 +194,31 @@ public class SceneInterruptCheck : WorldChange
     [Description("Optional free-text flavor for the engine directive (e.g. 'Bloodied wanted face, Schlag drawn, crowd already hostile') - include when narratively makes sense.")]
     [JsonPropertyName("notes")]
     public string? Notes { get; set; }
+}
+
+/// <summary>
+/// Set how aware a character is of their surroundings (WITNESS_CHANNEL_PLAN.md A1), or bring a hiding character into the open.
+/// Rest sets asleep and a loud beat wakes sleepers on its own; this is for everything the engine can't infer.
+/// </summary>
+[CommitCategory("Narrative")]
+[Description("Set a character's awareness: 'alert', 'distracted' (absorbed in something: passive Perception -5) or 'asleep' (can't see, passive Perception -5, woken by loud noise). revealed:true ends their hiding (stealth). The engine already sets asleep on rest, wakes sleepers on loud beats, and treats haggling/performing/searching as distracting for that beat.")]
+public class AwarenessChange : WorldChange
+{
+    [Description("Character ID.")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = null!;
+
+    [Description("alert, distracted or asleep. Omit to change only revealed.")]
+    [JsonPropertyName("state")]
+    public string? State { get; set; }
+
+    [Description("Why, in a phrase (e.g. 'engrossed in the ledger', 'dozed off on watch').")]
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
+
+    [Description("true: the character stops hiding (steps into the light, is spotted).")]
+    [JsonPropertyName("revealed")]
+    public bool Revealed { get; set; }
 }
 
 /// <summary>Adjust a character's current HP by a delta. Positive heals, negative damages.</summary>
