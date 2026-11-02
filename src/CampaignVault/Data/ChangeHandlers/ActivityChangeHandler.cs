@@ -34,9 +34,20 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
             ctx.RegisterNewCharacter(character);
         }
 
+        if (act.Departing == true)
+        {
+            return await DepartAsync(act, character, ctx, ct);
+        }
+
         if (act.NewActivity != null)
         {
             character.CurrentActivity = act.NewActivity;
+        }
+
+        if (act.Departing == false && character.Departing != null)
+        {
+            character.Departing = null;
+            ctx.RecordMessage($"{character.Name} turns back and is here again.");
         }
 
         if (act.UpdateLocation)
@@ -61,6 +72,7 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
             }
 
             character.CurrentLocationId = act.NewLocationId;
+            character.Departing = null;
             if (!string.IsNullOrEmpty(act.NewLocationId))
             {
                 character.DepartedAtDay = null;
@@ -68,6 +80,64 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
             }
         }
 
+        return ChangeHandlerResult.Ok;
+    }
+
+    /// <summary>
+    /// IMPRESSIONS_PLAN.md D9: they set off. They stay where they are, but Distant from everyone there, until
+    /// <c>WorldChangeDispatcher</c> completes the move.
+    /// </summary>
+    private static async Task<ChangeHandlerResult> DepartAsync(ActivityChange act, Character character, ChangeContext ctx, CancellationToken ct)
+    {
+        if (act.UpdateLocation)
+        {
+            const string both = "departing and updateLocation can't be combined: departing:true says they're on their way (still in "
+                                + "sight), updateLocation moves them now. Pick one.";
+            ctx.RecordMessage("WARNING: " + both);
+            ctx.RecordFailure();
+            return ChangeHandlerResult.Failure(both);
+        }
+
+        if (character.IsPc)
+        {
+            var pc = $"{character.Name} is a PC: the party leaves with travel, not departing (that's for an NPC walking out of the scene).";
+            ctx.RecordMessage("WARNING: " + pc);
+            ctx.RecordFailure();
+            return ChangeHandlerResult.Failure(pc);
+        }
+
+        if (string.IsNullOrEmpty(character.CurrentLocationId))
+        {
+            var nowhere = $"{character.Name} isn't anywhere to depart from. Use updateLocation:true with newLocationId to place them.";
+            ctx.RecordMessage("WARNING: " + nowhere);
+            ctx.RecordFailure();
+            return ChangeHandlerResult.Failure(nowhere);
+        }
+
+        Location? destination = null;
+        if (!string.IsNullOrEmpty(act.NewLocationId)
+            && !ctx.Locations.TryGetValue(act.NewLocationId, out destination)
+            && (destination = await ctx.Session.LoadAsync<Location>(act.NewLocationId, ct)) == null)
+        {
+            var suggested = await ctx.SuggestLocationMatchAsync(act.NewLocationId);
+            var msg = $"Location {act.NewLocationId} not found for the departure." + (suggested != null ? $" Did you mean: {suggested}?" : "");
+            ctx.RecordMessage("WARNING: " + msg);
+            ctx.RecordFailure();
+            return ChangeHandlerResult.Failure(msg);
+        }
+
+        if (act.NewActivity != null)
+        {
+            character.CurrentActivity = act.NewActivity;
+        }
+
+        var time = await ctx.GetCurrentTimeAsync();
+        character.Departing = new Departing
+        {
+            ToLocationId = destination?.Id, FromLocationId = character.CurrentLocationId, SinceHour = CampaignClock.Now(time),
+        };
+        ctx.RecordMessage($"{character.Name} is leaving{(destination != null ? $" for {destination.Name}" : "")}: already distant from "
+                          + "everyone here (heard, but seen only in good light), gone after two more beats.");
         return ChangeHandlerResult.Ok;
     }
 }

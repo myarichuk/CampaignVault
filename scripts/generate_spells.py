@@ -129,6 +129,10 @@ def write_spell(path: Path, header: str, body: dict) -> None:
         lines.append("perceptibleModes:")
         for mode in sorted(modes):
             lines.append(f"  {mode}: {modes[mode]}")
+    if body.get("illusionLimits"):
+        lines.append(f"illusionLimits: {yaml_quote(body['illusionLimits'])}")
+    if body.get("subtle"):
+        lines.append("subtle: true")
     for key in ("instanceCountAtSlotLevel", "instanceCountAtCharacterLevel"):
         table = body.get(key)
         if table:
@@ -647,7 +651,8 @@ def derive_perceptible_pf2e(spell: dict) -> str:
 
 
 def load_perception_overlay(path: Path) -> dict[str, dict]:
-    """slug: {perceptible: value} or {perceptibleModes: {mode: value}}; comments and blank lines ignored."""
+    """slug: {perceptible: value}, {perceptibleModes: {mode: value}} and/or {illusionLimits: "quoted rules text"};
+    comments and blank lines ignored. illusionLimits must be a double-quoted string (it holds colons)."""
     overlay: dict[str, dict] = {}
     slug = None
     in_modes = False
@@ -669,6 +674,12 @@ def load_perception_overlay(path: Path) -> dict[str, dict]:
                 raise ValueError(f"{where}: perceptible must be one of {sorted(PERCEPTIBLE_VALUES)}")
             overlay[slug]["perceptible"] = value
             in_modes = False
+        elif indent == 2 and key == "illusionLimits":
+            text = raw.split(":", 1)[1].strip()
+            if not (text.startswith('"') and text.endswith('"')):
+                raise ValueError(f"{where}: illusionLimits must be a double-quoted string")
+            overlay[slug]["illusionLimits"] = json.loads(text)
+            in_modes = False
         elif indent == 2 and key == "perceptibleModes" and not value:
             overlay[slug]["perceptibleModes"] = {}
             in_modes = True
@@ -685,6 +696,7 @@ def apply_perception(slug: str, body: dict, derived: str, overlay: dict[str, dic
     entry = overlay.get(slug, {})
     body["perceptibleModes"] = entry.get("perceptibleModes")
     body["perceptible"] = entry.get("perceptible") or ("both" if body["perceptibleModes"] else derived)
+    body["illusionLimits"] = entry.get("illusionLimits")
 
 
 def parse_dnd5e_mechanics(detail: dict) -> dict:
@@ -974,6 +986,8 @@ def generate_pf2e() -> int:
             "materialText": cost_text,
             "materialCost": parse_gp_cost(cost_text) if cost_text else None,
             "materialConsumed": bool(cost_text),
+            # Player Core: a spell is cast with observable manifestations unless it has the subtle trait.
+            "subtle": True if "subtle" in {t.lower() for t in spell.get("trait") or []} else None,
             # Private: popped before write; the perceptibility derivation needs the raw traits and area.
             "_perceptible": derive_perceptible_pf2e(spell),
         }

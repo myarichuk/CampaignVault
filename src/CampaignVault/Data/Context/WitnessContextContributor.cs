@@ -128,9 +128,18 @@ internal sealed class WitnessContextContributor(PerceptibleBeats beats, IWitness
 
             var key = fightIsNews && fightKey != null ? fightKey : $"witness:{turn.WorldSequence}:{group.Key}";
 
-            if (await WitnessLineAsync(turn, group.Key, said, signal, excluded, ct) is { } line)
+            // A beat with an appeal is reported by the impression step, per observer, in the commit's summary (IMPRESSIONS_PLAN.md I5).
+            var plain = said.Where(t => !t.Beat.HasAppeal).ToList();
+            if (plain.Count > 0
+                && await WitnessLineAsync(turn, group.Key, plain, plain.Aggregate(Perceptible.None, (s, t) => s | t.Beat.Signal), excluded, ct) is { } line)
             {
                 items.Add(new ContextItem(key, line, 90));
+            }
+
+            // F4: the light was assumed and hid someone: say what was assumed, once per place and light level per session.
+            if ((signal & Perceptible.Visible) != 0 && await AssumedLightAsync(turn, group.Key, said, excluded, ct) is { } light)
+            {
+                items.Add(light);
             }
 
             if (await EarshotLineAsync(turn, group.Key, said, signal, excluded, ct) is { } near)
@@ -174,9 +183,19 @@ internal sealed class WitnessContextContributor(PerceptibleBeats beats, IWitness
     {
         // The source the witnesses look at: an invisible caster's effect is seen, the caster isn't. A death has no source to hide.
         var source = said.Select(t => t.Actor).FirstOrDefault(a => a != null && said.Any(t => t.Actor == a && t.Beat.Cause != "dies"));
-        var witnesses = (await selector.AtAsync(turn.Session, turn.CampaignName, locationId, signal, source, excluded, ct))
+        var sight = new SightContext(SightResolver.LightAt(await turn.Session.LoadAsync<Location>(locationId, ct), turn.Time),
+            said.Any(t => t.Beat.Luminous), source ?? said.Select(t => t.Actor).FirstOrDefault(a => a != null));
+        var all = await selector.AtAsync(turn.Session, turn.CampaignName, locationId, signal, source, excluded, ct, sight);
+        // I2: an encounter's placeholder is listed once, as a nudge to name it, not as "Unknown Encounter Entity" three times.
+        var witnesses = all.Where(w => !EncounterResolver.IsUnnamedStub(w.Character))
             .Select(w => w.Notice.Note == null ? w.Character.Name : $"{w.Character.Name} ({w.Notice.Note})")
             .ToList();
+        var stubs = all.Where(w => EncounterResolver.IsUnnamedStub(w.Character)).Select(w => w.Character.Id).ToList();
+        if (stubs.Count > 0)
+        {
+            witnesses.Add($"{stubs.Count} unnamed encounter stub{(stubs.Count == 1 ? "" : "s")} [{string.Join(", ", stubs)}] (name with character_update)");
+        }
+
         if (witnesses.Count == 0)
         {
             return null;
@@ -186,6 +205,23 @@ internal sealed class WitnessContextContributor(PerceptibleBeats beats, IWitness
         var drawing = said.Any(t => t.Beat.Draws) ? ", drawing attention" : "";
         return $"Witnesses ({causes}, {Perceptibility.Describe(signal)}{drawing}): {Names(witnesses)}. "
                + "Give each a short reaction in this response, even mid-combat.";
+    }
+
+    private async Task<ContextItem?> AssumedLightAsync(ContextTurn turn, string locationId, List<Located> said, HashSet<string> excluded,
+        CancellationToken ct)
+    {
+        var location = await turn.Session.LoadAsync<Location>(locationId, ct);
+        var light = SightResolver.LightAt(location, turn.Time);
+        if (SightResolver.AssumedLightNote(location, turn.Time, light) is not { } note || said.Any(t => t.Beat.Luminous))
+        {
+            return null;
+        }
+
+        var origin = said.Select(t => t.Actor).FirstOrDefault(a => a != null);
+        var all = await selector.AtAsync(turn.Session, turn.CampaignName, locationId, Perceptible.Visible, origin, excluded, ct);
+        var unseen = await selector.AtAsync(turn.Session, turn.CampaignName, locationId, Perceptible.Visible, origin, excluded, ct,
+            new SightContext(light, false, origin));
+        return all.Count > unseen.Count ? new ContextItem($"light:{locationId}:{light}", note, 70) : null;
     }
 
     /// <summary>W5: who heard a loud beat from one exit away. They don't see it, so the cause is the noise, not who made it.</summary>

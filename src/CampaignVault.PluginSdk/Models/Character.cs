@@ -60,6 +60,12 @@ public class Character : ICampaignScopedEntity, IHasDirt
     /// <summary>Hiding: the Stealth total observers must beat to notice this character (null: in plain view).</summary>
     public Concealment? Concealment { get; set; }
 
+    /// <summary>Leaving the scene (IMPRESSIONS_PLAN.md D9): Distant from everyone still here until the move completes. Null when not leaving.</summary>
+    public Departing? Departing { get; set; }
+
+    /// <summary>How recent beats landed on this character (IMPRESSIONS_PLAN.md I5), newest first, capped. Habituation reads it.</summary>
+    public List<Impression> Impressions { get; set; } = [];
+
     /// <summary>True once <see cref="Death"/> is recorded. Not persisted; the index exposes it as <c>IsDead</c>.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public bool IsDead => Death != null;

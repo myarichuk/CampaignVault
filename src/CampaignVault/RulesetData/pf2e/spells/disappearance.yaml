@@ -14,3 +14,4 @@ somatic: true
 material: false
 materialConsumed: false
 perceptible: both
+subtle: true

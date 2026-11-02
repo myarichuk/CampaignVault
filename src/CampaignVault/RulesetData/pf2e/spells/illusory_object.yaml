@@ -14,3 +14,4 @@ somatic: true
 material: false
 materialConsumed: false
 perceptible: visible
+illusionLimits: "You create an illusory visual image of a stationary object. The entire image must fit within the spell's area ... it doesn't make sounds or generate smells ... Any creature that touches the image or uses the Seek action to examine it can attempt to disbelieve your illusion."

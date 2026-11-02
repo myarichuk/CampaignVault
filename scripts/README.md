@@ -92,7 +92,10 @@ read by the witness channel (`WITNESS_CHANNEL_PLAN.md`).
 
 These overlays override the derived value for the spells it gets wrong (`perceptible: <value>`). They can also add caster-chosen
 forms (`perceptibleModes: {image: visible, sound: loud}`, picked by the cast's `parameters.mode`) for spells like Minor Illusion
-and Figment. Every entry quotes its rules text, and an entry that matches no spell fails the run.
+and Figment. Those forms are alternatives: the engine refuses a cast that names none (`IMPRESSIONS_PLAN.md` I3).
+An entry can also carry `illusionLimits: "..."` (double-quoted rules text), emitted as the spell's `illusionLimits` and echoed
+to the narrator after every cast with the disbelief check (5e Investigation, pf2e Perception, vs the caster's spell DC).
+Every entry quotes its rules text, and an entry that matches no spell fails the run.
 
 ### `spell_summon_overlay.yaml` (hand-authored, never regenerated)
 

@@ -15,3 +15,4 @@ materialConsumed: false
 areaOfEffectType: cube
 areaOfEffectSize: 15
 perceptible: visible
+illusionLimits: "You create the image of an object, a creature, or some other visible phenomenon that is no larger than a 15-foot cube ... The image is purely visual; it isn't accompanied by sound, smell, or other sensory effects. You can use your action to cause the image to move ... Physical interaction with the image reveals it to be an illusion ... A creature that uses its action to examine the image can determine that it is an illusion with a successful Intelligence (Investigation) check against your spell save DC."

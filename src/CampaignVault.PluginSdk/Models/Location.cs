@@ -59,6 +59,12 @@ public class Location : ICampaignScopedEntity, IHasDirt, IArchivable
 
     public string? AmbientCrowd { get; set; }
 
+    /// <summary>
+    /// How lit the place is right now (IMPRESSIONS_PLAN.md D8). Null derives it: indoors dim, outdoors by the hour, a settlement
+    /// at night dim. Set it for a torchlit cellar, a moonless field, a blazing hall.
+    /// </summary>
+    public LightLevel? Lighting { get; set; }
+
     /// <summary>Campaign hour (TotalDaysElapsed * 24 + Hour) of the engine's last crowd-draw roll here; drives its cooldown.</summary>
     public double? LastCrowdDrawHour { get; set; }
     
@@ -126,6 +132,15 @@ public class Location : ICampaignScopedEntity, IHasDirt, IArchivable
     /// "Material Plane" if none in the chain.
     /// </summary>
     public string? Plane { get; set; }
+}
+
+/// <summary>Light at a location, as the SRD's vision rules read it: bright, dim (lightly obscured), dark (heavily obscured).</summary>
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
+public enum LightLevel
+{
+    Bright,
+    Dim,
+    Dark
 }
 
 [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]

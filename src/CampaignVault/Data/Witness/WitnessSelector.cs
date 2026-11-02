@@ -18,8 +18,10 @@ public sealed record EarshotWitnesses(Location Where, IReadOnlyList<WitnessNotic
 public interface IWitnessSelector
 {
     /// <summary>Everyone at <paramref name="locationId"/> who perceived the beat, companions and keep-alive NPCs first.</summary>
+    /// With <paramref name="sight"/>, a visible beat is seen only by those whose distance and the light allow it (I1); the rest
+    /// still hear a loud one.
     Task<IReadOnlyList<WitnessNotice>> AtAsync(IAsyncDocumentSession session, string campaignName, string locationId, Perceptible signal,
-        Character? source, IReadOnlySet<string> excluded, CancellationToken ct = default);
+        Character? source, IReadOnlySet<string> excluded, CancellationToken ct = default, SightContext? sight = null);
 
     /// <summary>
     /// Everyone one exit away (at most <see cref="WitnessSelector.EarshotMaxTravelHours"/>) who heard a loud beat. Distance muffles
@@ -37,12 +39,12 @@ public sealed class WitnessSelector : IWitnessSelector
     private const int MaxPerLocation = 25;
 
     public async Task<IReadOnlyList<WitnessNotice>> AtAsync(IAsyncDocumentSession session, string campaignName, string locationId,
-        Perceptible signal, Character? source, IReadOnlySet<string> excluded, CancellationToken ct = default)
+        Perceptible signal, Character? source, IReadOnlySet<string> excluded, CancellationToken ct = default, SightContext? sight = null)
     {
         var witnesses = new List<WitnessNotice>();
         foreach (var c in await PresentAsync(session, campaignName, locationId, excluded, ct))
         {
-            var notice = AwarenessResolver.Perceive(c, signal, source);
+            var notice = Perceive(c, signal, source, sight);
             if (notice.Perceived)
             {
                 witnesses.Add(new WitnessNotice(c, notice));
@@ -87,6 +89,20 @@ public sealed class WitnessSelector : IWitnessSelector
         }
 
         return result;
+    }
+
+    /// <summary>One observer: <see cref="AwarenessResolver.Perceive"/>, less what their position hides (I1).</summary>
+    public static Notice Perceive(Character observer, Perceptible signal, Character? source, SightContext? sight)
+    {
+        if (sight is null || (signal & Perceptible.Visible) == 0)
+        {
+            return AwarenessResolver.Perceive(observer, signal, source);
+        }
+
+        var line = SightResolver.Sees(observer, sight);
+        return line.Sees
+            ? AwarenessResolver.Perceive(observer, signal, source)
+            : AwarenessResolver.Perceive(observer, signal, source, Perceptible.Visible, line.Note);
     }
 
     /// <summary>

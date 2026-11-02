@@ -13,3 +13,4 @@ material: true
 materialText: A bit of fleece.
 materialConsumed: false
 perceptible: both
+illusionLimits: "You create the image of an object, a creature, or some other visible phenomenon that is no larger than a 20-foot cube ... It seems completely real, including sounds, smells, and temperature ... You can't create sufficient heat or cold to cause damage, a sound loud enough to deal thunder damage or deafen a creature ... Physical interaction with the image reveals it to be an illusion ... A creature that uses its action to examine the image can determine that it is an illusion with a successful Intelligence (Investigation) check against your spell save DC."

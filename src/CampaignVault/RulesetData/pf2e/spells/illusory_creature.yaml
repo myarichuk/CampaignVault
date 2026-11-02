@@ -14,3 +14,4 @@ somatic: true
 material: false
 materialConsumed: false
 perceptible: both
+illusionLimits: "You create an illusory image of a Large or smaller creature. It generates the appropriate sounds, smells, and feels believable to the touch ... The image can't speak, but you can use your actions to speak through the creature ... If the image is hit by an attack or fails a save, the spell ends."

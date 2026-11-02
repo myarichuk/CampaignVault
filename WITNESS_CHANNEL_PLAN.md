@@ -153,6 +153,7 @@ Each phase ships on its own with a green suite. Check every box before calling i
 
 - [x] **W7. Prompt and docs.**
   - `claude_skills/dnd-combat/SKILL.md` and `recommended-system-prompt*.md`: one rule. "A `Witnesses` line means those people perceived the beat; give each a short reaction in the same response, even mid-combat. Captives and non-combatants react to illusions as the targets do unless they have reason to know it's an illusion."
+    *Superseded (IMPRESSIONS_PLAN.md):* that rule overreached: it had everyone at the location react the way the target did, even a trader half a mile up a dark road. Who perceives a beat now depends on distance and light (I1), and how it lands depends on each observer (I4–I5).
   - Mention `perceptible` on events.
   - Add a short paragraph to `Tools/DmHelpManual.cs` next to the `npc_initiative_nudge` FAQ (line ~81) explaining that the witness line is separate from the one-NPC initiative slot.
 

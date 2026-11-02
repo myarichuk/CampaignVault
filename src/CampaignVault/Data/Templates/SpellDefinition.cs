@@ -128,8 +128,16 @@ public record SpellDefinition : RulesetTemplate
     public string? Perceptible { get; init; }
 
     /// <summary>Caster-chosen modes, keyed by the cast's <c>parameters.mode</c> (Minor Illusion: image → visible, sound → loud).
-    /// A cast with no or an unknown mode counts as "both".</summary>
+    /// They are alternatives: a cast must name one (IMPRESSIONS_PLAN.md I3). Read defensively, an unnamed mode counts as "both".</summary>
     public Dictionary<string, string>? PerceptibleModes { get; init; }
+
+    /// <summary>An illusion's own limits, quoted from the rules text (IMPRESSIONS_PLAN.md I3): echoed after every cast so the
+    /// narration stays inside them. From <c>scripts/spell_perception_overlay*.yaml</c>.</summary>
+    public string? IllusionLimits { get; init; }
+
+    /// <summary>pf2e: the subtle trait, cast with no observable manifestation (Player Core). Without it, every pf2e casting shows
+    /// (IMPRESSIONS_PLAN.md F3).</summary>
+    public bool? Subtle { get; init; }
 
     /// <summary>dnd5e only. Number of independent damage instances per cast (e.g. Magic Missile's darts,
     /// Scorching Ray's rays), keyed by spell-slot level for leveled spells or character level for

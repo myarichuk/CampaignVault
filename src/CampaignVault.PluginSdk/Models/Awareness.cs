@@ -33,3 +33,26 @@ public class Concealment
 
     public double? SinceHour { get; set; }
 }
+
+/// <summary>
+/// An NPC on their way out (IMPRESSIONS_PLAN.md D9): still at <see cref="FromLocationId"/>, but already Distant from everyone there.
+/// The engine completes the move after <see cref="DefaultBeats"/> more committed beats or <see cref="CompleteAfterHours"/> of campaign
+/// time, whichever comes first.
+/// </summary>
+public class Departing
+{
+    /// <summary>Where they're headed; null leaves them nowhere in particular (off-screen).</summary>
+    public string? ToLocationId { get; set; }
+
+    public string? FromLocationId { get; set; }
+
+    /// <summary>Campaign hour (TotalDaysElapsed * 24 + Hour) they set off.</summary>
+    public double SinceHour { get; set; }
+
+    /// <summary>Committed beats left before they're gone. Sub-hour beats don't move the clock, so beats count too.</summary>
+    public int BeatsRemaining { get; set; } = DefaultBeats;
+
+    public const double CompleteAfterHours = 0.25;
+
+    public const int DefaultBeats = 2;
+}

@@ -42,7 +42,8 @@ public sealed class WorldChangeDispatcher(
     IInteractionModeSelector? modeSelector = null,
     IEnumerable<IWorldTimeObserver>? timeObservers = null,
     RollModifierPipeline? rollModifiers = null,
-    PerceptibleBeats? perceptibleBeats = null)
+    PerceptibleBeats? perceptibleBeats = null,
+    CampaignVault.Data.Impressions.ImpressionStep? impressions = null)
 {
     /// <summary>
     /// Events at this depth are dropped instead of delivered: batch change (0) → reaction (1) → reaction (2)
@@ -498,7 +499,9 @@ public sealed class WorldChangeDispatcher(
             await ApplyMicroTimeNudgeAsync(context, changes, getCurrentTimeAsync);
             ApplyMomentumTracking(context, changes);
             await ApplyAwarenessUpkeepAsync(context, changes, getCurrentTimeAsync);
+            await ApplyDepartureUpkeepAsync(context, changes, getCurrentTimeAsync);
             await ApplyWakingAsync(context, changes);
+            await ApplyImpressionsAsync(context, changes, getCurrentTimeAsync);
             if (!await ApplyCrowdDrawAsync(context, changes, getCurrentTimeAsync))
             {
                 await ApplyAmbientInterruptCheckAsync(context, changes, getCurrentTimeAsync);
@@ -896,6 +899,90 @@ public sealed class WorldChangeDispatcher(
     }
 
     /// <summary>
+    /// IMPRESSIONS_PLAN.md D9: a departure completes after <see cref="Departing.DefaultBeats"/> more committed beats or
+    /// <see cref="Departing.CompleteAfterHours"/> of campaign time, whichever is first (beats under an hour don't move the clock).
+    /// The character moves to the destination, or off-scene when there is none. Someone moved some other way meanwhile is simply no
+    /// longer leaving. Advisory: a destination that has since vanished leaves them off-scene rather than failing the player's commit.
+    /// </summary>
+    private async Task ApplyDepartureUpkeepAsync(IChangeContext context, WorldChange[] changes, Func<Task<CampaignTime>> getCurrentTimeAsync)
+    {
+        var ctx = (ChangeContext)context;
+        if (ctx.Session is null)
+        {
+            return;
+        }
+
+        var setNow = changes.OfType<ActivityChange>().Where(a => a.Departing == true).Select(a => a.CharacterId)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        List<Character> indexed;
+        try
+        {
+            indexed = await ctx.Session.Query<Character>()
+                .Where(c => c.CampaignName == context.CampaignName && c.Departing != null)
+                .Take(50)
+                .ToListAsync();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return;
+        }
+
+        var time = await getCurrentTimeAsync();
+        var now = CampaignClock.Now(time);
+        var leaving = indexed
+            .Select(c => context.Characters.TryGetValue(c.Id, out var tracked) ? tracked : c)
+            .Concat(context.Characters.Values.Where(c => c.Departing != null))
+            .DistinctBy(c => c.Id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        foreach (var c in leaving)
+        {
+            if (c.Departing is not { } d || setNow.Contains(c.Id))
+            {
+                continue;
+            }
+
+            if (!string.Equals(c.CurrentLocationId, d.FromLocationId, StringComparison.OrdinalIgnoreCase))
+            {
+                c.Departing = null;
+                continue;
+            }
+
+            d.BeatsRemaining--;
+            if (d.BeatsRemaining > 0 && now - d.SinceHour < Departing.CompleteAfterHours)
+            {
+                continue;
+            }
+
+            Location? destination = null;
+            if (!string.IsNullOrEmpty(d.ToLocationId) && !context.Locations.TryGetValue(d.ToLocationId, out destination))
+            {
+                destination = await ctx.Session.LoadAsync<Location>(d.ToLocationId);
+                if (destination != null)
+                {
+                    context.RegisterNewLocation(destination);
+                }
+            }
+
+            if (!context.Characters.ContainsKey(c.Id))
+            {
+                context.RegisterNewCharacter(c);
+            }
+
+            await DispatchMutationAsync(context, new ActivityChange { CharacterId = c.Id, NewLocationId = destination?.Id, UpdateLocation = true });
+            c.Departing = null;
+            if (destination == null)
+            {
+                c.DepartedFromLocationId = d.FromLocationId;
+                c.DepartedAtDay = time.TotalDaysElapsed;
+            }
+
+            context.RecordMessage(destination != null
+                ? $"{c.Name} has gone on to {destination.Name} and is no longer here."
+                : $"{c.Name} is out of sight and no longer here.");
+        }
+    }
+
+    /// <summary>
     /// A4 (WITNESS_CHANNEL_PLAN.md): a loud beat wakes everyone asleep at its location who can hear it (D6), the one who made it
     /// included. Done here, inside the commit, so the witness line and the next turn both see them awake. The beat's location is
     /// resolved as the witness line resolves it (<see cref="PerceptibleBeat.Where"/>). Sleepers set asleep earlier in this batch (an
@@ -958,6 +1045,27 @@ public sealed class WorldChangeDispatcher(
                     $"WOKEN by {(beat.CombatNoise ? "the fighting" : beat.Cause)}: {string.Join(", ", sleepers.Select(c => c.Name))}. "
                     + "They wake disoriented; narrate it.");
             }
+        }
+    }
+
+    /// <summary>
+    /// IMPRESSIONS_PLAN.md I5: how each beat with an appeal landed on everyone it reached, kept on them. After waking, so whoever the
+    /// beat woke takes it in too. Advisory: a failure here is logged and skipped, never the player's commit.
+    /// </summary>
+    private async Task ApplyImpressionsAsync(IChangeContext context, WorldChange[] changes, Func<Task<CampaignTime>> getCurrentTimeAsync)
+    {
+        if (impressions is null || context is not ChangeContext { Session: not null } ctx)
+        {
+            return;
+        }
+
+        try
+        {
+            await impressions.ApplyAsync(ctx, changes, await getCurrentTimeAsync());
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Impression step failed; the commit goes on without it");
         }
     }
 

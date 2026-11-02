@@ -15,6 +15,7 @@ JSON enums in `commit` must match **exactly** (PascalCase as shown). Invalid val
 | Field | Valid values | LLM alias hints |
 |-------|----------------|-----------------|
 | `type` | Region, Settlement, District, Building, Room, Wilderness | City, Town → **Settlement**; Tavern, Inn, Shop → **Building** |
+| `lighting` (location_update) | bright, dim, dark, auto | Persists until changed; `auto` clears it so the engine derives it (indoors dim, outdoors by the hour). Decides who sees a visible beat at a distance |
 
 ### event (`$type: event`)
 | Field | Valid values | LLM alias hints |
@@ -23,6 +24,7 @@ JSON enums in `commit` must match **exactly** (PascalCase as shown). Invalid val
 | `involved` | **Req'd if Conversation** | Character IDs only. Use `locationId` for locations. Field is `involved` (NOT `participants`). |
 | `perceptible` | loud, visible, both | Set on a shout, scream, crash or spectacle. The next response names the bystanders who perceived it (`Witnesses ...`) so each gets a reaction |
 | `attention` / `crowdModifier` | draw, notice / -50..+50 | `draw` on a song, a shouting match or loud haggling: the engine rolls whether someone from the crowd comes over; `crowdModifier` tilts that roll (festival +20, sleepy hamlet -30) |
+| `appeal` / `appealIntensity` / `deceptive` / `appealSubject` / `reception` | delight, awe, amusement, affection, gratitude, comfort, pride, trust, sorrow, fear, menace, disgust, anger, insult / mild, strong, overwhelming / bool / text / {charId: tone} | What the beat is meant to make people feel. The engine reads, appraises and records each observer and answers `IMPRESSIONS ...`. `deceptive`: rolled, passive Insight vs the roll; unrolled, vs 11 + the liar's Deception bonus (a check's targets follow the check). A reaction is a tendency, never the Frightened condition |
 
 ### world_build.rumors[] (creates or replaces a rumor — NOT a commit $type)
 | Field | Notes |
@@ -59,7 +61,11 @@ Note: `world_build.quests[].objectives[]` only needs `description` (+ optional `
 | `parameters.outsideCombat` | "true" only for a strike that isn't a fight (coup de grâce, spar); otherwise a hostile action needs `combat start` first |
 | `parameters.save` | Required unless the named spell's handbook entry declares its saveType. 5e: Strength/Dexterity/Constitution/Intelligence/Wisdom/Charisma; PF2e: Fortitude/Reflex/Will (an ability name maps to its save). Unknown names are rejected, never rolled at +0 |
 | `parameters.perceptible` / `attention` / `crowdModifier` | Same as on `event`: any action everyone nearby notices; a Performance check is `attention: draw` unless you pass `notice` |
-| `parameters.mode` (Spell) | Caster-chosen form, e.g. Minor Illusion `image` or `sound`: decides whether bystanders saw or heard it. Omitted means both |
+| `parameters.mode` (Spell) | Caster-chosen form, e.g. Minor Illusion `image` or `sound`: one per cast, **required** (a cast without it is refused). Decides whether bystanders saw or heard it |
+| `parameters.appeal` / `intensity` / `deceptive` / `subject` / `reception` | Same as `event`'s appeal fields; `reception` is `"chars/a:disgust, chars/b:awe"`. Intimidation = menace, Deception = deceptive trust, Performance = delight by default |
+| `parameters.subtle` (Spell) | "true" for a casting nobody can perceive (Subtle Spell, Conceal Spell); otherwise onlookers who see the gesture or hear the words suspect the caster of an illusion. PF2e spells with the subtle trait are subtle already |
+| `parameters.unseenBy` / `concealCasting` (Spell) | Your ruling on "when he isn't looking": `unseenBy` lists who couldn't perceive the casting (ids or `all`); `concealCasting: "true"` allows a hidden gesture, and the engine rolls Sleight of Hand (pf2e Thievery) with the cast, no extra action, against each onlooker's passive Perception |
+| `parameters.disbelieve` (SkillCheck) | The illusion's caster id: an Investigation (5e) / Perception (pf2e) check meeting the caster's spell DC sees through their illusion |
 | `parameters.halfOnSave` | true/false — 5e defaults **true** (half damage on successful save) |
 | `parameters.healDice` / `healBonus` / `healAmount` | Healing spells (5e/PF2e) |
 | `parameters.spellAttackBonus` / `dc` | Optional if caster has bootstrapped `spellAttackBonus` / `spellSaveDc` on systemStats |

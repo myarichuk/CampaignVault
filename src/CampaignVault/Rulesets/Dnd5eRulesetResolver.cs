@@ -1404,7 +1404,14 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
         }
 
         var relationshipSuffix = relationshipBonus != 0 ? $" ({relationshipLabel})" : "";
-        return ResolverResult.Ok($"{action.ActionName}: {resultStr}. Actor rolled {actorRoll.Result} ({actorSkill}){relationshipSuffix}, Target rolled {targetRoll.Result} ({targetSkill}).{actorFold.Suffix}{targetFold.Suffix}");
+        return new ResolverResult
+        {
+            Narrative = $"{action.ActionName}: {resultStr}. Actor rolled {actorRoll.Result} ({actorSkill}){relationshipSuffix}, Target rolled {targetRoll.Result} ({targetSkill}).{actorFold.Suffix}{targetFold.Suffix}",
+            RollTotal = actorRoll.Result,
+            Skill = actorSkill,
+            ActorWon = actorWins,
+            ContestTied = actorRoll.Result == targetRoll.Result,
+        };
     }
 
     protected override async Task<ResolverResult> ResolveSavingThrowAsync(

@@ -78,6 +78,11 @@ public abstract class WorldChange
     [JsonIgnore]
     public bool IsEngineAuthored { get; set; }
 
+    /// <summary>Internal: the impression step reported how this change landed on its observers (IMPRESSIONS_PLAN.md), so the
+    /// witness line leaves it out. Not exposed in JSON.</summary>
+    [JsonIgnore]
+    public bool ImpressionsReported { get; set; }
+
     /// <summary>
     /// Optional: roughly how many minutes of in-game time this specific change's narrative beat took
     /// (a few lines of dialogue, a lockpicking attempt, a combat round, sharing a meal, ...). Summed
@@ -631,6 +636,26 @@ public class EventOccurred : WorldChange
     [JsonPropertyName("crowdModifier")]
     public int? CrowdModifier { get; set; }
 
+    [Description("Optional. What this beat is meant to make people feel, so the engine works out how it lands on each observer and records it (relationship, mood, a reaction tendency): delight, awe, amusement, affection, gratitude, comfort, pride (flattery), trust, sorrow, fear, menace, disgust, anger, insult. A bouquet handed over is affection; a lullaby comfort. See lookup kind=commit_schema type=event.")]
+    [JsonPropertyName("appeal")]
+    public string? Appeal { get; set; }
+
+    [Description("Optional, with appeal: mild (default), strong or overwhelming.")]
+    [JsonPropertyName("appealIntensity")]
+    public string? AppealIntensity { get; set; }
+
+    [Description("Optional, with appeal: true when it isn't sincere (insincere flattery, a lie, a feigned threat). Each observer's passive Insight is set against 11 + the initiator's Deception bonus (with no roll: their average); whoever meets it sees through it and takes it the other way. Roll a Deception check (ruleset_action) when it matters: its targets follow the roll against its DC, bystanders' passive Insight against the roll.")]
+    [JsonPropertyName("deceptive")]
+    public bool? Deceptive { get; set; }
+
+    [Description("Optional, with appeal: what it shows or is about ('butterflies', 'a ghost', 'wildflowers'), matched against observers' wants and fears.")]
+    [JsonPropertyName("appealSubject")]
+    public string? AppealSubject { get; set; }
+
+    [Description("Optional, with appeal: your judgment of taste for named observers, character id -> tone (e.g. { \"chars/miller-daughter\": \"disgust\" } for a girl who hates insects). The engine does the rest.")]
+    [JsonPropertyName("reception")]
+    public Dictionary<string, string>? Reception { get; set; }
+
     [Description("Optional. Additional location IDs touched by a spillover beat, e.g. a bar fight that spills from the tavern into the alley outside.")]
     [JsonPropertyName("relatedLocationIds")]
     public List<string>? RelatedLocationIds { get; set; }
@@ -976,6 +1001,10 @@ public class ActivityChange : WorldChange
     [JsonPropertyName("updateLocation")]
     public bool UpdateLocation { get; set; }
 
+    [Description("true when they set off but are still in sight or earshot (waving goodbye, the caravan pulling away): from now on they're Distant from everyone here, so they don't see a small spectacle at night, and the engine moves them to newLocationId (or off-scene when omitted) after two more beats or a quarter hour. Don't combine with updateLocation. false cancels a departure (they turn back).")]
+    [JsonPropertyName("departing")]
+    public bool? Departing { get; set; }
+
     [Description("Optional narrative justification for the change. Stored for later behavioral synthesis and debugging.")]
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
@@ -1023,6 +1052,20 @@ public class ActivityChange : WorldChange
 ///   "perceptible"   – loud, visible or both: everyone nearby notices this action (haggling at full voice, a juggling act)
 ///   "attention"     – "draw" when the action pulls people in (a Performance check defaults to it; "notice" opts out); the engine rolls a crowd draw
 ///   "crowdModifier" – -50..+50 buff/debuff to that crowd-draw roll (0.5% per point)
+///   "appeal"        – what the action is meant to make people feel (delight, awe, amusement, affection, gratitude, comfort, pride,
+///                     trust, sorrow, fear, menace, disgust, anger, insult): the engine works out how it lands on each observer
+///                     (IMPRESSIONS_PLAN.md). An Intimidation check is menace, a Deception check deceptive trust and a Performance
+///                     check delight without it.
+///   "intensity"     – mild (default), strong or overwhelming (alias: appealIntensity, as on event)
+///   "deceptive"     – "true" when it isn't sincere (an illusion passed off as real, insincere flattery, a bluff). On a check, its
+///                     targets follow the check (against its dc, or the contest); bystanders' passive Insight is set against the roll
+///   "subject"       – what it shows or is about ("butterflies", "a ghost"), matched against observers' wants and fears (alias: appealSubject)
+///   "reception"     – per-observer tone overrides, "chars/a:disgust, chars/b:delight"
+///   "disbelieve"    – on a skill check: the illusion's caster id; meeting the caster's spell DC sees through their illusion
+///   "subtle"        – "true": the casting itself can't be perceived (Subtle Spell); otherwise onlookers who catch it suspect an illusion's caster
+///   "unseenBy"      – your ruling: who couldn't perceive the casting ("chars/a, chars/b" or "all": back turned, behind cover)
+///   "concealCasting" – "true" when you allow a hidden gesture (behind the back, under a cloak): the engine rolls Sleight of Hand
+///                     (pf2e Thievery) as part of the cast, and only a passive Perception that meets it catches the gesture
 ///   "outsideCombat" – "true" lets a hostile action resolve with no combat active (coup de grâce, spar)
 ///   "save"          – saving throw ability for save-based spells (5e/PF2e)
 ///   "halfOnSave"    – "true"/"false" — half damage on successful save (default true for 5e spells)
@@ -1122,6 +1165,10 @@ public class LocationUpdate : WorldChange
     [Description("Set or clear the ambient crowd. Use empty string to clear. Always set when narratively justified. Taverns, for example, should always have some sort of a crowd - if active, of course")]
     [JsonPropertyName("ambientCrowd")]
     public string? AmbientCrowd { get; set; }
+
+    [Description("Set the light here: 'bright', 'dim' or 'dark' (a torchlit cellar is dim, a moonless field dark); 'auto' clears it so the engine derives it from indoors/outdoors and the hour. Decides who can see a visible beat at a distance.")]
+    [JsonPropertyName("lighting")]
+    public string? Lighting { get; set; }
 
     [Description("Rename the location.")]
     [JsonPropertyName("name")]
