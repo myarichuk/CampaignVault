@@ -1,3 +1,4 @@
+using CampaignVault.Data.Impressions;
 using CampaignVault.Events;
 using CampaignVault.Models;
 
@@ -17,6 +18,13 @@ public sealed class EventOccurredHandler : IWorldChangeHandler
     {
         var ctx = (ChangeContext)context;
         var ev = (EventOccurred)change;
+
+        // IMPRESSIONS_PLAN.md I4: a tone that isn't one fails here, before anything is written, not silently after.
+        Appeal.Of(ev, out var appealError);
+        if (appealError != null)
+        {
+            return ChangeHandlerResult.Failure($"[InvalidParameter] {appealError}");
+        }
 
         if (ev.Category == EventCategory.Conversation && (ev.Involved == null || ev.Involved.Count == 0))
         {

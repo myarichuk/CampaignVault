@@ -282,6 +282,13 @@ public sealed class RulesetActionHandler(
             }
         }
 
+        // IMPRESSIONS_PLAN.md I4: a tone that isn't one fails before the roll, not silently after it.
+        Appeal.Of(action, out var appealError);
+        if (appealError != null)
+        {
+            return ChangeHandlerResult.Failure($"[InvalidParameter] {appealError}");
+        }
+
         var output = await module.Actions.ResolveAsync(ctx, action, ct);
 
         if (!output.Result.Success)
@@ -316,6 +323,7 @@ public sealed class RulesetActionHandler(
             narrative = string.IsNullOrWhiteSpace(narrative) ? line : narrative + " " + line;
         }
 
+        StashRollForImpressions(action, output.Result);
         if (await ApplyConcealmentAsync(action, output.Result, ctx) is { } hiding)
         {
             narrative = string.IsNullOrWhiteSpace(narrative) ? hiding : narrative + " " + hiding;
@@ -431,6 +439,13 @@ public sealed class RulesetActionHandler(
         if (stealth && result.RollTotal is { } total)
         {
             // A check made against a DC that fails is a failed hide, not a poor one: nobody needs a passive score to see them.
+            // A contest the hider lost is the same: the one they hid from spotted them.
+            if (result.ActorWon == false)
+            {
+                actor.Concealment = null;
+                return $"{actor.Name} fails to hide (Stealth {total} lost the contest) and is in plain view.";
+            }
+
             if (int.TryParse(action.Parameters.GetValueOrDefault("dc")?.Trim(), out var dc) && total < dc)
             {
                 actor.Concealment = null;
@@ -450,6 +465,32 @@ public sealed class RulesetActionHandler(
         actor.Concealment = null;
         return $"{actor.Name} gives away their position and is no longer hidden.";
     }
+
+    /// <summary>
+    /// IMPRESSIONS_PLAN.md I4: what a check rolled, for the impression step after the batch, which reads the applied action. A
+    /// bystander's passive Insight is set against the total; the contest's target follows the contest.
+    /// </summary>
+    private static void StashRollForImpressions(RulesetAction action, ResolverResult result)
+    {
+        if (action.ActionType is not (RulesetActionType.SkillCheck or RulesetActionType.ContestedCheck) || result.RollTotal is not { } total)
+        {
+            return;
+        }
+
+        action.Parameters[NoticingContextContributor.RollTotalKey] = total.ToString(global::System.Globalization.CultureInfo.InvariantCulture);
+        if (result.ActorWon is { } won)
+        {
+            action.Parameters[ActorWonKey] = won ? "true" : "false";
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.Skill) && !action.Parameters.ContainsKey("skill"))
+        {
+            action.Parameters["skill"] = result.Skill;
+        }
+    }
+
+    /// <summary>Set on a contested check: whether the actor won (IMPRESSIONS_PLAN.md I4).</summary>
+    public const string ActorWonKey = "engineActorWon";
 
     private bool GivesAwayPosition(RulesetAction action, Character actor)
     {

@@ -559,7 +559,13 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
         var resultStr = actorWins ? "Actor Wins" : "Target Wins";
 
         var relationshipSuffix = relationshipBonus != 0 ? $" ({relationshipLabel})" : "";
-        return ResolverResult.Ok($"{action.ActionName}: {resultStr}. Actor rolled {actorRoll.Result} ({actorSkill}){relationshipSuffix}, Target rolled {targetRoll.Result} ({targetSkill}).");
+        return new ResolverResult
+        {
+            Narrative = $"{action.ActionName}: {resultStr}. Actor rolled {actorRoll.Result} ({actorSkill}){relationshipSuffix}, Target rolled {targetRoll.Result} ({targetSkill}).",
+            RollTotal = actorRoll.Result,
+            Skill = actorSkill,
+            ActorWon = actorWins,
+        };
     }
 
     protected override async Task<ResolverResult> ResolveSavingThrowAsync(RulesetAction action, IChangeContext context, Pf2eExtension actorStats, List<WorldChange> mutations, CancellationToken ct)

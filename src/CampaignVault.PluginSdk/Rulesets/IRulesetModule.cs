@@ -16,6 +16,10 @@ public class ResolverResult
 
     public string? Skill { get; init; }
 
+    /// <summary>Contested checks: true when the actor won, false when the target did; null for anything else
+    /// (IMPRESSIONS_PLAN.md I4: the contest settles what its target believes).</summary>
+    public bool? ActorWon { get; init; }
+
     public static ResolverResult Ok(string narrative) => new() { Success = true, Narrative = narrative };
     public static ResolverResult Fail(string errorCode, string narrative) => new() { Success = false, ErrorCode = errorCode, Narrative = narrative };
 }

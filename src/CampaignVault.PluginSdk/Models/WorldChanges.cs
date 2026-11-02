@@ -631,6 +631,26 @@ public class EventOccurred : WorldChange
     [JsonPropertyName("crowdModifier")]
     public int? CrowdModifier { get; set; }
 
+    [Description("Optional. What this beat is meant to make people feel, so the engine works out how it lands on each observer and records it (relationship, mood, a reaction tendency): delight, awe, amusement, affection, gratitude, comfort, pride (flattery), trust, sorrow, fear, menace, disgust, anger, insult. A bouquet handed over is affection; a lullaby comfort. See lookup kind=commit_schema type=event.")]
+    [JsonPropertyName("appeal")]
+    public string? Appeal { get; set; }
+
+    [Description("Optional, with appeal: mild (default), strong or overwhelming.")]
+    [JsonPropertyName("appealIntensity")]
+    public string? AppealIntensity { get; set; }
+
+    [Description("Optional, with appeal: true when it isn't sincere (insincere flattery, a lie, a feigned threat). Each observer's passive Insight is set against the initiator's passive Deception; whoever sees through it takes it the other way.")]
+    [JsonPropertyName("deceptive")]
+    public bool? Deceptive { get; set; }
+
+    [Description("Optional, with appeal: what it shows or is about ('butterflies', 'a ghost', 'wildflowers'), matched against observers' wants and fears.")]
+    [JsonPropertyName("appealSubject")]
+    public string? AppealSubject { get; set; }
+
+    [Description("Optional, with appeal: your judgment of taste for named observers, character id -> tone (e.g. { \"chars/miller-daughter\": \"disgust\" } for a girl who hates insects). The engine does the rest.")]
+    [JsonPropertyName("reception")]
+    public Dictionary<string, string>? Reception { get; set; }
+
     [Description("Optional. Additional location IDs touched by a spillover beat, e.g. a bar fight that spills from the tavern into the alley outside.")]
     [JsonPropertyName("relatedLocationIds")]
     public List<string>? RelatedLocationIds { get; set; }
@@ -1027,6 +1047,15 @@ public class ActivityChange : WorldChange
 ///   "perceptible"   – loud, visible or both: everyone nearby notices this action (haggling at full voice, a juggling act)
 ///   "attention"     – "draw" when the action pulls people in (a Performance check defaults to it; "notice" opts out); the engine rolls a crowd draw
 ///   "crowdModifier" – -50..+50 buff/debuff to that crowd-draw roll (0.5% per point)
+///   "appeal"        – what the action is meant to make people feel (delight, awe, amusement, affection, gratitude, comfort, pride,
+///                     trust, sorrow, fear, menace, disgust, anger, insult): the engine works out how it lands on each observer
+///                     (IMPRESSIONS_PLAN.md). An Intimidation check is menace, a Deception check deceptive trust and a Performance
+///                     check delight without it.
+///   "intensity"     – mild (default), strong or overwhelming
+///   "deceptive"     – "true" when it isn't sincere (an illusion passed off as real, insincere flattery, a bluff)
+///   "subject"       – what it shows or is about ("butterflies", "a ghost"), matched against observers' wants and fears
+///   "reception"     – per-observer tone overrides, "chars/a:disgust, chars/b:delight"
+///   "disbelieve"    – on a skill check: the illusion's caster id; meeting the caster's spell DC sees through their illusion
 ///   "outsideCombat" – "true" lets a hostile action resolve with no combat active (coup de grâce, spar)
 ///   "save"          – saving throw ability for save-based spells (5e/PF2e)
 ///   "halfOnSave"    – "true"/"false" — half damage on successful save (default true for 5e spells)

@@ -104,10 +104,14 @@ Old Wenna — uneasy (distrusts magic): withdraws. Narrate each; already recorde
   *As built:* `Data/Impressions/IllusionRules.cs`. Regenerated with `scripts/generate_spells.py` (both APIs reachable): exactly the
   six overlay-flagged files changed, one `illusionLimits` line each (Minor Illusion, Silent Image, Major Image; Figment, Illusory
   Object, Illusory Creature). `Perceptibility.OfSpell` still reads a missing mode as both, defensively; the handler refuses it first.
-- [ ] **I4. Appeal and Read.** `Appeal` parsing (`RulesetAction.Parameters`: `appeal`, `intensity`, `deceptive`, `reception`;
+- [x] **I4. Appeal and Read.** `Appeal` parsing (`RulesetAction.Parameters`: `appeal`, `intensity`, `deceptive`, `reception`;
   `EventOccurred`: typed `appeal`, `appealIntensity`, `deceptive`, `reception`), the D2 inferences, the contest's outcome on
   `ResolverResult` (both systems), `ImpressionResolver.Read`. Tests: sincere lands; a believed illusion; passive Insight
   against a Deception total, both ways; the contested target follows the contest.
+  *As built:* `Data/Impressions/Appeal.cs` (tone table, parsing, inference), `ImpressionResolver.Read`. Contested checks now return
+  `RollTotal`, `Skill` and `ActorWon` (both systems); `RulesetActionHandler` stashes the total (`engineRollTotal`) and the outcome
+  (`engineActorWon`) on the applied action. Side effect handled: a contested Stealth check now has a total, so the concealment step
+  treats a lost contest as a failed hide instead of hiding the loser. A bad tone fails the commit in the handler, before the roll.
 - [ ] **I5. Appraise, Respond, Persist.** `ImpressionResolver.Appraise/Respond`, `Character.Impressions` (capped 10, 24 h
   habituation window), the dispatcher step after waking, the summary line, the witness line skipping a beat that carries an
   appeal (earshot line kept). Tests: butterflies for a child vs an adult vs a superstitious elder; a bouquet raises the
