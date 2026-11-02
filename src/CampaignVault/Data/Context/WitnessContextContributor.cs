@@ -37,14 +37,18 @@ public static class Perceptibility
     /// The spell's own data wins: caster-chosen modes (by <c>parameters.mode</c>, "both" when it's missing or unknown), then
     /// <see cref="SpellDefinition.Perceptible"/>. Without either, it's derived: an illusion is seen (or heard, by mode), area damage
     /// is seen and heard, thunder is heard. A verbal component is speech, not a spectacle, so it never counts.
-    /// The derivation stays until both spell sets carry the field (W3).
+    /// Every generated SRD/ORC spell carries the field (scripts/generate_spells.py derives it with this same rule), so the
+    /// derivation only runs for homebrew and plugin spells that don't.
     /// </summary>
     public static Perceptible OfSpell(SpellDefinition? spell, RulesetAction action)
     {
         var mode = action.Parameters.GetValueOrDefault("mode");
         if (spell?.PerceptibleModes is { Count: > 0 } modes)
         {
-            return mode != null && modes.TryGetValue(mode.Trim(), out var chosen) ? Parse(chosen) : Perceptible.Both;
+            var chosen = mode == null
+                ? null
+                : modes.FirstOrDefault(m => string.Equals(m.Key, mode.Trim(), StringComparison.OrdinalIgnoreCase)).Value;
+            return chosen != null ? Parse(chosen) : Perceptible.Both;
         }
 
         if (spell?.Perceptible != null)

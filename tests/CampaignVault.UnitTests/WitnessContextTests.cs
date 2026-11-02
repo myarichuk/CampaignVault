@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using CampaignVault.Data.Context;
 using CampaignVault.Data.Templates;
 using CampaignVault.Rulesets;
@@ -246,6 +247,34 @@ public class WitnessContextTests : IClassFixture<RavenDBFixture>
     [InlineData("thunderwave", null, Perceptible.Both)]
     public void A_spell_gives_off_what_its_data_says(string spell, string? mode, Perceptible expected) =>
         Assert.Equal(expected, Of(spell, mode));
+
+    [Theory]
+    [InlineData("dnd5e")]
+    [InlineData("pf2e")]
+    public void Every_generated_spell_says_what_it_gives_off(string system)
+    {
+        var missing = Spells.GetSpellsForSystem(system).Values.Where(s => s.Perceptible == null).Select(s => s.Name).ToList();
+        Assert.Empty(missing);
+    }
+
+    [Theory]
+    [InlineData("fireball", null, Perceptible.Both)]
+    [InlineData("figment", "Sound", Perceptible.Loud)]
+    [InlineData("figment", null, Perceptible.Both)]
+    [InlineData("illusory_object", null, Perceptible.Visible)]
+    [InlineData("heal", null, Perceptible.None)]
+    public void A_pf2e_spell_gives_off_what_its_traits_say(string spell, string? mode, Perceptible expected)
+    {
+        Spells.TryGet(RulesetSystem.Pathfinder2e, spell, out var definition);
+        Assert.NotNull(definition);
+        var action = new RulesetAction { CharacterId = "chars/x", ActionName = spell, ActionType = RulesetActionType.Spell };
+        if (mode != null)
+        {
+            action.Parameters["mode"] = mode;
+        }
+
+        Assert.Equal(expected, Perceptibility.OfSpell(definition, action));
+    }
 
     [Fact]
     public void The_spells_own_field_and_modes_win_over_the_derivation()

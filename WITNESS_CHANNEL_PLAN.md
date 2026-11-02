@@ -1,6 +1,6 @@
 # Witness channel, social spectacle and awareness
 
-Groomed 2026-11-01. W0, W1, W2 and W4 are implemented (2026-11-02); everything else is not.
+Groomed 2026-11-01. W0–W4 are implemented (2026-11-02); everything else is not.
 
 ## The playtest that prompted it
 
@@ -108,13 +108,24 @@ Each phase ships on its own with a green suite. Check every box before calling i
 
   *Done when:* the resolver tests are green and W1 calls the resolver.
 
-- [ ] **W3. Generators emit `perceptible`.**
+- [x] **W3. Generators emit `perceptible`.**
   - `scripts/generate_spells.py`: both systems derive the field with the same rule as the fallback (area, damage, illusion school or trait). For PF2e, `auditory` / `visual` traits only add to that, and only if the finding 8 check shows they mean what's emitted rather than what the target must perceive.
   - New overlay `scripts/spell_perception_overlay.yaml` for exceptions. Same evidentiary standard as the damage overlay: every entry quotes SRD/ORC text. Likely entries: Silent Image (visible only), Thunderwave (both: "audible out to 300 feet"), Minor Illusion.
   - Regenerate both spell sets. This **needs network access** to `www.dnd5eapi.co` and `elasticsearch.aonprd.com`. If the session is offline, stop and hand that step to Michael.
   - Delete the W2 fallback once every spell has the field.
 
   *Done when:* the diff shows only added `perceptible:` lines plus overlay-driven values, and a test asserts every loaded spell has a non-null `Perceptible`.
+
+  - **As built, 2026-11-02:**
+    - All 692 spells now carry `perceptible`. The regen diff was perceptible lines only, with no API drift.
+      - dnd5e: 58 both, 2 visible, 259 none.
+      - pf2e: 44 both, 6 loud, 9 visible, 314 none.
+    - The overlays are `scripts/spell_perception_overlay{,_pf2e}.yaml`:
+      - Minor Illusion and Figment take modes;
+      - Silent Image and Disguise Self are visible only.
+    - The finding 8 caveat is resolved. On illusions, AoN's `visual`/`auditory` traits name the illusion's form (Illusory Object is visual, Ventriloquism auditory, Figment has neither), so they are used there and ignored elsewhere.
+    - Deviation: the C# derivation is **kept** rather than deleted, because homebrew and plugin spells have no generated field. Its comment says so.
+    - Known gap: non-damaging light/darkness spectacles (Daylight, Faerie Fire, Darkness) derive `none`. Add them to the overlay with quotes when it matters.
 
 - [x] **W4. `EventOccurred.perceptible`.**
   - Add the optional field in `PluginSdk/Models/WorldChanges.cs:557`, with a `[Description]` telling the LLM to set it on shouts, screams, crashes and spectacles.
