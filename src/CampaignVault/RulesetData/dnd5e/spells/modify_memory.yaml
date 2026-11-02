@@ -13,3 +13,4 @@ material: false
 materialConsumed: false
 saveType: wis
 saveSuccess: none
+perceptible: none

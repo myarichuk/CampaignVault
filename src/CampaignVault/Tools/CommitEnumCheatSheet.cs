@@ -21,6 +21,8 @@ JSON enums in `commit` must match **exactly** (PascalCase as shown). Invalid val
 |-------|----------------|-----------------|
 | `category` | Unresolved, Combat, Conversation, Discovery, Arrival, Betrayal, SceneCommit, Timeskip, Simulation, Interaction, Test, Travel, SceneInterrupt, Departure | Narrative → **Conversation** |
 | `involved` | **Req'd if Conversation** | Character IDs only. Use `locationId` for locations. Field is `involved` (NOT `participants`). |
+| `perceptible` | loud, visible, both | Set on a shout, scream, crash or spectacle. The next response names the bystanders who perceived it (`Witnesses ...`) so each gets a reaction |
+| `attention` / `crowdModifier` | draw, notice / -50..+50 | `draw` on a song, a shouting match or loud haggling: the engine rolls whether someone from the crowd comes over; `crowdModifier` tilts that roll (festival +20, sleepy hamlet -30) |
 
 ### world_build.rumors[] (creates or replaces a rumor — NOT a commit $type)
 | Field | Notes |
@@ -56,6 +58,8 @@ Note: `world_build.quests[].objectives[]` only needs `description` (+ optional `
 | `parameters.resolution` (Spell) | attack, save, check, utility, heal; any other value is rejected. Auto-hit spells (Magic Missile) are attack (the engine skips the roll). May be omitted for a handbook spell with targets (the engine reads the spell). |
 | `parameters.outsideCombat` | "true" only for a strike that isn't a fight (coup de grâce, spar); otherwise a hostile action needs `combat start` first |
 | `parameters.save` | Required unless the named spell's handbook entry declares its saveType. 5e: Strength/Dexterity/Constitution/Intelligence/Wisdom/Charisma; PF2e: Fortitude/Reflex/Will (an ability name maps to its save). Unknown names are rejected, never rolled at +0 |
+| `parameters.perceptible` / `attention` / `crowdModifier` | Same as on `event`: any action everyone nearby notices; a Performance check is `attention: draw` unless you pass `notice` |
+| `parameters.mode` (Spell) | Caster-chosen form, e.g. Minor Illusion `image` or `sound`: decides whether bystanders saw or heard it. Omitted means both |
 | `parameters.halfOnSave` | true/false — 5e defaults **true** (half damage on successful save) |
 | `parameters.healDice` / `healBonus` / `healAmount` | Healing spells (5e/PF2e) |
 | `parameters.spellAttackBonus` / `dc` | Optional if caster has bootstrapped `spellAttackBonus` / `spellSaveDc` on systemStats |
@@ -95,6 +99,17 @@ Note: `world_build.quests[].objectives[]` only needs `description` (+ optional `
 | Field | Valid values |
 |-------|----------------|
 | `climateZone` | Arctic, Tundra, Temperate, Desert, Tropical, Alpine, Subterranean |
+
+### awareness_change (`$type: awareness_change`)
+| Field | Valid values |
+|-------|----------------|
+| `state` | alert, distracted, asleep. Asleep: can't see, passive Perception −5, woken by loud beats. Distracted: passive Perception −5. The engine already sets asleep on an interrupted long rest, wakes sleepers on loud beats, and treats haggling/performing/searching as distracting for that beat |
+| `revealed` | true ends the character's hiding (a Stealth check hides them until they attack or make noise) |
+
+### rest (who notices an interruption)
+| Field | Valid values |
+|-------|----------------|
+| `watcherIds` | Characters standing watch: awake, so likeliest to notice a quiet approach. Everyone else bedded down (party companions automatically, plus `sleeperIds`) is asleep. The interrupt result says who noticed, who woke and who didn't (suggested `surprisedIds`) |
 
 ### scene_interrupt_check (`$type: scene_interrupt_check`)
 | Field | Notes |

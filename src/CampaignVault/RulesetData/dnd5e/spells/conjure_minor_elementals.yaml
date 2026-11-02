@@ -11,6 +11,7 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+perceptible: none
 summon:
   inlineSeed:
     attacks: ["Elemental's own attack: the GM applies the chosen elemental's statistics and passes maxHp explicitly."]

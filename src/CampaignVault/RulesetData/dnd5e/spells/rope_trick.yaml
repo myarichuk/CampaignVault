@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: Powdered corn extract and a twisted loop of parchment.
 materialConsumed: false
+perceptible: none

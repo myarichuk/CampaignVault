@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A pinch of dirt.
 materialConsumed: false
+perceptible: none

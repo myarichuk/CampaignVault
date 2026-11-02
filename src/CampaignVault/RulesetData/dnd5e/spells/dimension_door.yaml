@@ -14,3 +14,4 @@ materialConsumed: false
 damageType: force
 damageAtSlotLevel:
   4: 4d6
+perceptible: none

@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A small silver mirror.
 materialConsumed: false
+perceptible: none

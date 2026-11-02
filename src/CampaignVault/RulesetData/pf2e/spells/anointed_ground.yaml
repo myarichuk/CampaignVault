@@ -14,3 +14,4 @@ material: true
 materialText: 3 gp worth of oil
 materialCost: 3.0
 materialConsumed: true
+perceptible: none

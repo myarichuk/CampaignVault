@@ -170,6 +170,9 @@ Generated from the server: `name:type [req] (enum values) {object shape}`. Unkno
 - initiatorId:string
 - relatedEntityId:string
 - locationId:string
+- perceptible:string
+- attention:string
+- crowdModifier:int
 - relatedLocationIds:string[]
 - impliesPersistentPhysicalChange:bool
 - eventId:string
@@ -223,5 +226,5 @@ Generated from the server: `name:type [req] (enum values) {object shape}`. Unkno
 - encounterRiskModifier:int
 - hazard:string
 
-Other types: apply_effect, archive_entity, attribute, campaign_update, character_create, character_update, death, death_save, faction_reputation, faction_state, grant_temp_hp, item_create, item_equip, item_unequip, item_update, item_use, knowledge_update, level_up, location_update, mode_transition, need, npc_initiative_nudge, piercing, plot_thread_clue, plot_thread_progress, quest_progress, resource, rest, rumor, rumor_create, scene_interrupt_check, scene_setup, schedule_change, soil, spatial_position, status_remove, tether, world_event_status, xp_grant.
+Other types: apply_effect, archive_entity, attribute, awareness_change, campaign_update, character_create, character_update, death, death_save, faction_reputation, faction_state, grant_temp_hp, item_create, item_equip, item_unequip, item_update, item_use, knowledge_update, level_up, location_update, mode_transition, need, npc_initiative_nudge, piercing, plot_thread_clue, plot_thread_progress, quest_progress, resource, rest, rumor, rumor_create, scene_interrupt_check, scene_setup, schedule_change, soil, spatial_position, status_remove, tether, world_event_status, xp_grant.
 <!-- fields:end -->

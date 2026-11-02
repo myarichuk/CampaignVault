@@ -15,6 +15,7 @@ materialConsumed: false
 damageType: fire
 damageAtSlotLevel:
   2: 2d6
+perceptible: none
 instanceCountAtSlotLevel:
   2: 3
   3: 4

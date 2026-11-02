@@ -13,3 +13,4 @@ material: true
 materialText: A diamond worth at least 500gp, which the spell consumes.
 materialCost: 500.0
 materialConsumed: true
+perceptible: none

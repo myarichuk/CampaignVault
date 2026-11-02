@@ -31,6 +31,12 @@ public sealed class ContextTurn : IContextTurn
     public string? PartyLocationId { get; init; }
     public CampaignTime? Time { get; init; }
 
+    /// <summary>The campaign's commit counter after this commit; keys a line that must be said every beat it applies.</summary>
+    public long WorldSequence { get; init; }
+
+    /// <summary>Context keys already delivered this session, before this turn (read-only; the orchestrator records new ones).</summary>
+    public IReadOnlySet<string> DeliveredContextKeys { get; init; } = new HashSet<string>();
+
     /// <summary>NPC IDs present in the scenes this response carries.</summary>
     public IReadOnlyList<string> PresentNpcIds { get; init; } = [];
 

@@ -14,3 +14,4 @@ materialText: An iron blade and a small bag containing a mixture of soils--clay,
 materialConsumed: false
 areaOfEffectType: cone
 areaOfEffectSize: 40
+perceptible: none

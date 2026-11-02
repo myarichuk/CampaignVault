@@ -12,3 +12,4 @@ somatic: false
 material: true
 materialText: A small feather or a piece of down.
 materialConsumed: false
+perceptible: none

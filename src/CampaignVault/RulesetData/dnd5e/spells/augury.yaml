@@ -14,3 +14,4 @@ material: true
 materialText: Specially marked sticks, bones, or similar tokens worth at least 25gp.
 materialCost: 25.0
 materialConsumed: false
+perceptible: none

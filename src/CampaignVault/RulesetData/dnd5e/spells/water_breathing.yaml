@@ -13,3 +13,4 @@ somatic: true
 material: true
 materialText: A short piece of reed or straw.
 materialConsumed: false
+perceptible: none

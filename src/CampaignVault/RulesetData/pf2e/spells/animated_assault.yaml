@@ -15,6 +15,7 @@ somatic: true
 material: false
 materialConsumed: false
 saveType: reflex
+perceptible: none
 summon:
   inlineSeed:
     attacks: ["Assailant's own attack: the GM applies the animated assailant's statistics and passes maxHp explicitly."]

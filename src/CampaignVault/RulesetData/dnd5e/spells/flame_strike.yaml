@@ -23,6 +23,7 @@ saveType: dex
 saveSuccess: half
 areaOfEffectType: cylinder
 areaOfEffectSize: 40
+perceptible: both
 damagePools:
   fire:
     5: 4d6

@@ -123,6 +123,14 @@ public record SpellDefinition : RulesetTemplate
     /// <summary>dnd5e only. Area-of-effect size in feet.</summary>
     public int? AreaOfEffectSize { get; init; }
 
+    /// <summary>What bystanders perceive when it is cast: "loud", "visible", "both" or "none" (WITNESS_CHANNEL_PLAN.md).
+    /// Null means derived from school, area and damage (see <c>Perceptibility.OfSpell</c>).</summary>
+    public string? Perceptible { get; init; }
+
+    /// <summary>Caster-chosen modes, keyed by the cast's <c>parameters.mode</c> (Minor Illusion: image → visible, sound → loud).
+    /// A cast with no or an unknown mode counts as "both".</summary>
+    public Dictionary<string, string>? PerceptibleModes { get; init; }
+
     /// <summary>dnd5e only. Number of independent damage instances per cast (e.g. Magic Missile's darts,
     /// Scorching Ray's rays), keyed by spell-slot level for leveled spells or character level for
     /// scaling cantrips. Omitted (null) means 1 — the existing single-instance behavior.</summary>
@@ -203,6 +211,8 @@ public record SpellDefinition : RulesetTemplate
             HealAtSlotLevel = child.HealAtSlotLevel ?? parent.HealAtSlotLevel,
             AreaOfEffectType = child.AreaOfEffectType ?? parent.AreaOfEffectType,
             AreaOfEffectSize = child.AreaOfEffectSize ?? parent.AreaOfEffectSize,
+            Perceptible = child.Perceptible ?? parent.Perceptible,
+            PerceptibleModes = child.PerceptibleModes ?? parent.PerceptibleModes,
             InstanceCountAtSlotLevel = child.InstanceCountAtSlotLevel ?? parent.InstanceCountAtSlotLevel,
             InstanceCountAtCharacterLevel = child.InstanceCountAtCharacterLevel ?? parent.InstanceCountAtCharacterLevel,
             PerInstanceDamageAtSlotLevel = child.PerInstanceDamageAtSlotLevel ?? parent.PerInstanceDamageAtSlotLevel,

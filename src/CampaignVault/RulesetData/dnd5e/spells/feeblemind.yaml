@@ -18,3 +18,4 @@ damageAtSlotLevel:
   8: 4d6
 saveType: int
 saveSuccess: other
+perceptible: none

@@ -22,6 +22,7 @@ damageAtSlotLevel:
   7: 9d4 + 9
   8: 10d4 + 10
   9: 11d4 + 11
+perceptible: none
 instanceCountAtSlotLevel:
   1: 3
   2: 4

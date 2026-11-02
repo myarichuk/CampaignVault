@@ -54,6 +54,12 @@ public class Character : ICampaignScopedEntity, IHasDirt
     /// <summary>Death-save progress while a 5e PC is at 0 HP; null otherwise. See <see cref="DeathSaveTally"/>.</summary>
     public DeathSaveTally? DeathSaves { get; set; }
 
+    /// <summary>Asleep or distracted (null: alert). Set by rest and <c>awareness_change</c>; read by the awareness resolver.</summary>
+    public Awareness? Awareness { get; set; }
+
+    /// <summary>Hiding: the Stealth total observers must beat to notice this character (null: in plain view).</summary>
+    public Concealment? Concealment { get; set; }
+
     /// <summary>True once <see cref="Death"/> is recorded. Not persisted; the index exposes it as <c>IsDead</c>.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public bool IsDead => Death != null;

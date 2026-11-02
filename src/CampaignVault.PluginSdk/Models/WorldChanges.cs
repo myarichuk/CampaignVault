@@ -68,6 +68,7 @@ namespace CampaignVault.Models;
 [JsonDerivedType(typeof(XpGrantChange), "xp_grant")]
 [JsonDerivedType(typeof(NpcInitiativeNudge), "npc_initiative_nudge")]
 [JsonDerivedType(typeof(ModeTransitionChange), "mode_transition")]
+[JsonDerivedType(typeof(AwarenessChange), "awareness_change")]
 public abstract class WorldChange
 {
     /// <summary>
@@ -121,6 +122,14 @@ public class RestChange : WorldChange
     [Description("Narrative description of how the character rests.")]
     [JsonPropertyName("narrativeNote")]
     public string? NarrativeNote { get; set; }
+
+    [Description("Optional: characters standing watch (awake and alert). If the rest is interrupted, they are the likeliest to notice a quiet approach; everyone else bedded down is asleep.")]
+    [JsonPropertyName("watcherIds")]
+    public List<string>? WatcherIds { get; set; }
+
+    [Description("Optional: others sleeping here who aren't resting with their own rest change (fellow travellers, rescued captives). Party companions here are included automatically.")]
+    [JsonPropertyName("sleeperIds")]
+    public List<string>? SleeperIds { get; set; }
 }
 
 /// <summary>
@@ -185,6 +194,31 @@ public class SceneInterruptCheck : WorldChange
     [Description("Optional free-text flavor for the engine directive (e.g. 'Bloodied wanted face, Schlag drawn, crowd already hostile') - include when narratively makes sense.")]
     [JsonPropertyName("notes")]
     public string? Notes { get; set; }
+}
+
+/// <summary>
+/// Set how aware a character is of their surroundings (WITNESS_CHANNEL_PLAN.md A1), or bring a hiding character into the open.
+/// Rest sets asleep and a loud beat wakes sleepers on its own; this is for everything the engine can't infer.
+/// </summary>
+[CommitCategory("Narrative")]
+[Description("Set a character's awareness: 'alert', 'distracted' (absorbed in something: passive Perception -5) or 'asleep' (can't see, passive Perception -5, woken by loud noise). revealed:true ends their hiding (stealth). The engine already sets asleep on rest, wakes sleepers on loud beats, and treats haggling/performing/searching as distracting for that beat.")]
+public class AwarenessChange : WorldChange
+{
+    [Description("Character ID.")]
+    [JsonPropertyName("characterId")]
+    public string CharacterId { get; set; } = null!;
+
+    [Description("alert, distracted or asleep. Omit to change only revealed.")]
+    [JsonPropertyName("state")]
+    public string? State { get; set; }
+
+    [Description("Why, in a phrase (e.g. 'engrossed in the ledger', 'dozed off on watch').")]
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
+
+    [Description("true: the character stops hiding (steps into the light, is spotted).")]
+    [JsonPropertyName("revealed")]
+    public bool Revealed { get; set; }
 }
 
 /// <summary>Adjust a character's current HP by a delta. Positive heals, negative damages.</summary>
@@ -585,6 +619,18 @@ public class EventOccurred : WorldChange
     [JsonPropertyName("locationId")]
     public string? LocationId { get; set; }
 
+    [Description("Optional. Set when everyone else nearby would notice: 'loud' (a shout, a scream, a crash), 'visible' (a spectacle, a body falling) or 'both'. The next response then names the bystanders who perceived it, so each gets a reaction.")]
+    [JsonPropertyName("perceptible")]
+    public string? Perceptible { get; set; }
+
+    [Description("Optional. 'draw' when the beat pulls people in, not just gets noticed: a song, a shouting match, loud haggling, a public scene. The engine then rolls whether someone from the location's crowd comes over (implies perceptible both when perceptible is unset). Default 'notice'.")]
+    [JsonPropertyName("attention")]
+    public string? Attention { get; set; }
+
+    [Description("Optional, with attention 'draw' or a loud beat: your buff/debuff to the engine's crowd-draw roll, -50..+50 (0.5% per point). E.g. festival night +20, a rapt audience +15, a guard-patrolled square -10, dawn in a sleepy hamlet -30.")]
+    [JsonPropertyName("crowdModifier")]
+    public int? CrowdModifier { get; set; }
+
     [Description("Optional. Additional location IDs touched by a spillover beat, e.g. a bar fight that spills from the tavern into the alley outside.")]
     [JsonPropertyName("relatedLocationIds")]
     public List<string>? RelatedLocationIds { get; set; }
@@ -973,6 +1019,10 @@ public class ActivityChange : WorldChange
 ///   "targetSkill"   – skill name for the target side of a ContestedCheck
 ///   "resolution"    – spell routing: attack, save, check, utility, heal (alias: spellResolution); unknown values are rejected
 ///   "slotLevel"     – spell slot cast at; sets damage tier and Magic Missile's dart count
+///   "mode"          – caster-chosen spell form (Minor Illusion: image or sound); says what bystanders perceived. Omitted: both
+///   "perceptible"   – loud, visible or both: everyone nearby notices this action (haggling at full voice, a juggling act)
+///   "attention"     – "draw" when the action pulls people in (a Performance check defaults to it; "notice" opts out); the engine rolls a crowd draw
+///   "crowdModifier" – -50..+50 buff/debuff to that crowd-draw roll (0.5% per point)
 ///   "outsideCombat" – "true" lets a hostile action resolve with no combat active (coup de grâce, spar)
 ///   "save"          – saving throw ability for save-based spells (5e/PF2e)
 ///   "halfOnSave"    – "true"/"false" — half damage on successful save (default true for 5e spells)

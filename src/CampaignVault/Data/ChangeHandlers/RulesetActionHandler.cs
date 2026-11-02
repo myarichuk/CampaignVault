@@ -1,3 +1,4 @@
+using CampaignVault.Data.Context;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using CampaignVault.Services;
@@ -309,6 +310,11 @@ public sealed class RulesetActionHandler(
             narrative = string.IsNullOrWhiteSpace(narrative) ? line : narrative + " " + line;
         }
 
+        if (await ApplyConcealmentAsync(action, output.Result, ctx) is { } hiding)
+        {
+            narrative = string.IsNullOrWhiteSpace(narrative) ? hiding : narrative + " " + hiding;
+        }
+
         return string.IsNullOrWhiteSpace(narrative)
             ? ChangeHandlerResult.Ok
             : new ChangeHandlerResult(true, narrative);
@@ -386,6 +392,66 @@ public sealed class RulesetActionHandler(
         }
 
         return string.Equals(actor.ControlledById, activeTurnId, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A2 (WITNESS_CHANNEL_PLAN.md): a Stealth check's total becomes the actor's concealment, the number observers' passive Perception
+    /// must meet. Hiding ends when the actor attacks, casts a spell with a verbal component or does something loud (SRD 5.1 Hiding:
+    /// "you give away your position if you make noise"; Unseen Attackers: an attack gives away your location).
+    /// </summary>
+    private async Task<string?> ApplyConcealmentAsync(RulesetAction action, ResolverResult result, ChangeContext ctx)
+    {
+        if (!ctx.Characters.TryGetValue(action.CharacterId, out var actor))
+        {
+            return null;
+        }
+
+        var stealth = action.ActionType is RulesetActionType.SkillCheck or RulesetActionType.ContestedCheck
+                      && (string.Equals(result.Skill, "stealth", StringComparison.OrdinalIgnoreCase)
+                          || string.Equals(action.Parameters.GetValueOrDefault("skill")?.Trim(), "stealth", StringComparison.OrdinalIgnoreCase));
+        // A6: a palmed purse or a planted letter is noticed against the roll; the witness side reads it off the applied action.
+        if (result.RollTotal is { } palmed && action.ActionType is RulesetActionType.SkillCheck or RulesetActionType.ContestedCheck
+            && ContextTurnReads.IsSkillCheck(action, "sleight"))
+        {
+            action.Parameters[NoticingContextContributor.RollTotalKey] = palmed.ToString();
+        }
+
+        if (stealth && result.RollTotal is { } total)
+        {
+            // A check made against a DC that fails is a failed hide, not a poor one: nobody needs a passive score to see them.
+            if (int.TryParse(action.Parameters.GetValueOrDefault("dc")?.Trim(), out var dc) && total < dc)
+            {
+                actor.Concealment = null;
+                return $"{actor.Name} fails to hide (Stealth {total} vs DC {dc}) and is in plain view.";
+            }
+
+            var time = await ctx.GetCurrentTimeAsync();
+            actor.Concealment = new Concealment { StealthTotal = total, SinceHour = CampaignClock.Now(time) };
+            return $"{actor.Name} is hiding (Stealth {total}): anyone whose passive Perception is lower doesn't notice them.";
+        }
+
+        if (actor.Concealment == null || !GivesAwayPosition(action, actor))
+        {
+            return null;
+        }
+
+        actor.Concealment = null;
+        return $"{actor.Name} gives away their position and is no longer hidden.";
+    }
+
+    private bool GivesAwayPosition(RulesetAction action, Character actor)
+    {
+        if (action.ActionType == RulesetActionType.Attack
+            || (Perceptibility.Parse(action.Parameters.GetValueOrDefault("perceptible")) & Perceptible.Loud) != 0
+            || CrowdDraw.Draws(action))
+        {
+            return true;
+        }
+
+        return action.ActionType == RulesetActionType.Spell
+               && RulesetSystemResolver.TryFromStats(actor.SystemStats, out var system)
+               && _spellProvider.TryGet(system!, CastingComponentGate.NormalizeSlug(action.ActionName), out var spell)
+               && spell?.Verbal == true;
     }
 
     /// <summary>T5c: a skill check at a location resolves against its secrets, as dice do. A check whose

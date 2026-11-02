@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: Soft clay, to be crudely worked into the desired shape for the stone object.
 materialConsumed: false
+perceptible: none

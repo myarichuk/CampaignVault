@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: Fur or a feather from a beast.
 materialConsumed: false
+perceptible: none

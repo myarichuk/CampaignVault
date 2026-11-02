@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A dash of talc and a small amount of silver powder.
 materialConsumed: false
+perceptible: none

@@ -23,6 +23,7 @@ damageAtSlotLevel:
   7: 9d4
   8: 10d4
   9: 11d4
+perceptible: none
 onMiss: half
 delayedTick:
   damageType: acid

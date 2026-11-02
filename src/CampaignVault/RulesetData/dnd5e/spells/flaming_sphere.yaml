@@ -24,3 +24,4 @@ damageAtSlotLevel:
   9: 9d6
 saveType: dex
 saveSuccess: half
+perceptible: none

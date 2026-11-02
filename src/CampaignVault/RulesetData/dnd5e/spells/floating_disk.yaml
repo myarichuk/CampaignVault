@@ -13,3 +13,4 @@ somatic: true
 material: true
 materialText: A drop of mercury.
 materialConsumed: false
+perceptible: none

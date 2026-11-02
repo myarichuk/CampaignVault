@@ -1,3 +1,4 @@
+using CampaignVault.Data.Context;
 using System.Reflection;
 using CampaignVault.Data.Events;
 using CampaignVault.Data.Pressure;
@@ -40,7 +41,8 @@ public sealed class WorldChangeDispatcher(
     IEnumerable<IPluginTraitsUpgrader>? traitsUpgraders = null,
     IInteractionModeSelector? modeSelector = null,
     IEnumerable<IWorldTimeObserver>? timeObservers = null,
-    RollModifierPipeline? rollModifiers = null)
+    RollModifierPipeline? rollModifiers = null,
+    PerceptibleBeats? perceptibleBeats = null)
 {
     /// <summary>
     /// Events at this depth are dropped instead of delivered: batch change (0) → reaction (1) → reaction (2)
@@ -495,7 +497,12 @@ public sealed class WorldChangeDispatcher(
         {
             await ApplyMicroTimeNudgeAsync(context, changes, getCurrentTimeAsync);
             ApplyMomentumTracking(context, changes);
-            await ApplyAmbientInterruptCheckAsync(context, changes, getCurrentTimeAsync);
+            await ApplyAwarenessUpkeepAsync(context, changes, getCurrentTimeAsync);
+            await ApplyWakingAsync(context, changes);
+            if (!await ApplyCrowdDrawAsync(context, changes, getCurrentTimeAsync))
+            {
+                await ApplyAmbientInterruptCheckAsync(context, changes, getCurrentTimeAsync);
+            }
 
             // Engine steps above can dispatch child mutations (e.g. ambient damage) that publish events.
             await DeliverDomainEventsAsync(context);
@@ -826,6 +833,219 @@ public sealed class WorldChangeDispatcher(
         }
 
         return ids;
+    }
+
+    /// <summary>
+    /// Sleep, distraction and hiding don't outlast the scene that set them (WITNESS_CHANNEL_PLAN.md A1, review fix): whoever acts in
+    /// this batch is awake (a sleeping PC who attacks first, a companion who speaks), and a state older than its limit lapses. Without
+    /// this, an interrupted rest left companions asleep forever, and a failed hide followed the character to the next town.
+    /// </summary>
+    private async Task ApplyAwarenessUpkeepAsync(IChangeContext context, WorldChange[] changes, Func<Task<CampaignTime>> getCurrentTimeAsync)
+    {
+        var ctx = (ChangeContext)context;
+        if (ctx.Session is null)
+        {
+            return;
+        }
+
+        var setNow = changes.OfType<AwarenessChange>().Select(a => a.CharacterId)
+            .Concat(changes.OfType<RestChange>().SelectMany(r => (r.SleeperIds ?? []).Append(r.CharacterId)))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var actorId in changes.OfType<RulesetAction>().Select(a => a.CharacterId))
+        {
+            if (!setNow.Contains(actorId) && context.Characters.TryGetValue(actorId, out var actor) && AwarenessResolver.IsAsleep(actor))
+            {
+                actor.Awareness = null;
+            }
+        }
+
+        var now = CampaignClock.Now(await getCurrentTimeAsync());
+        var sleepCutoff = now - AwarenessResolver.MaxSleepHours;
+        var distractedCutoff = now - AwarenessResolver.MaxDistractedHours;
+        var hiddenCutoff = now - AwarenessResolver.MaxHiddenHours;
+        List<Character> stale;
+        try
+        {
+            stale = await ctx.Session.Query<Character>()
+                .Where(c => c.CampaignName == context.CampaignName
+                            && ((c.Awareness != null && c.Awareness.State == AwarenessState.Asleep && c.Awareness.SinceHour <= sleepCutoff)
+                                || (c.Awareness != null && c.Awareness.State == AwarenessState.Distracted && c.Awareness.SinceHour <= distractedCutoff)
+                                || (c.Concealment != null && c.Concealment.SinceHour <= hiddenCutoff)))
+                .Take(50)
+                .ToListAsync();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Advisory upkeep: a session that can't query (a test double) just skips the sweep; the next commit retries it.
+            return;
+        }
+        foreach (var c in stale.Where(c => !setNow.Contains(c.Id)))
+        {
+            var tracked = context.Characters.TryGetValue(c.Id, out var t) ? t : c;
+            if (tracked.Awareness is { SinceHour: { } since } a
+                && since <= (a.State == AwarenessState.Asleep ? sleepCutoff : distractedCutoff))
+            {
+                tracked.Awareness = null;
+            }
+
+            if (tracked.Concealment is { SinceHour: { } hid } && hid <= hiddenCutoff)
+            {
+                tracked.Concealment = null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// A4 (WITNESS_CHANNEL_PLAN.md): a loud beat wakes everyone asleep at its location who can hear it (D6), the one who made it
+    /// included. Done here, inside the commit, so the witness line and the next turn both see them awake. The beat's location is
+    /// resolved as the witness line resolves it (<see cref="PerceptibleBeat.Where"/>). Sleepers set asleep earlier in this batch (an
+    /// interrupted rest) are in the context, not yet in the index, so both are checked.
+    /// </summary>
+    private async Task ApplyWakingAsync(IChangeContext context, WorldChange[] changes)
+    {
+        var ctx = (ChangeContext)context;
+        if (perceptibleBeats is null || ctx.Session is null)
+        {
+            return;
+        }
+
+        string? partyLocationId = null;
+        var partyLooked = false;
+        foreach (var beat in perceptibleBeats.Detect(changes, context.Config?.ActiveSystem).Where(b => (b.Signal & Perceptible.Loud) != 0))
+        {
+            Character? actor = null;
+            if (!string.IsNullOrEmpty(beat.ActorId) && !context.Characters.TryGetValue(beat.ActorId, out actor))
+            {
+                actor = await ctx.Session.LoadAsync<Character>(beat.ActorId);
+            }
+
+            if (beat.LocationId == null && string.IsNullOrEmpty(actor?.CurrentLocationId) && !partyLooked)
+            {
+                partyLooked = true;
+                partyLocationId = context.Characters.Values.FirstOrDefault(c => c.IsPc && !string.IsNullOrEmpty(c.CurrentLocationId))?.CurrentLocationId
+                                  ?? (await ctx.Session.Query<Character>()
+                                      .Where(c => c.CampaignName == context.CampaignName && c.IsPc && c.CurrentLocationId != null)
+                                      .Select(c => c.CurrentLocationId)
+                                      .FirstOrDefaultAsync());
+            }
+
+            var locationId = beat.Where(actor, partyLocationId);
+            if (string.IsNullOrEmpty(locationId))
+            {
+                continue;
+            }
+
+            var indexed = await ctx.Session.Query<Character>()
+                .Where(c => c.CampaignName == context.CampaignName && c.CurrentLocationId == locationId
+                            && c.Awareness != null && c.Awareness.State == AwarenessState.Asleep)
+                .Take(25)
+                .ToListAsync();
+            var sleepers = indexed
+                .Select(c => context.Characters.TryGetValue(c.Id, out var tracked) ? tracked : c)
+                .Concat(context.Characters.Values.Where(c => string.Equals(c.CurrentLocationId, locationId, StringComparison.OrdinalIgnoreCase)
+                                                             && AwarenessResolver.IsAsleep(c)))
+                .DistinctBy(c => c.Id, StringComparer.OrdinalIgnoreCase)
+                .Where(c => AwarenessResolver.Perceive(c, beat.Signal).Outcome == Noticed.Wakes)
+                .ToList();
+            foreach (var sleeper in sleepers)
+            {
+                sleeper.Awareness = null;
+            }
+
+            if (sleepers.Count > 0)
+            {
+                context.RecordMessage(
+                    $"WOKEN by {(beat.CombatNoise ? "the fighting" : beat.Cause)}: {string.Join(", ", sleepers.Select(c => c.Name))}. "
+                    + "They wake disoriented; narrate it.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Crowd draw (WITNESS_CHANNEL_PLAN.md S2): a beat that pulls attention (a Performance check, an event or action with
+    /// attention "draw") at a location with an ambient crowd, or a loud one in a dense crowd, rolls the scene interrupt
+    /// with +20 (draw) or +10 (loud), plus the LLM's clamped crowdModifier. Not in combat, not when the batch already
+    /// has an explicit scene_interrupt_check, and at most once per location per CrowdDrawCooldownMinutes of game time.
+    /// Returns true when it rolled, so the ambient check doesn't roll a second time for the same beat.
+    /// </summary>
+    private async Task<bool> ApplyCrowdDrawAsync(
+        IChangeContext context, WorldChange[] changes, Func<Task<CampaignTime>> getCurrentTimeAsync)
+    {
+        var ctx = (ChangeContext)context;
+        if (_encounterResolver is null || ctx.Session is null || context.ActiveCombat != null
+            || changes.Any(c => c is SceneInterruptCheck))
+        {
+            return false;
+        }
+
+        var beat = perceptibleBeats is null ? null : CrowdDraw.Strongest(perceptibleBeats.Detect(changes, context.Config?.ActiveSystem));
+        if (beat is null || string.IsNullOrEmpty(beat.ActorId))
+        {
+            return false;
+        }
+
+        if (!context.Characters.TryGetValue(beat.ActorId, out var actor))
+        {
+            actor = await ctx.Session.LoadAsync<Character>(beat.ActorId);
+        }
+
+        var locationId = beat.LocationId ?? actor?.CurrentLocationId;
+        if (actor is null || string.IsNullOrEmpty(locationId))
+        {
+            return false;
+        }
+
+        if (!context.Locations.TryGetValue(locationId, out var location))
+        {
+            location = await ctx.Session.LoadAsync<Location>(locationId);
+            if (location is null)
+            {
+                return false;
+            }
+
+            context.RegisterNewLocation(location);
+        }
+
+        if (string.IsNullOrWhiteSpace(location.AmbientCrowd)
+            || (!beat.Draws && !AmbientCrowdHeuristics.IsCrowdDenseEnough(location.AmbientCrowd)))
+        {
+            return false;
+        }
+
+        var time = await getCurrentTimeAsync();
+        var now = CampaignClock.Now(time);
+        var cooldownMinutes = context.Config?.CrowdDrawCooldownMinutes ?? 60;
+        if (location.LastCrowdDrawHour is { } last && (now - last) * 60 < cooldownMinutes)
+        {
+            // Beats under an hour don't move the clock (ApplyMicroTimeNudgeAsync), so "0 min" means "this clock hour", not "just now".
+            var ago = Math.Round((now - last) * 60);
+            context.RecordMessage(
+                $"Crowd draw at {location.Name} not rolled: the last one was "
+                + (ago < 1 ? "earlier this clock hour" : $"{ago} min ago") + $" (cooldown {cooldownMinutes} min).");
+            return false;
+        }
+
+        location.LastCrowdDrawHour = now;
+        var modifier = beat.LlmModifier == 0
+            ? $"+{beat.EngineModifier}"
+            : $"+{beat.EngineModifier} engine {beat.LlmModifier:+0;-0} yours = {beat.TotalModifier:+0;-0}";
+        var (interrupted, deltas, narratives) = await _encounterResolver.EvaluateSceneInterruptAsync(
+            context, actor, location, riskModifier: 0, contextModifier: beat.TotalModifier, notes: CrowdDraw.Notes(beat, actor.Name));
+        if (!interrupted)
+        {
+            context.RecordMessage($"CROWD DRAW at {location.Name} (modifier {modifier}): nobody comes over this time.");
+            return true;
+        }
+
+        foreach (var delta in deltas)
+        {
+            await DispatchMutationAsync(context, delta);
+        }
+
+        context.RecordMessage(
+            $"CROWD DRAW at {location.Name} (modifier {modifier})! {string.Join(" ", narratives)} "
+            + "Someone from the crowd comes over; resolve before continuing.");
+        return true;
     }
 
     /// <summary>

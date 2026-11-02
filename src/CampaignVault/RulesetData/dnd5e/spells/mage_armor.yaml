@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A piece of cured leather.
 materialConsumed: false
+perceptible: none

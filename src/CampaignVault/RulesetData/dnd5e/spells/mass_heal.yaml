@@ -13,3 +13,4 @@ material: false
 materialConsumed: false
 healAtSlotLevel:
   9: 700
+perceptible: none

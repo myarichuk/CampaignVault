@@ -16,3 +16,4 @@ damageAtSlotLevel:
   6: 14d6
 saveType: con
 saveSuccess: half
+perceptible: none

@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: An eggshell and a snakeskin glove.
 materialConsumed: false
+perceptible: none

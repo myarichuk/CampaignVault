@@ -14,3 +14,4 @@ materialText: A bit of fleece.
 materialConsumed: false
 areaOfEffectType: cube
 areaOfEffectSize: 15
+perceptible: visible

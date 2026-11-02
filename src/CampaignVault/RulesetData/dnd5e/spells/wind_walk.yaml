@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: Fire and holy water.
 materialConsumed: false
+perceptible: none

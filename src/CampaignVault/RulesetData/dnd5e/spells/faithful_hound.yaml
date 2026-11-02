@@ -16,3 +16,4 @@ materialConsumed: false
 damageType: piercing
 damageAtSlotLevel:
   4: 4d8
+perceptible: none

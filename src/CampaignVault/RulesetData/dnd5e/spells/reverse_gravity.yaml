@@ -16,3 +16,4 @@ saveType: dex
 saveSuccess: other
 areaOfEffectType: cylinder
 areaOfEffectSize: 50
+perceptible: none

@@ -11,6 +11,7 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+perceptible: none
 summon:
   creatures: [giant_spider]
   countChoicesAtSlotLevel:

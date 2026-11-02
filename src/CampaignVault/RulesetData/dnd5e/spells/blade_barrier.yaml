@@ -18,3 +18,4 @@ saveType: dex
 saveSuccess: half
 areaOfEffectType: line
 areaOfEffectSize: 100
+perceptible: both

@@ -14,3 +14,4 @@ materialText: A stone, a twig, and a bit of green plant.
 materialConsumed: false
 areaOfEffectType: cube
 areaOfEffectSize: 150
+perceptible: both

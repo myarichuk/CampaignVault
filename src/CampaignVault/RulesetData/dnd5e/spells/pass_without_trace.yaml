@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: Ashes from a burned leaf of mistletoe and a sprig of spruce.
 materialConsumed: false
+perceptible: none

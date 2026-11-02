@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A bit of gauze and a wisp of smoke.
 materialConsumed: false
+perceptible: none

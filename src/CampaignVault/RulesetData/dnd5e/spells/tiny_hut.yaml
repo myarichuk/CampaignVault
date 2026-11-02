@@ -15,3 +15,4 @@ materialText: A small crystal bead.
 materialConsumed: false
 areaOfEffectType: sphere
 areaOfEffectSize: 10
+perceptible: none

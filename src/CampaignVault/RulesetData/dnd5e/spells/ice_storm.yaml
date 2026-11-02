@@ -24,6 +24,7 @@ saveType: dex
 saveSuccess: half
 areaOfEffectType: cylinder
 areaOfEffectSize: 20
+perceptible: both
 damagePools:
   bludgeoning:
     4: 2d8

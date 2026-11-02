@@ -18,6 +18,7 @@ damageAtCharacterLevel:
   5: 1d10
   11: 1d10
   17: 1d10
+perceptible: none
 instanceCountAtCharacterLevel:
   1: 1
   5: 2

@@ -1,0 +1,23 @@
+# Hand-authored perceptibility for dnd5e SRD 5.1 spells: what bystanders perceive when the spell is
+# cast (WITNESS_CHANNEL_PLAN.md W3). NEVER regenerated from an API: merged by generate_spells.py over
+# the derived value, which is: illusion school → both; area damage → both; thunder damage → loud;
+# anything else → none. Only the spells the derivation gets wrong belong here.
+#
+# Values: loud, visible, both, none. perceptibleModes maps a caster-chosen form (the cast's
+# parameters.mode) to a value; a cast with no or an unknown mode counts as both.
+#
+# Evidentiary standard: every entry quotes the SRD 5.1 text that backs it.
+
+minor_illusion:
+  # "You create a sound or an image of an object within range"
+  perceptibleModes:
+    image: visible
+    sound: loud
+
+silent_image:
+  # "The image is purely visual; it isn't accompanied by sound, smell, or other sensory effects."
+  perceptible: visible
+
+disguise_self:
+  # "You make yourself ... look different"
+  perceptible: visible

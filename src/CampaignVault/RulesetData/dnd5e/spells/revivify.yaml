@@ -13,3 +13,4 @@ material: true
 materialText: Diamonds worth 300gp, which the spell consumes.
 materialCost: 300.0
 materialConsumed: true
+perceptible: none

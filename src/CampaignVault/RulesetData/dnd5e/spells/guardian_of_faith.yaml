@@ -18,3 +18,4 @@ saveType: dex
 saveSuccess: half
 areaOfEffectType: cylinder
 areaOfEffectSize: 10
+perceptible: both

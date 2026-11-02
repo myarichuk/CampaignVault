@@ -13,3 +13,4 @@ somatic: true
 material: true
 materialText: A pinch of soot and salt.
 materialConsumed: false
+perceptible: none

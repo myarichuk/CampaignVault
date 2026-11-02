@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A pinch of powder made by crushing a clear gemstone.
 materialConsumed: false
+perceptible: none

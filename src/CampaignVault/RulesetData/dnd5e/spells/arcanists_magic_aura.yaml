@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A small square of silk.
 materialConsumed: false
+perceptible: both

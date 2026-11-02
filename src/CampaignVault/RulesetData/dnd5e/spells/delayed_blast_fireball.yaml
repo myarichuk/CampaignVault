@@ -21,3 +21,4 @@ saveType: dex
 saveSuccess: half
 areaOfEffectType: sphere
 areaOfEffectSize: 20
+perceptible: both

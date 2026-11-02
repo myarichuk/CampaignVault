@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: An eyelash encased in gum arabic.
 materialConsumed: false
+perceptible: both

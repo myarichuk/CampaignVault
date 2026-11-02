@@ -15,3 +15,4 @@ saveType: wis
 saveSuccess: none
 areaOfEffectType: sphere
 areaOfEffectSize: 30
+perceptible: both

@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A copper coin.
 materialConsumed: false
+perceptible: none

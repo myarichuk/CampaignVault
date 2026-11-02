@@ -16,3 +16,4 @@ saveType: str
 saveSuccess: none
 areaOfEffectType: line
 areaOfEffectSize: 60
+perceptible: none

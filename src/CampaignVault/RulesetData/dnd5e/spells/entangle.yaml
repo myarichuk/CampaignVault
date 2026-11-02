@@ -15,3 +15,4 @@ saveType: str
 saveSuccess: none
 areaOfEffectType: cube
 areaOfEffectSize: 20
+perceptible: none

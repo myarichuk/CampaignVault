@@ -21,3 +21,4 @@ damageAtSlotLevel:
   9: 13d8
 saveType: con
 saveSuccess: half
+perceptible: none

@@ -13,3 +13,4 @@ somatic: true
 material: true
 materialText: A piece of cork.
 materialConsumed: false
+perceptible: none

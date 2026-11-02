@@ -16,3 +16,4 @@ saveType: wis
 saveSuccess: none
 areaOfEffectType: cube
 areaOfEffectSize: 40
+perceptible: none

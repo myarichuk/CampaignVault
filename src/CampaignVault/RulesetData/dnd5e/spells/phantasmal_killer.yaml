@@ -17,3 +17,4 @@ damageAtSlotLevel:
   4: 4d10
 saveType: wis
 saveSuccess: none
+perceptible: both

@@ -13,3 +13,4 @@ material: true
 materialText: A diamond worth at least 5,000gp.
 materialCost: 5000.0
 materialConsumed: false
+perceptible: none

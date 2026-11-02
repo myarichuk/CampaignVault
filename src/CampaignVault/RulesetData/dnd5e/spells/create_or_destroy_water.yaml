@@ -14,3 +14,4 @@ materialText: A drop of water if creating water, or a few grains of sand if dest
 materialConsumed: false
 areaOfEffectType: cube
 areaOfEffectSize: 30
+perceptible: none

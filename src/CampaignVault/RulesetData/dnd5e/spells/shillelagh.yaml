@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: Mistletoe, a shamrock leaf, and a club or quarterstaff.
 materialConsumed: false
+perceptible: none

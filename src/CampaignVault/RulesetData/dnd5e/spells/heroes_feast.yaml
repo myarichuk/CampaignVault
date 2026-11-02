@@ -13,3 +13,4 @@ material: true
 materialText: A gem-encrusted bowl worth at least 1,000gp, which the spell consumes.
 materialCost: 1000.0
 materialConsumed: true
+perceptible: none

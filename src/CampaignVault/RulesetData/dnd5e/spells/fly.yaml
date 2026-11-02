@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A wing feather from any bird.
 materialConsumed: false
+perceptible: none

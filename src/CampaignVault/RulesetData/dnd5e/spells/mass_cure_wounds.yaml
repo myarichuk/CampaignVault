@@ -19,3 +19,4 @@ healAtSlotLevel:
   9: 7d8 + MOD
 areaOfEffectType: sphere
 areaOfEffectSize: 30
+perceptible: none

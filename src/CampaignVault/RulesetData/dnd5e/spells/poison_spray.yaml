@@ -19,3 +19,4 @@ damageAtCharacterLevel:
   17: 4d12
 saveType: con
 saveSuccess: none
+perceptible: none

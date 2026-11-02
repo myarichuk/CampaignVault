@@ -17,3 +17,4 @@ saveType: cha
 saveSuccess: other
 areaOfEffectType: cylinder
 areaOfEffectSize: 10
+perceptible: none

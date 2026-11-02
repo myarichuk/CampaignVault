@@ -12,3 +12,7 @@ somatic: true
 material: true
 materialText: A bit of fleece.
 materialConsumed: false
+perceptible: both
+perceptibleModes:
+  image: visible
+  sound: loud

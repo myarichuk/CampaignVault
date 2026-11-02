@@ -12,6 +12,7 @@ somatic: true
 material: true
 materialText: A drop of blood, a piece of flesh, and a pinch of bone dust.
 materialConsumed: false
+perceptible: none
 summon:
   creatures: [skeleton, zombie]
   countAtSlotLevel:

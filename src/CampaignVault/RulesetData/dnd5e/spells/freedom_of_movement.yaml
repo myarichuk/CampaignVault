@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A leather strap, bound around the arm or a similar appendage.
 materialConsumed: false
+perceptible: none

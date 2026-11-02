@@ -14,3 +14,4 @@ materialText: A thin sheet of lead, a piece of opaque glass, a wad of cotton or 
 materialConsumed: false
 areaOfEffectType: cube
 areaOfEffectSize: 100
+perceptible: none

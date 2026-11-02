@@ -228,7 +228,7 @@ public class TakeTurnNeedDrivenTests : IClassFixture<RavenDBFixture>
     }
 
     [Fact]
-    public async Task StealthCheck_PushesPassivePerceptionOfTheNpcsHere()
+    public async Task StealthCheck_SaysWhoNoticesAmongTheNpcsHere()
     {
         var m = await SeedMarketAsync();
         await m.Tools.TakeTurn(new TakeTurnRequest { FullDetailLocationId = m.LocId }, m.Slug);
@@ -240,16 +240,17 @@ public class TakeTurnNeedDrivenTests : IClassFixture<RavenDBFixture>
                 new RulesetAction
                 {
                     CharacterId = m.PcId, ActionName = "Sneak past the stalls", ActionType = RulesetActionType.SkillCheck,
-                    Parameters = new Dictionary<string, string> { ["skill"] = "Stealth", ["dc"] = "12" }
+                    Parameters = new Dictionary<string, string> { ["skill"] = "Stealth", ["dc"] = "1" } // a failed hide isn't a hide; this one can't fail (Dex 10)
                 }
             ],
             Narrative = "Tamsin slips between the stalls."
         }, m.Slug);
 
         Assert.True(sneak.Success, sneak.Summary);
-        var line = Assert.Single(sneak.Data!.Context!, l => l.StartsWith("Passive Perception here:"));
-        Assert.Contains("Oda 10", line);
-        Assert.Contains("Fenn 10", line);
+        // A6 (WITNESS_CHANNEL_PLAN.md) replaced the bare passive Perception list with who does and doesn't notice.
+        var line = Assert.Single(sneak.Data!.Context!, l => l.StartsWith("Noticing Tamsin's Stealth"));
+        Assert.Contains("Oda (passive Perception 10 vs Stealth", line);
+        Assert.Contains("Fenn (passive Perception 10 vs Stealth", line);
     }
 
     [Fact]

@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: Burning incense and bits of earth and wood mixed in water.
 materialConsumed: false
+perceptible: none

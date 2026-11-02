@@ -1,0 +1,16 @@
+# Hand-authored perceptibility for PF2e Player Core / Player Core 2 spells (ORC), merged by
+# generate_spells.py over the derived value (WITNESS_CHANNEL_PLAN.md W3). The derivation reads AoN
+# traits: an illusion is visible with the visual trait, loud with the auditory trait, both with
+# neither; an area spell with a fire/cold/electricity/acid/force/sonic trait is both; sonic is loud.
+# Only the spells the derivation gets wrong belong here.
+#
+# Values: loud, visible, both, none. perceptibleModes maps a caster-chosen form (the cast's
+# parameters.mode) to a value; a cast with no or an unknown mode counts as both.
+#
+# Evidentiary standard: every entry quotes the Player Core text that backs it.
+
+figment:
+  # "You create a simple illusory sound or vision."
+  perceptibleModes:
+    image: visible
+    sound: loud

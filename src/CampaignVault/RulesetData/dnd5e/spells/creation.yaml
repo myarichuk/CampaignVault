@@ -14,3 +14,4 @@ materialText: A tiny piece of matter of the same type of the item you plan to cr
 materialConsumed: false
 areaOfEffectType: cube
 areaOfEffectSize: 5
+perceptible: both

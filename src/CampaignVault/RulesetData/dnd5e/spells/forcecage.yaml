@@ -15,3 +15,4 @@ materialCost: 1500.0
 materialConsumed: false
 areaOfEffectType: cube
 areaOfEffectSize: 20
+perceptible: none

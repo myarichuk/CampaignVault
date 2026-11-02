@@ -335,6 +335,12 @@ public class CampaignConfig
     public int EventContextBudgetAmbient { get; set; } = 5;
 
     /// <summary>
+    /// In-game minutes before the engine rolls another crowd draw at the same location (WITNESS_CHANNEL_PLAN.md S2), so a
+    /// long performance or a running quarrel doesn't spawn a queue of onlookers. Defaults to 60.
+    /// </summary>
+    public int CrowdDrawCooldownMinutes { get; set; } = 60;
+
+    /// <summary>
     /// Number of events surfaced in get_npc_context. Defaults to 10.
     /// </summary>
     public int EventContextBudgetNpc { get; set; } = 10;

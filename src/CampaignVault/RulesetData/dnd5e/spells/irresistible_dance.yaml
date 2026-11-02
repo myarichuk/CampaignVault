@@ -12,3 +12,4 @@ verbal: true
 somatic: false
 material: false
 materialConsumed: false
+perceptible: none

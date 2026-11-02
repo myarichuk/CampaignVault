@@ -176,34 +176,83 @@ internal sealed class TradeContextContributor : IContextContributor
     }
 }
 
-/// <summary>Stealth beat: the passive Perception the roll has to beat, for NPCs present here.</summary>
-internal sealed class StealthContextContributor : IContextContributor
+/// <summary>
+/// A6 (WITNESS_CHANNEL_PLAN.md): someone sneaks or palms something, and every other character here, PCs included, either notices or
+/// doesn't, by <see cref="AwarenessResolver.NoticePresence"/> (passive Perception against the roll; asleep or distracted −5, and
+/// anyone absorbed in this beat's haggling or searching counts as distracted). A PC failing a passive check is then an engine fact,
+/// not the narrator's whim.
+/// </summary>
+internal sealed class NoticingContextContributor : IContextContributor
 {
+    private const int MaxObservers = 12;
+
     public async Task<IEnumerable<ContextItem>> ContributeAsync(ContextTurn turn, CancellationToken ct = default)
     {
-        if (string.IsNullOrEmpty(turn.PartyLocationId)
-            || !turn.AppliedChanges.Any(c => ContextTurnReads.IsSkillCheck(c, "stealth")))
+        var items = new List<ContextItem>();
+        var absorbed = AwarenessResolver.AbsorbedIds(turn.AppliedChanges);
+        foreach (var action in turn.AppliedChanges.OfType<RulesetAction>())
         {
-            return [];
+            var skill = QuietSkill(action);
+            if (skill == null || await turn.LoadCharacterAsync(action.CharacterId, ct) is not { } actor
+                || string.IsNullOrEmpty(actor.CurrentLocationId))
+            {
+                continue;
+            }
+
+            var total = skill == "Stealth"
+                ? actor.Concealment?.StealthTotal
+                : int.TryParse(action.Parameters.GetValueOrDefault(RollTotalKey), out var t) ? t : null;
+            if (total == null)
+            {
+                continue;
+            }
+
+            // Sleight of hand hides the act, not the actor: a stand-in carries the roll as its "stealth".
+            var source = skill == "Stealth"
+                ? actor
+                : new Character { Id = actor.Id, Name = actor.Name, SystemStats = actor.SystemStats, Concealment = new Concealment { StealthTotal = total.Value } };
+            var observers = await turn.Session.Query<Character>()
+                .Where(c => c.CampaignName == turn.CampaignName && c.CurrentLocationId == actor.CurrentLocationId && c.Death == null)
+                .Take(MaxObservers + 1)
+                .ToListAsync(ct);
+
+            var notice = new List<string>();
+            var miss = new List<string>();
+            // A target of the check (the guard in a contested Perception) is settled by that roll, not by a passive score.
+            var settled = new HashSet<string>(action.TargetIds.Append(actor.Id), StringComparer.OrdinalIgnoreCase);
+            foreach (var o in observers.Where(o => !settled.Contains(o.Id)).Take(MaxObservers))
+            {
+                var isAbsorbed = absorbed.Contains(o.Id);
+                var result = AwarenessResolver.NoticePresence(o, source, isAbsorbed, turn.Config?.ActiveSystem);
+                var state = AwarenessResolver.IsAsleep(o) ? "asleep, "
+                    : isAbsorbed || o.Awareness?.State == AwarenessState.Distracted ? "distracted, " : "";
+                var entry = $"{o.Name} ({state}{result.Note?.Replace("Stealth", skill)})";
+                (result.Perceived ? notice : miss).Add(entry);
+            }
+
+            if (notice.Count + miss.Count == 0)
+            {
+                continue;
+            }
+
+            var text = $"Noticing {actor.Name}'s {skill} ({total}): "
+                       + (notice.Count > 0 ? $"notices: {string.Join(", ", notice)}" : "nobody notices")
+                       + (miss.Count > 0 ? $"; does NOT notice: {string.Join(", ", miss)}" : "")
+                       + ". Narrate only what each perceived; a PC who doesn't notice sees nothing.";
+            items.Add(new ContextItem($"notice:{turn.WorldSequence}:{actor.Id}:{skill}", text, 85));
         }
 
-        // Who is here right now, not who this response happened to carry a scene for.
-        var npcs = await turn.Session.Query<Character>()
-            .Where(c => c.CampaignName == turn.CampaignName && c.CurrentLocationId == turn.PartyLocationId
-                        && !c.IsPc && !c.IsPartyCompanion)
-            .Take(12)
-            .ToListAsync(ct);
-        var watchers = npcs
-            .Select(c => $"{c.Name} {ContextTurnReads.PassivePerception(c)}")
-            .ToList();
-        if (watchers.Count == 0)
-        {
-            return [];
-        }
-
-        var text = "Passive Perception here: " + string.Join(", ", watchers);
-        return [new ContextItem($"pp:{turn.PartyLocationId}:{text}", text, 70)];
+        return items;
     }
+
+    /// <summary>Set by RulesetActionHandler on a Sleight of Hand check: the roll observers must notice.</summary>
+    public const string RollTotalKey = "engineRollTotal";
+
+    private static string? QuietSkill(RulesetAction action) =>
+        action.ActionType is not (RulesetActionType.SkillCheck or RulesetActionType.ContestedCheck) ? null
+        : ContextTurnReads.IsSkillCheck(action, "stealth") ? "Stealth"
+        : ContextTurnReads.IsSkillCheck(action, "sleight") ? "Sleight of Hand"
+        : null;
 }
 
 /// <summary>Search beat (Investigation/Perception): what the location itself holds, by name. Hidden things

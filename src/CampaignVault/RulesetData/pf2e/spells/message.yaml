@@ -13,3 +13,4 @@ verbal: false
 somatic: false
 material: false
 materialConsumed: false
+perceptible: loud
