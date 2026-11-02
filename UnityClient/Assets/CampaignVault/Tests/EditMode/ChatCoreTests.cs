@@ -315,6 +315,25 @@ namespace CampaignVault.UnityClient.Tests
         }
 
         [Test]
+        public void DeltaBatch_HandsAFramesDeltasOnAsOne_AndNothingWhenEmpty()
+        {
+            var batch = new DeltaBatch();
+            var seen = new List<string>();
+            Assert.IsFalse(batch.Flush(seen.Add), "an empty frame calls nobody");
+            batch.Add("The ");
+            batch.Add("");
+            batch.Add(null);
+            batch.Add("door ");
+            batch.Add("creaks.");
+            Assert.IsTrue(batch.Flush(seen.Add));
+            Assert.IsTrue(batch.IsEmpty);
+            Assert.IsFalse(batch.Flush(seen.Add));
+            batch.Add(" Then silence.");
+            batch.Flush(seen.Add);
+            CollectionAssert.AreEqual(new[] { "The door creaks.", " Then silence." }, seen);
+        }
+
+        [Test]
         public void Accumulator_MidStreamError()
         {
             var acc = new ChatStreamAccumulator();

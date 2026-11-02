@@ -205,6 +205,17 @@ namespace CampaignVault.UnityClient.Tests
         }
 
         [Test]
+        public void BuilderSync_ALoneClickGoesOutAtOnce_OnlyAClickOnTheHeelsOfAnotherWaits()
+        {
+            const float window = 0.25f;
+            Assert.IsFalse(VaultController.BuilderChoiceWaits(10f, float.NegativeInfinity, window), "the first click of the builder");
+            Assert.IsFalse(VaultController.BuilderChoiceWaits(10f, 9f, window), "a click after a quiet spell");
+            Assert.IsTrue(VaultController.BuilderChoiceWaits(10f, 9.9f, window), "a click 100 ms after the last: a burst, so wait");
+            Assert.IsFalse(VaultController.BuilderChoiceWaits(10f, 9.75f, window), "exactly the window apart: no wait");
+            Assert.IsFalse(VaultController.BuilderChoiceWaits(10f, 9.9f, 0f), "no window, never a wait");
+        }
+
+        [Test]
         public void TheLevelCap_BeforeTheRecipeLoads_IsTheRulesets_5eTo20_Pf2eTo3()
         {
             Assert.AreEqual(20, VaultController.MaxBuilderLevelFor("dnd5e"));

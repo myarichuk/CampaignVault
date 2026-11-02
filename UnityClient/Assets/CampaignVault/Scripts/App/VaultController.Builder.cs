@@ -179,9 +179,23 @@ namespace CampaignVault.UnityClient.App
             yield return BuilderSync();
         }
 
-        /// <summary>Quick successive clicks (a point-buy, an array of toggles) wait this long for the next before the server hears.</summary>
+        /// <summary>
+        /// Quick successive clicks (a point-buy, an array of toggles) wait this long for the next before the server
+        /// hears. Only a click that follows another within this window waits: a lone click goes out at once.
+        /// </summary>
         public static float BuilderDebounceSeconds = 0.25f;
         private bool _builderChooseSupported = true;
+        /// <summary>When the last choice reached <see cref="BuilderSync"/> (realtime), so a lone click skips the wait.</summary>
+        private float _builderLastChoiceAt = float.NegativeInfinity;
+
+        /// <summary>
+        /// Leading-edge debounce: the first choice after a quiet spell syncs immediately; one hard on the heels of another
+        /// waits out the window (a still newer one cancels it), so a burst costs one call at its end, not one per click.
+        /// </summary>
+        internal static bool BuilderChoiceWaits(float now, float lastChoiceAt, float window)
+        {
+            return window > 0f && now - lastChoiceAt < window;
+        }
 
         /// <summary>
         /// After a choice: one character_builder action=choose carries the steps, the shown step's options and the
@@ -191,8 +205,11 @@ namespace CampaignVault.UnityClient.App
         {
             var b = _s.Builder;
             int revision = b.Revision;
-            float until = UnityEngine.Time.realtimeSinceStartup + BuilderDebounceSeconds;
-            while (UnityEngine.Time.realtimeSinceStartup < until)
+            float now = UnityEngine.Time.realtimeSinceStartup;
+            bool wait = BuilderChoiceWaits(now, _builderLastChoiceAt, BuilderDebounceSeconds);
+            _builderLastChoiceAt = now;
+            float until = now + BuilderDebounceSeconds;
+            while (wait && UnityEngine.Time.realtimeSinceStartup < until)
             {
                 yield return null;
                 if (b.Revision != revision) { yield break; }
