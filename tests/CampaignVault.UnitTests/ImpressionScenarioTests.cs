@@ -93,19 +93,28 @@ public class ImpressionScenarioTests : IClassFixture<RavenDBFixture>
     private static string EntryFor(string line, string name) =>
         line.Split(" | ").Select(e => e.Trim()).First(e => e.StartsWith(name + ":") || e.Contains("): " + name + ":"));
 
-    private static Task<ToolResult<TurnResult>> CastAsync(CampaignTools tools, string slug, string pcId, Dictionary<string, string> parameters) =>
-        tools.TakeTurn(new TakeTurnRequest
+    private static Task<ToolResult<TurnResult>> CastAsync(CampaignTools tools, string slug, string pcId, Dictionary<string, string> parameters,
+        List<string>? targets = null, int? sleight = null)
+    {
+        var changes = new List<WorldChange>();
+        if (sleight is { } bonus)
         {
-            Changes =
-            [
-                new RulesetAction
-                {
-                    CharacterId = pcId, ActionType = RulesetActionType.Spell, ActionCategory = ActionCategory.Spell, ActionName = "minor_illusion",
-                    Parameters = new Dictionary<string, string>(parameters) { ["resolution"] = "utility", ["innate"] = "true" }
-                }
-            ],
-            Narrative = "Maeve weaves an illusion."
-        }, slug);
+            // F3: the caster palms the gesture; observers' passive Perception must meet the total to catch it.
+            changes.Add(new RulesetAction
+            {
+                CharacterId = pcId, ActionType = RulesetActionType.SkillCheck, ActionName = "Sleight of Hand",
+                Parameters = new Dictionary<string, string> { ["skill"] = "Sleight of Hand", ["dc"] = "10", ["bonus"] = bonus.ToString() }
+            });
+        }
+
+        changes.Add(new RulesetAction
+        {
+            CharacterId = pcId, ActionType = RulesetActionType.Spell, ActionCategory = ActionCategory.Spell, ActionName = "minor_illusion",
+            TargetIds = targets ?? [],
+            Parameters = new Dictionary<string, string>(parameters) { ["resolution"] = "utility", ["innate"] = "true" }
+        });
+        return tools.TakeTurn(new TakeTurnRequest { Changes = [.. changes], Narrative = "Maeve weaves an illusion." }, slug);
+    }
 
     [Fact]
     public async Task Butterflies_enchant_the_child_please_the_adult_and_unsettle_the_superstitious_elder()
@@ -113,7 +122,7 @@ public class ImpressionScenarioTests : IClassFixture<RavenDBFixture>
         var g = await SeedGreenAsync();
 
         var cast = await CastAsync(g.Tools, g.Slug, g.PcId,
-            new() { ["mode"] = "image", ["appeal"] = "delight", ["subject"] = "butterflies" });
+            new() { ["mode"] = "image", ["appeal"] = "delight", ["subject"] = "butterflies" }, targets: [g.PipId]);
 
         Assert.True(cast.Success, cast.Summary);
         var line = Impressions(cast);
@@ -128,10 +137,16 @@ public class ImpressionScenarioTests : IClassFixture<RavenDBFixture>
         var wenna = await LoadAsync(g.WennaId);
         var tam = await LoadAsync(g.TamId);
         Assert.Equal("delight", Assert.Single(pip.Impressions).Tone);
-        Assert.True(ImpressionOpinion(pip, g.PcId) > ImpressionOpinion(tam, g.PcId));
-        Assert.True(ImpressionOpinion(tam, g.PcId) > 0);
-        Assert.True(ImpressionOpinion(wenna, g.PcId) < 0);
         Assert.Equal("delighted", pip.Psychology.CurrentMood);
+
+        // F1: the show was for Pip, so only Pip's opinion is the engine's to move. The bystanders' are proposed.
+        Assert.True(ImpressionOpinion(pip, g.PcId) > 0);
+        Assert.Equal(0, ImpressionOpinion(tam, g.PcId));
+        Assert.Equal(0, ImpressionOpinion(wenna, g.PcId));
+        Assert.Contains("toward Maeve, unrecorded", EntryFor(line, "Tam"));
+        Assert.Contains("toward Maeve, unrecorded", EntryFor(line, "Old Wenna"));
+        Assert.Contains("commit a relationship if it fits", line);
+        Assert.Equal("delight", Assert.Single(tam.Impressions).Tone); // the impression itself is kept either way
     }
 
     private static int ImpressionOpinion(Character c, string actorId) =>
@@ -204,12 +219,12 @@ public class ImpressionScenarioTests : IClassFixture<RavenDBFixture>
 
     // ---- the playtest: the ghost and the lone scout on the night road ----
 
-    private static Task<ToolResult<TurnResult>> GhostAsync(NightRoadSightTests.Road r) =>
+    private static Task<ToolResult<TurnResult>> GhostAsync(NightRoadSightTests.Road r, int? sleight = 40) =>
         CastAsync(r.Tools, r.Slug, r.PcId, new()
         {
             ["mode"] = "image", ["appeal"] = "fear", ["intensity"] = "strong", ["deceptive"] = "true", ["subject"] = "a ghostly goblin",
             ["dc"] = "13"
-        });
+        }, targets: [r.GoblinId], sleight: sleight);
 
     [Fact]
     public async Task The_lone_scout_flees_the_ghost_and_the_fourth_fright_is_weaker_than_the_first()
@@ -238,7 +253,7 @@ public class ImpressionScenarioTests : IClassFixture<RavenDBFixture>
 
         var goblin = await LoadAsync(r.GoblinId);
         Assert.Equal(4, goblin.Impressions.Count);
-        Assert.Equal(0, ImpressionOpinion(goblin, r.PcId)); // D4: he thinks it's a ghost, not Maeve
+        Assert.Equal(0, ImpressionOpinion(goblin, r.PcId)); // D4: she palmed the gesture, so he thinks it's a ghost, not Maeve
     }
 
     [Fact]
@@ -266,5 +281,96 @@ public class ImpressionScenarioTests : IClassFixture<RavenDBFixture>
         var seen = (await LoadAsync(r.GoblinId)).Impressions[0];
         Assert.Equal(ImpressionRead.SawThrough, seen.Read);
         Assert.Equal("scorn", seen.Tone);
+    }
+
+    // ---- F1–F4 ----
+
+    [Fact]
+    public async Task A_scout_who_watches_Maeve_cast_suspects_her_and_thinks_less_of_her()
+    {
+        var r = await NightRoadSightTests.SeedRoadAsync(_fixture, startCombat: false);
+        await SetAsync(r.GoblinId, c => c.DistinctiveFeatures = ["Darkvision 60 ft."]);
+
+        var cast = await GhostAsync(r, sleight: null);
+
+        Assert.True(cast.Success, cast.Summary);
+        var scout = EntryFor(Impressions(cast), "Goblin Scout");
+        Assert.Contains("saw Maeve cast it: connects it to Maeve; examining it: Investigation vs DC 13", scout);
+        var goblin = await LoadAsync(r.GoblinId);
+        Assert.Equal(ImpressionRead.Suspects, goblin.Impressions[0].Read);
+        Assert.True(ImpressionOpinion(goblin, r.PcId) < 0); // addressed, and now he knows whose horror it is
+    }
+
+    [Fact]
+    public async Task A_palmed_gesture_is_caught_only_by_a_passive_perception_that_meets_it()
+    {
+        var r = await NightRoadSightTests.SeedRoadAsync(_fixture, startCombat: false);
+        await SetAsync(r.GoblinId, c =>
+        {
+            c.DistinctiveFeatures = ["Darkvision 60 ft."];
+            c.SystemStats.Attributes["passivePerception"] = 25;
+        });
+
+        var cast = await GhostAsync(r, sleight: 0);
+
+        Assert.True(cast.Success, cast.Summary);
+        Assert.Contains("caught Maeve's gesture (Perception 25 vs Sleight of Hand", EntryFor(Impressions(cast), "Goblin Scout"));
+    }
+
+    [Fact]
+    public async Task In_a_fight_the_lone_scout_is_alone_and_one_with_a_comrade_is_not()
+    {
+        // In a fight, palming the gesture would cost the action the spell needs (5e), so Maeve casts openly here.
+        var r = await NightRoadSightTests.SeedRoadAsync(_fixture, startCombat: true);
+        await SetAsync(r.GoblinId, c => c.DistinctiveFeatures = ["Darkvision 60 ft."]);
+        var alone = await GhostAsync(r, sleight: null);
+        Assert.True(alone.Success, alone.Summary);
+        Assert.Contains("alone", EntryFor(Impressions(alone), "Goblin Scout"));
+
+        var r2 = await NightRoadSightTests.SeedRoadAsync(_fixture, startCombat: false);
+        await SetAsync(r2.GoblinId, c => c.DistinctiveFeatures = ["Darkvision 60 ft."]);
+        var mateId = $"chars/{r2.Slug}-mate";
+        using (var session = _fixture.Store.OpenAsyncSession())
+        {
+            await session.StoreAsync(new Character
+            {
+                Id = mateId, Name = "Goblin Mate", CampaignName = r2.Slug, CurrentLocationId = r2.LocId, MaxHp = 7, CurrentHp = 7,
+                SystemStats = new Dnd5eExtension { ArmorClass = 15 }
+            }, TestContext.Current.CancellationToken);
+            session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var started = await r2.Tools.StartCombat(r2.LocId, [r2.PcId, r2.GoblinId, mateId], r2.Slug);
+        Assert.True(started.Success, started.Summary);
+        await NightRoadSightTests.ToMaevesTurnAsync(r2, started.Data!.ActiveTurnId);
+        var together = await GhostAsync(r2, sleight: null);
+        Assert.True(together.Success, together.Summary);
+        Assert.Contains("among allies", EntryFor(Impressions(together), "Goblin Scout"));
+    }
+
+    [Fact]
+    public async Task Light_the_engine_assumed_and_that_hid_someone_is_named_for_correction()
+    {
+        var r = await NightRoadSightTests.SeedRoadAsync(_fixture, lighting: "auto", startCombat: false);
+        Assert.True((await r.Tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new ActivityChange { CharacterId = r.IlsaId, Departing = true, NewActivity = "walking off" }],
+            Narrative = "Ilsa walks off down the road."
+        }, r.Slug)).Success);
+
+        var plain = await CastAsync(r.Tools, r.Slug, r.PcId, new() { ["mode"] = "image" });
+        Assert.True(plain.Success, plain.Summary);
+        Assert.Contains(plain.Data!.Context ?? [], l => l.StartsWith("Light at North Road taken as dim (Wilderness, 06:00)"));
+
+        var bright = await NightRoadSightTests.SeedRoadAsync(_fixture, lighting: "dim", startCombat: false);
+        Assert.True((await bright.Tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new ActivityChange { CharacterId = bright.IlsaId, Departing = true, NewActivity = "walking off" }],
+            Narrative = "Ilsa walks off down the road."
+        }, bright.Slug)).Success);
+        var set = await CastAsync(bright.Tools, bright.Slug, bright.PcId, new() { ["mode"] = "image", ["appeal"] = "awe" });
+        Assert.DoesNotContain("Light at", Impressions(set)); // set by the narrator: nothing to correct
+        Assert.DoesNotContain(set.Data!.Context ?? [], l => l.StartsWith("Light at"));
     }
 }

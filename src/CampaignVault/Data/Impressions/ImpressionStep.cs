@@ -41,11 +41,12 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
                 continue;
             }
 
-            await ApplyBeatAsync(ctx, change, appeal, now, system, ct);
+            await ApplyBeatAsync(ctx, change, changes, appeal, now, system, ct);
         }
     }
 
-    private async Task ApplyBeatAsync(ChangeContext ctx, WorldChange change, Appeal appeal, double now, string? system, CancellationToken ct)
+    private async Task ApplyBeatAsync(ChangeContext ctx, WorldChange change, IReadOnlyList<WorldChange> batch, Appeal appeal, double now,
+        string? system, CancellationToken ct)
     {
         var (actorId, cause, addressed, eventLocation) = Describe(change);
         var actor = string.IsNullOrEmpty(actorId) ? null : await CharacterAsync(ctx, actorId, ct);
@@ -79,53 +80,190 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
         var quality = ImpressionResolver.QualityShift(action);
 
         var location = ctx.Locations.TryGetValue(locationId, out var known) ? known : await ctx.Session.LoadAsync<Location>(locationId, ct);
-        var sight = new SightContext(SightResolver.LightAt(location, await ctx.GetCurrentTimeAsync()), beat?.Luminous == true, actor);
-        var observers = await ObserversAsync(ctx, locationId, actor, signal, addressed, sight, ct);
+        var clock = await ctx.GetCurrentTimeAsync();
+        var sight = new SightContext(SightResolver.LightAt(location, clock), beat?.Luminous == true, actor);
+        var present = await PresentAsync(ctx, locationId, ct);
+        var observers = await ObserversAsync(ctx, present, actor, signal, addressed, sight, ct);
         if (observers.Count == 0)
         {
             return;
         }
 
+        // F3: a deceptive illusion whose casting can be seen or heard gives anyone who caught it a reason to suspect its author.
+        var casting = illusion && appeal.Deceptive && actor != null ? IllusionRules.CastingShows(spell, action!, system) : (Seen: false, Heard: false);
+        var sleight = actor == null ? null : SleightTotal(batch, actor.Id);
+        var combat = ctx.ActiveCombat is { IsActive: true } encounter ? encounter : null;
+        var addressedSet = new HashSet<string>(addressed, StringComparer.OrdinalIgnoreCase);
+
         var entries = new List<string>();
+        var proposed = false;
         foreach (var (observer, notice) in observers)
         {
             var read = ImpressionResolver.Read(observer, actor, appeal, facts);
+            if (read.Read == ImpressionRead.Believed && (casting.Seen || casting.Heard)
+                && NoticesCasting(observer, actor!, casting, sight, sleight, system) is { } caught)
+            {
+                var dc = disbeliefDc?.ToString() ?? "the spell DC";
+                read = new ReadResult(ImpressionRead.Suspects,
+                    $"{caught}: connects it to {actor!.Name}; examining it: {IllusionRules.DisbeliefSkill(system)} vs DC {dc}");
+            }
+
             var repeats = observer.Impressions.Count(i => string.Equals(i.ActorId, actor?.Id, StringComparison.OrdinalIgnoreCase)
                                                           && string.Equals(i.IntendedTone, appeal.Tone.Name, StringComparison.OrdinalIgnoreCase)
                                                           && now - i.Hour <= HabituationHours);
+            var company = await CompanyOfAsync(ctx, observer, actor, present, combat, ct);
             var appraisal = ImpressionResolver.Appraise(observer, actor, appeal, read,
-                new AppraisalFacts(magical, repeats, notice.Outcome == Noticed.EffectNotSource, quality));
+                new AppraisalFacts(magical, repeats, notice.Outcome == Noticed.EffectNotSource, quality, company));
 
-            var delta = Persist(ctx, observer, actor, appeal, read, appraisal, cause, disbeliefDc, now);
-            entries.Add(Entry(observer, notice, read, appraisal, delta, actor));
+            var grounds = actor != null && OpinionGrounds(observer, actor, addressedSet, combat);
+            var delta = Persist(ctx, observer, actor, appeal, read, appraisal, cause, disbeliefDc, now, grounds);
+            proposed |= delta != 0 && !grounds;
+            entries.Add(Entry(observer, notice, read, appraisal, delta, grounds, actor));
         }
 
         var named = entries.Count > MaxNamed ? [.. entries.Take(MaxNamed), $"+{entries.Count - MaxNamed} others"] : entries;
         var by = actor != null ? $" by {actor.Name}" : "";
         var drawing = beat?.Draws == true ? ", drawing attention" : "";
+        var unrecorded = proposed
+            ? " An opinion change marked unrecorded is for someone the engine can't read (a stranger, an enemy): commit a relationship if it fits."
+            : "";
+        var blocked = (signal & Perceptible.Visible) != 0 && present.Any(c => !c.IsPc && !string.Equals(c.Id, actor?.Id, StringComparison.OrdinalIgnoreCase)
+                                                                             && !SightResolver.Sees(c, sight).Sees);
+        var light = blocked && SightResolver.AssumedLightNote(location, clock, sight.Light) is { } note ? " " + note : "";
         ctx.RecordMessage($"IMPRESSIONS ({cause}{by}, {appeal.Tone.Name}{(appeal.Deceptive ? ", deceptive" : "")}{drawing}): {string.Join(" | ", named)}. "
-                          + "Recorded (opinions, moods). Narrate each: the reaction is a tendency, not a script.");
+                          + "Recorded (opinions, moods). Narrate each: the reaction is a tendency, not a script." + unrecorded + light);
+    }
+
+    /// <summary>Everyone alive at the location, PCs included (they're company, never observers): the index plus this batch's arrivals.</summary>
+    private static async Task<List<Character>> PresentAsync(ChangeContext ctx, string locationId, CancellationToken ct)
+    {
+        var indexed = await ctx.Session.Query<Character>()
+            .Where(c => c.CampaignName == ctx.CampaignName && c.CurrentLocationId == locationId && c.Death == null)
+            .Take(MaxObservers * 2)
+            .ToListAsync(ct);
+        return indexed.Select(c => ctx.Characters.TryGetValue(c.Id, out var tracked) ? tracked : c)
+            .Concat(ctx.Characters.Values.Where(c => string.Equals(c.CurrentLocationId, locationId, StringComparison.OrdinalIgnoreCase)))
+            .Where(c => !c.IsDead && string.Equals(c.CurrentLocationId, locationId, StringComparison.OrdinalIgnoreCase))
+            .DistinctBy(c => c.Id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>
+    /// F1: the engine moves an opinion only where it has grounds to: the observer was addressed, already holds an opinion of the
+    /// author, or rides with the party. Never for an opposing combatant. Anyone else's is proposed for the narrator to commit.
+    /// </summary>
+    private static bool OpinionGrounds(Character observer, Character actor, IReadOnlySet<string> addressed, CombatEncounter? combat)
+    {
+        if (combat != null && IsCombatant(combat, observer.Id) && IsCombatant(combat, actor.Id) && Side(observer) != Side(actor))
+        {
+            return false;
+        }
+
+        return addressed.Contains(observer.Id)
+               || observer.IsPartyCompanion
+               || observer.Social?.Relationships?.Keys.Any(k => string.Equals(k, actor.Id, StringComparison.OrdinalIgnoreCase)) == true;
+    }
+
+    private static bool IsCombatant(CombatEncounter combat, string id) =>
+        combat.Combatants.Any(c => string.Equals(c.CharacterId, id, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>The two sides as range validation draws them: the PCs and their companions, and everyone else.</summary>
+    private static bool Side(Character c) => c.IsPc || c.IsPartyCompanion;
+
+    /// <summary>
+    /// F2: in a fight, allies are the observer's side of the encounter still standing; none is alone. Out of one, nobody else
+    /// conscious here (the author aside) is alone; a recorded friend here (opinion 25+) is company; anything else is unknown.
+    /// </summary>
+    private static async Task<Company> CompanyOfAsync(ChangeContext ctx, Character observer, Character? actor, IReadOnlyList<Character> present,
+        CombatEncounter? combat, CancellationToken ct)
+    {
+        if (combat != null && IsCombatant(combat, observer.Id))
+        {
+            foreach (var other in combat.Combatants.Where(c => !string.Equals(c.CharacterId, observer.Id, StringComparison.OrdinalIgnoreCase)))
+            {
+                if (await CharacterAsync(ctx, other.CharacterId, ct) is { IsDead: false } ally && ally.CurrentHp > 0 && Side(ally) == Side(observer)
+                    && !AwarenessResolver.Conditions(ally).Overlaps(Insensible))
+                {
+                    return Company.Accompanied;
+                }
+            }
+
+            return Company.Alone;
+        }
+
+        var others = present.Where(c => !string.Equals(c.Id, observer.Id, StringComparison.OrdinalIgnoreCase)
+                                        && !string.Equals(c.Id, actor?.Id, StringComparison.OrdinalIgnoreCase)
+                                        && c.CurrentHp > 0 && !AwarenessResolver.Conditions(c).Overlaps(Insensible))
+            .ToList();
+        if (others.Count == 0)
+        {
+            return Company.Alone;
+        }
+
+        return others.Any(o => ImpressionResolver.Opinion(observer, o.Id) >= FriendOpinion) ? Company.Accompanied : Company.Unknown;
+    }
+
+    private const int FriendOpinion = 25;
+
+    private static readonly HashSet<string> Insensible = new(StringComparer.OrdinalIgnoreCase) { "unconscious", "petrified", "paralyzed" };
+
+    /// <summary>A Sleight of Hand check the caster made in this batch, to hide the gesture (F3).</summary>
+    private static int? SleightTotal(IReadOnlyList<WorldChange> batch, string actorId) =>
+        batch.OfType<RulesetAction>()
+            .Where(a => string.Equals(a.CharacterId, actorId, StringComparison.OrdinalIgnoreCase) && ContextTurnReads.IsSkillCheck(a, "sleight"))
+            .Select(a => int.TryParse(a.Parameters.GetValueOrDefault(NoticingContextContributor.RollTotalKey), out var t) ? t : (int?)null)
+            .FirstOrDefault(t => t != null);
+
+    /// <summary>
+    /// F3: did this observer catch the casting? A hidden caster is noticed only by passive Perception against their Stealth. A
+    /// gesture is seen by anyone with a sight line to the caster, unless a Sleight of Hand total beats their passive Perception; a
+    /// spoken component is heard within Near by anyone not deafened. Returns what they caught, or null.
+    /// </summary>
+    private static string? NoticesCasting(Character observer, Character caster, (bool Seen, bool Heard) casting, SightContext sight, int? sleight,
+        string? system)
+    {
+        var conditions = AwarenessResolver.Conditions(observer);
+        if (conditions.Overlaps(Insensible) || AwarenessResolver.IsAsleep(observer))
+        {
+            return null;
+        }
+
+        if (caster.Concealment != null && !AwarenessResolver.NoticePresence(observer, caster, system: system).Perceived)
+        {
+            return null;
+        }
+
+        var invisible = AwarenessResolver.Conditions(caster).Contains("invisible");
+        if (casting.Seen && !invisible && !conditions.Contains("blinded")
+            && SightResolver.Sees(observer, sight with { Luminous = false, Origin = caster }).Sees)
+        {
+            var passive = AwarenessResolver.PassivePerception(observer, system: system);
+            if (sleight is not { } hidden || passive >= hidden)
+            {
+                return sleight is { } s ? $"caught {caster.Name}'s gesture (Perception {passive} vs Sleight of Hand {s})" : $"saw {caster.Name} cast it";
+            }
+        }
+
+        if (casting.Heard && !conditions.Contains("deafened") && SightResolver.Feet(SightResolver.BandBetween(observer, caster)) <= SightResolver.Feet(SpatialDistanceBand.Near))
+        {
+            return $"heard {caster.Name}'s incantation";
+        }
+
+        return null;
     }
 
     /// <summary>
     /// D3: a loud or visible beat reaches everyone at the location who perceives it (with sight, I1); a quiet one only those it was
     /// aimed at. PCs never: the player decides. Combatants do: the fight is where the scout's fear matters.
     /// </summary>
-    private static async Task<List<(Character Observer, Notice Notice)>> ObserversAsync(ChangeContext ctx, string locationId, Character? actor,
-        Perceptible signal, IReadOnlyList<string> addressed, SightContext sight, CancellationToken ct)
+    private static async Task<List<(Character Observer, Notice Notice)>> ObserversAsync(ChangeContext ctx, IReadOnlyList<Character> everyone,
+        Character? actor, Perceptible signal, IReadOnlyList<string> addressed, SightContext sight, CancellationToken ct)
     {
         var result = new List<(Character, Notice)>();
         if (signal != Perceptible.None)
         {
-            var indexed = await ctx.Session.Query<Character>()
-                .Where(c => c.CampaignName == ctx.CampaignName && c.CurrentLocationId == locationId && !c.IsPc && c.Death == null)
-                .Take(MaxObservers)
-                .ToListAsync(ct);
-            var present = indexed.Select(c => ctx.Characters.TryGetValue(c.Id, out var tracked) ? tracked : c)
-                .Concat(ctx.Characters.Values.Where(c => string.Equals(c.CurrentLocationId, locationId, StringComparison.OrdinalIgnoreCase)))
-                .Where(c => !c.IsPc && !c.IsDead && !string.Equals(c.Id, actor?.Id, StringComparison.OrdinalIgnoreCase)
-                            && string.Equals(c.CurrentLocationId, locationId, StringComparison.OrdinalIgnoreCase))
-                .DistinctBy(c => c.Id, StringComparer.OrdinalIgnoreCase)
+            var present = everyone
+                .Where(c => !c.IsPc && !string.Equals(c.Id, actor?.Id, StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(c => addressed.Contains(c.Id, StringComparer.OrdinalIgnoreCase))
                 .ThenByDescending(c => c.IsPartyCompanion || c.KeepAlive)
                 .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
@@ -160,9 +298,12 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
         return result;
     }
 
-    /// <summary>Keeps the impression, and moves opinion (D4: only toward an author they know) and mood (a strong one).</summary>
+    /// <summary>
+    /// Keeps the impression and the mood (a strong one), and the opinion change toward an author they know (D4) when the engine
+    /// has grounds for it (F1); without grounds the change is only returned, for the line to propose.
+    /// </summary>
     private static int Persist(ChangeContext ctx, Character observer, Character? actor, Appeal appeal, ReadResult read, Appraisal appraisal,
-        string cause, int? disbeliefDc, double now)
+        string cause, int? disbeliefDc, double now, bool grounds)
     {
         if (!ctx.Characters.ContainsKey(observer.Id))
         {
@@ -179,7 +320,7 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
             Read = read.Read,
             KnowsAuthor = appraisal.KnowsAuthor,
             Cause = cause,
-            DisbeliefDc = read.Read == ImpressionRead.Believed ? disbeliefDc : null,
+            DisbeliefDc = read.Read is ImpressionRead.Believed or ImpressionRead.Suspects ? disbeliefDc : null,
             Hour = now,
         });
         if (observer.Impressions.Count > MaxImpressions)
@@ -193,7 +334,7 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
         }
 
         var delta = ImpressionResolver.RelationshipDelta(appraisal);
-        if (delta != 0 && actor != null)
+        if (delta != 0 && actor != null && grounds)
         {
             observer.Social ??= new SocialProfile();
             observer.Social.Relationships ??= new Dictionary<string, int>();
@@ -204,7 +345,7 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
         return delta;
     }
 
-    private static string Entry(Character observer, Notice notice, ReadResult read, Appraisal appraisal, int delta, Character? actor)
+    private static string Entry(Character observer, Notice notice, ReadResult read, Appraisal appraisal, int delta, bool recorded, Character? actor)
     {
         var feeling = appraisal.Tier switch
         {
@@ -227,7 +368,7 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
         why.AddRange(appraisal.Reasons);
         if (delta != 0 && actor != null)
         {
-            why.Add($"{delta:+0;-0} toward {actor.Name}");
+            why.Add(recorded ? $"{delta:+0;-0} toward {actor.Name}" : $"{delta:+0;-0} toward {actor.Name}, unrecorded");
         }
 
         var name = EncounterResolver.IsUnnamedStub(observer) ? $"unnamed stub [{observer.Id}]" : observer.Name;
@@ -247,7 +388,7 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
             return;
         }
 
-        var believed = observer.Impressions?.FirstOrDefault(i => i.Read == ImpressionRead.Believed && i.DisbeliefDc != null
+        var believed = observer.Impressions?.FirstOrDefault(i => i.Read is ImpressionRead.Believed or ImpressionRead.Suspects && i.DisbeliefDc != null
                                                                 && string.Equals(i.ActorId, casterId, StringComparison.OrdinalIgnoreCase));
         var skill = IllusionRules.DisbeliefSkill(system);
         if (believed is null)

@@ -156,3 +156,33 @@ Old Wenna — uneasy (distrusts magic): withdraws. Narrate each; already recorde
   suspect an illusion.
 - D6's ally count (a lone scout breaks sooner) still needs the encounter's sides read.
 
+
+## Follow-ups (Michael's answers to the open questions)
+
+- [x] **F1. Opinion is the LLM's call where the engine can't read it.** An impression moves an observer's opinion of its author
+  automatically only when the engine has grounds: the observer was addressed (`targetIds`, the event's `involved`), already holds a
+  recorded opinion of the author, or is a party companion. An opposing combatant never. Anyone else gets the change proposed, marked
+  `unrecorded` in the line, for the narrator to commit with `relationship` if it fits (the scout and the child's butterfly).
+- [x] **F2. Alone counts.** In combat: allies are the observer's side of the encounter (PC side vs the rest, as range validation
+  draws it) still standing; none is alone. Out of combat: no one else conscious present (the author aside) is alone; a recorded
+  friend (opinion ≥ 25) present is company; anything else is unknown and moves nothing. Alone: fright ×1.3 and a strong fright
+  breaks into flight, as low morale does; among allies: fright ×0.85.
+- [x] **F3. A visible caster is a reason to suspect.** For a deceptive illusion, an observer who perceives the casting connects the
+  effect to the caster (`Suspects`): a tier less convincing, the author known (so opinion moves, F1 permitting), disbelief still an
+  action. 5e: somatic or material components are seen by anyone with a sight line to the caster; a verbal one is heard within Near.
+  PF2e (Player Core): every spell shows its casting unless it has the subtle trait (generated as `subtle: true`). Nothing shows when
+  the cast is subtle (`parameters.subtle`, Subtle Spell). A Sleight of Hand check by the caster in the same batch hides the gesture
+  from anyone whose passive Perception is below its total; a hidden caster is noticed only by passive Perception against their
+  Stealth. The checks adjudicate; the engine only compares.
+- [x] **F4. Light the engine assumed is the LLM's to correct.** When a location has no `lighting` and the derived light isn't bright,
+  a visible beat that someone couldn't see says what was assumed ("taken as dark: Wilderness, 23:00") and asks for
+  `location_update lighting` if it's wrong; the witness channel says it once per location and light level per session.
+- [x] **F5. Verification.** `/verify` once; the playtest updated (the ghost in combat: the scout alone, the casting seen).
+  *As built (F1–F5):* `ImpressionStep` (`OpinionGrounds`, `CompanyOfAsync`, `NoticesCasting`), `ImpressionRead.Suspects`,
+  `IllusionRules.CastingShows`, `SightResolver.AssumedLightNote`; `subtle: true` generated for the 13 Player Core spells with the
+  trait (regenerated; nothing else changed). Rules consequence worth knowing: in 5e combat a Sleight of Hand check and a cast are two
+  actions, so a gesture can't be palmed mid-fight; cast from hiding or Subtle Spell. Full suite: 3014 total, 3008 passed, 0 failed,
+  6 skipped (the same pre-existing skips). Playtest, ghost 1, now in a fight:
+  `Goblin Scout: very frightened (saw Maeve cast it: connects it to Maeve; examining it: Investigation vs DC 13; morale low; alone;
+  -4 toward Maeve, unrecorded) → flees`.
+

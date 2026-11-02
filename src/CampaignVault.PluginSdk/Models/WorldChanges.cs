@@ -1056,6 +1056,7 @@ public class ActivityChange : WorldChange
 ///   "subject"       – what it shows or is about ("butterflies", "a ghost"), matched against observers' wants and fears
 ///   "reception"     – per-observer tone overrides, "chars/a:disgust, chars/b:delight"
 ///   "disbelieve"    – on a skill check: the illusion's caster id; meeting the caster's spell DC sees through their illusion
+///   "subtle"        – "true": the casting itself can't be perceived (Subtle Spell); otherwise onlookers who catch it suspect an illusion's caster
 ///   "outsideCombat" – "true" lets a hostile action resolve with no combat active (coup de grâce, spar)
 ///   "save"          – saving throw ability for save-based spells (5e/PF2e)
 ///   "halfOnSave"    – "true"/"false" — half damage on successful save (default true for 5e spells)

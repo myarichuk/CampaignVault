@@ -76,6 +76,24 @@ public static class SightResolver
         return night && location.Type is not (LocationType.Settlement or LocationType.District) ? LightLevel.Dark : LightLevel.Dim;
     }
 
+    /// <summary>
+    /// F4: when the light was the engine's guess (no <see cref="Location.Lighting"/>) and it hid something, what was assumed and how
+    /// to correct it. Null when the light was set, or bright (nothing hidden).
+    /// </summary>
+    public static string? AssumedLightNote(Location? location, CampaignTime? time, LightLevel light)
+    {
+        if (location is null || location.Lighting != null || light == LightLevel.Bright)
+        {
+            return null;
+        }
+
+        var basis = location.Type is LocationType.Building or LocationType.Room
+            ? $"{location.Type}, indoors"
+            : $"{location.Type}, {time?.Hour ?? 0:00}:00";
+        return $"Light at {location.Name} taken as {light.ToString().ToLowerInvariant()} ({basis}), so not everyone could see it; "
+               + "if that's wrong, set location_update lighting (bright, dim, dark).";
+    }
+
     /// <summary>Darkvision range in feet: <c>Attributes["darkvision"]</c>, else the race trait ("Darkvision 60 ft."), else none.</summary>
     public static int DarkvisionFeet(Character observer)
     {

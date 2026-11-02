@@ -64,6 +64,26 @@ public static class IllusionRules
                + " A sound and an image at once is two casts, or a bigger illusion (Major Image, Illusory Creature).";
     }
 
+    /// <summary>
+    /// F3: what an onlooker can perceive of the casting itself. 5e (SRD 5.1 Components): a verbal component is heard, a somatic
+    /// or material one seen. PF2e (Player Core): every spell is cast with observable manifestations unless it has the subtle trait.
+    /// A subtle cast (<c>parameters.subtle</c>: Subtle Spell, Conceal Spell) shows nothing.
+    /// </summary>
+    public static (bool Seen, bool Heard) CastingShows(SpellDefinition? spell, RulesetAction action, string? system)
+    {
+        if (string.Equals(action.Parameters.GetValueOrDefault("subtle")?.Trim(), "true", StringComparison.OrdinalIgnoreCase) || spell?.Subtle == true)
+        {
+            return (false, false);
+        }
+
+        if (string.Equals(system, RulesetSystem.Pathfinder2e, StringComparison.OrdinalIgnoreCase))
+        {
+            return (true, true);
+        }
+
+        return spell is null ? (true, false) : (spell.Somatic == true || spell.Material == true, spell.Verbal == true);
+    }
+
     /// <summary>The narrator's reminder after the cast: the spell's own limits and how to see through it.</summary>
     public static string? LimitsNote(SpellDefinition? spell, Character? caster, string? system, string actionName)
     {

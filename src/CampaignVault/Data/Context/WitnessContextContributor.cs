@@ -136,6 +136,12 @@ internal sealed class WitnessContextContributor(PerceptibleBeats beats, IWitness
                 items.Add(new ContextItem(key, line, 90));
             }
 
+            // F4: the light was assumed and hid someone: say what was assumed, once per place and light level per session.
+            if ((signal & Perceptible.Visible) != 0 && await AssumedLightAsync(turn, group.Key, said, excluded, ct) is { } light)
+            {
+                items.Add(light);
+            }
+
             if (await EarshotLineAsync(turn, group.Key, said, signal, excluded, ct) is { } near)
             {
                 items.Add(new ContextItem(key + ":near", near, 75));
@@ -199,6 +205,23 @@ internal sealed class WitnessContextContributor(PerceptibleBeats beats, IWitness
         var drawing = said.Any(t => t.Beat.Draws) ? ", drawing attention" : "";
         return $"Witnesses ({causes}, {Perceptibility.Describe(signal)}{drawing}): {Names(witnesses)}. "
                + "Give each a short reaction in this response, even mid-combat.";
+    }
+
+    private async Task<ContextItem?> AssumedLightAsync(ContextTurn turn, string locationId, List<Located> said, HashSet<string> excluded,
+        CancellationToken ct)
+    {
+        var location = await turn.Session.LoadAsync<Location>(locationId, ct);
+        var light = SightResolver.LightAt(location, turn.Time);
+        if (SightResolver.AssumedLightNote(location, turn.Time, light) is not { } note || said.Any(t => t.Beat.Luminous))
+        {
+            return null;
+        }
+
+        var origin = said.Select(t => t.Actor).FirstOrDefault(a => a != null);
+        var all = await selector.AtAsync(turn.Session, turn.CampaignName, locationId, Perceptible.Visible, origin, excluded, ct);
+        var unseen = await selector.AtAsync(turn.Session, turn.CampaignName, locationId, Perceptible.Visible, origin, excluded, ct,
+            new SightContext(light, false, origin));
+        return all.Count > unseen.Count ? new ContextItem($"light:{locationId}:{light}", note, 70) : null;
     }
 
     /// <summary>W5: who heard a loud beat from one exit away. They don't see it, so the cause is the noise, not who made it.</summary>

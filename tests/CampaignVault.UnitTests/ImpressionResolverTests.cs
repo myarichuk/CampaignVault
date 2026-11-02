@@ -215,6 +215,35 @@ public class ImpressionResolverTests
         Assert.Equal(ImpressionTier.Mild, knowing.Tier);
     }
 
+    [Fact]
+    public void A_scout_alone_breaks_sooner_and_one_among_allies_holds_longer()
+    {
+        var ghost = AppealOf(new() { ["appeal"] = "fear", ["intensity"] = "strong" });
+        Appraisal With(Company company) =>
+            ImpressionResolver.Appraise(Person("chars/s"), Maeve, ghost, new ReadResult(ImpressionRead.Believed), new AppraisalFacts(true, 0, false, 0, company));
+
+        var alone = With(Company.Alone);
+        var unknown = With(Company.Unknown);
+        var allies = With(Company.Accompanied);
+        Assert.True(alone.Score > unknown.Score && unknown.Score > allies.Score);
+        Assert.Contains("alone", alone.Reasons);
+        Assert.Contains("among allies", allies.Reasons);
+        Assert.Equal("flees", alone.Responds);
+        Assert.Equal("retreats", unknown.Responds);
+    }
+
+    [Fact]
+    public void Suspecting_the_caster_is_a_tier_less_convincing_and_names_the_author()
+    {
+        var ghost = AppealOf(new() { ["appeal"] = "fear", ["intensity"] = "strong", ["deceptive"] = "true" });
+        var believed = Appraise(Person(), ghost, ImpressionRead.Believed, magical: true);
+        var suspects = Appraise(Person(), ghost, ImpressionRead.Suspects, magical: true);
+        Assert.False(believed.KnowsAuthor);
+        Assert.True(suspects.KnowsAuthor);
+        Assert.True(suspects.Score < believed.Score);
+        Assert.True(ImpressionResolver.RelationshipDelta(suspects) < 0);
+    }
+
     [Theory]
     [InlineData("8", "10", -1)]
     [InlineData("12", "10", 0)]

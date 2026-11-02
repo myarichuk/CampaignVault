@@ -135,6 +135,10 @@ public record SpellDefinition : RulesetTemplate
     /// narration stays inside them. From <c>scripts/spell_perception_overlay*.yaml</c>.</summary>
     public string? IllusionLimits { get; init; }
 
+    /// <summary>pf2e: the subtle trait, cast with no observable manifestation (Player Core). Without it, every pf2e casting shows
+    /// (IMPRESSIONS_PLAN.md F3).</summary>
+    public bool? Subtle { get; init; }
+
     /// <summary>dnd5e only. Number of independent damage instances per cast (e.g. Magic Missile's darts,
     /// Scorching Ray's rays), keyed by spell-slot level for leveled spells or character level for
     /// scaling cantrips. Omitted (null) means 1 — the existing single-instance behavior.</summary>

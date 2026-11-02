@@ -19,8 +19,16 @@ public sealed record ReadResult(ImpressionRead Read, string? Note = null);
 /// <summary>How it landed on one observer, and what they're inclined to do about it (IMPRESSIONS_PLAN.md I5).</summary>
 public sealed record Appraisal(Tone Tone, ImpressionTier Tier, double Score, IReadOnlyList<string> Reasons, string Responds, bool KnowsAuthor);
 
+/// <summary>Whether the observer has anyone at their side (IMPRESSIONS_PLAN.md F2). Unknown moves nothing.</summary>
+public enum Company
+{
+    Unknown,
+    Alone,
+    Accompanied,
+}
+
 /// <summary>What the appraisal needs beyond the observer's own sheet.</summary>
-public sealed record AppraisalFacts(bool Magical, int Repeats, bool Unseen, int QualityShift);
+public sealed record AppraisalFacts(bool Magical, int Repeats, bool Unseen, int QualityShift, Company Company = Company.Unknown);
 
 /// <summary>
 /// One observer, one beat: Read, then Appraise (IMPRESSIONS_PLAN.md I4, I5). Pure: everything it needs is passed in, so the
@@ -129,6 +137,12 @@ public static class ImpressionResolver
             reasons.Add("superbly done");
         }
 
+        // F3: they saw it cast. It still might be real (a summoning, a conjured beast), but it's less convincing.
+        if (read.Read == ImpressionRead.Suspects)
+        {
+            level--;
+        }
+
         if (read.Read == ImpressionRead.SawThrough)
         {
             var turned = Tones.SeenThrough(tone);
@@ -230,6 +244,18 @@ public static class ImpressionResolver
                 multiplier *= 1.25;
                 reasons.Add("hurt");
             }
+
+            switch (facts.Company)
+            {
+                case Company.Alone:
+                    multiplier *= 1.3;
+                    reasons.Add("alone");
+                    break;
+                case Company.Accompanied:
+                    multiplier *= 0.85;
+                    reasons.Add("among allies");
+                    break;
+            }
         }
 
         var knowsAuthor = actor != null && !facts.Unseen && !(read.Read == ImpressionRead.Believed && facts.Magical && appeal.Deceptive);
@@ -263,8 +289,8 @@ public static class ImpressionResolver
             _ => ImpressionTier.Overwhelming,
         };
 
-        // D6: a strong fright breaks a shaken or wounded creature: what's a retreat for the steady is flight for them.
-        var responds = tone.Fright && tier == ImpressionTier.Strong && (morale < 35 || hurt)
+        // D6/F2: a strong fright breaks a shaken, wounded or lone creature: what's a retreat for the steady is flight for them.
+        var responds = tone.Fright && tier == ImpressionTier.Strong && (morale < 35 || hurt || facts.Company == Company.Alone)
             ? tone.Responds(ImpressionTier.Overwhelming)
             : tone.Responds(tier);
         return new Appraisal(tone, tier, Math.Round(score, 2), reasons, responds, knowsAuthor);

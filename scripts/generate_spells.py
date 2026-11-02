@@ -131,6 +131,8 @@ def write_spell(path: Path, header: str, body: dict) -> None:
             lines.append(f"  {mode}: {modes[mode]}")
     if body.get("illusionLimits"):
         lines.append(f"illusionLimits: {yaml_quote(body['illusionLimits'])}")
+    if body.get("subtle"):
+        lines.append("subtle: true")
     for key in ("instanceCountAtSlotLevel", "instanceCountAtCharacterLevel"):
         table = body.get(key)
         if table:
@@ -984,6 +986,8 @@ def generate_pf2e() -> int:
             "materialText": cost_text,
             "materialCost": parse_gp_cost(cost_text) if cost_text else None,
             "materialConsumed": bool(cost_text),
+            # Player Core: a spell is cast with observable manifestations unless it has the subtle trait.
+            "subtle": True if "subtle" in {t.lower() for t in spell.get("trait") or []} else None,
             # Private: popped before write; the perceptibility derivation needs the raw traits and area.
             "_perceptible": derive_perceptible_pf2e(spell),
         }

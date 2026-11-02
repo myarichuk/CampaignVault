@@ -128,3 +128,42 @@ public class IllusionCastTests : IClassFixture<RavenDBFixture>
         Assert.Contains("Investigation vs DC", line);
     }
 }
+
+/// <summary>IMPRESSIONS_PLAN.md F3: what an onlooker perceives of the casting itself.</summary>
+public class CastingShowsTests
+{
+    private static readonly SpellDefinitionProvider Spells = new(
+        System.IO.Path.Combine(System.IO.Path.GetTempPath(), "cv_casting_spells_" + Guid.NewGuid()),
+        typeof(SpellDefinitionProvider).Assembly);
+
+    private static (bool, bool) Shows(string system, string spell, bool subtle = false)
+    {
+        Spells.TryGet(system, spell, out var definition);
+        var action = new RulesetAction { CharacterId = "chars/m", ActionName = spell, ActionType = RulesetActionType.Spell };
+        if (subtle)
+        {
+            action.Parameters["subtle"] = "true";
+        }
+
+        return IllusionRules.CastingShows(definition, action, system);
+    }
+
+    [Fact]
+    public void Minor_illusions_gesture_and_fleece_are_seen_but_nothing_is_heard() =>
+        Assert.Equal((true, false), Shows(RulesetSystem.Dnd5e, "minor_illusion"));
+
+    [Fact]
+    public void Major_image_is_spoken_too() =>
+        Assert.Equal((true, true), Shows(RulesetSystem.Dnd5e, "major_image"));
+
+    [Fact]
+    public void A_subtle_cast_shows_nothing() =>
+        Assert.Equal((false, false), Shows(RulesetSystem.Dnd5e, "minor_illusion", subtle: true));
+
+    [Fact]
+    public void In_pf2e_every_casting_shows_unless_the_spell_is_subtle()
+    {
+        Assert.Equal((false, false), Shows(RulesetSystem.Pathfinder2e, "figment"));
+        Assert.Equal((true, true), Shows(RulesetSystem.Pathfinder2e, "illusory_object"));
+    }
+}

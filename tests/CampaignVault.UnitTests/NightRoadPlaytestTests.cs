@@ -100,9 +100,16 @@ public class NightRoadPlaytestTests : IClassFixture<RavenDBFixture>
             Assert.DoesNotContain(gone + ":", delight);
         }
 
+        // The scout draws steel: it's a fight now, and he is alone in it. Maeve casts in the open, so whoever sees her suspects her.
+        var fight = await r.Tools.StartCombat(r.LocId, [r.PcId, r.GoblinId], r.Slug);
+        Assert.True(fight.Success, fight.Summary);
+        var active = fight.Data!.ActiveTurnId;
+
         var frights = new List<string>();
         for (var i = 0; i < 4; i++)
         {
+            await NightRoadSightTests.ToMaevesTurnAsync(r, active);
+            active = null;
             var ghost = await r.Tools.TakeTurn(new TakeTurnRequest
             {
                 Changes =
@@ -127,7 +134,9 @@ public class NightRoadPlaytestTests : IClassFixture<RavenDBFixture>
         }
 
         var scoutFirst = frights[0].Split(" | ").Single(e => e.Contains("Goblin Scout:"));
+        Assert.Contains("saw Maeve cast it", scoutFirst);
         Assert.Contains("morale low", scoutFirst);
+        Assert.Contains("alone", scoutFirst);
         Assert.EndsWith("→ flees", scoutFirst);
         Assert.Contains("seen it 3 times", frights[3]);
         Assert.DoesNotContain("Lys:", string.Join(" ", frights));

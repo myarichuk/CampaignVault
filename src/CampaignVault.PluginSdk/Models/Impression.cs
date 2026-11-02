@@ -24,6 +24,10 @@ public enum ImpressionRead
 
     /// <summary>A deception recognised for what it is: the appeal turns against the one who tried it.</summary>
     SawThrough,
+
+    /// <summary>Taken in, but connected to its author: they saw or heard the casting (IMPRESSIONS_PLAN.md F3). A tier less
+    /// convincing; disbelieving it is still an action.</summary>
+    Suspects,
 }
 
 /// <summary>One beat as it landed on one observer: kept on the observer, newest first, for habituation and the NPC's own record.</summary>
