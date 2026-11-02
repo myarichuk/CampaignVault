@@ -31,7 +31,7 @@ public interface IWitnessSelector
 
 public sealed class WitnessSelector : IWitnessSelector
 {
-    /// <summary>A neighbour a quarter hour's walk away or nearer is in earshot; farther ones aren't, whatever the exit says.</summary>
+    /// <summary>A neighbour a quarter hour's walk away or nearer is in earshot; farther ones aren't. An uncosted exit: see Nested.</summary>
     public const double EarshotMaxTravelHours = 0.25;
 
     private const int MaxPerLocation = 25;
@@ -61,22 +61,22 @@ public sealed class WitnessSelector : IWitnessSelector
         }
 
         // Exits are kept reciprocal (LocationConnectivity), so this location's own exits are its neighbours.
-        var neighbourIds = (here.Exits ?? [])
+        var exits = (here.Exits ?? [])
             .Where(e => !string.IsNullOrWhiteSpace(e.TargetLocationId) && (e.TravelCostHours ?? 0) <= EarshotMaxTravelHours
                         && !string.Equals(e.TargetLocationId, locationId, StringComparison.OrdinalIgnoreCase))
-            .Select(e => e.TargetLocationId)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .DistinctBy(e => e.TargetLocationId, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var result = new List<EarshotWitnesses>();
-        foreach (var neighbourId in neighbourIds)
+        foreach (var exit in exits)
         {
-            if (await session.LoadAsync<Location>(neighbourId, ct) is not { } neighbour)
+            if (await session.LoadAsync<Location>(exit.TargetLocationId, ct) is not { } neighbour
+                || (exit.TravelCostHours is not > 0 && !Nested(here, neighbour)))
             {
                 continue;
             }
 
-            var heard = (await PresentAsync(session, campaignName, neighbourId, excluded, ct))
+            var heard = (await PresentAsync(session, campaignName, neighbour.Id, excluded, ct))
                 .Select(c => new WitnessNotice(c, AwarenessResolver.Perceive(c, Perceptible.Loud)))
                 .Where(w => w.Notice.Outcome == Noticed.Perceives)
                 .ToList();
@@ -88,6 +88,15 @@ public sealed class WitnessSelector : IWitnessSelector
 
         return result;
     }
+
+    /// <summary>
+    /// An exit with no travel cost says nothing about distance (it's the default), so it counts only between places that are
+    /// plainly next door: one inside the other, or two rooms of the same place. "The road to the capital" with no cost doesn't.
+    /// </summary>
+    private static bool Nested(Location a, Location b) =>
+        string.Equals(a.ParentLocationId, b.Id, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(b.ParentLocationId, a.Id, StringComparison.OrdinalIgnoreCase)
+        || (!string.IsNullOrEmpty(a.ParentLocationId) && string.Equals(a.ParentLocationId, b.ParentLocationId, StringComparison.OrdinalIgnoreCase));
 
     private static async Task<IEnumerable<Character>> PresentAsync(IAsyncDocumentSession session, string campaignName, string locationId,
         IReadOnlySet<string> excluded, CancellationToken ct)

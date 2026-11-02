@@ -240,7 +240,7 @@ public class TakeTurnNeedDrivenTests : IClassFixture<RavenDBFixture>
                 new RulesetAction
                 {
                     CharacterId = m.PcId, ActionName = "Sneak past the stalls", ActionType = RulesetActionType.SkillCheck,
-                    Parameters = new Dictionary<string, string> { ["skill"] = "Stealth", ["dc"] = "12" }
+                    Parameters = new Dictionary<string, string> { ["skill"] = "Stealth", ["dc"] = "1" } // a failed hide isn't a hide; this one can't fail (Dex 10)
                 }
             ],
             Narrative = "Tamsin slips between the stalls."

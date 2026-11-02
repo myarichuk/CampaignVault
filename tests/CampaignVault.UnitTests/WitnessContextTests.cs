@@ -369,7 +369,7 @@ public class WitnessContextTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task A_stealth_check_hides_the_actor_until_they_attack()
     {
-        var c = await SeedCampAsync(startCombat: false);
+        var c = await SeedCampAsync(startCombat: false, rolls: new FixedRollService(12));
 
         var sneak = await CommitAsync(c, "Maeve melts into the dark beyond the firelight.",
             new RulesetAction
@@ -396,7 +396,7 @@ public class WitnessContextTests : IClassFixture<RavenDBFixture>
     [Fact]
     public async Task Awareness_change_rejects_an_unknown_state_and_reveals_a_hider()
     {
-        var c = await SeedCampAsync(startCombat: false);
+        var c = await SeedCampAsync(startCombat: false, rolls: new FixedRollService(12));
 
         var bad = await CommitAsync(c, "?", new AwarenessChange { CharacterId = c.PcId, State = "drowsy" });
         Assert.False(bad.Success);
@@ -539,7 +539,7 @@ public class WitnessContextTests : IClassFixture<RavenDBFixture>
     // ---- W5: earshot one exit away ----
 
     /// <summary>A ridge one exit from the camp, <paramref name="travelHours"/> away, with a lookout (Bram) standing on it.</summary>
-    private async Task<string> AddRidgeAsync(Camp c, double travelHours)
+    private async Task<string> AddRidgeAsync(Camp c, double travelHours, string? parentId = null)
     {
         var ridgeId = $"locations/{c.Slug}-ridge";
         var bramId = $"chars/{c.Slug}-bram";
@@ -548,7 +548,7 @@ public class WitnessContextTests : IClassFixture<RavenDBFixture>
         var cs = _fixture.CreateCampaignSession(session, c.Slug);
         await repo.UpsertLocationAsync(cs, new LocationUpsertRequest
         {
-            Id = ridgeId, Name = "the Ridge", Description = "A bare ridge above the road.",
+            Id = ridgeId, Name = "the Ridge", Description = "A bare ridge above the road.", ParentLocationId = parentId,
             Exits = [new LocationExit(c.LocId, "Down to the camp", TravelCostHours: travelHours)]
         });
         var camp = await session.LoadAsync<Location>(c.LocId, TestContext.Current.CancellationToken);
@@ -642,5 +642,202 @@ public class WitnessContextTests : IClassFixture<RavenDBFixture>
         Assert.StartsWith("Heard from Roadside Camp (minor illusion):", Assert.Single(illusion.Data!.Context ?? [], l => l.StartsWith("Heard from")));
         Assert.StartsWith("Witnesses (fireball by Maeve, loud+visible):", Assert.Single(fireball.Data!.Context ?? [], l => l.StartsWith("Witnesses")));
         Assert.Contains(fireball.Data!.Context ?? [], l => l.StartsWith("Heard from Roadside Camp (fireball)"));
+    }
+    // ---- Review fixes (2026-11-02) ----
+
+    private async Task<Character> SetAsync(string id, Action<Character> change)
+    {
+        using var session = _fixture.Store.OpenAsyncSession();
+        var character = (await session.LoadAsync<Character>(id, TestContext.Current.CancellationToken))!;
+        change(character);
+        // The upkeep sweep reads the index, as it would for a state set many commits ago.
+        session.Advanced.WaitForIndexesAfterSaveChanges(timeout: TimeSpan.FromSeconds(10), throwOnTimeout: true);
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return character;
+    }
+
+    private static RulesetAction Look(Camp c) => new()
+    {
+        CharacterId = c.PcId, ActionName = "Study the tracks", ActionType = RulesetActionType.SkillCheck,
+        Parameters = new Dictionary<string, string> { ["skill"] = "Investigation", ["dc"] = "10" }
+    };
+
+    [Fact]
+    public async Task A_sleeper_who_acts_is_awake()
+    {
+        var c = await SeedCampAsync(startCombat: false);
+        await CommitAsync(c, "Maeve dozes off.", new AwarenessChange { CharacterId = c.PcId, State = "asleep" });
+
+        var look = await CommitAsync(c, "Maeve studies the tracks by the fire.", Look(c));
+
+        Assert.True(look.Success, look.Summary);
+        Assert.Null((await LoadAsync(c.PcId)).Awareness);
+    }
+
+    [Fact]
+    public async Task Sleep_and_hiding_lapse_after_their_limit()
+    {
+        var c = await SeedCampAsync(startCombat: false);
+        var correnId = $"chars/{c.Slug}-corren";
+        var ilsaId = $"chars/{c.Slug}-ilsa";
+        await CommitAsync(c, "Night settles.", Look(c)); // first sweep creates its index
+        await SetAsync(correnId, x => x.Awareness = new Awareness { State = AwarenessState.Asleep, SinceHour = -100 });
+        await SetAsync(ilsaId, x => x.Awareness = new Awareness { State = AwarenessState.Asleep, SinceHour = 1_000_000 });
+        await SetAsync(c.GoblinId, x => x.Concealment = new Concealment { StealthTotal = 15, SinceHour = -100 });
+
+        var beat = await CommitAsync(c, "The fire burns low.", Look(c));
+
+        Assert.True(beat.Success, beat.Summary);
+        Assert.Null((await LoadAsync(correnId)).Awareness);
+        Assert.Equal(AwarenessState.Asleep, (await LoadAsync(ilsaId)).Awareness?.State);
+        Assert.Null((await LoadAsync(c.GoblinId)).Concealment);
+    }
+
+    [Fact]
+    public async Task A_completed_rest_wakes_the_ones_who_slept_with_the_rester()
+    {
+        var c = await SeedCampAsync(startCombat: false);
+        var correnId = $"chars/{c.Slug}-corren";
+        await CommitAsync(c, "Corren beds down.", new AwarenessChange { CharacterId = correnId, State = "asleep" });
+
+        EncounterResolver.RollOverrideForTests = () => 0.99;
+        ToolResult<TurnResult> rest;
+        try
+        {
+            rest = await CommitAsync(c, "The camp sleeps through the night.",
+                new RestChange { CharacterId = c.PcId, LocationId = c.LocId, IntendedHours = 8, RestType = RestType.LongRest, SleeperIds = [correnId] });
+        }
+        finally
+        {
+            EncounterResolver.RollOverrideForTests = null;
+        }
+
+        Assert.True(rest.Success, rest.Summary);
+        Assert.Null((await LoadAsync(correnId)).Awareness);
+    }
+
+    [Fact]
+    public async Task A_failed_hide_is_no_hide()
+    {
+        var c = await SeedCampAsync(startCombat: false, rolls: new FixedRollService(3));
+
+        var sneak = await CommitAsync(c, "Maeve tries to slip into the dark.",
+            new RulesetAction
+            {
+                CharacterId = c.PcId, ActionName = "Hide", ActionType = RulesetActionType.SkillCheck,
+                Parameters = new Dictionary<string, string> { ["skill"] = "Stealth", ["dc"] = "10" }
+            });
+
+        Assert.True(sneak.Success, sneak.Summary);
+        Assert.Null((await LoadAsync(c.PcId)).Concealment);
+        Assert.Contains("Maeve fails to hide (Stealth 3 vs DC 10)", Messages(sneak));
+    }
+
+    private static RulesetAction Punch(Camp c) => new()
+    {
+        CharacterId = c.PcId, TargetIds = [c.GoblinId], ActionType = RulesetActionType.Attack, ActionCategory = ActionCategory.Melee,
+        ActionName = "Fist", Parameters = new Dictionary<string, string> { ["attackBonus"] = "4", ["damageDice"] = "1", ["outsideCombat"] = "true" }
+    };
+
+    [Fact]
+    public async Task A_brawl_outside_combat_gets_a_witness_line_every_beat()
+    {
+        var c = await SeedCampAsync(startCombat: false);
+
+        var first = await CommitAsync(c, "Maeve cuffs the goblin.", Punch(c));
+        var second = await CommitAsync(c, "And again.", Punch(c));
+
+        Assert.True(first.Success, first.Summary);
+        Assert.True(second.Success, second.Summary);
+        Assert.Contains(first.Data!.Context ?? [], l => l.StartsWith("Witnesses (a fight breaks out"));
+        Assert.Contains(second.Data!.Context ?? [], l => l.StartsWith("Witnesses (a fight breaks out"));
+    }
+
+    [Fact]
+    public async Task The_first_blow_beside_a_battle_cry_announces_the_fight_once()
+    {
+        var c = await SeedCampAsync();
+        var stab = new RulesetAction
+        {
+            CharacterId = c.PcId, TargetIds = [c.GoblinId], ActionType = RulesetActionType.Attack, ActionCategory = ActionCategory.Melee,
+            ActionName = "Dagger", Parameters = new Dictionary<string, string> { ["attackBonus"] = "4", ["damageDice"] = "1" }
+        };
+
+        var first = await CommitAsync(c, "Maeve roars and lunges.",
+            new EventOccurred { Summary = "Maeve roars a battle cry", InitiatorId = c.PcId, Perceptible = "loud" }, stab);
+        await ToMaevesTurnAsync(c, active: null);
+        var second = await CommitAsync(c, "Maeve stabs again.", stab);
+
+        Assert.True(first.Success, first.Summary);
+        Assert.True(second.Success, second.Summary);
+        var line = Assert.Single(first.Data!.Context ?? [], l => l.StartsWith("Witnesses"));
+        Assert.Contains("Maeve roars a battle cry", line);
+        Assert.Contains("a fight breaks out", line);
+        Assert.DoesNotContain(second.Data!.Context ?? [], l => l.StartsWith("Witnesses"));
+    }
+
+    [Fact]
+    public async Task A_scream_with_no_initiator_wakes_the_sleeper_the_line_names()
+    {
+        var c = await SeedCampAsync(startCombat: false);
+        var correnId = $"chars/{c.Slug}-corren";
+        await CommitAsync(c, "Corren dozes.", new AwarenessChange { CharacterId = correnId, State = "asleep" });
+
+        var scream = await CommitAsync(c, "A scream rings out somewhere close.", new EventOccurred { Summary = "A scream in the dark", Perceptible = "loud" });
+
+        Assert.True(scream.Success, scream.Summary);
+        Assert.Contains("WOKEN by A scream in the dark: Corren", Messages(scream));
+        Assert.Null((await LoadAsync(correnId)).Awareness);
+        Assert.Contains("Corren", Assert.Single(scream.Data!.Context ?? [], l => l.StartsWith("Witnesses")));
+    }
+
+    [Fact]
+    public async Task A_spell_marked_perceptible_reaches_the_witness_line()
+    {
+        var c = await SeedCampAsync(startCombat: false);
+
+        var light = await CommitAsync(c, "Maeve's hand blazes with daylight.",
+            new RulesetAction
+            {
+                CharacterId = c.PcId, ActionType = RulesetActionType.Spell, ActionCategory = ActionCategory.Spell, ActionName = "daylight",
+                Parameters = new Dictionary<string, string> { ["resolution"] = "utility", ["innate"] = "true", ["perceptible"] = "visible" }
+            });
+
+        Assert.True(light.Success, light.Summary);
+        Assert.StartsWith("Witnesses (daylight by Maeve, visible):", Assert.Single(light.Data!.Context ?? [], l => l.StartsWith("Witnesses")));
+    }
+
+    [Fact]
+    public async Task The_target_of_a_check_is_settled_by_the_roll_not_by_passive_perception()
+    {
+        var c = await SeedCampAsync(startCombat: false, correnPassive: 16, rolls: new FixedRollService(10));
+        var correnId = $"chars/{c.Slug}-corren";
+        var sneak = GoblinCheck(c, "Stealth");
+        sneak.TargetIds = [correnId];
+
+        var result = await CommitAsync(c, "The goblin creeps past Corren.", sneak);
+
+        Assert.True(result.Success, result.Summary);
+        Assert.DoesNotContain("Corren", Assert.Single(result.Data!.Context ?? [], l => l.StartsWith("Noticing Goblin Scout's Stealth")));
+    }
+
+    [Fact]
+    public async Task Awareness_change_rejects_a_numeric_state()
+    {
+        var c = await SeedCampAsync(startCombat: false);
+
+        Assert.False((await CommitAsync(c, "?", new AwarenessChange { CharacterId = c.PcId, State = "2" })).Success);
+    }
+
+    [Fact]
+    public async Task An_uncosted_exit_is_in_earshot_only_between_nested_places()
+    {
+        var road = await SeedCampAsync();
+        await AddRidgeAsync(road, travelHours: 0);
+        Assert.DoesNotContain((await CastFireballAsync(road)).Data!.Context ?? [], l => l.StartsWith("Heard from"));
+
+        var nested = await SeedCampAsync();
+        await AddRidgeAsync(nested, travelHours: 0, parentId: nested.LocId);
+        Assert.Contains((await CastFireballAsync(nested)).Data!.Context ?? [], l => l.StartsWith("Heard from Roadside Camp (fireball): Bram at the Ridge"));
     }
 }

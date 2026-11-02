@@ -418,8 +418,15 @@ public sealed class RulesetActionHandler(
 
         if (stealth && result.RollTotal is { } total)
         {
+            // A check made against a DC that fails is a failed hide, not a poor one: nobody needs a passive score to see them.
+            if (int.TryParse(action.Parameters.GetValueOrDefault("dc")?.Trim(), out var dc) && total < dc)
+            {
+                actor.Concealment = null;
+                return $"{actor.Name} fails to hide (Stealth {total} vs DC {dc}) and is in plain view.";
+            }
+
             var time = await ctx.GetCurrentTimeAsync();
-            actor.Concealment = new Concealment { StealthTotal = total, SinceHour = time.TotalDaysElapsed * 24.0 + time.Hour };
+            actor.Concealment = new Concealment { StealthTotal = total, SinceHour = CampaignClock.Now(time) };
             return $"{actor.Name} is hiding (Stealth {total}): anyone whose passive Perception is lower doesn't notice them.";
         }
 

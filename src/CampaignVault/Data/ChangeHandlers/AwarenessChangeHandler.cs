@@ -32,7 +32,9 @@ public sealed class AwarenessChangeHandler : IWorldChangeHandler
         AwarenessState? state = null;
         if (!string.IsNullOrWhiteSpace(ac.State))
         {
-            if (!Enum.TryParse<AwarenessState>(ac.State.Trim(), ignoreCase: true, out var parsed))
+            // Names only: Enum.TryParse would also take "1" or "2".
+            if (!Enum.GetNames<AwarenessState>().Any(n => string.Equals(n, ac.State.Trim(), StringComparison.OrdinalIgnoreCase))
+                || !Enum.TryParse<AwarenessState>(ac.State.Trim(), ignoreCase: true, out var parsed))
             {
                 return ChangeHandlerResult.Failure($"state must be alert, distracted or asleep (got '{ac.State}').");
             }
@@ -50,7 +52,7 @@ public sealed class AwarenessChangeHandler : IWorldChangeHandler
             var time = await ctx.GetCurrentTimeAsync();
             character.Awareness = state == AwarenessState.Alert
                 ? null
-                : new Awareness { State = state.Value, Reason = ac.Reason, SinceHour = time.TotalDaysElapsed * 24.0 + time.Hour };
+                : new Awareness { State = state.Value, Reason = ac.Reason, SinceHour = CampaignClock.Now(time) };
             notes.Add($"{character.Name} is now {state.Value.ToString().ToLowerInvariant()}{(ac.Reason != null ? $" ({ac.Reason})" : "")}.");
         }
 

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using CampaignVault.Data;
+using CampaignVault.Data.Context;
+using CampaignVault.Services;
 using CampaignVault.Models;
 using CampaignVault.Tools;
 using Raven.Client.Documents;
@@ -38,22 +40,25 @@ public class CrowdDrawTests : IClassFixture<RavenDBFixture>
         return action;
     }
 
+    private static CrowdDraw.Beat? Strongest(IEnumerable<WorldChange> changes) =>
+        CrowdDraw.Strongest(new PerceptibleBeats(null).Detect(changes, RulesetSystem.Dnd5e));
+
     [Fact]
     public void A_performance_draws_a_crowd_unless_it_says_notice()
     {
-        var beat = CrowdDraw.Strongest([Perform()]);
+        var beat = Strongest([Perform()]);
         Assert.NotNull(beat);
         Assert.True(beat.Draws);
         Assert.Equal(20, beat.TotalModifier);
 
-        Assert.Null(CrowdDraw.Strongest([Perform(("attention", "notice"))]));
+        Assert.Null(Strongest([Perform(("attention", "notice"))]));
     }
 
     [Fact]
     public void The_llms_crowd_modifier_is_added_and_clamped()
     {
-        Assert.Equal(20 - 30, CrowdDraw.Strongest([Perform(("crowdModifier", "-30"))])!.TotalModifier);
-        Assert.Equal(20 + 50, CrowdDraw.Strongest([Perform(("crowdModifier", "+80"))])!.TotalModifier);
+        Assert.Equal(20 - 30, Strongest([Perform(("crowdModifier", "-30"))])!.TotalModifier);
+        Assert.Equal(20 + 50, Strongest([Perform(("crowdModifier", "+80"))])!.TotalModifier);
     }
 
     [Fact]
@@ -63,15 +68,30 @@ public class CrowdDrawTests : IClassFixture<RavenDBFixture>
         var quarrel = new EventOccurred { Summary = "A shouting match", InitiatorId = "chars/b", Attention = "draw", CrowdModifier = 10 };
         var whisper = new EventOccurred { Summary = "A whisper", InitiatorId = "chars/c" };
 
-        var loud = CrowdDraw.Strongest([shout]);
+        var loud = Strongest([shout]);
         Assert.False(loud!.Draws);
         Assert.Equal(10, loud.TotalModifier);
 
-        var best = CrowdDraw.Strongest([shout, quarrel]);
+        var best = Strongest([shout, quarrel]);
         Assert.Equal("chars/b", best!.ActorId);
         Assert.Equal(30, best.TotalModifier);
 
-        Assert.Null(CrowdDraw.Strongest([whisper]));
+        Assert.Null(Strongest([whisper]));
+    }
+
+    [Fact]
+    public void A_loud_spell_feeds_the_crowd_draw_and_a_quiet_one_does_not()
+    {
+        var spells = new SpellDefinitionProvider(
+            System.IO.Path.Combine(System.IO.Path.GetTempPath(), "cv_crowd_spells_" + Guid.NewGuid()), typeof(SpellDefinitionProvider).Assembly);
+        RulesetAction Cast(string name) => new() { CharacterId = "chars/mage", ActionName = name, ActionType = RulesetActionType.Spell };
+
+        var boom = CrowdDraw.Strongest(new PerceptibleBeats(spells).Detect([Cast("fireball")], RulesetSystem.Dnd5e));
+        Assert.NotNull(boom);
+        Assert.False(boom.Draws);
+        Assert.Equal(10, boom.TotalModifier);
+
+        Assert.Null(CrowdDraw.Strongest(new PerceptibleBeats(spells).Detect([Cast("cure_wounds")], RulesetSystem.Dnd5e)));
     }
 
     // ---- S2: the engine rolls it ----
@@ -110,10 +130,11 @@ public class CrowdDrawTests : IClassFixture<RavenDBFixture>
         return new Tavern(slug, tools, locId, pcId);
     }
 
-    private static Task<ToolResult<TurnResult>> SingAsync(Tavern t, int? crowdModifier = null)
+    private static Task<ToolResult<TurnResult>> SingAsync(Tavern t, int? crowdModifier = null, int? minutes = null)
     {
         var action = Perform();
         action.CharacterId = t.PcId;
+        action.MinutesElapsed = minutes;
         if (crowdModifier != null)
         {
             action.Parameters["crowdModifier"] = crowdModifier.Value.ToString();
@@ -168,6 +189,20 @@ public class CrowdDrawTests : IClassFixture<RavenDBFixture>
         Assert.True(second.Success, second.Summary);
         Assert.Contains("Crowd draw at The Gilded Gull not rolled", Messages(second));
         Assert.DoesNotContain("CROWD DRAW", Messages(second));
+    }
+
+    [Fact]
+    public async Task The_cooldown_says_this_clock_hour_and_lifts_once_the_clock_moves()
+    {
+        var t = await SeedTavernAsync();
+
+        await WithRollAsync(0.99, () => SingAsync(t));
+        var soon = await WithRollAsync(0.99, () => SingAsync(t, minutes: 30));
+        var later = await WithRollAsync(0.99, () => SingAsync(t, minutes: 60));
+
+        // Beats under an hour don't move the clock, so the engine can't say "30 min ago"; it says what it knows.
+        Assert.Contains("the last one was earlier this clock hour (cooldown 60 min)", Messages(soon));
+        Assert.Contains("CROWD DRAW at The Gilded Gull (modifier +20): nobody comes over this time.", Messages(later));
     }
 
     [Fact]

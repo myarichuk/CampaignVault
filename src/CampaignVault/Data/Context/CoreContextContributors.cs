@@ -218,7 +218,9 @@ internal sealed class NoticingContextContributor : IContextContributor
 
             var notice = new List<string>();
             var miss = new List<string>();
-            foreach (var o in observers.Where(o => !string.Equals(o.Id, actor.Id, StringComparison.OrdinalIgnoreCase)).Take(MaxObservers))
+            // A target of the check (the guard in a contested Perception) is settled by that roll, not by a passive score.
+            var settled = new HashSet<string>(action.TargetIds.Append(actor.Id), StringComparer.OrdinalIgnoreCase);
+            foreach (var o in observers.Where(o => !settled.Contains(o.Id)).Take(MaxObservers))
             {
                 var isAbsorbed = absorbed.Contains(o.Id);
                 var result = AwarenessResolver.NoticePresence(o, source, isAbsorbed, turn.Config?.ActiveSystem);

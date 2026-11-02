@@ -107,16 +107,26 @@ internal sealed class WitnessContextContributor(PerceptibleBeats beats, IWitness
         foreach (var group in (await WithLocationsAsync(turn, triggers, ct)).GroupBy(t => t.LocationId, StringComparer.OrdinalIgnoreCase))
         {
             var located = group.ToList();
-            // Fighting noise is said once per fight; a spell, a death or an event is said every beat it happens.
+            // A spell, a death or an event is said every beat it happens. Fighting noise is said once per fight (keyed on its
+            // combatants), and outside combat, where there's no fight to key on, every beat. When the first blow lands in the same
+            // beat as a spectacle, both causes share one line under the fight's key, so the fight isn't announced again next round.
             var spectacle = located.Where(t => !t.Beat.CombatNoise).ToList();
-            var said = spectacle.Count > 0 ? spectacle : [located[0]];
+            var noise = located.FirstOrDefault(t => t.Beat.CombatNoise);
+            var fightKey = combatantIds.Count > 0
+                ? $"witness:combat:{group.Key}:{string.Join(",", combatantIds.Order(StringComparer.OrdinalIgnoreCase))}"
+                : null;
+            var fightIsNews = noise != null && (fightKey == null || !turn.DeliveredContextKeys.Contains(fightKey));
+            List<Located> said = fightIsNews ? [.. spectacle, noise!] : spectacle;
+            if (said.Count == 0)
+            {
+                continue;
+            }
+
             var signal = said.Aggregate(Perceptible.None, (s, t) => s | t.Beat.Signal);
             var excluded = new HashSet<string>(said.SelectMany(t => t.Beat.Excluded.Append(t.Beat.ActorId)), StringComparer.OrdinalIgnoreCase);
             excluded.UnionWith(combatantIds);
 
-            var key = spectacle.Count > 0
-                ? $"witness:{turn.WorldSequence}:{group.Key}"
-                : $"witness:combat:{group.Key}:{string.Join(",", combatantIds.Order(StringComparer.OrdinalIgnoreCase))}";
+            var key = fightIsNews && fightKey != null ? fightKey : $"witness:{turn.WorldSequence}:{group.Key}";
 
             if (await WitnessLineAsync(turn, group.Key, said, signal, excluded, ct) is { } line)
             {
@@ -142,7 +152,7 @@ internal sealed class WitnessContextContributor(PerceptibleBeats beats, IWitness
         foreach (var beat in triggers)
         {
             var actor = string.IsNullOrEmpty(beat.ActorId) ? null : await turn.LoadCharacterAsync(beat.ActorId, ct);
-            var locationId = beat.LocationId ?? actor?.CurrentLocationId ?? turn.PartyLocationId;
+            var locationId = beat.Where(actor, turn.PartyLocationId);
             if (!string.IsNullOrEmpty(locationId))
             {
                 located.Add(new Located(beat with { ActorId = actor?.Id ?? beat.ActorId }, Cause(beat, actor), actor, locationId));

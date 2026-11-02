@@ -12,13 +12,23 @@ public sealed record PerceptibleBeat(
     IReadOnlyCollection<string> Excluded,
     bool CombatNoise,
     string? LocationId = null,
-    bool Draws = false);
+    bool Draws = false,
+    int CrowdModifier = 0)
+{
+    /// <summary>
+    /// Where the beat happens: the event's own location, then where its actor stands, then the party's. The witness line and the
+    /// waking step both use this, so a scream with no initiator wakes the same sleepers the line names.
+    /// </summary>
+    public string? Where(Character? actor, string? partyLocationId) =>
+        LocationId ?? (string.IsNullOrEmpty(actor?.CurrentLocationId) ? partyLocationId : actor.CurrentLocationId);
+}
 
 /// <summary>
 /// Finds the perceptible beats in a batch: a spell that is loud or visible, the noise of a fight, a death, a performance or any action or
-/// event marked perceptible or attention-drawing. Shared by the witness line (who noticed) and the dispatcher (who it woke).
+/// event marked perceptible or attention-drawing. Shared by the witness line (who noticed) and the dispatcher (who it woke, and
+/// whether it pulls a crowd). <c>parameters.perceptible</c> and <c>attention</c> add to anything, a spell included.
 /// </summary>
-public sealed class PerceptibleBeats(SpellDefinitionProvider spells)
+public sealed class PerceptibleBeats(SpellDefinitionProvider? spells)
 {
     public IEnumerable<PerceptibleBeat> Detect(IEnumerable<WorldChange> changes, string? system)
     {
@@ -29,15 +39,18 @@ public sealed class PerceptibleBeats(SpellDefinitionProvider spells)
                 case RulesetAction { ActionType: RulesetActionType.Spell } cast:
                 {
                     SpellDefinition? spell = null;
-                    if (system != null && !string.IsNullOrWhiteSpace(cast.ActionName))
+                    if (spells != null && system != null && !string.IsNullOrWhiteSpace(cast.ActionName))
                     {
                         spells.TryGet(system, CastingComponentGate.NormalizeSlug(cast.ActionName), out spell);
                     }
 
-                    var signal = Perceptibility.OfSpell(spell, cast);
+                    // The spell's data, plus what the narrator marked: Daylight derives none but can be marked visible.
+                    var draws = CrowdDraw.Draws(cast);
+                    var signal = Perceptibility.OfSpell(spell, cast) | CrowdDraw.Signal(cast.Parameters.GetValueOrDefault("perceptible"), draws);
                     if (signal != Perceptible.None)
                     {
-                        yield return new PerceptibleBeat(cast.CharacterId, cast.ActionName.Replace('_', ' ').ToLowerInvariant(), signal, cast.TargetIds, false);
+                        yield return new PerceptibleBeat(cast.CharacterId, cast.ActionName.Replace('_', ' ').ToLowerInvariant(), signal, cast.TargetIds, false,
+                            Draws: draws, CrowdModifier: CrowdDraw.ModifierOf(cast));
                     }
 
                     break;
@@ -53,7 +66,7 @@ public sealed class PerceptibleBeats(SpellDefinitionProvider spells)
                     if (signal != Perceptible.None)
                     {
                         yield return new PerceptibleBeat(action.CharacterId, action.ActionName.ToLowerInvariant(), signal, action.TargetIds, false,
-                            Draws: draws);
+                            Draws: draws, CrowdModifier: CrowdDraw.ModifierOf(action));
                     }
 
                     break;
@@ -64,7 +77,7 @@ public sealed class PerceptibleBeats(SpellDefinitionProvider spells)
                 case EventOccurred ev when CrowdDraw.Signal(ev.Perceptible, CrowdDraw.Draws(ev)) != Perceptible.None:
                     var actor = ev.InitiatorId ?? ev.Involved?.FirstOrDefault() ?? "";
                     yield return new PerceptibleBeat(actor, Short(ev.Summary), CrowdDraw.Signal(ev.Perceptible, CrowdDraw.Draws(ev)), ev.Involved ?? [],
-                        false, ev.LocationId, CrowdDraw.Draws(ev));
+                        false, ev.LocationId, CrowdDraw.Draws(ev), ev.CrowdModifier ?? 0);
                     break;
             }
         }

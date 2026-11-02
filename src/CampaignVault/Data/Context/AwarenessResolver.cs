@@ -40,6 +40,14 @@ public static class AwarenessResolver
     public const int DisadvantagePenalty = 5;
     public const int Pf2eAsleepPenalty = 4;
 
+    /// <summary>
+    /// How long a state lasts untouched (house rules, the rules texts give none): a night's sleep with margin, an hour of
+    /// distraction, an hour of hiding without a fresh Stealth check. The dispatcher clears them after that.
+    /// </summary>
+    public const double MaxSleepHours = 10;
+    public const double MaxDistractedHours = 1;
+    public const double MaxHiddenHours = 1;
+
     private static readonly HashSet<string> Insensible = new(StringComparer.OrdinalIgnoreCase) { "unconscious", "petrified", "paralyzed" };
 
     /// <summary>Skills whose checks absorb the one making them for the beat (D7).</summary>

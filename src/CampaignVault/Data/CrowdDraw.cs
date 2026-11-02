@@ -46,21 +46,17 @@ public static class CrowdDraw
         return parsed == Perceptible.None && draws ? Perceptible.Both : parsed;
     }
 
-    /// <summary>The batch's strongest crowd beat: a draw beats a loud notice; null when nothing in it pulls a crowd.</summary>
-    public static Beat? Strongest(IEnumerable<WorldChange> changes)
+    /// <summary>
+    /// The batch's strongest crowd beat among its perceptible beats (<see cref="PerceptibleBeats"/>): a draw beats a merely loud one;
+    /// null when nothing pulls a crowd. A loud spell counts (a fireball in a packed market), a silent or merely visible beat doesn't.
+    /// </summary>
+    public static Beat? Strongest(IEnumerable<PerceptibleBeat> beats)
     {
         Beat? best = null;
-        foreach (var change in changes)
+        foreach (var b in beats.Where(b => b.Draws || (b.Signal & Perceptible.Loud) != 0))
         {
-            var beat = change switch
-            {
-                EventOccurred ev when Draws(ev) || (Signal(ev.Perceptible, false) & Perceptible.Loud) != 0 =>
-                    new Beat(ev.InitiatorId ?? ev.Involved?.FirstOrDefault() ?? "", ev.Summary, Draws(ev), Clamp(ev.CrowdModifier), ev.LocationId),
-                RulesetAction ra when Draws(ra) || (Signal(ra.Parameters.GetValueOrDefault("perceptible"), false) & Perceptible.Loud) != 0 =>
-                    new Beat(ra.CharacterId, ra.ActionName, Draws(ra), Clamp(ParseInt(ra.Parameters.GetValueOrDefault("crowdModifier"))), null),
-                _ => null,
-            };
-            if (beat != null && (best == null || (beat.Draws && !best.Draws)))
+            var beat = new Beat(b.ActorId, b.Cause, b.Draws, Clamp(b.CrowdModifier), b.LocationId);
+            if (best == null || (beat.Draws && !best.Draws))
             {
                 best = beat;
             }
@@ -68,6 +64,9 @@ public static class CrowdDraw
 
         return best;
     }
+
+    /// <summary>The LLM's crowdModifier on an action, unclamped (clamped when the beat is ranked).</summary>
+    public static int ModifierOf(RulesetAction action) => ParseInt(action.Parameters.GetValueOrDefault("crowdModifier")) ?? 0;
 
     /// <summary>The directive notes: who drew the crowd and how to cast whoever steps out.</summary>
     public static string Notes(Beat beat, string actorName) =>

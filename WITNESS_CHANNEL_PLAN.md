@@ -162,6 +162,28 @@ Each phase ships on its own with a green suite. Check every box before calling i
 - [x] **W8. Verification.** Run the full suite once with `/verify`, with no parallel builds. Report every failure; the two `LocalEmbeddingServiceTests` count as environmental if git-lfs is missing. Then do a scratch-campaign playtest (SFW, empty DB, per measure-on-scratch-campaigns): a camp with traders, Minor Illusion then Fireball. Check that the turn response carries the witness line both times.
   *As built:* the playtest is a test, `Playtest_the_illusion_then_the_fireball_both_reach_the_camp`, on a scratch campaign in the embedded (empty) RavenDB: traders Corren and Ilsa at the camp, lookout Bram on the ridge. Minor Illusion (sound) gives `Witnesses (minor illusion by Maeve, loud): Corren, Ilsa` and `Heard from Roadside Camp (minor illusion): Bram at the Ridge`; Fireball gives the same pair with `loud+visible`. A live LLM playtest against the MCP server is still Michael's call.
 
+## Review fixes (Fable review, 2026-11-02)
+
+The branch review found these; all are fixed, each with a test in `WitnessContextTests` or `CrowdDrawTests`.
+
+1. **States never cleared.** A new dispatcher step, `ApplyAwarenessUpkeepAsync`, runs before waking:
+   - whoever acts in the batch is awake;
+   - sleep lapses after `MaxSleepHours` (10), distraction after `MaxDistractedHours` (1), and hiding without a fresh Stealth check after `MaxHiddenHours` (1). These are house rules; the texts give no durations.
+   - A completed rest also wakes the companions there and the `sleeperIds`, not only the rester.
+   - Waking no longer skips the one who made the noise.
+2. **Fights outside combat said once per location.** With no encounter to key on, fighting noise is keyed per beat.
+3. **Cooldown in clock hours.** The cooldown reads `CampaignClock.Now`, which includes `HourCarry`, so fractional travel and rest time counts. Beats under an hour still don't move the clock, by engine design (`ApplyMicroTimeNudgeAsync`), so the message says "earlier this clock hour" instead of "0 min ago". *Open:* whether sub-hour beats should feed `HourCarry` is an engine time-model question, not part of this plan.
+4. **`perceptible` / `attention` on a spell.** These now add to the spell's own signal, so Daylight marked `visible` gets a witness line.
+5. **Waking vs line location.** `PerceptibleBeat.Where` is shared: the event's location, then the actor's, then the party's. A scream with no initiator wakes the sleepers the line names.
+6. **Loud spells and the crowd draw.** `CrowdDraw.Strongest` now ranks `PerceptibleBeats`, so a fireball in a packed market rolls (+10). It's one source with the witness line.
+7. **Uncosted exits.** A travel cost of 0 is the default and says nothing about distance. Such an exit counts as in earshot only between nested places: parent and child, or siblings under one parent.
+8. **A failed hide.** A Stealth check below its `dc` doesn't hide the character ("fails to hide").
+9. **Minor:**
+   - the first blow and a spectacle in one beat share a line under the fight's key (`ContextTurn.DeliveredContextKeys`);
+   - `awareness_change` rejects numeric states;
+   - `SinceHour` is now read by the upkeep step;
+   - a check's targets are left out of the Noticing line, because the contested roll settles them.
+
 ## Decisions (Michael, 2026-11-01)
 
 - **D1. Caster-chosen modes.** Minor Illusion and similar spells take `parameters.mode`. If it's missing, the spell counts as `both` (W2).

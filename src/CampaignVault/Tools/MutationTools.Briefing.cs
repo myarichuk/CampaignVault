@@ -123,6 +123,7 @@ public partial class MutationTools
                     PartyLocationId = party.FirstOrDefault(p => p.IsPc)?.CurrentLocationId ?? party.FirstOrDefault()?.CurrentLocationId,
                     PresentNpcIds = [.. presentNpcs.Select(n => n.Id)],
                     WorldSequence = ctx.Cursor.WorldSequence,
+                    DeliveredContextKeys = new HashSet<string>(ctx.Cursor.DeliveredContextKeys, StringComparer.OrdinalIgnoreCase),
                     NarrativeVector = ctx.NarrativeVector,
                     RelationshipBaselines = ctx.RelationshipBaselines,
                     MemoryLinesInCards = memoryLinesInCards

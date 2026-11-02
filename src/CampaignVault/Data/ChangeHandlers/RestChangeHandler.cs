@@ -100,9 +100,19 @@ public class RestChangeHandler : IWorldChangeHandler
 
         if (!interrupted)
         {
-            if (character.Awareness?.State == AwarenessState.Asleep)
+            // Morning: the rester and whoever slept with them (companions here, sleeperIds) are up.
+            var sleptWith = new HashSet<string>(rc.SleeperIds ?? [], StringComparer.OrdinalIgnoreCase);
+            foreach (var c in (await OccupantsAsync(ctx, location.Id, ct))
+                         .Concat(ctx.Characters.Values.Where(c => string.Equals(c.CurrentLocationId, location.Id, StringComparison.OrdinalIgnoreCase)))
+                         .Select(c => ctx.Characters.TryGetValue(c.Id, out var tracked) ? tracked : c)
+                         .Append(character)
+                         .DistinctBy(c => c.Id, StringComparer.OrdinalIgnoreCase)
+                         .Where(c => c == character || c.IsPartyCompanion || sleptWith.Contains(c.Id)))
             {
-                character.Awareness = null;
+                if (AwarenessResolver.IsAsleep(c))
+                {
+                    c.Awareness = null;
+                }
             }
 
             // Mark the day when the rest was completed (for spell slot recovery)
@@ -201,7 +211,7 @@ public class RestChangeHandler : IWorldChangeHandler
                 $"Rest completed safely. {hoursRested} hours passed ({restType} rest). {recoverySummary}");
         }
 
-        var noticing = await ResolveAmbushNoticingAsync(rc, character, location, ctx, time.TotalDaysElapsed * 24.0 + time.Hour, ct);
+        var noticing = await ResolveAmbushNoticingAsync(rc, character, location, ctx, CampaignClock.Now(time), ct);
         return new ChangeHandlerResult(true,
             $"Rest INTERRUPTED after {hoursRested} hours! Encounter spawned. Do NOT apply healing commits yet; resolve the encounter first. {noticing}");
 
