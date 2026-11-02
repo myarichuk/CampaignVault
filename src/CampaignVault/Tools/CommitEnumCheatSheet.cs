@@ -15,6 +15,7 @@ JSON enums in `commit` must match **exactly** (PascalCase as shown). Invalid val
 | Field | Valid values | LLM alias hints |
 |-------|----------------|-----------------|
 | `type` | Region, Settlement, District, Building, Room, Wilderness | City, Town → **Settlement**; Tavern, Inn, Shop → **Building** |
+| `lighting` (location_update) | bright, dim, dark, auto | Persists until changed; `auto` clears it so the engine derives it (indoors dim, outdoors by the hour). Decides who sees a visible beat at a distance |
 
 ### event (`$type: event`)
 | Field | Valid values | LLM alias hints |
@@ -23,7 +24,7 @@ JSON enums in `commit` must match **exactly** (PascalCase as shown). Invalid val
 | `involved` | **Req'd if Conversation** | Character IDs only. Use `locationId` for locations. Field is `involved` (NOT `participants`). |
 | `perceptible` | loud, visible, both | Set on a shout, scream, crash or spectacle. The next response names the bystanders who perceived it (`Witnesses ...`) so each gets a reaction |
 | `attention` / `crowdModifier` | draw, notice / -50..+50 | `draw` on a song, a shouting match or loud haggling: the engine rolls whether someone from the crowd comes over; `crowdModifier` tilts that roll (festival +20, sleepy hamlet -30) |
-| `appeal` / `appealIntensity` / `deceptive` / `appealSubject` / `reception` | delight, awe, amusement, affection, gratitude, comfort, pride, trust, sorrow, fear, menace, disgust, anger, insult / mild, strong, overwhelming / bool / text / {charId: tone} | What the beat is meant to make people feel. The engine reads, appraises and records each observer and answers `IMPRESSIONS ...`. `deceptive`: passive Insight vs the liar's average |
+| `appeal` / `appealIntensity` / `deceptive` / `appealSubject` / `reception` | delight, awe, amusement, affection, gratitude, comfort, pride, trust, sorrow, fear, menace, disgust, anger, insult / mild, strong, overwhelming / bool / text / {charId: tone} | What the beat is meant to make people feel. The engine reads, appraises and records each observer and answers `IMPRESSIONS ...`. `deceptive`: rolled, passive Insight vs the roll; unrolled, vs 11 + the liar's Deception bonus (a check's targets follow the check). A reaction is a tendency, never the Frightened condition |
 
 ### world_build.rumors[] (creates or replaces a rumor — NOT a commit $type)
 | Field | Notes |

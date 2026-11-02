@@ -98,6 +98,14 @@ public sealed class ActivityChangeHandler : IWorldChangeHandler
             return ChangeHandlerResult.Failure(both);
         }
 
+        if (character.IsPc)
+        {
+            var pc = $"{character.Name} is a PC: the party leaves with travel, not departing (that's for an NPC walking out of the scene).";
+            ctx.RecordMessage("WARNING: " + pc);
+            ctx.RecordFailure();
+            return ChangeHandlerResult.Failure(pc);
+        }
+
         if (string.IsNullOrEmpty(character.CurrentLocationId))
         {
             var nowhere = $"{character.Name} isn't anywhere to depart from. Use updateLocation:true with newLocationId to place them.";

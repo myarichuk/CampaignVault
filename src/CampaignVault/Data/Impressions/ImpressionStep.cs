@@ -24,7 +24,7 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
     public const double HabituationHours = 24;
 
     private const int MaxObservers = 25;
-    private const int MaxNamed = 8;
+    private const int MaxNamed = 5;
 
     public async Task ApplyAsync(ChangeContext ctx, IReadOnlyList<WorldChange> changes, CampaignTime time, CancellationToken ct = default)
     {
@@ -67,17 +67,29 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
         var beat = beats.Detect([change], system).FirstOrDefault();
         var signal = beat?.Signal ?? Perceptible.None;
         var magical = action?.ActionType == RulesetActionType.Spell;
-        var illusion = magical && IllusionRules.IsIllusion(spell);
+        var illusion = magical && IllusionRules.IsFigment(spell);
         var disbeliefDc = illusion && appeal.Deceptive
             ? (int.TryParse(action!.Parameters.GetValueOrDefault("dc")?.Trim(), out var given) ? given : IllusionRules.CasterDc(actor))
             : null;
+        var rolled = int.TryParse(action?.Parameters.GetValueOrDefault(NoticingContextContributor.RollTotalKey), out var total) ? total : (int?)null;
+        var contest = action?.Parameters.GetValueOrDefault(RulesetActionHandler.ActorWonKey);
+        bool? actorWon = contest is null ? null : contest == "true";
+        // A skill check against a DC is the narrator's ruling on its targets (their Insight, by the narrator's reckoning).
+        if (actor != null && action is { ActionType: RulesetActionType.SkillCheck } && rolled is { } t
+            && int.TryParse(action.Parameters.GetValueOrDefault("dc")?.Trim(), out var targetDc))
+        {
+            actorWon = t >= targetDc;
+        }
+
+        var judged = action is { ActionType: RulesetActionType.ContestedCheck or RulesetActionType.SkillCheck } ? action.TargetIds : [];
         var facts = new BeatFacts(
             illusion,
-            int.TryParse(action?.Parameters.GetValueOrDefault(NoticingContextContributor.RollTotalKey), out var total) ? total : null,
-            action?.Parameters.GetValueOrDefault(RulesetActionHandler.ActorWonKey) is { } won ? won == "true" : null,
-            new HashSet<string>(action?.ActionType == RulesetActionType.ContestedCheck ? action.TargetIds : [], StringComparer.OrdinalIgnoreCase),
+            rolled,
+            actorWon,
+            new HashSet<string>(judged, StringComparer.OrdinalIgnoreCase),
             disbeliefDc,
-            system);
+            system,
+            Tied: contest == "tie");
         var quality = ImpressionResolver.QualityShift(action);
 
         var location = ctx.Locations.TryGetValue(locationId, out var known) ? known : await ctx.Session.LoadAsync<Location>(locationId, ct);
@@ -125,7 +137,7 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
                     $"{caught}: connects it to {actor!.Name}; examining it: {IllusionRules.DisbeliefSkill(system)} vs DC {dc}");
             }
 
-            var repeats = observer.Impressions.Count(i => string.Equals(i.ActorId, actor?.Id, StringComparison.OrdinalIgnoreCase)
+            var repeats = actor is null ? 0 : observer.Impressions.Count(i => string.Equals(i.ActorId, actor.Id, StringComparison.OrdinalIgnoreCase)
                                                           && string.Equals(i.IntendedTone, appeal.Tone.Name, StringComparison.OrdinalIgnoreCase)
                                                           && now - i.Hour <= HabituationHours);
             var company = await CompanyOfAsync(ctx, observer, actor, present, combat, ct);
@@ -133,7 +145,7 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
                 new AppraisalFacts(magical, repeats, notice.Outcome == Noticed.EffectNotSource, quality, company));
 
             var grounds = actor != null && OpinionGrounds(observer, actor, addressedSet, combat);
-            var delta = Persist(ctx, observer, actor, appeal, read, appraisal, cause, disbeliefDc, now, grounds);
+            var delta = Persist(ctx, observer, actor, appeal, read, appraisal, cause, disbeliefDc, now, grounds, illusion);
             proposed |= delta != 0 && !grounds;
             entries.Add(Entry(observer, notice, read, appraisal, delta, grounds, actor));
         }
@@ -141,14 +153,11 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
         var named = entries.Count > MaxNamed ? [.. entries.Take(MaxNamed), $"+{entries.Count - MaxNamed} others"] : entries;
         var by = actor != null ? $" by {actor.Name}" : "";
         var drawing = beat?.Draws == true ? ", drawing attention" : "";
-        var unrecorded = proposed
-            ? " An opinion change marked unrecorded is for someone the engine can't read (a stranger, an enemy): commit a relationship if it fits."
-            : "";
-        var blocked = (signal & Perceptible.Visible) != 0 && present.Any(c => !c.IsPc && !string.Equals(c.Id, actor?.Id, StringComparison.OrdinalIgnoreCase)
-                                                                             && !SightResolver.Sees(c, sight).Sees);
-        var light = blocked && SightResolver.AssumedLightNote(location, clock, sight.Light) is { } note ? " " + note : "";
+        var unrecorded = proposed ? " Unrecorded opinion changes are yours to commit as relationship, or not." : "";
+        change.ImpressionsReported = true;
         ctx.RecordMessage($"IMPRESSIONS ({cause}{by}, {appeal.Tone.Name}{(appeal.Deceptive ? ", deceptive" : "")}{drawing}{concealed}): {string.Join(" | ", named)}. "
-                          + "Recorded (opinions, moods). Narrate each: the reaction is a tendency, not a script." + unrecorded + light);
+                          + "Recorded. Each is a tendency, not a condition (don't commit frightened for it); a combatant acts on it on their own turn."
+                          + unrecorded);
     }
 
     /// <summary>Everyone alive at the location, PCs included (they're company, never observers): the index plus this batch's arrivals.</summary>
@@ -340,7 +349,7 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
     /// has grounds for it (F1); without grounds the change is only returned, for the line to propose.
     /// </summary>
     private static int Persist(ChangeContext ctx, Character observer, Character? actor, Appeal appeal, ReadResult read, Appraisal appraisal,
-        string cause, int? disbeliefDc, double now, bool grounds)
+        string cause, int? disbeliefDc, double now, bool grounds, bool illusion)
     {
         if (!ctx.Characters.ContainsKey(observer.Id))
         {
@@ -358,6 +367,7 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
             KnowsAuthor = appraisal.KnowsAuthor,
             Cause = cause,
             DisbeliefDc = read.Read is ImpressionRead.Believed or ImpressionRead.Suspects ? disbeliefDc : null,
+            Illusion = illusion && read.Read is ImpressionRead.Believed or ImpressionRead.Suspects,
             Hour = now,
         });
         if (observer.Impressions.Count > MaxImpressions)
@@ -405,7 +415,7 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
         why.AddRange(appraisal.Reasons);
         if (delta != 0 && actor != null)
         {
-            why.Add(recorded ? $"{delta:+0;-0} toward {actor.Name}" : $"{delta:+0;-0} toward {actor.Name}, unrecorded");
+            why.Add(recorded ? $"{delta:+0;-0} toward {actor.Name}" : $"{delta:+0;-0} toward {actor.Name}, unrecorded [{observer.Id}]");
         }
 
         var name = EncounterResolver.IsUnnamedStub(observer) ? $"unnamed stub [{observer.Id}]" : observer.Name;
@@ -425,9 +435,16 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
             return;
         }
 
-        var believed = observer.Impressions?.FirstOrDefault(i => i.Read is ImpressionRead.Believed or ImpressionRead.Suspects && i.DisbeliefDc != null
+        var believed = observer.Impressions?.FirstOrDefault(i => (i.Illusion || i.DisbeliefDc != null)
+                                                                && i.Read is ImpressionRead.Believed or ImpressionRead.Suspects
                                                                 && string.Equals(i.ActorId, casterId, StringComparison.OrdinalIgnoreCase));
         var skill = IllusionRules.DisbeliefSkill(system);
+        if (!ContextTurnReads.IsSkillCheck(check, skill))
+        {
+            ctx.RecordMessage($"DISBELIEVE: seeing through an illusion is an {skill} check here, not {check.Parameters.GetValueOrDefault("skill") ?? check.ActionName}; nothing settled.");
+            return;
+        }
+
         if (believed is null)
         {
             ctx.RecordMessage($"DISBELIEVE: {observer.Name} has no illusion of {casterId}'s to see through; nothing recorded.");
@@ -439,6 +456,15 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
             return;
         }
 
+        // The DC the cast recorded, else the one the narrator set on this check: an NPC caster with no sheet DC still has one.
+        var against = believed.DisbeliefDc ?? (int.TryParse(check.Parameters.GetValueOrDefault("dc")?.Trim(), out var given) ? given : (int?)null);
+        if (against is null)
+        {
+            ctx.RecordMessage($"DISBELIEVE: the {believed.Cause}'s DC isn't known (the caster's sheet has none); pass parameters.dc on the check.");
+            return;
+        }
+
+        believed.DisbeliefDc = against;
         if (total < believed.DisbeliefDc)
         {
             ctx.RecordMessage($"DISBELIEVE: {observer.Name} examines the {believed.Cause} and still believes it ({skill} {total} vs DC {believed.DisbeliefDc}).");
@@ -450,6 +476,7 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
         believed.Read = ImpressionRead.SawThrough;
         believed.Tone = Tones.SeenThrough(meant).Name;
         believed.DisbeliefDc = null;
+        believed.Illusion = false;
         if (observer.Psychology != null && believed.Tier >= ImpressionTier.Strong)
         {
             observer.Psychology.CurrentMood = Tones.Get(believed.Tone).Mood;

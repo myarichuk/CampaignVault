@@ -40,10 +40,10 @@ public sealed class PerceptibleBeats(SpellDefinitionProvider? spells)
     {
         foreach (var change in changes)
         {
-            var appeal = Impressions.Appeal.Of(change) != null;
+            // Only once the impression step has actually said it: a beat it couldn't report still gets the witness line.
             foreach (var beat in DetectOne(change, system))
             {
-                yield return appeal ? beat with { HasAppeal = true } : beat;
+                yield return change.ImpressionsReported ? beat with { HasAppeal = true } : beat;
             }
         }
     }

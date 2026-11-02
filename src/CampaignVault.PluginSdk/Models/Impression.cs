@@ -51,8 +51,11 @@ public class Impression
     /// <summary>The beat, short ("minor illusion", "a bouquet of wildflowers").</summary>
     public string? Cause { get; set; }
 
-    /// <summary>The spell DC an examining observer must meet to see through it (an illusion believed); null otherwise.</summary>
+    /// <summary>The spell DC an examining observer must meet to see through it (an illusion believed); null when unknown.</summary>
     public int? DisbeliefDc { get; set; }
+
+    /// <summary>A figment taken in (believed or suspected): a <c>disbelieve</c> check can still turn it, DC known or not.</summary>
+    public bool Illusion { get; set; }
 
     /// <summary>Campaign hour (TotalDaysElapsed * 24 + Hour) it landed.</summary>
     public double Hour { get; set; }

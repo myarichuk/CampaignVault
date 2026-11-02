@@ -40,8 +40,8 @@ public class ImpressionResolverTests
         return Assert.IsType<Appeal>(appeal);
     }
 
-    private static BeatFacts Facts(bool illusion = false, int? total = null, bool? won = null, string? target = null, int? dc = null) =>
-        new(illusion, total, won, target == null ? None : new HashSet<string>([target], StringComparer.OrdinalIgnoreCase), dc, RulesetSystem.Dnd5e);
+    private static BeatFacts Facts(bool illusion = false, int? total = null, bool? won = null, string? target = null, int? dc = null, bool tied = false) =>
+        new(illusion, total, won, target == null ? None : new HashSet<string>([target], StringComparer.OrdinalIgnoreCase), dc, RulesetSystem.Dnd5e, tied);
 
     // ---- I4: appeal ----
 
@@ -132,6 +132,57 @@ public class ImpressionResolverTests
         var guard = Person("chars/guard", wisdom: 20);
         Assert.Equal(ImpressionRead.Believed, ImpressionResolver.Read(guard, Maeve, lie, Facts(total: 3, won: true, target: guard.Id)).Read);
         Assert.Equal(ImpressionRead.SawThrough, ImpressionResolver.Read(Person("chars/x", wisdom: 1), Maeve, lie, Facts(total: 30, won: false, target: "chars/x")).Read);
+    }
+
+    // ---- review fixes ----
+
+    [Theory]
+    [InlineData("Persuade the lieutenant", "Persuasion")]
+    [InlineData("Perform first aid", "Medicine")]
+    [InlineData("Make them believe us", null)]
+    public void Only_the_skill_itself_infers_an_appeal_not_a_word_in_the_label(string name, string? skill)
+    {
+        var parameters = skill == null ? new Dictionary<string, string>() : new Dictionary<string, string> { ["skill"] = skill };
+        Assert.Null(Appeal.Of(new RulesetAction { CharacterId = Maeve.Id, ActionName = name, ActionType = RulesetActionType.SkillCheck, Parameters = parameters }));
+    }
+
+    [Fact]
+    public void The_events_field_names_work_on_an_action_too()
+    {
+        var appeal = AppealOf(new() { ["appeal"] = "awe", ["appealIntensity"] = "strong", ["appealSubject"] = "lights" });
+        Assert.Equal(ImpressionTier.Strong, appeal.Intensity);
+        Assert.Equal("lights", appeal.Subject);
+    }
+
+    [Fact]
+    public void A_tied_contest_leaves_its_target_unconvinced_not_insulted()
+    {
+        var lie = AppealOf(new() { ["skill"] = "Deception" }, RulesetActionType.ContestedCheck, "Deception");
+        var read = ImpressionResolver.Read(Person("chars/g"), Maeve, lie, Facts(total: 12, won: false, target: "chars/g", tied: true));
+        Assert.Equal(ImpressionRead.Suspects, read.Read);
+        Assert.Equal("unconvinced (a tie)", read.Note);
+    }
+
+    [Fact]
+    public void Fear_and_hypnotic_pattern_are_saves_not_figments()
+    {
+        var spells = new CampaignVault.Services.SpellDefinitionProvider(
+            System.IO.Path.Combine(System.IO.Path.GetTempPath(), "cv_figment_" + Guid.NewGuid()), typeof(CampaignVault.Services.SpellDefinitionProvider).Assembly);
+        foreach (var (name, figment) in new[] { ("fear", false), ("hypnotic_pattern", false), ("minor_illusion", true), ("silent_image", true) })
+        {
+            Assert.True(spells.TryGet(RulesetSystem.Dnd5e, name, out var spell));
+            Assert.Equal(figment, IllusionRules.IsFigment(spell));
+        }
+    }
+
+    [Fact]
+    public void A_beat_keeps_its_witness_line_until_the_impression_step_has_reported_it()
+    {
+        var beats = new CampaignVault.Data.Context.PerceptibleBeats(null);
+        var ev = new EventOccurred { Summary = "Maeve sings", InitiatorId = Maeve.Id, Perceptible = "loud", Appeal = "delight" };
+        Assert.False(Assert.Single(beats.Detect([ev], RulesetSystem.Dnd5e)).HasAppeal);
+        ev.ImpressionsReported = true;
+        Assert.True(Assert.Single(beats.Detect([ev], RulesetSystem.Dnd5e)).HasAppeal);
     }
 
     // ---- I5: appraise ----

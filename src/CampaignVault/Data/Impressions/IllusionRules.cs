@@ -16,6 +16,15 @@ public static class IllusionRules
     public static bool IsIllusion(SpellDefinition? spell) =>
         spell?.IllusionLimits != null || string.Equals(spell?.School, "illusion", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// A figment: an illusion that is believed until someone examines it. Not every illusion-school spell is one: Fear and
+    /// Hypnotic Pattern are resolved by a saving throw, not seen through with Investigation. The quoted limits mark the figments;
+    /// a homebrew illusion without them counts when it has no save.
+    /// </summary>
+    public static bool IsFigment(SpellDefinition? spell) =>
+        spell?.IllusionLimits != null
+        || (string.Equals(spell?.School, "illusion", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(spell?.SaveType));
+
     public static string DisbeliefSkill(string? system) =>
         string.Equals(system, RulesetSystem.Pathfinder2e, StringComparison.OrdinalIgnoreCase) ? "Perception" : "Investigation";
 

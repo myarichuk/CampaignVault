@@ -192,3 +192,29 @@ Old Wenna — uneasy (distrusts magic): withdraws. Narrate each; already recorde
   `parameters.concealCasting: "true"` allows a hidden gesture (behind the back, under a cloak), and the engine rolls Sleight of Hand
   (pf2e Thievery) as part of the cast, with no extra action, so it works mid-fight; an onlooker catches it only with a passive
   Perception that meets the roll. The narrator decides what the fiction allows; the engine rolls and compares.
+
+## Review (two independent reviewers: engine correctness; rules fidelity and the LLM contract)
+
+Every finding was checked against the code before fixing; all held.
+
+- [x] **R1. A Deception check against a DC settled nothing for its target.** The target got passive Insight vs the roll and could
+  read "it fell flat; believes it". A `SkillCheck`'s targets now follow the check against its `dc`, as a contest's do.
+- [x] **R2. Every illusion-school spell read as a figment.** Fear and Hypnotic Pattern are saves. `IllusionRules.IsFigment`: quoted
+  limits, or illusion school with no save.
+- [x] **R3. A believed illusion from a caster with no sheet DC could never be disbelieved.** Impressions carry `Illusion`; the
+  disbelief check uses the recorded DC, else its own `parameters.dc`, else says the DC is unknown. The check must be the system's
+  disbelief skill (5e Investigation, pf2e Perception).
+- [x] **R4. A tied contest read as "saw through it".** SRD 5.1: a tie leaves things as they were. `ResolverResult.ContestTied`; the
+  target is unconvinced (`Suspects`), not insulted.
+- [x] **R5. Appeal inference matched substrings.** "Persuade the lieutenant" inferred a deceptive lie (`lie`), "Perform first aid"
+  a show. Inference now reads the skill by its full name only.
+- [x] **R6. The witness line dropped any beat with an appeal**, even when the impression step reported nothing (no observers, a
+  failure, a container without the step). `WorldChange.ImpressionsReported` is set only when the line is written.
+- [x] **R7. PCs could `departing`.** Refused: the party travels.
+- [x] **R8. Anonymous beats habituated one another.** Habituation needs a known actor.
+- [x] **R9. LLM contract.** One wording everywhere for a lie (rolled: passive Insight vs the roll; unrolled: vs 11 + the liar's
+  Deception bonus); "a tendency, never the Frightened condition; a combatant acts on it on their own turn" in the line, the
+  prompts, the skills, the help manual (D5 was only in this plan); house rules marked as engine rulings (sight reach, suspecting a
+  visible caster, `concealCasting`); `parameters.` prefixes in the prompts; `appealIntensity`/`appealSubject` accepted on actions;
+  `lighting` in the cheat sheet; unrecorded entries carry the observer's id; at most five names; the assumed-light note only in the
+  witness channel (once per place and light level), saying it persists and `auto` clears it.

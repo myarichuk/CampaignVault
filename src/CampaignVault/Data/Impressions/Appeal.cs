@@ -1,4 +1,3 @@
-using CampaignVault.Data.Context;
 using CampaignVault.Models;
 
 namespace CampaignVault.Data.Impressions;
@@ -125,30 +124,40 @@ public sealed record Appeal(
 
         if (!string.IsNullOrWhiteSpace(named))
         {
-            return Build(named, p.GetValueOrDefault("intensity"), deceptive, p.GetValueOrDefault("subject"), reception, inferred: false, out error);
+            return Build(named, IntensityParam(p), deceptive, SubjectParam(p), reception, inferred: false, out error);
         }
 
         // D2: three checks say what they're for on their own.
         if (action.ActionType is RulesetActionType.SkillCheck or RulesetActionType.ContestedCheck)
         {
-            var inferred = ContextTurnReads.IsSkillCheck(action, "intimidat") ? "menace"
-                : ContextTurnReads.IsSkillCheck(action, "deception", "lie") ? "trust"
-                : ContextTurnReads.IsSkillCheck(action, "performance", "perform") ? "delight"
-                : null;
+            // The skill itself, by its full name: "Persuade the lieutenant" or "Perform first aid" is no lie and no show.
+            var skill = (p.GetValueOrDefault("skill") ?? action.ActionName)?.Trim().ToLowerInvariant();
+            var inferred = skill switch
+            {
+                "intimidation" => "menace",
+                "deception" => "trust",
+                "performance" => "delight",
+                _ => null,
+            };
             if (inferred != null)
             {
-                return Build(inferred, p.GetValueOrDefault("intensity"), deceptive || inferred == "trust", p.GetValueOrDefault("subject"),
+                return Build(inferred, IntensityParam(p), deceptive || inferred == "trust", SubjectParam(p),
                     reception, inferred: true, out error);
             }
         }
 
-        if (reception.Count > 0 || deceptive || p.ContainsKey("intensity"))
+        if (reception.Count > 0 || deceptive || IntensityParam(p) != null)
         {
             error = "intensity, deceptive and reception need parameters.appeal (the tone it's meant to strike).";
         }
 
         return null;
     }
+
+    /// <summary>The event's field names work on an action too, so one spelling never silently drops.</summary>
+    private static string? IntensityParam(Dictionary<string, string> p) => p.GetValueOrDefault("intensity") ?? p.GetValueOrDefault("appealIntensity");
+
+    private static string? SubjectParam(Dictionary<string, string> p) => p.GetValueOrDefault("subject") ?? p.GetValueOrDefault("appealSubject");
 
     private static Appeal? Build(string tone, string? intensity, bool deceptive, string? subject, IReadOnlyDictionary<string, string>? reception,
         bool inferred, out string? error)

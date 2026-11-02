@@ -78,6 +78,11 @@ public abstract class WorldChange
     [JsonIgnore]
     public bool IsEngineAuthored { get; set; }
 
+    /// <summary>Internal: the impression step reported how this change landed on its observers (IMPRESSIONS_PLAN.md), so the
+    /// witness line leaves it out. Not exposed in JSON.</summary>
+    [JsonIgnore]
+    public bool ImpressionsReported { get; set; }
+
     /// <summary>
     /// Optional: roughly how many minutes of in-game time this specific change's narrative beat took
     /// (a few lines of dialogue, a lockpicking attempt, a combat round, sharing a meal, ...). Summed
@@ -639,7 +644,7 @@ public class EventOccurred : WorldChange
     [JsonPropertyName("appealIntensity")]
     public string? AppealIntensity { get; set; }
 
-    [Description("Optional, with appeal: true when it isn't sincere (insincere flattery, a lie, a feigned threat). Each observer's passive Insight is set against the initiator's passive Deception; whoever sees through it takes it the other way.")]
+    [Description("Optional, with appeal: true when it isn't sincere (insincere flattery, a lie, a feigned threat). Each observer's passive Insight is set against 11 + the initiator's Deception bonus (with no roll: their average); whoever meets it sees through it and takes it the other way. Roll a Deception check (ruleset_action) when it matters: its targets follow the roll against its DC, bystanders' passive Insight against the roll.")]
     [JsonPropertyName("deceptive")]
     public bool? Deceptive { get; set; }
 
@@ -1051,9 +1056,10 @@ public class ActivityChange : WorldChange
 ///                     trust, sorrow, fear, menace, disgust, anger, insult): the engine works out how it lands on each observer
 ///                     (IMPRESSIONS_PLAN.md). An Intimidation check is menace, a Deception check deceptive trust and a Performance
 ///                     check delight without it.
-///   "intensity"     – mild (default), strong or overwhelming
-///   "deceptive"     – "true" when it isn't sincere (an illusion passed off as real, insincere flattery, a bluff)
-///   "subject"       – what it shows or is about ("butterflies", "a ghost"), matched against observers' wants and fears
+///   "intensity"     – mild (default), strong or overwhelming (alias: appealIntensity, as on event)
+///   "deceptive"     – "true" when it isn't sincere (an illusion passed off as real, insincere flattery, a bluff). On a check, its
+///                     targets follow the check (against its dc, or the contest); bystanders' passive Insight is set against the roll
+///   "subject"       – what it shows or is about ("butterflies", "a ghost"), matched against observers' wants and fears (alias: appealSubject)
 ///   "reception"     – per-observer tone overrides, "chars/a:disgust, chars/b:delight"
 ///   "disbelieve"    – on a skill check: the illusion's caster id; meeting the caster's spell DC sees through their illusion
 ///   "subtle"        – "true": the casting itself can't be perceived (Subtle Spell); otherwise onlookers who catch it suspect an illusion's caster

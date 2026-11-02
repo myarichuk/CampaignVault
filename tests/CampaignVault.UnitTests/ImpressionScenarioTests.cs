@@ -145,7 +145,8 @@ public class ImpressionScenarioTests : IClassFixture<RavenDBFixture>
         Assert.Equal(0, ImpressionOpinion(wenna, g.PcId));
         Assert.Contains("toward Maeve, unrecorded", EntryFor(line, "Tam"));
         Assert.Contains("toward Maeve, unrecorded", EntryFor(line, "Old Wenna"));
-        Assert.Contains("commit a relationship if it fits", line);
+        Assert.Contains("Unrecorded opinion changes are yours to commit as relationship", line);
+        Assert.Contains($"unrecorded [{g.TamId}]", EntryFor(line, "Tam"));
         Assert.Equal("delight", Assert.Single(tam.Impressions).Tone); // the impression itself is kept either way
     }
 
@@ -425,5 +426,88 @@ public class ImpressionScenarioTests : IClassFixture<RavenDBFixture>
         var line = Impressions(cast);
         Assert.Contains("gesture hidden: Sleight of Hand 18", line);
         Assert.Contains("believes it", EntryFor(line, "Goblin Scout")); // passive Perception 10 < 18
+    }
+
+    // ---- review fixes ----
+
+    [Fact]
+    public async Task A_deception_check_that_misses_its_dc_is_seen_through_by_its_target()
+    {
+        var g = await SeedGreenAsync();
+
+        var lie = await g.Tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes =
+            [
+                new RulesetAction
+                {
+                    CharacterId = g.PcId, TargetIds = [g.TamId], ActionType = RulesetActionType.SkillCheck, ActionName = "Deception",
+                    ActionCategory = ActionCategory.Social,
+                    Parameters = new Dictionary<string, string> { ["skill"] = "Deception", ["dc"] = "15", ["bonus"] = "-30" }
+                }
+            ],
+            Narrative = "Maeve swears she's the baron's niece."
+        }, g.Slug);
+
+        Assert.True(lie.Success, lie.Summary);
+        Assert.Contains("saw through it (the check failed)", EntryFor(Impressions(lie), "Tam"));
+    }
+
+    [Fact]
+    public async Task An_illusion_whose_caster_has_no_dc_is_settled_against_the_checks_own_dc()
+    {
+        var r = await NightRoadSightTests.SeedRoadAsync(_fixture, startCombat: false);
+        await SetAsync(r.GoblinId, c => c.DistinctiveFeatures = ["Darkvision 60 ft."]);
+        var cast = await CastAsync(r.Tools, r.Slug, r.PcId,
+            new() { ["mode"] = "image", ["appeal"] = "fear", ["deceptive"] = "true", ["unseenBy"] = "all" }, targets: [r.GoblinId]);
+        Assert.True(cast.Success, cast.Summary);
+        Assert.Contains("Investigation vs DC the spell DC", EntryFor(Impressions(cast), "Goblin Scout"));
+
+        var look = await r.Tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes =
+            [
+                new RulesetAction
+                {
+                    CharacterId = r.GoblinId, ActionType = RulesetActionType.SkillCheck, ActionName = "Investigation",
+                    Parameters = new Dictionary<string, string> { ["skill"] = "Investigation", ["dc"] = "12", ["bonus"] = "30", ["disbelieve"] = r.PcId }
+                }
+            ],
+            Narrative = "The scout squints at the shape."
+        }, r.Slug);
+
+        Assert.True(look.Success, look.Summary);
+        Assert.Contains(look.Data!.Summary ?? [], l => l.StartsWith("DISBELIEVE: Goblin Scout sees through") && l.Contains("vs DC 12"));
+    }
+
+    [Fact]
+    public async Task A_pc_cant_depart_the_party_travels()
+    {
+        var r = await NightRoadSightTests.SeedRoadAsync(_fixture, startCombat: false);
+        var leave = await r.Tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes = [new ActivityChange { CharacterId = r.PcId, Departing = true }],
+            Narrative = "Maeve sets off."
+        }, r.Slug);
+        Assert.False(leave.Success);
+        Assert.Null((await LoadAsync(r.PcId)).Departing);
+    }
+
+    [Fact]
+    public async Task Anonymous_frights_dont_habituate_one_another()
+    {
+        var g = await SeedGreenAsync();
+        ToolResult<TurnResult>? last = null;
+        for (var i = 0; i < 2; i++)
+        {
+            last = await g.Tools.TakeTurn(new TakeTurnRequest
+            {
+                Changes = [new EventOccurred { Summary = $"A scream from the well {i}", LocationId = g.LocId, Perceptible = "loud", Appeal = "fear" }],
+                Narrative = "A scream rises from the well."
+            }, g.Slug);
+            Assert.True(last.Success, last.Summary);
+        }
+
+        Assert.DoesNotContain("seen it before", Impressions(last!));
     }
 }

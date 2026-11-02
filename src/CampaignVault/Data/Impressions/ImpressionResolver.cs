@@ -11,7 +11,8 @@ public sealed record BeatFacts(
     bool? ActorWon,
     IReadOnlySet<string> ContestTargets,
     int? DisbeliefDc,
-    string? System);
+    string? System,
+    bool Tied = false);
 
 /// <summary>Whether the observer bought it, and the numbers that said so.</summary>
 public sealed record ReadResult(ImpressionRead Read, string? Note = null);
@@ -76,9 +77,10 @@ public static class ImpressionResolver
 
     /// <summary>
     /// I4. Sincere beats land. An illusion is believed: the rules give a check only to a creature that spends its action
-    /// examining it (the disbelieve check, I6). A contest's target follows the contest. Anyone else sets passive Insight against
-    /// the roll, or against the actor's passive Deception when nothing was rolled; meeting it sees through (as passive Perception
-    /// meets Stealth, SRD 5.1).
+    /// examining it (the disbelieve check, I6). The check's targets follow the check (a contest, or a skill check against the DC
+    /// set for them). Anyone else sets passive Insight against the roll, meeting it sees through (as passive Perception meets
+    /// Stealth, SRD 5.1); with no roll, against the liar's average, 10.5 + Deception, so 11 + Deception meets it (house rule:
+    /// the SRD has no passive Deception).
     /// </summary>
     public static ReadResult Read(Character observer, Character? actor, Appeal appeal, BeatFacts facts)
     {
@@ -94,11 +96,13 @@ public static class ImpressionResolver
                 $"believes it; examining it takes an action: {IllusionRules.DisbeliefSkill(facts.System)} vs DC {dc}");
         }
 
-        if (facts.ActorWon is { } won && facts.ContestTargets.Contains(observer.Id))
+        // The check's own verdict settles its targets: a contest, or a check against the DC the narrator set for them.
+        // A tied contest leaves things as they were (SRD 5.1): not taken in, not exposed either: unconvinced.
+        if (facts.ContestTargets.Contains(observer.Id) && (facts.Tied || facts.ActorWon is not null))
         {
-            return won
-                ? new ReadResult(ImpressionRead.Believed, "believes it (lost the contest)")
-                : new ReadResult(ImpressionRead.SawThrough, "saw through it (won the contest)");
+            return facts.Tied ? new ReadResult(ImpressionRead.Suspects, "unconvinced (a tie)")
+                : facts.ActorWon == true ? new ReadResult(ImpressionRead.Believed, "believes it (the check succeeded)")
+                : new ReadResult(ImpressionRead.SawThrough, "saw through it (the check failed)");
         }
 
         // With no roll, the deceiver stands at their average result, 10.5 + Deception: an Insight of 11 + Deception meets it. Ties

@@ -1410,6 +1410,7 @@ public class Dnd5eRulesetResolver : RulesetResolverBase<Dnd5eExtension>
             RollTotal = actorRoll.Result,
             Skill = actorSkill,
             ActorWon = actorWins,
+            ContestTied = actorRoll.Result == targetRoll.Result,
         };
     }
 

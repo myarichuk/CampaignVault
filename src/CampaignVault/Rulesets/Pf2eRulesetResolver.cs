@@ -565,6 +565,7 @@ public class Pf2eRulesetResolver : RulesetResolverBase<Pf2eExtension>
             RollTotal = actorRoll.Result,
             Skill = actorSkill,
             ActorWon = actorWins,
+            ContestTied = actorRoll.Result == targetRoll.Result,
         };
     }
 

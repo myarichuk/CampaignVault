@@ -480,7 +480,7 @@ public sealed class RulesetActionHandler(
         action.Parameters[NoticingContextContributor.RollTotalKey] = total.ToString(global::System.Globalization.CultureInfo.InvariantCulture);
         if (result.ActorWon is { } won)
         {
-            action.Parameters[ActorWonKey] = won ? "true" : "false";
+            action.Parameters[ActorWonKey] = result.ContestTied ? "tie" : won ? "true" : "false";
         }
 
         if (!string.IsNullOrWhiteSpace(result.Skill) && !action.Parameters.ContainsKey("skill"))
@@ -489,7 +489,7 @@ public sealed class RulesetActionHandler(
         }
     }
 
-    /// <summary>Set on a contested check: whether the actor won (IMPRESSIONS_PLAN.md I4).</summary>
+    /// <summary>Set on a contested check: "true", "false", or "tie" (IMPRESSIONS_PLAN.md I4).</summary>
     public const string ActorWonKey = "engineActorWon";
 
     private bool GivesAwayPosition(RulesetAction action, Character actor)

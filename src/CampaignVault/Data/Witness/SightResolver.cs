@@ -12,11 +12,13 @@ public sealed record SightContext(LightLevel Light, bool Luminous, Character? Or
 /// <summary>
 /// Can this observer see that source (IMPRESSIONS_PLAN.md I1, D7, D8)? A location is a bucket, so distance comes from the recorded
 /// <see cref="SpatialPosition"/> bands (either side's record), then the light decides how far eyes reach:
+/// House rule on the SRD's vision rules (D7, D8): the SRD makes dim light only a Perception penalty and darkness effective
+/// blindness, which a location-sized bucket can't apply faithfully, so reach stands in for both:
 /// <list type="bullet">
 /// <item>Bright: everything at the location.</item>
-/// <item>Dim (lightly obscured): out to Far. Darkvision sees dim light as bright within its range.</item>
-/// <item>Dark (heavily obscured, SRD 5.1 "effectively blinded"): Touch and Close only, or out to the darkvision range,
-/// which treats darkness as dim light.</item>
+/// <item>Dim (lightly obscured): out to Far. Darkvision sees dim light as bright within its range (SRD).</item>
+/// <item>Dark (heavily obscured): Touch and Close only (someone at arm's length, a shape by firelight), or out to the
+/// darkvision range, which treats darkness as dim light (SRD).</item>
 /// <item>A luminous beat (fire, radiant light, a Daylight) is seen at any distance in any light.</item>
 /// </list>
 /// Hearing isn't touched: a loud beat carries across the whole location (and next door, <see cref="WitnessSelector.InEarshotAsync"/>).
@@ -91,7 +93,7 @@ public static class SightResolver
             ? $"{location.Type}, indoors"
             : $"{location.Type}, {time?.Hour ?? 0:00}:00";
         return $"Light at {location.Name} taken as {light.ToString().ToLowerInvariant()} ({basis}), so not everyone could see it; "
-               + "if that's wrong, set location_update lighting (bright, dim, dark).";
+               + "if that's wrong, set location_update lighting (bright, dim, dark; it persists, 'auto' clears it).";
     }
 
     /// <summary>Darkvision range in feet: <c>Attributes["darkvision"]</c>, else the race trait ("Darkvision 60 ft."), else none.</summary>
