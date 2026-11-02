@@ -174,7 +174,9 @@ internal sealed class WitnessContextContributor(PerceptibleBeats beats, IWitness
     {
         // The source the witnesses look at: an invisible caster's effect is seen, the caster isn't. A death has no source to hide.
         var source = said.Select(t => t.Actor).FirstOrDefault(a => a != null && said.Any(t => t.Actor == a && t.Beat.Cause != "dies"));
-        var witnesses = (await selector.AtAsync(turn.Session, turn.CampaignName, locationId, signal, source, excluded, ct))
+        var sight = new SightContext(SightResolver.LightAt(await turn.Session.LoadAsync<Location>(locationId, ct), turn.Time),
+            said.Any(t => t.Beat.Luminous), source ?? said.Select(t => t.Actor).FirstOrDefault(a => a != null));
+        var witnesses = (await selector.AtAsync(turn.Session, turn.CampaignName, locationId, signal, source, excluded, ct, sight))
             .Select(w => w.Notice.Note == null ? w.Character.Name : $"{w.Character.Name} ({w.Notice.Note})")
             .ToList();
         if (witnesses.Count == 0)

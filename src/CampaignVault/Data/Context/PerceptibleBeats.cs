@@ -13,7 +13,8 @@ public sealed record PerceptibleBeat(
     bool CombatNoise,
     string? LocationId = null,
     bool Draws = false,
-    int CrowdModifier = 0)
+    int CrowdModifier = 0,
+    bool Luminous = false)
 {
     /// <summary>
     /// Where the beat happens: the event's own location, then where its actor stands, then the party's. The witness line and the
@@ -50,7 +51,7 @@ public sealed class PerceptibleBeats(SpellDefinitionProvider? spells)
                     if (signal != Perceptible.None)
                     {
                         yield return new PerceptibleBeat(cast.CharacterId, cast.ActionName.Replace('_', ' ').ToLowerInvariant(), signal, cast.TargetIds, false,
-                            Draws: draws, CrowdModifier: CrowdDraw.ModifierOf(cast));
+                            Draws: draws, CrowdModifier: CrowdDraw.ModifierOf(cast), Luminous: IsLuminous(spell, cast));
                     }
 
                     break;
@@ -66,7 +67,7 @@ public sealed class PerceptibleBeats(SpellDefinitionProvider? spells)
                     if (signal != Perceptible.None)
                     {
                         yield return new PerceptibleBeat(action.CharacterId, action.ActionName.ToLowerInvariant(), signal, action.TargetIds, false,
-                            Draws: draws, CrowdModifier: CrowdDraw.ModifierOf(action));
+                            Draws: draws, CrowdModifier: CrowdDraw.ModifierOf(action), Luminous: IsLuminous(null, action));
                     }
 
                     break;
@@ -81,6 +82,35 @@ public sealed class PerceptibleBeats(SpellDefinitionProvider? spells)
                     break;
             }
         }
+    }
+
+    /// <summary>Light-giving spells with no damage to say so (SRD 5.1 / Player Core: each sheds light).</summary>
+    private static readonly HashSet<string> LightSpells = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "light", "daylight", "dancing_lights", "faerie_fire", "continual_flame", "produce_flame", "flaming_sphere", "moonbeam",
+        "sunbeam", "sunburst", "guiding_bolt",
+    };
+
+    /// <summary>
+    /// I1/D8: a beat that makes its own light is seen at any distance, in any light: fire or radiant damage, a light spell, or
+    /// anything marked <c>luminous: true</c>. An illusion's image is not one (SRD 5.1 Minor Illusion: it "can't create ... light").
+    /// </summary>
+    public static bool IsLuminous(SpellDefinition? spell, RulesetAction action)
+    {
+        if (string.Equals(action.Parameters.GetValueOrDefault("luminous")?.Trim(), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (action.ActionType != RulesetActionType.Spell)
+        {
+            return false;
+        }
+
+        var type = spell?.DamageType ?? action.DamageType;
+        return string.Equals(type, "fire", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(type, "radiant", StringComparison.OrdinalIgnoreCase)
+               || LightSpells.Contains(CastingComponentGate.NormalizeSlug(action.ActionName));
     }
 
     public static string Short(string? text) =>

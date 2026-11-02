@@ -1123,6 +1123,10 @@ public class LocationUpdate : WorldChange
     [JsonPropertyName("ambientCrowd")]
     public string? AmbientCrowd { get; set; }
 
+    [Description("Set the light here: 'bright', 'dim' or 'dark' (a torchlit cellar is dim, a moonless field dark); 'auto' clears it so the engine derives it from indoors/outdoors and the hour. Decides who can see a visible beat at a distance.")]
+    [JsonPropertyName("lighting")]
+    public string? Lighting { get; set; }
+
     [Description("Rename the location.")]
     [JsonPropertyName("name")]
     public string? Name { get; set; }

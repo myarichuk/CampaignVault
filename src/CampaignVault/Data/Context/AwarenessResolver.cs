@@ -61,8 +61,12 @@ public static class AwarenessResolver
 
     public static bool IsAsleep(Character c) => c.Awareness?.State == AwarenessState.Asleep;
 
-    /// <summary>A spectacle (fireball, shout, song): who perceives it and through which senses.</summary>
-    public static Notice Perceive(Character observer, Perceptible signal, Character? source = null)
+    /// <summary>
+    /// A spectacle (fireball, shout, song): who perceives it and through which senses. <paramref name="blocked"/> is what the
+    /// observer's position takes away (I1: too far or too dark to see), with <paramref name="blockedNote"/> saying why.
+    /// </summary>
+    public static Notice Perceive(Character observer, Perceptible signal, Character? source = null,
+        Perceptible blocked = Perceptible.None, string? blockedNote = null)
     {
         var conditions = Conditions(observer);
         if (conditions.Overlaps(Insensible))
@@ -82,9 +86,12 @@ public static class AwarenessResolver
             senses &= ~Perceptible.Loud;
         }
 
+        var unblocked = senses;
+        senses &= ~blocked;
+        var positionCost = unblocked != senses;
         if (senses == Perceptible.None)
         {
-            return new Notice(Noticed.Misses, Perceptible.None, asleep ? "asleep" : null);
+            return new Notice(Noticed.Misses, Perceptible.None, asleep ? "asleep" : positionCost ? blockedNote : null);
         }
 
         if (asleep)
@@ -97,9 +104,11 @@ public static class AwarenessResolver
             return new Notice(Noticed.EffectNotSource, senses, "can't see who did it");
         }
 
-        var note = senses == signal || signal != Perceptible.Both
-            ? null
-            : senses == Perceptible.Loud ? "blinded: heard it only" : "deafened: saw it only";
+        var note = positionCost && blockedNote != null
+            ? $"{blockedNote}; heard it only"
+            : senses == signal || signal != Perceptible.Both
+                ? null
+                : senses == Perceptible.Loud ? "blinded: heard it only" : "deafened: saw it only";
         return new Notice(Noticed.Perceives, senses, note);
     }
 

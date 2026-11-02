@@ -11,6 +11,24 @@ public class LocationUpdateHandler : IWorldChangeHandler
         var ctx = (ChangeContext)context;
         var lu = (LocationUpdate)change;
         var createdNew = false;
+        var setLighting = false;
+        LightLevel? lighting = null;
+        if (!string.IsNullOrWhiteSpace(lu.Lighting))
+        {
+            if (string.Equals(lu.Lighting.Trim(), "auto", StringComparison.OrdinalIgnoreCase))
+            {
+                setLighting = true;
+            }
+            else if (Enum.TryParse<LightLevel>(lu.Lighting.Trim(), ignoreCase: true, out var level) && Enum.IsDefined(level))
+            {
+                setLighting = true;
+                lighting = level;
+            }
+            else
+            {
+                return ChangeHandlerResult.Failure($"lighting '{lu.Lighting}' is not one of bright, dim, dark or auto.");
+            }
+        }
 
         if (!ctx.Locations.TryGetValue(lu.LocationId, out var loc))
         {
@@ -68,6 +86,11 @@ public class LocationUpdateHandler : IWorldChangeHandler
         if (lu.AmbientCrowd != null)
         {
             loc.AmbientCrowd = lu.AmbientCrowd == "" ? null : lu.AmbientCrowd;
+        }
+
+        if (setLighting)
+        {
+            loc.Lighting = lighting;
         }
 
         if (lu.DangerModifier.HasValue)

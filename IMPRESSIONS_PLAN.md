@@ -80,12 +80,16 @@ Old Wenna — uneasy (distrusts magic): withdraws. Narrate each; already recorde
 
 ## Phases
 
-- [ ] **I0. Plan.** This document.
-- [ ] **I1. Sight.** `SightResolver`: the band between observer and source from either side's `SpatialPositions`, the light
+- [x] **I0. Plan.** This document.
+- [x] **I1. Sight.** `SightResolver`: the band between observer and source from either side's `SpatialPositions`, the light
   (D8), darkvision parsed from the race trait or `Attributes["darkvision"]`; `PerceptibleBeat.Luminous`. `WitnessSelector`
   strips Visible from an observer who can't see the source (note: "too dark/far to see it"); a beat left with no senses is
   missed. `Location.Lighting` (bright/dim/dark) on the model and on `location_update`. Tests: dark road, Far observer misses
   a visible illusion; hears a loud one; darkvision sees it at Near; a fireball is seen in the dark; dim light reaches Far.
+  *As built:* `Data/Witness/SightResolver.cs`; `AwarenessResolver.Perceive` takes what the position blocks (`blocked`, `blockedNote`),
+  so a far trader on a dark road reads `Corren (far, too dark to see it; heard it only)` for a loud+visible beat and misses an
+  image-only one. Location type defaults to Building (dim) when a caller never set it, so an outdoor place created without a
+  type stays dim at night: set `type` or `lighting`. Not applied to A6 noticing (stealth/sleight), which keeps passive Perception only.
 - [ ] **I2. Departing and encounter stubs.** `ActivityChange.Departing`, `Character.Departing { ToLocationId, FromLocationId,
   SinceHour }`; the dispatcher completes a departure after 0.25 h. Sight treats a departing observer as Distant. The departure
   reminder names `departing: true`. An unnamed encounter stub ("Unknown Encounter Entity") is listed once as "N unnamed

@@ -33,3 +33,20 @@ public class Concealment
 
     public double? SinceHour { get; set; }
 }
+
+/// <summary>
+/// An NPC on their way out (IMPRESSIONS_PLAN.md D9): still at <see cref="FromLocationId"/>, but already Distant from everyone there.
+/// The engine completes the move once <see cref="CompleteAfterHours"/> of campaign time has passed.
+/// </summary>
+public class Departing
+{
+    /// <summary>Where they're headed; null leaves them nowhere in particular (off-screen).</summary>
+    public string? ToLocationId { get; set; }
+
+    public string? FromLocationId { get; set; }
+
+    /// <summary>Campaign hour (TotalDaysElapsed * 24 + Hour) they set off.</summary>
+    public double SinceHour { get; set; }
+
+    public const double CompleteAfterHours = 0.25;
+}
