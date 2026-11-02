@@ -63,6 +63,7 @@ Note: `world_build.quests[].objectives[]` only needs `description` (+ optional `
 | `parameters.mode` (Spell) | Caster-chosen form, e.g. Minor Illusion `image` or `sound`: one per cast, **required** (a cast without it is refused). Decides whether bystanders saw or heard it |
 | `parameters.appeal` / `intensity` / `deceptive` / `subject` / `reception` | Same as `event`'s appeal fields; `reception` is `"chars/a:disgust, chars/b:awe"`. Intimidation = menace, Deception = deceptive trust, Performance = delight by default |
 | `parameters.subtle` (Spell) | "true" for a casting nobody can perceive (Subtle Spell, Conceal Spell); otherwise onlookers who see the gesture or hear the words suspect the caster of an illusion. PF2e spells with the subtle trait are subtle already |
+| `parameters.unseenBy` / `concealCasting` (Spell) | Your ruling on "when he isn't looking": `unseenBy` lists who couldn't perceive the casting (ids or `all`); `concealCasting: "true"` allows a hidden gesture, and the engine rolls Sleight of Hand (pf2e Thievery) with the cast, no extra action, against each onlooker's passive Perception |
 | `parameters.disbelieve` (SkillCheck) | The illusion's caster id: an Investigation (5e) / Perception (pf2e) check meeting the caster's spell DC sees through their illusion |
 | `parameters.halfOnSave` | true/false — 5e defaults **true** (half damage on successful save) |
 | `parameters.healDice` / `healBonus` / `healAmount` | Healing spells (5e/PF2e) |

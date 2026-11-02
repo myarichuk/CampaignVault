@@ -186,3 +186,9 @@ Old Wenna — uneasy (distrusts magic): withdraws. Narrate each; already recorde
   `Goblin Scout: very frightened (saw Maeve cast it: connects it to Maeve; examining it: Investigation vs DC 13; morale low; alone;
   -4 toward Maeve, unrecorded) → flees`.
 
+
+- [x] **F6. "When he isn't looking" is the narrator's ruling.** The engine can't read positioning out of prose, so the narrator
+  states it: `parameters.unseenBy` (ids or `all`) names who couldn't perceive the casting at all (back turned, behind cover);
+  `parameters.concealCasting: "true"` allows a hidden gesture (behind the back, under a cloak), and the engine rolls Sleight of Hand
+  (pf2e Thievery) as part of the cast, with no extra action, so it works mid-fight; an onlooker catches it only with a passive
+  Perception that meets the roll. The narrator decides what the fiction allows; the engine rolls and compares.

@@ -3,6 +3,7 @@ using CampaignVault.Data.Context;
 using CampaignVault.Data.Templates;
 using CampaignVault.Data.Witness;
 using CampaignVault.Models;
+using CampaignVault.Rulesets;
 using CampaignVault.Services;
 
 namespace CampaignVault.Data.Impressions;
@@ -14,7 +15,7 @@ namespace CampaignVault.Data.Impressions;
 /// felt what and what they're inclined to do. It also settles <c>disbelieve</c> checks against earlier illusions (I6).
 /// Runs inside the commit, after waking, so a sleeper the beat woke is an observer too.
 /// </summary>
-public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvider? spells = null)
+public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvider? spells = null, IRollService? rolls = null)
 {
     /// <summary>Impressions kept per character, newest first.</summary>
     public const int MaxImpressions = 10;
@@ -92,6 +93,22 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
         // F3: a deceptive illusion whose casting can be seen or heard gives anyone who caught it a reason to suspect its author.
         var casting = illusion && appeal.Deceptive && actor != null ? IllusionRules.CastingShows(spell, action!, system) : (Seen: false, Heard: false);
         var sleight = actor == null ? null : SleightTotal(batch, actor.Id);
+
+        // F6: the narrator rules on what the fiction allows ("while he isn't looking", "gestures behind my back"); the engine
+        // only applies it. unseenBy names who couldn't perceive the casting at all. concealCasting asks for a hidden gesture:
+        // the engine rolls Sleight of Hand (pf2e Thievery) as part of the cast, no extra action, and passive Perception must meet it.
+        var unseen = UnseenBy(action);
+        var concealed = "";
+        if (casting.Seen && sleight == null && rolls != null && actor != null && IsTrue(action?.Parameters.GetValueOrDefault("concealCasting")))
+        {
+            var skill = string.Equals(system, RulesetSystem.Pathfinder2e, StringComparison.OrdinalIgnoreCase) ? "Thievery" : "Sleight of Hand";
+            var roll = await rolls.RollAsync(new RollRequest
+            {
+                Tag = "conceal-casting", Expression = "1d20", Bonus = ImpressionResolver.SkillBonus(actor, skill, dexterity: true)
+            }, ct);
+            sleight = roll.Result;
+            concealed = $", gesture hidden: {skill} {roll.Result}";
+        }
         var combat = ctx.ActiveCombat is { IsActive: true } encounter ? encounter : null;
         var addressedSet = new HashSet<string>(addressed, StringComparer.OrdinalIgnoreCase);
 
@@ -100,7 +117,7 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
         foreach (var (observer, notice) in observers)
         {
             var read = ImpressionResolver.Read(observer, actor, appeal, facts);
-            if (read.Read == ImpressionRead.Believed && (casting.Seen || casting.Heard)
+            if (read.Read == ImpressionRead.Believed && (casting.Seen || casting.Heard) && !unseen.All && !unseen.Ids.Contains(observer.Id)
                 && NoticesCasting(observer, actor!, casting, sight, sleight, system) is { } caught)
             {
                 var dc = disbeliefDc?.ToString() ?? "the spell DC";
@@ -130,7 +147,7 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
         var blocked = (signal & Perceptible.Visible) != 0 && present.Any(c => !c.IsPc && !string.Equals(c.Id, actor?.Id, StringComparison.OrdinalIgnoreCase)
                                                                              && !SightResolver.Sees(c, sight).Sees);
         var light = blocked && SightResolver.AssumedLightNote(location, clock, sight.Light) is { } note ? " " + note : "";
-        ctx.RecordMessage($"IMPRESSIONS ({cause}{by}, {appeal.Tone.Name}{(appeal.Deceptive ? ", deceptive" : "")}{drawing}): {string.Join(" | ", named)}. "
+        ctx.RecordMessage($"IMPRESSIONS ({cause}{by}, {appeal.Tone.Name}{(appeal.Deceptive ? ", deceptive" : "")}{drawing}{concealed}): {string.Join(" | ", named)}. "
                           + "Recorded (opinions, moods). Narrate each: the reaction is a tendency, not a script." + unrecorded + light);
     }
 
@@ -206,6 +223,26 @@ public sealed class ImpressionStep(PerceptibleBeats beats, SpellDefinitionProvid
     private const int FriendOpinion = 25;
 
     private static readonly HashSet<string> Insensible = new(StringComparer.OrdinalIgnoreCase) { "unconscious", "petrified", "paralyzed" };
+
+    /// <summary>F6: <c>parameters.unseenBy</c>, the narrator's ruling: character ids (comma-separated) or "all".</summary>
+    private static (bool All, HashSet<string> Ids) UnseenBy(RulesetAction? action)
+    {
+        var raw = action?.Parameters.GetValueOrDefault("unseenBy");
+        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return (false, ids);
+        }
+
+        foreach (var id in raw.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            ids.Add(id);
+        }
+
+        return (ids.Contains("all"), ids);
+    }
+
+    private static bool IsTrue(string? value) => string.Equals(value?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>A Sleight of Hand check the caster made in this batch, to hide the gesture (F3).</summary>
     private static int? SleightTotal(IReadOnlyList<WorldChange> batch, string actorId) =>

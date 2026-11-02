@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Autofac;
+using CampaignVault.Data;
 using CampaignVault.Data.Witness;
 using CampaignVault.Models;
 using CampaignVault.Tools;
@@ -125,11 +127,13 @@ public class NightRoadSightTests : IClassFixture<RavenDBFixture>
     internal sealed record Road(string Slug, CampaignTools Tools, string LocId, string PcId, string GoblinId, string CorrenId, string IlsaId);
 
     /// <summary>Corren is Far up the road from Maeve; Ilsa stands Close by her. The road is dark.</summary>
-    internal static async Task<Road> SeedRoadAsync(RavenDBFixture fixture, string lighting = "dark", bool startCombat = true)
+    internal static async Task<Road> SeedRoadAsync(RavenDBFixture fixture, string lighting = "dark", bool startCombat = true, IRollService? rolls = null)
     {
         var slug = "sight-" + Guid.NewGuid().ToString("N")[..8];
-        var repo = fixture.CreateRepository();
-        var tools = TestCampaignToolsFactory.Create(fixture, repository: repo);
+        var repo = rolls == null
+            ? fixture.CreateRepository()
+            : fixture.CreateRepository(overrides: b => b.RegisterInstance(rolls).As<IRollService>());
+        var tools = TestCampaignToolsFactory.Create(fixture, rollService: rolls, repository: repo);
         await TestCampaignDefaults.EnsureExistsAsync(tools, slug);
 
         var locId = $"locations/{slug}-road";

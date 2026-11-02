@@ -1057,6 +1057,9 @@ public class ActivityChange : WorldChange
 ///   "reception"     – per-observer tone overrides, "chars/a:disgust, chars/b:delight"
 ///   "disbelieve"    – on a skill check: the illusion's caster id; meeting the caster's spell DC sees through their illusion
 ///   "subtle"        – "true": the casting itself can't be perceived (Subtle Spell); otherwise onlookers who catch it suspect an illusion's caster
+///   "unseenBy"      – your ruling: who couldn't perceive the casting ("chars/a, chars/b" or "all": back turned, behind cover)
+///   "concealCasting" – "true" when you allow a hidden gesture (behind the back, under a cloak): the engine rolls Sleight of Hand
+///                     (pf2e Thievery) as part of the cast, and only a passive Perception that meets it catches the gesture
 ///   "outsideCombat" – "true" lets a hostile action resolve with no combat active (coup de grâce, spar)
 ///   "save"          – saving throw ability for save-based spells (5e/PF2e)
 ///   "halfOnSave"    – "true"/"false" — half damage on successful save (default true for 5e spells)

@@ -373,4 +373,57 @@ public class ImpressionScenarioTests : IClassFixture<RavenDBFixture>
         Assert.DoesNotContain("Light at", Impressions(set)); // set by the narrator: nothing to correct
         Assert.DoesNotContain(set.Data!.Context ?? [], l => l.StartsWith("Light at"));
     }
+
+    // ---- F6: "while he isn't looking" is the narrator's ruling ----
+
+    private sealed class EveryRoll(int result) : Data.IRollService
+    {
+        public Task<Data.RollOutcome> RollAsync(Data.RollRequest request, System.Threading.CancellationToken ct = default) =>
+            Task.FromResult(new Data.RollOutcome { Tag = request.Tag, Result = result + request.Bonus, Summary = $"{result}+{request.Bonus}" });
+
+        public async Task<IReadOnlyList<Data.RollOutcome>> RollBatchAsync(IEnumerable<Data.RollRequest> requests, System.Threading.CancellationToken ct = default)
+        {
+            var outcomes = new List<Data.RollOutcome>();
+            foreach (var r in requests)
+            {
+                outcomes.Add(await RollAsync(r, ct));
+            }
+
+            return outcomes;
+        }
+    }
+
+    private static Task<ToolResult<TurnResult>> GhostWithAsync(NightRoadSightTests.Road r, string key, string value) =>
+        CastAsync(r.Tools, r.Slug, r.PcId, new()
+        {
+            ["mode"] = "image", ["appeal"] = "fear", ["intensity"] = "strong", ["deceptive"] = "true", ["dc"] = "13", [key] = value
+        }, targets: [r.GoblinId]);
+
+    [Fact]
+    public async Task Unseen_by_the_scout_means_he_believes_it_while_the_others_still_saw_her()
+    {
+        var r = await NightRoadSightTests.SeedRoadAsync(_fixture, startCombat: false);
+        await SetAsync(r.GoblinId, c => c.DistinctiveFeatures = ["Darkvision 60 ft."]);
+
+        var cast = await GhostWithAsync(r, "unseenBy", r.GoblinId);
+
+        Assert.True(cast.Success, cast.Summary);
+        var line = Impressions(cast);
+        Assert.Contains("believes it; examining it takes an action", EntryFor(line, "Goblin Scout"));
+        Assert.Contains("saw Maeve cast it", EntryFor(line, "Ilsa"));
+    }
+
+    [Fact]
+    public async Task A_concealed_gesture_is_rolled_with_the_cast_and_even_in_a_fight_costs_no_extra_action()
+    {
+        var r = await NightRoadSightTests.SeedRoadAsync(_fixture, startCombat: true, rolls: new EveryRoll(18));
+        await SetAsync(r.GoblinId, c => c.DistinctiveFeatures = ["Darkvision 60 ft."]);
+
+        var cast = await GhostWithAsync(r, "concealCasting", "true");
+
+        Assert.True(cast.Success, cast.Summary);
+        var line = Impressions(cast);
+        Assert.Contains("gesture hidden: Sleight of Hand 18", line);
+        Assert.Contains("believes it", EntryFor(line, "Goblin Scout")); // passive Perception 10 < 18
+    }
 }

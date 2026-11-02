@@ -63,6 +63,14 @@ public static class ImpressionResolver
         _ => 10,
     };
 
+    /// <summary>A skill's modifier from the sheet, or, untrained, the Dexterity (or Charisma) modifier it falls back to.</summary>
+    public static int SkillBonus(Character c, string skill, bool dexterity) => c.SystemStats switch
+    {
+        Dnd5eExtension five => Skill(five.SkillModifiers, skill) ?? five.GetAbilityModifier(dexterity ? five.Dexterity : five.Charisma),
+        Pf2eExtension pf2 => Skill(pf2.SkillModifiers, skill) ?? (dexterity ? pf2.DexterityMod : pf2.CharismaMod),
+        _ => 0,
+    };
+
     private static int? Skill(Dictionary<string, int>? skills, string name) =>
         skills?.FirstOrDefault(kv => string.Equals(kv.Key, name, StringComparison.OrdinalIgnoreCase)) is { Key: not null } kv ? kv.Value : null;
 
