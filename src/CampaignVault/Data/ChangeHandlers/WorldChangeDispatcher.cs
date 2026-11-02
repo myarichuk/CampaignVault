@@ -498,6 +498,7 @@ public sealed class WorldChangeDispatcher(
             await ApplyMicroTimeNudgeAsync(context, changes, getCurrentTimeAsync);
             ApplyMomentumTracking(context, changes);
             await ApplyAwarenessUpkeepAsync(context, changes, getCurrentTimeAsync);
+            await ApplyDepartureUpkeepAsync(context, changes, getCurrentTimeAsync);
             await ApplyWakingAsync(context, changes);
             if (!await ApplyCrowdDrawAsync(context, changes, getCurrentTimeAsync))
             {
@@ -892,6 +893,90 @@ public sealed class WorldChangeDispatcher(
             {
                 tracked.Concealment = null;
             }
+        }
+    }
+
+    /// <summary>
+    /// IMPRESSIONS_PLAN.md D9: a departure completes after <see cref="Departing.DefaultBeats"/> more committed beats or
+    /// <see cref="Departing.CompleteAfterHours"/> of campaign time, whichever is first (beats under an hour don't move the clock).
+    /// The character moves to the destination, or off-scene when there is none. Someone moved some other way meanwhile is simply no
+    /// longer leaving. Advisory: a destination that has since vanished leaves them off-scene rather than failing the player's commit.
+    /// </summary>
+    private async Task ApplyDepartureUpkeepAsync(IChangeContext context, WorldChange[] changes, Func<Task<CampaignTime>> getCurrentTimeAsync)
+    {
+        var ctx = (ChangeContext)context;
+        if (ctx.Session is null)
+        {
+            return;
+        }
+
+        var setNow = changes.OfType<ActivityChange>().Where(a => a.Departing == true).Select(a => a.CharacterId)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        List<Character> indexed;
+        try
+        {
+            indexed = await ctx.Session.Query<Character>()
+                .Where(c => c.CampaignName == context.CampaignName && c.Departing != null)
+                .Take(50)
+                .ToListAsync();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return;
+        }
+
+        var time = await getCurrentTimeAsync();
+        var now = CampaignClock.Now(time);
+        var leaving = indexed
+            .Select(c => context.Characters.TryGetValue(c.Id, out var tracked) ? tracked : c)
+            .Concat(context.Characters.Values.Where(c => c.Departing != null))
+            .DistinctBy(c => c.Id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        foreach (var c in leaving)
+        {
+            if (c.Departing is not { } d || setNow.Contains(c.Id))
+            {
+                continue;
+            }
+
+            if (!string.Equals(c.CurrentLocationId, d.FromLocationId, StringComparison.OrdinalIgnoreCase))
+            {
+                c.Departing = null;
+                continue;
+            }
+
+            d.BeatsRemaining--;
+            if (d.BeatsRemaining > 0 && now - d.SinceHour < Departing.CompleteAfterHours)
+            {
+                continue;
+            }
+
+            Location? destination = null;
+            if (!string.IsNullOrEmpty(d.ToLocationId) && !context.Locations.TryGetValue(d.ToLocationId, out destination))
+            {
+                destination = await ctx.Session.LoadAsync<Location>(d.ToLocationId);
+                if (destination != null)
+                {
+                    context.RegisterNewLocation(destination);
+                }
+            }
+
+            if (!context.Characters.ContainsKey(c.Id))
+            {
+                context.RegisterNewCharacter(c);
+            }
+
+            await DispatchMutationAsync(context, new ActivityChange { CharacterId = c.Id, NewLocationId = destination?.Id, UpdateLocation = true });
+            c.Departing = null;
+            if (destination == null)
+            {
+                c.DepartedFromLocationId = d.FromLocationId;
+                c.DepartedAtDay = time.TotalDaysElapsed;
+            }
+
+            context.RecordMessage(destination != null
+                ? $"{c.Name} has gone on to {destination.Name} and is no longer here."
+                : $"{c.Name} is out of sight and no longer here.");
         }
     }
 

@@ -90,10 +90,13 @@ Old Wenna — uneasy (distrusts magic): withdraws. Narrate each; already recorde
   so a far trader on a dark road reads `Corren (far, too dark to see it; heard it only)` for a loud+visible beat and misses an
   image-only one. Location type defaults to Building (dim) when a caller never set it, so an outdoor place created without a
   type stays dim at night: set `type` or `lighting`. Not applied to A6 noticing (stealth/sleight), which keeps passive Perception only.
-- [ ] **I2. Departing and encounter stubs.** `ActivityChange.Departing`, `Character.Departing { ToLocationId, FromLocationId,
+- [x] **I2. Departing and encounter stubs.** `ActivityChange.Departing`, `Character.Departing { ToLocationId, FromLocationId,
   SinceHour }`; the dispatcher completes a departure after 0.25 h. Sight treats a departing observer as Distant. The departure
   reminder names `departing: true`. An unnamed encounter stub ("Unknown Encounter Entity") is listed once as "N unnamed
   encounter stubs (name them with character_update)", not as a witness each. Tests.
+  *As built:* a departure completes after two more committed beats or a quarter hour, whichever is first: beats under an hour
+  don't move the clock (`ApplyMicroTimeNudgeAsync`), so time alone would leave them leaving forever. `departing:false` turns them
+  back; any other move clears it. Off-scene completion sets `DepartedFromLocationId`/`DepartedAtDay` like a transient eviction.
 - [ ] **I3. Illusion legality.** A spell whose `perceptibleModes` are a choice fails without a valid `mode` (fix hint lists the
   modes). `SpellDefinition.IllusionLimits` (quoted SRD/ORC text) from `scripts/spell_perception_overlay.yaml` through the
   generators; a utility cast of such a spell echoes the limits and the disbelief check (5e: Investigation vs DC n; pf2e:

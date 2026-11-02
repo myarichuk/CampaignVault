@@ -176,9 +176,17 @@ internal sealed class WitnessContextContributor(PerceptibleBeats beats, IWitness
         var source = said.Select(t => t.Actor).FirstOrDefault(a => a != null && said.Any(t => t.Actor == a && t.Beat.Cause != "dies"));
         var sight = new SightContext(SightResolver.LightAt(await turn.Session.LoadAsync<Location>(locationId, ct), turn.Time),
             said.Any(t => t.Beat.Luminous), source ?? said.Select(t => t.Actor).FirstOrDefault(a => a != null));
-        var witnesses = (await selector.AtAsync(turn.Session, turn.CampaignName, locationId, signal, source, excluded, ct, sight))
+        var all = await selector.AtAsync(turn.Session, turn.CampaignName, locationId, signal, source, excluded, ct, sight);
+        // I2: an encounter's placeholder is listed once, as a nudge to name it, not as "Unknown Encounter Entity" three times.
+        var witnesses = all.Where(w => !EncounterResolver.IsUnnamedStub(w.Character))
             .Select(w => w.Notice.Note == null ? w.Character.Name : $"{w.Character.Name} ({w.Notice.Note})")
             .ToList();
+        var stubs = all.Where(w => EncounterResolver.IsUnnamedStub(w.Character)).Select(w => w.Character.Id).ToList();
+        if (stubs.Count > 0)
+        {
+            witnesses.Add($"{stubs.Count} unnamed encounter stub{(stubs.Count == 1 ? "" : "s")} [{string.Join(", ", stubs)}] (name with character_update)");
+        }
+
         if (witnesses.Count == 0)
         {
             return null;

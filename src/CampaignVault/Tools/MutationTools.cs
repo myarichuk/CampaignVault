@@ -1477,7 +1477,8 @@ public partial class MutationTools : CampaignToolBase, IMcpServerTool
         {
             AppendReminder(result,
                 $"Activity for {string.Join(", ", strandedIds)} reads as dead/fled/departed but their location was not cleared, " +
-                "so they still show in presentNPCs. Add updateLocation:true with newLocationId (null to clear) in this batch.");
+                "so they still show in presentNPCs. Add updateLocation:true with newLocationId (null to clear) in this batch, " +
+                "or departing:true (destination in newLocationId) if they're still in sight walking away.");
         }
     }
 

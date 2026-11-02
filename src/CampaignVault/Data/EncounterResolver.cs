@@ -7,6 +7,11 @@ namespace CampaignVault.Data;
 
 public class EncounterResolver
 {
+    /// <summary>The placeholder name of an encounter's stub until the narrator names it (character_update).</summary>
+    public const string UnnamedEntityName = "Unknown Encounter Entity";
+
+    public static bool IsUnnamedStub(Character c) => string.Equals(c.Name, UnnamedEntityName, StringComparison.Ordinal);
+
     private readonly Func<double> _nextDouble;
 
     /// <summary>Test seam for the DI-constructed resolver: when set, replaces the random roll.</summary>
@@ -113,7 +118,7 @@ public class EncounterResolver
                 deltas.Add(new CharacterCreate
                 {
                     CharacterId = transientId,
-                    Name = "Unknown Encounter Entity",
+                    Name = UnnamedEntityName,
                     CurrentLocationId = spawnId,
                     KeepAlive = false, // GC will clean it up if party leaves
                     CurrentActivity = "Approaching the party...",

@@ -976,6 +976,10 @@ public class ActivityChange : WorldChange
     [JsonPropertyName("updateLocation")]
     public bool UpdateLocation { get; set; }
 
+    [Description("true when they set off but are still in sight or earshot (waving goodbye, the caravan pulling away): from now on they're Distant from everyone here, so they don't see a small spectacle at night, and the engine moves them to newLocationId (or off-scene when omitted) after two more beats or a quarter hour. Don't combine with updateLocation. false cancels a departure (they turn back).")]
+    [JsonPropertyName("departing")]
+    public bool? Departing { get; set; }
+
     [Description("Optional narrative justification for the change. Stored for later behavioral synthesis and debugging.")]
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
