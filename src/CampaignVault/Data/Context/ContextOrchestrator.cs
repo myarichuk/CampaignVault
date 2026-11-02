@@ -31,6 +31,9 @@ public sealed class ContextTurn : IContextTurn
     public string? PartyLocationId { get; init; }
     public CampaignTime? Time { get; init; }
 
+    /// <summary>The campaign's commit counter after this commit; keys a line that must be said every beat it applies.</summary>
+    public long WorldSequence { get; init; }
+
     /// <summary>NPC IDs present in the scenes this response carries.</summary>
     public IReadOnlyList<string> PresentNpcIds { get; init; } = [];
 

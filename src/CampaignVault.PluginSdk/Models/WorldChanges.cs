@@ -585,6 +585,10 @@ public class EventOccurred : WorldChange
     [JsonPropertyName("locationId")]
     public string? LocationId { get; set; }
 
+    [Description("Optional. Set when everyone else nearby would notice: 'loud' (a shout, a scream, a crash), 'visible' (a spectacle, a body falling) or 'both'. The next response then names the bystanders who perceived it, so each gets a reaction.")]
+    [JsonPropertyName("perceptible")]
+    public string? Perceptible { get; set; }
+
     [Description("Optional. Additional location IDs touched by a spillover beat, e.g. a bar fight that spills from the tavern into the alley outside.")]
     [JsonPropertyName("relatedLocationIds")]
     public List<string>? RelatedLocationIds { get; set; }
@@ -973,6 +977,7 @@ public class ActivityChange : WorldChange
 ///   "targetSkill"   – skill name for the target side of a ContestedCheck
 ///   "resolution"    – spell routing: attack, save, check, utility, heal (alias: spellResolution); unknown values are rejected
 ///   "slotLevel"     – spell slot cast at; sets damage tier and Magic Missile's dart count
+///   "mode"          – caster-chosen spell form (Minor Illusion: image or sound); says what bystanders perceived. Omitted: both
 ///   "outsideCombat" – "true" lets a hostile action resolve with no combat active (coup de grâce, spar)
 ///   "save"          – saving throw ability for save-based spells (5e/PF2e)
 ///   "halfOnSave"    – "true"/"false" — half damage on successful save (default true for 5e spells)
