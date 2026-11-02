@@ -66,9 +66,19 @@ jobs:
         with:
           path: UnityClient/Library
           # Bump the v-suffix to discard a suspect Library cache (restore-keys carries it too, so
-          # an older generation is never restored).
-          key: Library-v2-${{ matrix.target }}-${{ hashFiles('UnityClient/Packages/packages-lock.json', 'UnityClient/ProjectSettings/ProjectVersion.txt') }}
-          restore-keys: Library-v2-${{ matrix.target }}-
+          # an older generation is never restored). v3: dropped v2 while chasing the Linux exit-137 kill.
+          key: Library-v3-${{ matrix.target }}-${{ hashFiles('UnityClient/Packages/packages-lock.json', 'UnityClient/ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: Library-v3-${{ matrix.target }}-
+
+      # The kill is invisible from the host once the container is gone, so record events while
+      # it runs: docker events (oom/die/kill with signal), kernel log, and per-second memory.
+      - name: Start kill watchers
+        run: |
+          mkdir -p /tmp/diag
+          sudo setsid nohup bash -c 'docker events --format "{{.Time}} {{.Type}} {{.Action}} {{json .Actor.Attributes}}" > /tmp/diag/docker-events.log 2>&1' >/dev/null 2>&1 &
+          sudo setsid nohup bash -c 'dmesg -w > /tmp/diag/dmesg.log 2>&1' >/dev/null 2>&1 &
+          setsid nohup bash -c 'while true; do echo "$(date +%T) $(free -m | awk "/Mem:/{print \$3\"MB used, \"\$7\"MB avail\"}") | $(docker stats --no-stream --format "{{.Name}} {{.MemUsage}} {{.MemPerc}}" 2>/dev/null | tr "\n" ";")"; sleep 1; done > /tmp/diag/mem.log 2>&1' >/dev/null 2>&1 &
+          sleep 1
 
       - uses: game-ci/unity-builder@v6
         env:
@@ -81,6 +91,9 @@ jobs:
           buildMethod: CampaignVault.UnityClient.Editor.BuildTools.${{ matrix.method }}
           customParameters: -vaultPrestagedServer
           versioning: None
+          # Default is 95% of host RAM (~14.5G of 15G), leaving the runner and docker daemon almost
+          # nothing; cap it so a runaway editor hits its own cgroup limit instead of starving the host.
+          dockerMemoryLimit: 12g
           # unity-builder@v6 downloads a separate game-ci CLI; unpinned it follows "latest" and its
           # post-build check (needs "Build succeeded!" in the log, see BuildTools) can change under us.
           cliVersion: v0.1.70
@@ -94,6 +107,9 @@ jobs:
           df -h /
           sudo dmesg 2>&1 | grep -iE 'out of memory|oom|killed process' | tail -20 || true
           docker ps -a --no-trunc --format '{{.Image}} {{.Status}}' | head -5 || true
+          echo '--- docker events'; tail -40 /tmp/diag/docker-events.log || true
+          echo '--- dmesg (tail)'; tail -40 /tmp/diag/dmesg.log || true
+          echo '--- memory samples (last 30s)'; tail -30 /tmp/diag/mem.log || true
 
       - name: Package
         env:
