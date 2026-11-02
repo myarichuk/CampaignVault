@@ -1,6 +1,6 @@
 # Witness channel, social spectacle and awareness
 
-Groomed 2026-11-01. W0–W4 are implemented (2026-11-02); everything else is not.
+Groomed 2026-11-01. W0–W4 and S1–S2 are implemented (2026-11-02); everything else is not.
 
 ## The playtest that prompted it
 
@@ -170,7 +170,7 @@ Each phase ships on its own with a green suite. Check every box before calling i
 
 Some beats are not only perceived: they **pull attention**. Examples: a song in a tavern, a shouting match with a companion, loud haggling at a market stall. In a crowded place someone should come over, and the engine should make that happen, not leave it to the LLM's memory.
 
-- [ ] **S1. Attention level on perceptible beats.**
+- [x] **S1. Attention level on perceptible beats.**
   - Add `attention: notice | draw` next to `perceptible` on `EventOccurred` (W4) and, as `Parameters["attention"]`, on any `RulesetAction`.
   - `notice` (the default) produces only the witness line. `draw` also feeds S2.
   - A `SkillCheck` on Performance defaults to `perceptible: both, attention: draw`. That mapping lives in code: check first whether skills have a data file under `RulesetData/`; if they do, put it there.
@@ -179,7 +179,7 @@ Some beats are not only perceived: they **pull attention**. Examples: a song in 
 
   *Done when:* tests cover a Performance check giving a `draw` witness line, and an `EventOccurred{perceptible: loud, attention: draw}` doing the same.
 
-- [ ] **S2. Engine-run crowd draw.**
+- [x] **S2. Engine-run crowd draw.**
   - On a `draw` beat, outside combat, at a location with an `AmbientCrowd`, the contributor's sibling runs `EncounterResolver.EvaluateSceneInterruptAsync` itself. Alternative: a post-commit hook staging a `SceneInterruptCheck` (pick whichever stays inside the commit, so deltas persist).
     - `contextModifier`: +20 for draw, +10 for a loud `notice` beat in a dense crowd.
     - LLM buff/debuff: an optional `crowdModifier` (−50..+50, the same 0.5%-per-point scale as `riskModifier`) on the triggering `EventOccurred` or `RulesetAction.Parameters` is added to the engine's modifier. Examples: festival night +20, a crowd hanging on the bard's every note +15, dawn in a sleepy hamlet −30, a guard-patrolled square −10. Clamp to the range and echo the applied total in the result, so the LLM sees what it changed. Leaving it out means the engine's own default only.
@@ -191,6 +191,19 @@ Some beats are not only perceived: they **pull attention**. Examples: a song in 
   - Decision D5: the engine rolls it automatically. The roll is a chance, not a certainty, and leaving it to the LLM is the same "remember to do it" failure this plan exists to fix. The witness line says whether a figure was drawn, so the narration matches.
 
   *Done when:* there are tests with a fixed RNG. A draw at a crowded location spawns a transient figure carrying the cause in its notes. No draw fires during combat or inside the cooldown, and an empty location never draws. `crowdModifier` shifts the chance and is clamped, and the applied total is echoed.
+
+- **As built (S1–S2), 2026-11-02:**
+  - The rules are in `src/CampaignVault/Data/CrowdDraw.cs`; the roll is `WorldChangeDispatcher.ApplyCrowdDrawAsync`, which runs inside the commit just before the ambient interrupt check. When it rolls, the ambient check is skipped for that beat.
+  - Fields:
+    - `EventOccurred.attention` / `crowdModifier`;
+    - `RulesetAction.parameters.perceptible` / `attention` / `crowdModifier`;
+    - `Location.LastCrowdDrawHour`;
+    - `CampaignConfig.CrowdDrawCooldownMinutes` (default 60).
+  - Tests: `tests/CampaignVault.UnitTests/CrowdDrawTests.cs` (7).
+  - Engine messages: `CROWD DRAW at <loc> (modifier +20 engine +15 yours = +35)! ...`, `... nobody comes over this time.`, or `Crowd draw at <loc> not rolled: the last one was N min ago`.
+  - Deviation 1: the cooldown is **in-game minutes**, not beats. The dispatcher has no beat counter, and game time also stops spam across many quick commits.
+  - Deviation 2: the engine can't see a check's outcome (`RulesetAction` stores no result). So the directive tells the narrator to fit the figure to "this beat's check result" instead of the engine choosing admirers or hecklers.
+  - Not covered by a test: the combat gate (`ActiveCombat != null` returns early, same as the ambient check).
 
 ## Part A: awareness model (who notices what)
 

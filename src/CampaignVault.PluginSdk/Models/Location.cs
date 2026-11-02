@@ -58,6 +58,9 @@ public class Location : ICampaignScopedEntity, IHasDirt, IArchivable
     public List<string> PoisUsedByActivity { get; set; } = [];
 
     public string? AmbientCrowd { get; set; }
+
+    /// <summary>Campaign hour (TotalDaysElapsed * 24 + Hour) of the engine's last crowd-draw roll here; drives its cooldown.</summary>
+    public double? LastCrowdDrawHour { get; set; }
     
     public int? LastVisitedDay { get; set; }
 

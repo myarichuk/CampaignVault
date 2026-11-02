@@ -589,6 +589,14 @@ public class EventOccurred : WorldChange
     [JsonPropertyName("perceptible")]
     public string? Perceptible { get; set; }
 
+    [Description("Optional. 'draw' when the beat pulls people in, not just gets noticed: a song, a shouting match, loud haggling, a public scene. The engine then rolls whether someone from the location's crowd comes over (implies perceptible both when perceptible is unset). Default 'notice'.")]
+    [JsonPropertyName("attention")]
+    public string? Attention { get; set; }
+
+    [Description("Optional, with attention 'draw' or a loud beat: your buff/debuff to the engine's crowd-draw roll, -50..+50 (0.5% per point). E.g. festival night +20, a rapt audience +15, a guard-patrolled square -10, dawn in a sleepy hamlet -30.")]
+    [JsonPropertyName("crowdModifier")]
+    public int? CrowdModifier { get; set; }
+
     [Description("Optional. Additional location IDs touched by a spillover beat, e.g. a bar fight that spills from the tavern into the alley outside.")]
     [JsonPropertyName("relatedLocationIds")]
     public List<string>? RelatedLocationIds { get; set; }
@@ -978,6 +986,9 @@ public class ActivityChange : WorldChange
 ///   "resolution"    – spell routing: attack, save, check, utility, heal (alias: spellResolution); unknown values are rejected
 ///   "slotLevel"     – spell slot cast at; sets damage tier and Magic Missile's dart count
 ///   "mode"          – caster-chosen spell form (Minor Illusion: image or sound); says what bystanders perceived. Omitted: both
+///   "perceptible"   – loud, visible or both: everyone nearby notices this action (haggling at full voice, a juggling act)
+///   "attention"     – "draw" when the action pulls people in (a Performance check defaults to it; "notice" opts out); the engine rolls a crowd draw
+///   "crowdModifier" – -50..+50 buff/debuff to that crowd-draw roll (0.5% per point)
 ///   "outsideCombat" – "true" lets a hostile action resolve with no combat active (coup de grâce, spar)
 ///   "save"          – saving throw ability for save-based spells (5e/PF2e)
 ///   "halfOnSave"    – "true"/"false" — half damage on successful save (default true for 5e spells)

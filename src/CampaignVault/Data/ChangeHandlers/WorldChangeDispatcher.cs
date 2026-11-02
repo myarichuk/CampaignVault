@@ -495,7 +495,10 @@ public sealed class WorldChangeDispatcher(
         {
             await ApplyMicroTimeNudgeAsync(context, changes, getCurrentTimeAsync);
             ApplyMomentumTracking(context, changes);
-            await ApplyAmbientInterruptCheckAsync(context, changes, getCurrentTimeAsync);
+            if (!await ApplyCrowdDrawAsync(context, changes, getCurrentTimeAsync))
+            {
+                await ApplyAmbientInterruptCheckAsync(context, changes, getCurrentTimeAsync);
+            }
 
             // Engine steps above can dispatch child mutations (e.g. ambient damage) that publish events.
             await DeliverDomainEventsAsync(context);
@@ -826,6 +829,90 @@ public sealed class WorldChangeDispatcher(
         }
 
         return ids;
+    }
+
+    /// <summary>
+    /// Crowd draw (WITNESS_CHANNEL_PLAN.md S2): a beat that pulls attention (a Performance check, an event or action with
+    /// attention "draw") at a location with an ambient crowd, or a loud one in a dense crowd, rolls the scene interrupt
+    /// with +20 (draw) or +10 (loud), plus the LLM's clamped crowdModifier. Not in combat, not when the batch already
+    /// has an explicit scene_interrupt_check, and at most once per location per CrowdDrawCooldownMinutes of game time.
+    /// Returns true when it rolled, so the ambient check doesn't roll a second time for the same beat.
+    /// </summary>
+    private async Task<bool> ApplyCrowdDrawAsync(
+        IChangeContext context, WorldChange[] changes, Func<Task<CampaignTime>> getCurrentTimeAsync)
+    {
+        var ctx = (ChangeContext)context;
+        if (_encounterResolver is null || ctx.Session is null || context.ActiveCombat != null
+            || changes.Any(c => c is SceneInterruptCheck))
+        {
+            return false;
+        }
+
+        var beat = CrowdDraw.Strongest(changes);
+        if (beat is null || string.IsNullOrEmpty(beat.ActorId))
+        {
+            return false;
+        }
+
+        if (!context.Characters.TryGetValue(beat.ActorId, out var actor))
+        {
+            actor = await ctx.Session.LoadAsync<Character>(beat.ActorId);
+        }
+
+        var locationId = beat.LocationId ?? actor?.CurrentLocationId;
+        if (actor is null || string.IsNullOrEmpty(locationId))
+        {
+            return false;
+        }
+
+        if (!context.Locations.TryGetValue(locationId, out var location))
+        {
+            location = await ctx.Session.LoadAsync<Location>(locationId);
+            if (location is null)
+            {
+                return false;
+            }
+
+            context.RegisterNewLocation(location);
+        }
+
+        if (string.IsNullOrWhiteSpace(location.AmbientCrowd)
+            || (!beat.Draws && !AmbientCrowdHeuristics.IsCrowdDenseEnough(location.AmbientCrowd)))
+        {
+            return false;
+        }
+
+        var time = await getCurrentTimeAsync();
+        var now = time.TotalDaysElapsed * 24.0 + time.Hour;
+        var cooldownMinutes = context.Config?.CrowdDrawCooldownMinutes ?? 60;
+        if (location.LastCrowdDrawHour is { } last && (now - last) * 60 < cooldownMinutes)
+        {
+            context.RecordMessage(
+                $"Crowd draw at {location.Name} not rolled: the last one was {Math.Round((now - last) * 60)} min ago (cooldown {cooldownMinutes} min).");
+            return false;
+        }
+
+        location.LastCrowdDrawHour = now;
+        var modifier = beat.LlmModifier == 0
+            ? $"+{beat.EngineModifier}"
+            : $"+{beat.EngineModifier} engine {beat.LlmModifier:+0;-0} yours = {beat.TotalModifier:+0;-0}";
+        var (interrupted, deltas, narratives) = await _encounterResolver.EvaluateSceneInterruptAsync(
+            context, actor, location, riskModifier: 0, contextModifier: beat.TotalModifier, notes: CrowdDraw.Notes(beat, actor.Name));
+        if (!interrupted)
+        {
+            context.RecordMessage($"CROWD DRAW at {location.Name} (modifier {modifier}): nobody comes over this time.");
+            return true;
+        }
+
+        foreach (var delta in deltas)
+        {
+            await DispatchMutationAsync(context, delta);
+        }
+
+        context.RecordMessage(
+            $"CROWD DRAW at {location.Name} (modifier {modifier})! {string.Join(" ", narratives)} "
+            + "Someone from the crowd comes over; resolve before continuing.");
+        return true;
     }
 
     /// <summary>

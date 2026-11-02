@@ -93,7 +93,8 @@ internal sealed class WitnessContextContributor(SpellDefinitionProvider spells, 
     private static readonly HashSet<string> Insensible = new(StringComparer.OrdinalIgnoreCase) { "unconscious", "petrified", "paralyzed" };
 
     private sealed record Trigger(
-        string ActorId, string Cause, Perceptible Signal, IReadOnlyCollection<string> Excluded, bool CombatNoise, string? LocationId = null);
+        string ActorId, string Cause, Perceptible Signal, IReadOnlyCollection<string> Excluded, bool CombatNoise, string? LocationId = null,
+        bool Draws = false);
 
     public async Task<IEnumerable<ContextItem>> ContributeAsync(ContextTurn turn, CancellationToken ct = default)
     {
@@ -160,12 +161,26 @@ internal sealed class WitnessContextContributor(SpellDefinitionProvider spells, 
                 case RulesetAction { ActionType: RulesetActionType.Attack } attack:
                     yield return new Trigger(attack.CharacterId, "fighting", Perceptible.Both, attack.TargetIds, true);
                     break;
+                case RulesetAction action when CrowdDraw.Draws(action) || action.Parameters.ContainsKey("perceptible"):
+                {
+                    // A performance, haggling at full voice, a juggling act: S1's social spectacle.
+                    var draws = CrowdDraw.Draws(action);
+                    var signal = CrowdDraw.Signal(action.Parameters.GetValueOrDefault("perceptible"), draws);
+                    if (signal != Perceptible.None)
+                    {
+                        yield return new Trigger(action.CharacterId, action.ActionName.ToLowerInvariant(), signal, action.TargetIds, false,
+                            Draws: draws);
+                    }
+
+                    break;
+                }
                 case DeathChange { Revive: false } death:
                     yield return new Trigger(death.CharacterId, "dies", Perceptible.Visible, [death.KillerId ?? ""], false);
                     break;
-                case EventOccurred { Perceptible: { } p } ev when Perceptibility.Parse(p) != Perceptible.None:
+                case EventOccurred ev when CrowdDraw.Signal(ev.Perceptible, CrowdDraw.Draws(ev)) != Perceptible.None:
                     var actor = ev.InitiatorId ?? ev.Involved?.FirstOrDefault() ?? "";
-                    yield return new Trigger(actor, Short(ev.Summary), Perceptibility.Parse(p), ev.Involved ?? [], false, ev.LocationId);
+                    yield return new Trigger(actor, Short(ev.Summary), CrowdDraw.Signal(ev.Perceptible, CrowdDraw.Draws(ev)), ev.Involved ?? [], false,
+                        ev.LocationId, CrowdDraw.Draws(ev));
                     break;
             }
         }
@@ -248,7 +263,8 @@ internal sealed class WitnessContextContributor(SpellDefinitionProvider spells, 
             ? string.Join(", ", witnesses.Take(MaxNames)) + $" +{witnesses.Count - MaxNames} others"
             : string.Join(", ", witnesses);
         var causes = string.Join("; ", said.Select(t => t.Cause).Distinct(StringComparer.OrdinalIgnoreCase));
-        return $"Witnesses ({causes}, {Perceptibility.Describe(signal)}): {names}. "
+        var drawing = said.Any(t => t.Draws) ? ", drawing attention" : "";
+        return $"Witnesses ({causes}, {Perceptibility.Describe(signal)}{drawing}): {names}. "
                + "Give each a short reaction in this response, even mid-combat.";
     }
 

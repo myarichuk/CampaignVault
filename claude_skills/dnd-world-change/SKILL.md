@@ -171,6 +171,8 @@ Generated from the server: `name:type [req] (enum values) {object shape}`. Unkno
 - relatedEntityId:string
 - locationId:string
 - perceptible:string
+- attention:string
+- crowdModifier:int
 - relatedLocationIds:string[]
 - impliesPersistentPhysicalChange:bool
 - eventId:string
