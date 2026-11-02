@@ -26,3 +26,4 @@ saveType: con
 saveSuccess: half
 areaOfEffectType: cube
 areaOfEffectSize: 15
+perceptible: both

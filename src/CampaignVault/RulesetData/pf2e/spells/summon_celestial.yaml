@@ -13,6 +13,7 @@ verbal: false
 somatic: true
 material: false
 materialConsumed: false
+perceptible: none
 summon:
   inlineSeed:
     attacks: ["Celestial's own attack: the GM applies the spell's rank-appropriate celestial statistics and passes maxHp explicitly."]

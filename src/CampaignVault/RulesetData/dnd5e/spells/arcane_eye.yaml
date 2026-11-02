@@ -14,3 +14,4 @@ materialText: A bit of bat fur.
 materialConsumed: false
 areaOfEffectType: sphere
 areaOfEffectSize: 30
+perceptible: none

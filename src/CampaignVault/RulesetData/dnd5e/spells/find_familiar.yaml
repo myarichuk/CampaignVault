@@ -14,3 +14,4 @@ material: true
 materialText: 10gp worth of charcoal, incense, and herbs that must be consumed by fire in a brass brazier.
 materialCost: 10.0
 materialConsumed: true
+perceptible: none

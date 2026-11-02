@@ -13,3 +13,4 @@ somatic: true
 material: false
 materialConsumed: false
 saveType: will
+perceptible: both

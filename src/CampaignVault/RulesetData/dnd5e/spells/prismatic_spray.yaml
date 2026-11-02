@@ -17,3 +17,4 @@ saveType: dex
 saveSuccess: other
 areaOfEffectType: cone
 areaOfEffectSize: 60
+perceptible: both

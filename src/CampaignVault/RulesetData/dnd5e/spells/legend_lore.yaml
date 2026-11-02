@@ -13,3 +13,4 @@ material: true
 materialText: Incense worth at least 250 gp, which the spell consumes, and four ivory strips worth at least 50 gp each.
 materialCost: 250.0
 materialConsumed: true
+perceptible: none

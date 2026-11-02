@@ -26,3 +26,4 @@ saveType: con
 saveSuccess: half
 areaOfEffectType: cylinder
 areaOfEffectSize: 5
+perceptible: both

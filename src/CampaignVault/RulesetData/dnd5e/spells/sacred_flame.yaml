@@ -19,3 +19,4 @@ damageAtCharacterLevel:
   17: 4d8
 saveType: dex
 saveSuccess: none
+perceptible: none

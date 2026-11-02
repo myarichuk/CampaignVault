@@ -14,3 +14,4 @@ material: true
 materialText: A pearl worth at least 100gp and an owl feather.
 materialCost: 100.0
 materialConsumed: false
+perceptible: none

@@ -19,3 +19,4 @@ damageAtSlotLevel:
   4: 4d6
   6: 5d6
   8: 6d6
+perceptible: none

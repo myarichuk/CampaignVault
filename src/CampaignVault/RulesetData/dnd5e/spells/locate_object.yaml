@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A forked twig.
 materialConsumed: false
+perceptible: none

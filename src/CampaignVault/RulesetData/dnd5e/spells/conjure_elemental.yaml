@@ -14,6 +14,7 @@ materialText: Burning incense for air, soft clay for earth, sulfur and phosphoru
 materialConsumed: false
 areaOfEffectType: cube
 areaOfEffectSize: 10
+perceptible: none
 summon:
   creatures: [air_elemental, earth_elemental, fire_elemental, water_elemental]
   countAtSlotLevel:

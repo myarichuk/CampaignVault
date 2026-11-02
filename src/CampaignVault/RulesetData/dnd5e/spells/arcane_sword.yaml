@@ -17,3 +17,4 @@ materialConsumed: false
 damageType: force
 damageAtSlotLevel:
   7: 3d10
+perceptible: none

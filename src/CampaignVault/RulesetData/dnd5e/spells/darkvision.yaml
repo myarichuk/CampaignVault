@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: Either a pinch of dried carrot or an agate.
 materialConsumed: false
+perceptible: none

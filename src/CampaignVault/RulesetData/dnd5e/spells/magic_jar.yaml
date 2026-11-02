@@ -15,3 +15,4 @@ materialCost: 500.0
 materialConsumed: false
 saveType: cha
 saveSuccess: other
+perceptible: none

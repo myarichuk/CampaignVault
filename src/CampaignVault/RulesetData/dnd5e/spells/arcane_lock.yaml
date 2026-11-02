@@ -13,3 +13,4 @@ material: true
 materialText: Gold dust worth at least 25gp, which the spell consumes.
 materialCost: 25.0
 materialConsumed: true
+perceptible: none

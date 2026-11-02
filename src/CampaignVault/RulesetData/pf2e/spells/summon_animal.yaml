@@ -13,6 +13,7 @@ verbal: false
 somatic: true
 material: false
 materialConsumed: false
+perceptible: none
 summon:
   creatures: [wolf]
   countAtSlotLevel:

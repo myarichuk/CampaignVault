@@ -18,6 +18,7 @@ saveType: dex
 saveSuccess: half
 areaOfEffectType: sphere
 areaOfEffectSize: 40
+perceptible: both
 damagePools:
   fire:
     9: 20d6

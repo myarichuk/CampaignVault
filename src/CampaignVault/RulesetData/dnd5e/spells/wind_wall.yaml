@@ -19,3 +19,4 @@ saveType: str
 saveSuccess: half
 areaOfEffectType: line
 areaOfEffectSize: 50
+perceptible: both

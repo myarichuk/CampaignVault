@@ -15,3 +15,4 @@ materialText: "A snake's tongue and either a bit of honeycomb or a drop of sweet
 materialConsumed: false
 saveType: wis
 saveSuccess: none
+perceptible: none

@@ -15,3 +15,4 @@ materialCost: 50.0
 materialConsumed: true
 areaOfEffectType: sphere
 areaOfEffectSize: 10
+perceptible: none

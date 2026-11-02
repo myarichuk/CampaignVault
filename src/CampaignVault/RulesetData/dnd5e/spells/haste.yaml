@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A shaving of licorice root.
 materialConsumed: false
+perceptible: none

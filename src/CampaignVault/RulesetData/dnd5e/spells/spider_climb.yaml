@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A drop of bitumen and a spider.
 materialConsumed: false
+perceptible: none

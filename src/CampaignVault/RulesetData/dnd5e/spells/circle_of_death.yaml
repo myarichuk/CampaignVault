@@ -23,3 +23,4 @@ saveType: con
 saveSuccess: half
 areaOfEffectType: sphere
 areaOfEffectSize: 60
+perceptible: both

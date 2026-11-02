@@ -23,3 +23,4 @@ saveType: con
 saveSuccess: half
 areaOfEffectType: cone
 areaOfEffectSize: 60
+perceptible: both

@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A pinch of sesame seeds.
 materialConsumed: false
+perceptible: none

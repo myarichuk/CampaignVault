@@ -12,3 +12,4 @@ somatic: false
 material: true
 materialText: A small clay model of a ziggurat.
 materialConsumed: false
+perceptible: none

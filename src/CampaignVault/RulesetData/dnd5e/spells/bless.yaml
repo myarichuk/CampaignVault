@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A sprinkling of holy water.
 materialConsumed: false
+perceptible: none

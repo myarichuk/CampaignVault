@@ -20,3 +20,4 @@ damageAtCharacterLevel:
   17: 4d4
 saveType: wis
 saveSuccess: none
+perceptible: none

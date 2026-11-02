@@ -13,3 +13,4 @@ material: false
 materialConsumed: false
 saveType: cha
 saveSuccess: none
+perceptible: none

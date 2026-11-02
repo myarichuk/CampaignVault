@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A small parchment with a bit of holy text written on it.
 materialConsumed: false
+perceptible: none

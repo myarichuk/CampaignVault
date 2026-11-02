@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A sprig of mistletoe.
 materialConsumed: false
+perceptible: none

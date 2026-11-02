@@ -14,3 +14,4 @@ materialConsumed: false
 damageType: radiant
 damageAtSlotLevel:
   1: 1d4
+perceptible: none

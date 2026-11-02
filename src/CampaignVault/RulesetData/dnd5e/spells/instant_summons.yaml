@@ -14,3 +14,4 @@ material: true
 materialText: A sapphire worth 1,000 gp.
 materialCost: 1000.0
 materialConsumed: false
+perceptible: none

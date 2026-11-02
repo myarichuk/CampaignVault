@@ -13,3 +13,4 @@ somatic: true
 material: true
 materialText: A bit of fur from a bloodhound.
 materialConsumed: false
+perceptible: none

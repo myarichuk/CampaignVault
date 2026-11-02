@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A short piece of copper wire.
 materialConsumed: false
+perceptible: none

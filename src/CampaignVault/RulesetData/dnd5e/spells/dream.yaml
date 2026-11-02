@@ -17,3 +17,4 @@ damageAtSlotLevel:
   5: 3d6
 saveType: wis
 saveSuccess: none
+perceptible: both

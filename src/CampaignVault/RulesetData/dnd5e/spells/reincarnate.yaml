@@ -13,3 +13,4 @@ material: true
 materialText: Rare oils and unguents worth at least 1,000 gp, which the spell consumes.
 materialCost: 1000.0
 materialConsumed: true
+perceptible: none

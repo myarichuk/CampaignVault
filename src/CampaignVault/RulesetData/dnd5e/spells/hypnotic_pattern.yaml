@@ -15,3 +15,4 @@ materialText: A glowing stick of incense or a crystal vial filled with phosphore
 materialConsumed: false
 saveType: wis
 saveSuccess: none
+perceptible: both

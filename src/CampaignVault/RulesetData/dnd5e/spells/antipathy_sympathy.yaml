@@ -15,3 +15,4 @@ materialText: Either a lump of alum soaked in vinegar for the antipathy effect o
 materialConsumed: false
 areaOfEffectType: cube
 areaOfEffectSize: 200
+perceptible: none

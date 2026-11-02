@@ -13,3 +13,4 @@ material: false
 materialConsumed: false
 areaOfEffectType: sphere
 areaOfEffectSize: 5
+perceptible: none

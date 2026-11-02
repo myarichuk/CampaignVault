@@ -13,3 +13,4 @@ material: true
 materialText: A small replica of you made from materials worth at least 5 gp.
 materialCost: 5.0
 materialConsumed: false
+perceptible: both

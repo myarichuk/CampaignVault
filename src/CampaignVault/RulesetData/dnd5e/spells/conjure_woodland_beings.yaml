@@ -12,6 +12,7 @@ somatic: true
 material: true
 materialText: One holly berry per creature summoned.
 materialConsumed: false
+perceptible: none
 summon:
   inlineSeed:
     attacks: ["Fey's own attack: the GM applies the chosen fey's statistics and passes maxHp explicitly."]

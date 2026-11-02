@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: "A grasshopper's hind leg."
 materialConsumed: false
+perceptible: none

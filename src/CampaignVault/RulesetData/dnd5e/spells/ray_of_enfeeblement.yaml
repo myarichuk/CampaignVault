@@ -14,3 +14,4 @@ material: false
 materialConsumed: false
 saveType: con
 saveSuccess: none
+perceptible: none

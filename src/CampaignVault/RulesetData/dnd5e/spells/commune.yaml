@@ -13,3 +13,4 @@ somatic: true
 material: true
 materialText: Incense and a vial of holy or unholy water.
 materialConsumed: false
+perceptible: none

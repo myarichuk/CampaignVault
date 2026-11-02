@@ -11,6 +11,7 @@ verbal: true
 somatic: true
 material: false
 materialConsumed: false
+perceptible: none
 summon:
   inlineSeed:
     attacks: ["Celestial's own attack: the GM applies the chosen celestial's statistics and passes maxHp explicitly."]

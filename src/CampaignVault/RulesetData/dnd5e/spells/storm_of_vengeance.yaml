@@ -18,3 +18,4 @@ saveType: con
 saveSuccess: none
 areaOfEffectType: sphere
 areaOfEffectSize: 360
+perceptible: both

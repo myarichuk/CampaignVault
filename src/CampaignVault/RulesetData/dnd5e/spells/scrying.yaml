@@ -15,3 +15,4 @@ materialCost: 1000.0
 materialConsumed: false
 saveType: wis
 saveSuccess: none
+perceptible: none

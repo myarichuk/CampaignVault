@@ -13,3 +13,4 @@ material: false
 materialConsumed: false
 areaOfEffectType: cube
 areaOfEffectSize: 5280
+perceptible: both

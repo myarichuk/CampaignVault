@@ -13,3 +13,4 @@ material: false
 materialConsumed: false
 areaOfEffectType: line
 areaOfEffectSize: 90
+perceptible: none

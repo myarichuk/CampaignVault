@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: Burning incense.
 materialConsumed: false
+perceptible: none

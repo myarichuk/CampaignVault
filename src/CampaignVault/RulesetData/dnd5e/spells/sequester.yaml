@@ -13,3 +13,4 @@ material: true
 materialText: A powder composed of diamond, emerald, ruby, and sapphire dust worth at least 5,000 gp, which the spell consumes.
 materialCost: 5000.0
 materialConsumed: true
+perceptible: none

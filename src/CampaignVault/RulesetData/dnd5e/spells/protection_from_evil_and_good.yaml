@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: Holy water or powdered silver and iron, which the spell consumes.
 materialConsumed: true
+perceptible: none

@@ -13,3 +13,4 @@ material: true
 materialText: Diamond dust worth at least 100gp, which the spell consumes.
 materialCost: 100.0
 materialConsumed: true
+perceptible: none

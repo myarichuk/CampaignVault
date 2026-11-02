@@ -13,3 +13,4 @@ somatic: true
 material: true
 materialText: Pieces of eggshell from two different kinds of creatures
 materialConsumed: false
+perceptible: none

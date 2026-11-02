@@ -13,3 +13,4 @@ somatic: true
 material: true
 materialText: A morsel of food.
 materialConsumed: false
+perceptible: none

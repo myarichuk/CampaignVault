@@ -13,3 +13,7 @@ verbal: false
 somatic: true
 material: false
 materialConsumed: false
+perceptible: both
+perceptibleModes:
+  image: visible
+  sound: loud

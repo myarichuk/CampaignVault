@@ -14,3 +14,4 @@ material: true
 materialText: Incense and a sacrificial offering appropriate to your religion, together worth at least 25gp, which the spell consumes.
 materialCost: 25.0
 materialConsumed: true
+perceptible: none

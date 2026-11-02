@@ -13,3 +13,4 @@ somatic: true
 material: true
 materialText: "A pinch of salt and one copper piece placed on each of the corpse's eyes, which must remain there for the duration."
 materialConsumed: false
+perceptible: none

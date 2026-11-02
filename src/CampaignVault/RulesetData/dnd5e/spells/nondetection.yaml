@@ -13,3 +13,4 @@ material: true
 materialText: A pinch of diamond dust worth 25 gp sprinkled over the target, which the spell consumes.
 materialCost: 25.0
 materialConsumed: true
+perceptible: none

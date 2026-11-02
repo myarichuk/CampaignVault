@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A handful of oak bark.
 materialConsumed: false
+perceptible: none

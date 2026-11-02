@@ -15,3 +15,4 @@ materialText: A drop of blood.
 materialConsumed: false
 saveType: cha
 saveSuccess: none
+perceptible: none

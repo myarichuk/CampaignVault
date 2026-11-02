@@ -13,3 +13,4 @@ somatic: true
 material: true
 materialText: A piece of string and a bit of wood.
 materialConsumed: false
+perceptible: none

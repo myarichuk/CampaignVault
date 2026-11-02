@@ -22,3 +22,4 @@ damageAtSlotLevel:
   7: 3d8 + MOD
   8: 4d8 + MOD
   9: 4d8 + MOD
+perceptible: none

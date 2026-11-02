@@ -16,3 +16,4 @@ material: true
 materialText: "One vial of {{treasure 3001 \"holy water\"}}"
 materialConsumed: true
 saveType: reflex
+perceptible: none

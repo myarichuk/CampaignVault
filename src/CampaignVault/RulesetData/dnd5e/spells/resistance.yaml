@@ -12,3 +12,4 @@ somatic: true
 material: true
 materialText: A miniature cloak.
 materialConsumed: false
+perceptible: none
