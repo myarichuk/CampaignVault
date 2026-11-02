@@ -16,3 +16,4 @@ perceptible: both
 perceptibleModes:
   image: visible
   sound: loud
+illusionLimits: "You create a sound or an image of an object ... it must be no larger than a 5-foot cube. The image can't create sound, light, smell, or any other sensory effect. Physical interaction with the image reveals it to be an illusion ... If a creature uses its action to examine the sound or image, the creature can determine that it is an illusion with a successful Intelligence (Investigation) check against your spell save DC."

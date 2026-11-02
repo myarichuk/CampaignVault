@@ -4,7 +4,10 @@
 # anything else → none. Only the spells the derivation gets wrong belong here.
 #
 # Values: loud, visible, both, none. perceptibleModes maps a caster-chosen form (the cast's
-# parameters.mode) to a value; a cast with no or an unknown mode counts as both.
+# parameters.mode) to a value. The forms are alternatives: a cast must name one (IMPRESSIONS_PLAN.md I3).
+#
+# illusionLimits (double-quoted): the spell's own limits, quoted, echoed to the narrator on every cast so
+# the narration stays inside them (IMPRESSIONS_PLAN.md I3).
 #
 # Evidentiary standard: every entry quotes the SRD 5.1 text that backs it.
 
@@ -13,10 +16,16 @@ minor_illusion:
   perceptibleModes:
     image: visible
     sound: loud
+  illusionLimits: "You create a sound or an image of an object ... it must be no larger than a 5-foot cube. The image can't create sound, light, smell, or any other sensory effect. Physical interaction with the image reveals it to be an illusion ... If a creature uses its action to examine the sound or image, the creature can determine that it is an illusion with a successful Intelligence (Investigation) check against your spell save DC."
 
 silent_image:
   # "The image is purely visual; it isn't accompanied by sound, smell, or other sensory effects."
   perceptible: visible
+  illusionLimits: "You create the image of an object, a creature, or some other visible phenomenon that is no larger than a 15-foot cube ... The image is purely visual; it isn't accompanied by sound, smell, or other sensory effects. You can use your action to cause the image to move ... Physical interaction with the image reveals it to be an illusion ... A creature that uses its action to examine the image can determine that it is an illusion with a successful Intelligence (Investigation) check against your spell save DC."
+
+major_image:
+  # "It seems completely real, including sounds, smells, and temperature appropriate to the thing depicted."
+  illusionLimits: "You create the image of an object, a creature, or some other visible phenomenon that is no larger than a 20-foot cube ... It seems completely real, including sounds, smells, and temperature ... You can't create sufficient heat or cold to cause damage, a sound loud enough to deal thunder damage or deafen a creature ... Physical interaction with the image reveals it to be an illusion ... A creature that uses its action to examine the image can determine that it is an illusion with a successful Intelligence (Investigation) check against your spell save DC."
 
 disguise_self:
   # "You make yourself ... look different"

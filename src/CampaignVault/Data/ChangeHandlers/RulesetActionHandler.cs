@@ -1,4 +1,5 @@
 using CampaignVault.Data.Context;
+using CampaignVault.Data.Impressions;
 using CampaignVault.Models;
 using CampaignVault.Rulesets;
 using CampaignVault.Services;
@@ -274,6 +275,11 @@ public sealed class RulesetActionHandler(
             {
                 return bookkeepingFailure.Value;
             }
+
+            if (IllusionRules.ModeRefusal(spellDefinition, action) is { } modeRefusal)
+            {
+                return ChangeHandlerResult.Failure($"[InvalidParameter] {modeRefusal}");
+            }
         }
 
         var output = await module.Actions.ResolveAsync(ctx, action, ct);
@@ -313,6 +319,12 @@ public sealed class RulesetActionHandler(
         if (await ApplyConcealmentAsync(action, output.Result, ctx) is { } hiding)
         {
             narrative = string.IsNullOrWhiteSpace(narrative) ? hiding : narrative + " " + hiding;
+        }
+
+        if (action.ActionType == RulesetActionType.Spell
+            && IllusionRules.LimitsNote(spellDefinition, ctx.Characters.GetValueOrDefault(action.CharacterId), config.ActiveSystem, action.ActionName) is { } limits)
+        {
+            narrative = string.IsNullOrWhiteSpace(narrative) ? limits : narrative + " " + limits;
         }
 
         return string.IsNullOrWhiteSpace(narrative)

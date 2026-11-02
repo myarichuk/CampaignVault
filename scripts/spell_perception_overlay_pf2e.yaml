@@ -5,7 +5,10 @@
 # Only the spells the derivation gets wrong belong here.
 #
 # Values: loud, visible, both, none. perceptibleModes maps a caster-chosen form (the cast's
-# parameters.mode) to a value; a cast with no or an unknown mode counts as both.
+# parameters.mode) to a value. The forms are alternatives: a cast must name one (IMPRESSIONS_PLAN.md I3).
+#
+# illusionLimits (double-quoted): the spell's own limits, quoted, echoed to the narrator on every cast so
+# the narration stays inside them (IMPRESSIONS_PLAN.md I3).
 #
 # Evidentiary standard: every entry quotes the Player Core text that backs it.
 
@@ -14,3 +17,12 @@ figment:
   perceptibleModes:
     image: visible
     sound: loud
+  illusionLimits: "You create a simple illusory sound or vision. A sound ... can't include intelligible words or elaborate music. A vision ... can be no larger than a 5-foot cube, and is clearly crude and undetailed if viewed from within 15 feet ... If the attempt fails against a creature, that creature disbelieves the figment."
+
+illusory_object:
+  # "You create an illusory visual image of a stationary object."
+  illusionLimits: "You create an illusory visual image of a stationary object. The entire image must fit within the spell's area ... it doesn't make sounds or generate smells ... Any creature that touches the image or uses the Seek action to examine it can attempt to disbelieve your illusion."
+
+illusory_creature:
+  # "You create an illusory image of a Large or smaller creature."
+  illusionLimits: "You create an illusory image of a Large or smaller creature. It generates the appropriate sounds, smells, and feels believable to the touch ... The image can't speak, but you can use your actions to speak through the creature ... If the image is hit by an attack or fails a save, the spell ends."

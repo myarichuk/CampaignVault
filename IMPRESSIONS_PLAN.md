@@ -97,10 +97,13 @@ Old Wenna — uneasy (distrusts magic): withdraws. Narrate each; already recorde
   *As built:* a departure completes after two more committed beats or a quarter hour, whichever is first: beats under an hour
   don't move the clock (`ApplyMicroTimeNudgeAsync`), so time alone would leave them leaving forever. `departing:false` turns them
   back; any other move clears it. Off-scene completion sets `DepartedFromLocationId`/`DepartedAtDay` like a transient eviction.
-- [ ] **I3. Illusion legality.** A spell whose `perceptibleModes` are a choice fails without a valid `mode` (fix hint lists the
+- [x] **I3. Illusion legality.** A spell whose `perceptibleModes` are a choice fails without a valid `mode` (fix hint lists the
   modes). `SpellDefinition.IllusionLimits` (quoted SRD/ORC text) from `scripts/spell_perception_overlay.yaml` through the
   generators; a utility cast of such a spell echoes the limits and the disbelief check (5e: Investigation vs DC n; pf2e:
   Perception vs DC n). Tests.
+  *As built:* `Data/Impressions/IllusionRules.cs`. Regenerated with `scripts/generate_spells.py` (both APIs reachable): exactly the
+  six overlay-flagged files changed, one `illusionLimits` line each (Minor Illusion, Silent Image, Major Image; Figment, Illusory
+  Object, Illusory Creature). `Perceptibility.OfSpell` still reads a missing mode as both, defensively; the handler refuses it first.
 - [ ] **I4. Appeal and Read.** `Appeal` parsing (`RulesetAction.Parameters`: `appeal`, `intensity`, `deceptive`, `reception`;
   `EventOccurred`: typed `appeal`, `appealIntensity`, `deceptive`, `reception`), the D2 inferences, the contest's outcome on
   `ResolverResult` (both systems), `ImpressionResolver.Read`. Tests: sincere lands; a believed illusion; passive Insight
