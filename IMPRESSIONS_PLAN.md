@@ -112,11 +112,17 @@ Old Wenna — uneasy (distrusts magic): withdraws. Narrate each; already recorde
   `RollTotal`, `Skill` and `ActorWon` (both systems); `RulesetActionHandler` stashes the total (`engineRollTotal`) and the outcome
   (`engineActorWon`) on the applied action. Side effect handled: a contested Stealth check now has a total, so the concealment step
   treats a lost contest as a failed hide instead of hiding the loser. A bad tone fails the commit in the handler, before the roll.
-- [ ] **I5. Appraise, Respond, Persist.** `ImpressionResolver.Appraise/Respond`, `Character.Impressions` (capped 10, 24 h
+- [x] **I5. Appraise, Respond, Persist.** `ImpressionResolver.Appraise/Respond`, `Character.Impressions` (capped 10, 24 h
   habituation window), the dispatcher step after waking, the summary line, the witness line skipping a beat that carries an
   appeal (earshot line kept). Tests: butterflies for a child vs an adult vs a superstitious elder; a bouquet raises the
   relationship; flattery seen through lowers it; the scout alone with low morale flees, and the fourth fright is weaker than
   the first; a believed illusion leaves the relationship alone.
+  *As built:* `Data/Impressions/ImpressionStep.cs`, run by the dispatcher after waking, advisory (a failure is logged, never fails the
+  commit). Two corrections found by the scenario tests: (1) entries are separated by ` | ` (reasons inside use `; `), or the line
+  can't be read; (2) a lie with no roll sets Insight against the liar's average, 10.5 + Deception (so 11 + Deception meets it):
+  against a flat 10, every untrained listener saw through every untrained liar. Habituation is ÷ (1 + repeats/2), not ÷ (1 + repeats):
+  halving on the second identical scare was too steep. D6's ally count is not built (no allegiance data outside combat, and the
+  encounter's sides aren't read yet): flight reads morale and wounds only.
 - [ ] **I6. Overrides, disbelief, docs.** `reception` applied; a SkillCheck with `disbelieve` (the illusion's caster id) that
   meets the caster's spell DC turns that observer's impression into seen-through. `DmHelpManual`, `CommitEnumCheatSheet`,
   the skills in `claude_skills/` and the `recommended-system-prompt*.md` files: one rule each. `WITNESS_CHANNEL_PLAN.md` line 155

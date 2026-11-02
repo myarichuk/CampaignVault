@@ -128,7 +128,10 @@ internal sealed class WitnessContextContributor(PerceptibleBeats beats, IWitness
 
             var key = fightIsNews && fightKey != null ? fightKey : $"witness:{turn.WorldSequence}:{group.Key}";
 
-            if (await WitnessLineAsync(turn, group.Key, said, signal, excluded, ct) is { } line)
+            // A beat with an appeal is reported by the impression step, per observer, in the commit's summary (IMPRESSIONS_PLAN.md I5).
+            var plain = said.Where(t => !t.Beat.HasAppeal).ToList();
+            if (plain.Count > 0
+                && await WitnessLineAsync(turn, group.Key, plain, plain.Aggregate(Perceptible.None, (s, t) => s | t.Beat.Signal), excluded, ct) is { } line)
             {
                 items.Add(new ContextItem(key, line, 90));
             }

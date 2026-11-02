@@ -42,7 +42,8 @@ public sealed class WorldChangeDispatcher(
     IInteractionModeSelector? modeSelector = null,
     IEnumerable<IWorldTimeObserver>? timeObservers = null,
     RollModifierPipeline? rollModifiers = null,
-    PerceptibleBeats? perceptibleBeats = null)
+    PerceptibleBeats? perceptibleBeats = null,
+    CampaignVault.Data.Impressions.ImpressionStep? impressions = null)
 {
     /// <summary>
     /// Events at this depth are dropped instead of delivered: batch change (0) → reaction (1) → reaction (2)
@@ -500,6 +501,7 @@ public sealed class WorldChangeDispatcher(
             await ApplyAwarenessUpkeepAsync(context, changes, getCurrentTimeAsync);
             await ApplyDepartureUpkeepAsync(context, changes, getCurrentTimeAsync);
             await ApplyWakingAsync(context, changes);
+            await ApplyImpressionsAsync(context, changes, getCurrentTimeAsync);
             if (!await ApplyCrowdDrawAsync(context, changes, getCurrentTimeAsync))
             {
                 await ApplyAmbientInterruptCheckAsync(context, changes, getCurrentTimeAsync);
@@ -1043,6 +1045,27 @@ public sealed class WorldChangeDispatcher(
                     $"WOKEN by {(beat.CombatNoise ? "the fighting" : beat.Cause)}: {string.Join(", ", sleepers.Select(c => c.Name))}. "
                     + "They wake disoriented; narrate it.");
             }
+        }
+    }
+
+    /// <summary>
+    /// IMPRESSIONS_PLAN.md I5: how each beat with an appeal landed on everyone it reached, kept on them. After waking, so whoever the
+    /// beat woke takes it in too. Advisory: a failure here is logged and skipped, never the player's commit.
+    /// </summary>
+    private async Task ApplyImpressionsAsync(IChangeContext context, WorldChange[] changes, Func<Task<CampaignTime>> getCurrentTimeAsync)
+    {
+        if (impressions is null || context is not ChangeContext { Session: not null } ctx)
+        {
+            return;
+        }
+
+        try
+        {
+            await impressions.ApplyAsync(ctx, changes, await getCurrentTimeAsync());
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Impression step failed; the commit goes on without it");
         }
     }
 

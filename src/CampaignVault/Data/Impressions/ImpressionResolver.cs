@@ -85,11 +85,15 @@ public static class ImpressionResolver
                 : new ReadResult(ImpressionRead.SawThrough, "saw through it (won the contest)");
         }
 
+        // With no roll, the deceiver stands at their average result, 10.5 + Deception: an Insight of 11 + Deception meets it. Ties
+        // going to the observer against a flat 10 would have every untrained listener see through every untrained liar.
         var insight = PassiveInsight(observer);
-        var against = facts.RollTotal ?? (actor is null ? 10 : PassiveDeception(actor));
+        var rolled = facts.RollTotal is not null;
+        var against = facts.RollTotal ?? (actor is null ? 11 : PassiveDeception(actor) + 1);
+        var basis = rolled ? "" : " (no roll: the liar's average)";
         return insight >= against
-            ? new ReadResult(ImpressionRead.SawThrough, $"saw through it: Insight {insight} vs {against}")
-            : new ReadResult(ImpressionRead.Believed, $"believes it: Insight {insight} vs {against}");
+            ? new ReadResult(ImpressionRead.SawThrough, $"saw through it: Insight {insight} vs {against}{basis}")
+            : new ReadResult(ImpressionRead.Believed, $"believes it: Insight {insight} vs {against}{basis}");
     }
 
     private static readonly string[] Superstitious = ["superstitious", "distrusts magic", "distrust of magic", "fears magic", "hates magic", "witch", "zealot"];
@@ -103,7 +107,7 @@ public static class ImpressionResolver
     /// I5. The tone (the narrator's <c>reception</c> for this observer wins, a deception seen through turns, a superstitious soul
     /// is uneasy at any magic, a feared subject frightens), then how strongly: intensity, moved by the check's quality, by who they
     /// are (life stage, Openness for wonder, Resilience and morale and wounds for fright, temperament keywords in Traits), by their
-    /// opinion of the actor, and divided by how often they've had it from them in the last day.
+    /// opinion of the actor, and worn down by how often they've had it from them in the last day (÷ 1 + repeats/2).
     /// </summary>
     public static Appraisal Appraise(Character observer, Character? actor, Appeal appeal, ReadResult read, AppraisalFacts facts)
     {
@@ -245,7 +249,8 @@ public static class ImpressionResolver
 
         if (facts.Repeats > 0)
         {
-            multiplier /= 1 + facts.Repeats;
+            // Habituation: the second time counts two thirds, the third half, the fifth a third.
+            multiplier /= 1 + facts.Repeats / 2.0;
             reasons.Add(facts.Repeats == 1 ? "seen it before" : $"seen it {facts.Repeats} times");
         }
 

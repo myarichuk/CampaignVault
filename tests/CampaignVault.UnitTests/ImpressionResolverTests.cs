@@ -118,7 +118,11 @@ public class ImpressionResolverTests
     public void With_no_roll_it_is_passive_insight_against_passive_deception()
     {
         var flattery = Assert.IsType<Appeal>(Appeal.Of(new EventOccurred { Summary = "x", Appeal = "pride", Deceptive = true }));
-        Assert.Equal("believes it: Insight 10 vs 15", ImpressionResolver.Read(Person(), Maeve, flattery, Facts()).Note);
+        Assert.Equal("believes it: Insight 10 vs 16 (no roll: the liar's average)", ImpressionResolver.Read(Person(), Maeve, flattery, Facts()).Note);
+        // An untrained listener against an untrained liar: 10 doesn't meet the liar's average 10.5.
+        var plain = new Character { Id = "chars/p", Name = "P", SystemStats = new Dnd5eExtension() };
+        Assert.Equal(ImpressionRead.Believed, ImpressionResolver.Read(Person(), plain, flattery, Facts()).Read);
+        Assert.Equal(ImpressionRead.SawThrough, ImpressionResolver.Read(Person(wisdom: 12), plain, flattery, Facts()).Read);
     }
 
     [Fact]
