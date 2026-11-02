@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Text;
 using CampaignVault.UnityClient.AI;
 using CampaignVault.UnityClient.Json;
 using CampaignVault.UnityClient.Model;
@@ -134,6 +135,8 @@ namespace CampaignVault.UnityClient.App
             b.Current = b.Step(key).Key;
             b.AskReply = string.Empty;
             b.AskError = string.Empty;
+            b.WriteNote = string.Empty;
+            b.WriteError = string.Empty;
             b.Suggested.Clear();
             b.NotOptions.Clear();
             _s.Notify(StateArea.Builder);
@@ -202,7 +205,7 @@ namespace CampaignVault.UnityClient.App
                 yield break;
             }
             string shown = b.Current;
-            string name = b.Draft.Name + "\n" + b.Draft.Concept + "\n" + b.Draft.Look;
+            string name = IdentityKey(b.Draft);
             McpOutcome<ToolPayload> result = null;
             yield return CallBuilder("choose", shown, delegate (McpOutcome<ToolPayload> o) { result = o; });
             if (revision != b.Revision) { yield break; }
@@ -221,7 +224,7 @@ namespace CampaignVault.UnityClient.App
                 yield break;
             }
             ReadChoose(b, result.Data.Data, shown);
-            b.PreviewCurrent = name == b.Draft.Name + "\n" + b.Draft.Concept + "\n" + b.Draft.Look;
+            b.PreviewCurrent = name == IdentityKey(b.Draft);
             b.Error = string.Empty;
             _s.Notify(StateArea.Builder);
         }
@@ -395,13 +398,24 @@ namespace CampaignVault.UnityClient.App
         }
 
         /// <summary>Name, concept and look, as typed: no server call per keystroke. The preview catches up on BuilderPreview.</summary>
-        public void BuilderIdentity(string name, string concept, string look)
+        public void BuilderIdentity(string name, string concept, string look) { BuilderIdentity(name, concept, look, null, null); }
+
+        /// <summary>The identity fields as typed; null leaves one as it is.</summary>
+        public void BuilderIdentity(string name, string concept, string look, string gender, string pronouns)
         {
             var d = _s.Builder.Draft;
             if (name != null) { d.Name = name.Trim(); }
             if (concept != null) { d.Concept = concept.Trim(); }
             if (look != null) { d.Look = look.Trim(); }
+            if (gender != null) { d.Gender = gender.Trim(); }
+            if (pronouns != null) { d.Pronouns = pronouns.Trim(); }
             _s.Builder.PreviewCurrent = false;
+        }
+
+        /// <summary>The identity text a preview was made from: a preview made before the last edit to any of it is stale.</summary>
+        internal static string IdentityKey(CharacterDraft d)
+        {
+            return d.Name + "\n" + d.Concept + "\n" + d.Look + "\n" + d.Gender + "\n" + d.Pronouns;
         }
 
         /// <summary>A stat block field of an identity step with a schema: the choice is an object of field → value.</summary>
@@ -670,7 +684,7 @@ namespace CampaignVault.UnityClient.App
             var b = _s.Builder;
             if (b.Slug.Length == 0) { yield break; }
             int revision = b.Revision;
-            string name = b.Draft.Name + "\n" + b.Draft.Concept + "\n" + b.Draft.Look;
+            string name = IdentityKey(b.Draft);
             McpOutcome<ToolPayload> result = null;
             yield return CallBuilder("preview", null, delegate (McpOutcome<ToolPayload> o) { result = o; });
             if (revision != b.Revision) { yield break; }
@@ -681,7 +695,7 @@ namespace CampaignVault.UnityClient.App
                 yield break;
             }
             ReadPreview(b, result.Data.Data);
-            b.PreviewCurrent = name == b.Draft.Name + "\n" + b.Draft.Concept + "\n" + b.Draft.Look;
+            b.PreviewCurrent = name == IdentityKey(b.Draft);
             b.Error = string.Empty;
             _s.Notify(StateArea.Builder);
         }
@@ -739,10 +753,120 @@ namespace CampaignVault.UnityClient.App
                 if (b.ForOnboarding) { RecordPartyMember(b, id); _s.Notify(StateArea.Builder); _s.FinishPartyBuilder(); }
                 else if (b.Draft.Kind == "pc" && string.IsNullOrEmpty(_s.PcId) && id.Length > 0) { SetPcId(id); }
                 // A character built mid-campaign joins the roster the DM is told about, and the chronicle (A19).
-                if (!b.ForOnboarding && !update && id.Length > 0 && b.Draft.Kind == "pc") { AddToPartyLine(id, who); }
+                if (!b.ForOnboarding && !update && id.Length > 0 && b.Draft.Kind == "pc") { AddToPartyLine(id, who, b.Draft.Pronouns); }
                 _s.Notify(StateArea.Builder);
             }
             finally { _s.EndBusy("builder-commit"); }
+        }
+
+        // ---- the DM writes backgrounds ----
+
+        /// <summary>
+        /// The background step: the DM writes a few backgrounds fitted to this character's concept, gender and the
+        /// campaign (BackgroundWriter), and each is saved to the campaign through world_build (kind background). The
+        /// server checks each against the ruleset's budget; a refused one is reported with its reason, never dropped
+        /// silently. The saved ones join the step's options, tagged homebrew, and are marked as the DM's suggestions.
+        /// </summary>
+        public IEnumerator WriteBackgrounds()
+        {
+            var b = _s.Builder;
+            var step = b.CurrentStep;
+            if (!BackgroundWriter.Serves(step) || b.WriteBusy) { yield break; }
+            string notReady;
+            if (!_s.ProviderReady(out notReady))
+            {
+                _s.RaiseToast("The DM needs a working AI provider to write backgrounds: " + notReady, ToastKind.Warning);
+                yield break;
+            }
+            if (b.Draft.Concept.Length == 0)
+            {
+                b.WriteError = "Give the character a concept first (on Who they are): the DM fits the backgrounds to it.";
+                _s.Notify(StateArea.Builder);
+                yield break;
+            }
+            string stepKey = step.Key;
+            yield return BuilderOptions(stepKey);
+            StepOptions options;
+            b.Options.TryGetValue(stepKey, out options);
+            var existing = options != null ? options.Options : new List<BuilderOption>();
+
+            b.WriteBusy = true;
+            b.WriteError = string.Empty;
+            b.WriteNote = string.Empty;
+            _s.Notify(StateArea.Builder);
+            try
+            {
+                var messages = new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("system", BackgroundWriter.SystemPrompt(b.System, b.Draft, existing, _s.Onboarding.Answers)),
+                    new KeyValuePair<string, string>("user", BackgroundWriter.Request),
+                };
+                string reply = null;
+                string error = null;
+                yield return _s.Driver.Brainstorm(messages, null, delegate (string r, string e) { reply = r; error = e; });
+                if (error != null)
+                {
+                    b.WriteError = TextSanitizer.Clean(error, 400);
+                    yield break;
+                }
+                var written = BackgroundWriter.Extract(reply);
+                if (written.Count == 0)
+                {
+                    b.WriteError = "The DM's reply had no background in it. Try again.";
+                    yield break;
+                }
+
+                var saved = new List<string>();
+                var refused = new List<string>();
+                foreach (string yaml in written)
+                {
+                    McpOutcome<ToolPayload> result = null;
+                    yield return _s.Mcp.CallToolData(_s.Config, "build", "world_build", BackgroundBatch(b.Slug, b.System, yaml),
+                        delegate (McpOutcome<ToolPayload> o) { result = o; });
+                    string name = BackgroundWriter.NameOf(yaml);
+                    if (result != null && result.Ok) { saved.Add(name); }
+                    else { refused.Add(name + " (" + (result != null ? result.ErrorMessage : "no response") + ")"); }
+                }
+
+                // The step's options now include what was saved: fetch them again, and mark the new ones.
+                b.Options.Remove(stepKey);
+                yield return BuilderOptions(stepKey);
+                b.Suggested.Clear();
+                b.Suggested.AddRange(saved);
+                b.WriteNote = WriteNote(BackgroundWriter.Prose(reply), saved, refused);
+                if (saved.Count == 0) { b.WriteError = "None of the DM's backgrounds could be saved."; }
+            }
+            finally
+            {
+                b.WriteBusy = false;
+                _s.Notify(StateArea.Builder);
+            }
+        }
+
+        /// <summary>world_build's arguments for one homebrew background.</summary>
+        internal static JsonValue BackgroundBatch(string slug, string system, string yaml)
+        {
+            var entry = JsonValue.NewObject();
+            entry.ObjectValue["kind"] = JsonValue.FromString("background");
+            if (!string.IsNullOrEmpty(system)) { entry.ObjectValue["system"] = JsonValue.FromString(system.ToLowerInvariant()); }
+            entry.ObjectValue["yaml"] = JsonValue.FromString(yaml);
+            var homebrew = JsonValue.NewArray();
+            homebrew.ArrayValue.Add(entry);
+            var batch = JsonValue.NewObject();
+            batch.ObjectValue["homebrew"] = homebrew;
+            var args = JsonValue.NewObject();
+            args.ObjectValue["batch"] = batch;
+            args.ObjectValue["campaignName"] = JsonValue.FromString(slug);
+            return args;
+        }
+
+        /// <summary>The DM's reasons, then what was saved and what the rules refused.</summary>
+        internal static string WriteNote(string prose, List<string> saved, List<string> refused)
+        {
+            var sb = new StringBuilder(TextSanitizer.Clean(prose, 1200));
+            if (saved.Count > 0) { sb.Append(sb.Length > 0 ? "\n\n" : string.Empty).Append("Added: ").Append(string.Join(", ", saved.ToArray())).Append('.'); }
+            if (refused.Count > 0) { sb.Append(sb.Length > 0 ? "\n" : string.Empty).Append("Not saved: ").Append(string.Join("; ", refused.ToArray())).Append('.'); }
+            return sb.ToString();
         }
 
         // ---- asking the DM ----

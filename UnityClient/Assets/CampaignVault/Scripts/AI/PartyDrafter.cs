@@ -108,7 +108,7 @@ namespace CampaignVault.UnityClient.AI
         {
             return "Draft 1 to " + MaxCompanions + " companions for this party, filling what the party composition asks for that the player's characters don't cover. "
                 + "Reply with ONLY a JSON array, no prose and no markdown, one object per companion: "
-                + "{\"name\": \"...\", \"concept\": \"who they are and their shared history with the party, 2-3 sentences\", \"look\": \"one sentence\", "
+                + "{\"name\": \"...\", \"concept\": \"who they are and their shared history with the party, 2-3 sentences\", \"look\": \"one sentence\", \"pronouns\": \"she/her, he/him, they/them...\", "
                 + "\"level\": 1, \"statblock\": {\"<field key>\": value, ...}}. Use only the stat block field keys listed; "
                 + "fill every required one and \"stance\" (how they feel about the party). Numbers are bare numbers, bonuses included.";
         }
@@ -139,6 +139,8 @@ namespace CampaignVault.UnityClient.AI
                 d.Draft.Name = TextSanitizer.Clean(item.GetString("name", string.Empty), 80).Trim();
                 d.Draft.Concept = TextSanitizer.Clean(item.GetString("concept", string.Empty), 1200).Trim();
                 d.Draft.Look = TextSanitizer.Clean(item.GetString("look", string.Empty), 400).Trim();
+                d.Draft.Pronouns = TextSanitizer.Clean(item.GetString("pronouns", string.Empty), 40).Trim();
+                d.Draft.Gender = TextSanitizer.Clean(item.GetString("gender", string.Empty), 40).Trim();
                 d.Draft.PartyLevel = partyLevel;
                 int asked = (int)item.GetNumber("level", partyLevel);
                 int level = Math.Max(min, Math.Min(max, asked));

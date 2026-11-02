@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Unity.Properties;
+using CampaignVault.UnityClient.AI;
 using CampaignVault.UnityClient.App;
 using CampaignVault.UnityClient.Json;
 using CampaignVault.UnityClient.Model;
@@ -220,11 +221,27 @@ namespace CampaignVault.UnityClient.UI.Builder
         private bool _countComplete;
         private bool _countOver;
         private List<OptionViewModel> _options = new List<OptionViewModel>();
+        private bool _showWrite;
+        private bool _canWrite;
+        private string _writeLabel = string.Empty;
+        private string _writeHint = string.Empty;
+        private string _writeNote = string.Empty;
+        private string _writeError = string.Empty;
 
         public PickStepViewModel(BuilderStep step, VaultController controller, bool many) : base(step, controller)
         {
             _many = many;
+            Write = delegate { if (Controller != null) { Run(Controller.WriteBackgrounds()); } };
         }
+
+        /// <summary>The background step's "the DM writes backgrounds for this character" (BackgroundWriter).</summary>
+        [CreateProperty] public bool ShowWrite { get { return _showWrite; } private set { Set(ref _showWrite, value); } }
+        [CreateProperty] public bool CanWrite { get { return _canWrite; } private set { Set(ref _canWrite, value); } }
+        [CreateProperty] public string WriteLabel { get { return _writeLabel; } private set { Set(ref _writeLabel, value); } }
+        [CreateProperty] public string WriteHint { get { return _writeHint; } private set { Set(ref _writeHint, value); } }
+        [CreateProperty] public string WriteNote { get { return _writeNote; } private set { Set(ref _writeNote, value); } }
+        [CreateProperty] public string WriteError { get { return _writeError; } private set { Set(ref _writeError, value); } }
+        [CreateProperty] public Action Write { get; private set; }
 
         public override string Template { get { return "Builder/PickStep"; } }
 
@@ -238,6 +255,7 @@ namespace CampaignVault.UnityClient.UI.Builder
 
         public override void Update(BuilderStep step, BuilderState b)
         {
+            UpdateWrite(step, b);
             var opts = Loaded(b);
             if (opts == null)
             {
@@ -261,6 +279,19 @@ namespace CampaignVault.UnityClient.UI.Builder
                         "You've chosen " + count + ". Drop one to pick this instead.");
                 });
             ApplyFilter();
+        }
+
+        private void UpdateWrite(BuilderStep step, BuilderState b)
+        {
+            ShowWrite = BackgroundWriter.Serves(step) && b.Draft.Kind == "pc";
+            if (!ShowWrite) { return; }
+            CanWrite = Controller != null && !b.WriteBusy && !b.AskBusy && !b.FillBusy;
+            WriteLabel = b.WriteBusy ? "THE DM IS WRITING…" : "DM WRITES BACKGROUNDS FOR THEM";
+            WriteHint = b.Draft.Concept.Length > 0
+                ? "The DM writes " + BackgroundWriter.Count + " backgrounds that fit this character's concept and the campaign, and adds them here (tagged homebrew). The rules check each one."
+                : "Give the character a concept first, on Who they are: the DM fits the backgrounds to it.";
+            WriteNote = DisplayText.Plain(b.WriteNote);
+            WriteError = DisplayText.Plain(b.WriteError);
         }
 
         private void Picked(OptionViewModel o)
@@ -886,11 +917,15 @@ namespace CampaignVault.UnityClient.UI.Builder
         private string _name = string.Empty;
         private string _concept = string.Empty;
         private string _look = string.Empty;
+        private string _gender = string.Empty;
+        private string _pronouns = string.Empty;
         // What the draft held when last read: a field takes the draft's value only when it changed underneath it,
         // so a refresh caused by one field never pushes a stale value into another that's mid-edit.
         private string _seenName;
         private string _seenConcept;
         private string _seenLook;
+        private string _seenGender;
+        private string _seenPronouns;
         private string _schemaError = string.Empty;
         private bool _hasSchema;
         private string _schemaTitle = string.Empty;
@@ -917,21 +952,37 @@ namespace CampaignVault.UnityClient.UI.Builder
         public string Name
         {
             get { return _name; }
-            set { if (Set(ref _name, value ?? string.Empty)) { _seenName = _name; Commit(_name, null, null); } }
+            set { if (Set(ref _name, value ?? string.Empty)) { _seenName = _name; Commit(_name, null, null, null, null); } }
         }
 
         [CreateProperty]
         public string Concept
         {
             get { return _concept; }
-            set { if (Set(ref _concept, value ?? string.Empty)) { _seenConcept = _concept; Commit(null, _concept, null); } }
+            set { if (Set(ref _concept, value ?? string.Empty)) { _seenConcept = _concept; Commit(null, _concept, null, null, null); } }
         }
 
         [CreateProperty]
         public string Look
         {
             get { return _look; }
-            set { if (Set(ref _look, value ?? string.Empty)) { _seenLook = _look; Commit(null, null, _look); } }
+            set { if (Set(ref _look, value ?? string.Empty)) { _seenLook = _look; Commit(null, null, _look, null, null); } }
+        }
+
+        /// <summary>Optional; context for the DM (what fits the character, the backgrounds it writes) and the story.</summary>
+        [CreateProperty]
+        public string Gender
+        {
+            get { return _gender; }
+            set { if (Set(ref _gender, value ?? string.Empty)) { _seenGender = _gender; Commit(null, null, null, _gender, null); } }
+        }
+
+        /// <summary>What narration calls the character; without it the DM guesses from the name.</summary>
+        [CreateProperty]
+        public string Pronouns
+        {
+            get { return _pronouns; }
+            set { if (Set(ref _pronouns, value ?? string.Empty)) { _seenPronouns = _pronouns; Commit(null, null, null, null, _pronouns); } }
         }
 
         [CreateProperty] public string SchemaError { get { return _schemaError; } private set { Set(ref _schemaError, value); } }
@@ -944,10 +995,10 @@ namespace CampaignVault.UnityClient.UI.Builder
         /// <summary>The stat block's fields in runs of the same group, each run under its group's caption.</summary>
         [CreateProperty] public List<StatGroupViewModel> Groups { get { return _groups; } private set { SetList(ref _groups, value); } }
 
-        private void Commit(string name, string concept, string look)
+        private void Commit(string name, string concept, string look, string gender, string pronouns)
         {
             if (Controller == null) { return; }
-            Controller.BuilderIdentity(name, concept, look);
+            Controller.BuilderIdentity(name, concept, look, gender, pronouns);
             Run(Controller.BuilderPreview());
         }
 
@@ -957,6 +1008,8 @@ namespace CampaignVault.UnityClient.UI.Builder
             if (d.Name != _seenName) { _seenName = d.Name; Set(ref _name, d.Name, "Name"); }
             if (d.Concept != _seenConcept) { _seenConcept = d.Concept; Set(ref _concept, d.Concept, "Concept"); }
             if (d.Look != _seenLook) { _seenLook = d.Look; Set(ref _look, d.Look, "Look"); }
+            if (d.Gender != _seenGender) { _seenGender = d.Gender; Set(ref _gender, d.Gender, "Gender"); }
+            if (d.Pronouns != _seenPronouns) { _seenPronouns = d.Pronouns; Set(ref _pronouns, d.Pronouns, "Pronouns"); }
 
             StatBlockSchema schema = null;
             if (step.Schema.Length > 0)

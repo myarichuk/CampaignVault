@@ -83,6 +83,8 @@ namespace CampaignVault.UnityClient.Flows
     {
         public string Id = string.Empty;
         public string Name = string.Empty;
+        /// <summary>What narration calls them ("she/her"); empty when the character has none recorded.</summary>
+        public string Pronouns = string.Empty;
     }
 
     /// <summary>An NPC the session has shown (a card, a scene roster, last session's handoff): what the handoff's people picker offers.</summary>
@@ -430,7 +432,12 @@ namespace CampaignVault.UnityClient.Flows
                 CollectStrings(p, "equipped", "Equipped", member.Equipped);
                 CollectStrings(p, "carried", "Carried", member.Carried);
                 // The roster used to be repeated under campaign.pcs/companions; party[] is the only copy now.
-                (member.IsPc ? digest.Pcs : digest.Companions).Add(new PartyPc { Id = member.Id, Name = member.Name });
+                (member.IsPc ? digest.Pcs : digest.Companions).Add(new PartyPc
+                {
+                    Id = member.Id,
+                    Name = member.Name,
+                    Pronouns = p.GetStringAny(new[] { "pronouns", "Pronouns" }, string.Empty),
+                });
                 CollectStrings(p, "keyMemories", "KeyMemories", member.KeyMemories);
                 var needs = Pick(p, "highNeeds", "HighNeeds");
                 if (!needs.IsNull && needs.Kind == JsonKind.Object && needs.ObjectValue != null)

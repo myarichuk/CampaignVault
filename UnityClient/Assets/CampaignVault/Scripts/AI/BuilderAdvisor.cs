@@ -110,6 +110,8 @@ namespace CampaignVault.UnityClient.AI
             parts.Add("level " + draft.Level);
             foreach (var kv in draft.Choices) { parts.Add(kv.Key + " " + kv.Value.ToJson()); }
             if (draft.Concept.Length > 0) { parts.Add("concept: " + draft.Concept); }
+            if (draft.Gender.Length > 0) { parts.Add("gender: " + draft.Gender); }
+            if (draft.Pronouns.Length > 0) { parts.Add("pronouns: " + draft.Pronouns); }
             return string.Join("; ", parts.ToArray());
         }
 
