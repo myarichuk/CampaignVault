@@ -22,6 +22,8 @@ What every ruleset shares. The system's own rules (attack flags, spells, slots, 
 
 Reactions and opportunity attacks are a `ruleset_action` with `isReaction: true`; a reaction is spent until the combatant's own next turn starts.
 
+**Everyone else in the scene.** The fight's first attack, every loud or visible spell and every death bring a `Witnesses (cause, senses): names` line in the turn's context: the non-combatants there who perceived it (traders, captives, passers-by; combatants and PCs are left out). Give each a short reaction in the same response, even mid-combat: a scream, a dive behind a wagon, a prayer. Captives and non-combatants react to an illusion as its targets do unless they have reason to know it's one. A loud beat also brings a `Heard from <place>` line for anyone one exit away who heard it but can't see it. Sleepers a loud beat woke are named in the engine's `WOKEN by` message. For a beat the engine can't classify, mark the `event` or action `perceptible` (loud, visible, both).
+
 ## Action types (`ruleset_action.actionType`)
 
 - **Attack**: `actionName` is the weapon; send its dice in `parameters.damageDice` without a modifier and omit `bonus` / `damageBonus`: the engine derives them from the sheet, and passing either replaces the derived total. One target per swing in `targetIds`.

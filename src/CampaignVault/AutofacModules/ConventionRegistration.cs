@@ -208,6 +208,7 @@ internal static class ConventionRegistration
         builder.RegisterType<CampaignRepository>().InstancePerLifetimeScope();
         builder.RegisterType<EncounterResolver>().InstancePerLifetimeScope();
         builder.RegisterType<CampaignVault.Data.Context.PerceptibleBeats>().InstancePerLifetimeScope();
+        builder.RegisterType<CampaignVault.Data.Witness.WitnessSelector>().As<CampaignVault.Data.Witness.IWitnessSelector>().SingleInstance();
         builder.RegisterType<CharacterBootstrapOrchestrator>().InstancePerLifetimeScope();
         builder.RegisterType<CampaignVault.Rulesets.CharacterWiringAuditor>().AsSelf().InstancePerLifetimeScope();
         builder.RegisterType<GuidanceOrchestrator>().As<IGuidanceOrchestrator>().InstancePerLifetimeScope();

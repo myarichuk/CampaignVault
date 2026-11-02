@@ -1,6 +1,6 @@
 # Witness channel, social spectacle and awareness
 
-Groomed 2026-11-01. W0–W4, S1–S2 and A0–A6 are implemented (2026-11-02); W5–W8 are not.
+Groomed 2026-11-01. W0–W8, S1–S2 and A0–A6 are implemented (2026-11-02).
 
 ## The playtest that prompted it
 
@@ -143,20 +143,24 @@ Each phase ships on its own with a green suite. Check every box before calling i
     - No spell YAML carries `perceptible` / `perceptibleModes` yet (W3). Minor Illusion gets D1's behaviour from the illusion-school fallback instead.
     - The witness query is capped at 25 characters per location.
 
-- [ ] **W5. Earshot beyond the location (loud only).** For `loud` triggers, characters at locations one exit away (`Location.Exits`) get a second, shorter line: `Heard from the camp: the goblin scout at the ridge`. The second line has priority 75 and the same key scheme with a `:near` suffix.
+- [x] **W5. Earshot beyond the location (loud only).** For `loud` triggers, characters at locations one exit away (`Location.Exits`) get a second, shorter line: `Heard from the camp: the goblin scout at the ridge`. The second line has priority 75 and the same key scheme with a `:near` suffix.
   *Done when:* a test with an adjacent location's NPC passes, and visible-only triggers don't reach neighbours.
+  *As built:* "one exit away" is capped at `WitnessSelector.EarshotMaxTravelHours` (0.25 h): an exit costing an hour leads somewhere out of earshot. Exits are kept reciprocal (`LocationConnectivity`), so only the beat location's own exits are read. Distance muffles: neighbours hear but don't see, so the line names the noise (`fireball`, `fighting`), not who made it, and a sleeper next door sleeps through it (the dispatcher's waking stays same-location). Line: `Heard from Roadside Camp (fireball): Bram at the Ridge. They hear it but can't see it; …`.
 
-- [ ] **W6. Shared witness selection for knownBy.** Pull the selection and filter out into an `IWitnessSelector` (in `Data/Witness/`), used by the contributor. Note in `KNOWN_BY_AND_CI_PLAN.md` K1 that the audience default should call it.
+- [x] **W6. Shared witness selection for knownBy.** Pull the selection and filter out into an `IWitnessSelector` (in `Data/Witness/`), used by the contributor. Note in `KNOWN_BY_AND_CI_PLAN.md` K1 that the audience default should call it.
   *Done when:* the contributor uses the selector and its tests pass, with no behaviour change.
+  *As built:* `IWitnessSelector` (`AtAsync`, `InEarshotAsync`) returns `WitnessNotice(Character, Notice)` rows; registered single-instance. The record isn't called `Witness`, which would clash with the `CampaignVault.Data.Witness` namespace. The dispatcher's waking query and A5's occupant lookup still query on their own: they need sleepers and characters tracked in the batch, which the selector's indexed query can't see.
 
-- [ ] **W7. Prompt and docs.**
+- [x] **W7. Prompt and docs.**
   - `claude_skills/dnd-combat/SKILL.md` and `recommended-system-prompt*.md`: one rule. "A `Witnesses` line means those people perceived the beat; give each a short reaction in the same response, even mid-combat. Captives and non-combatants react to illusions as the targets do unless they have reason to know it's an illusion."
   - Mention `perceptible` on events.
   - Add a short paragraph to `Tools/DmHelpManual.cs` next to the `npc_initiative_nudge` FAQ (line ~81) explaining that the witness line is separate from the one-NPC initiative slot.
 
   *Done when:* the docs are updated and the prompt snapshot tests (if any) are refreshed.
+  *As built:* the rule is in all three prompt variants (with `awareness_change` added to the $type vocabulary), a paragraph in `dnd-combat`, a paragraph after the `npc_initiative_nudge` FAQ in `DmHelpManual`, and a K1 note in `KNOWN_BY_AND_CI_PLAN.md`. No snapshot tests exist; the guidance-corpus tests pass.
 
-- [ ] **W8. Verification.** Run the full suite once with `/verify`, with no parallel builds. Report every failure; the two `LocalEmbeddingServiceTests` count as environmental if git-lfs is missing. Then do a scratch-campaign playtest (SFW, empty DB, per measure-on-scratch-campaigns): a camp with traders, Minor Illusion then Fireball. Check that the turn response carries the witness line both times.
+- [x] **W8. Verification.** Run the full suite once with `/verify`, with no parallel builds. Report every failure; the two `LocalEmbeddingServiceTests` count as environmental if git-lfs is missing. Then do a scratch-campaign playtest (SFW, empty DB, per measure-on-scratch-campaigns): a camp with traders, Minor Illusion then Fireball. Check that the turn response carries the witness line both times.
+  *As built:* the playtest is a test, `Playtest_the_illusion_then_the_fireball_both_reach_the_camp`, on a scratch campaign in the embedded (empty) RavenDB: traders Corren and Ilsa at the camp, lookout Bram on the ridge. Minor Illusion (sound) gives `Witnesses (minor illusion by Maeve, loud): Corren, Ilsa` and `Heard from Roadside Camp (minor illusion): Bram at the Ridge`; Fireball gives the same pair with `loud+visible`. A live LLM playtest against the MCP server is still Michael's call.
 
 ## Decisions (Michael, 2026-11-01)
 

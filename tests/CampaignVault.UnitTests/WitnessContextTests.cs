@@ -536,4 +536,111 @@ public class WitnessContextTests : IClassFixture<RavenDBFixture>
         action.Parameters["mode"] = "sound";
         Assert.Equal(Perceptible.Loud, Perceptibility.OfSpell(modal, action));
     }
+    // ---- W5: earshot one exit away ----
+
+    /// <summary>A ridge one exit from the camp, <paramref name="travelHours"/> away, with a lookout (Bram) standing on it.</summary>
+    private async Task<string> AddRidgeAsync(Camp c, double travelHours)
+    {
+        var ridgeId = $"locations/{c.Slug}-ridge";
+        var bramId = $"chars/{c.Slug}-bram";
+        var repo = _fixture.CreateRepository();
+        using var session = _fixture.Store.OpenAsyncSession();
+        var cs = _fixture.CreateCampaignSession(session, c.Slug);
+        await repo.UpsertLocationAsync(cs, new LocationUpsertRequest
+        {
+            Id = ridgeId, Name = "the Ridge", Description = "A bare ridge above the road.",
+            Exits = [new LocationExit(c.LocId, "Down to the camp", TravelCostHours: travelHours)]
+        });
+        var camp = await session.LoadAsync<Location>(c.LocId, TestContext.Current.CancellationToken);
+        camp!.Exits.Add(new LocationExit(ridgeId, "Up to the ridge", TravelCostHours: travelHours));
+        await repo.UpsertCharacterAsync(cs, new CharacterUpsertRequest
+        {
+            Id = bramId, Name = "Bram", CurrentLocationId = ridgeId, MaxHp = 9, CurrentHp = 9
+        });
+        await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return bramId;
+    }
+
+    [Fact]
+    public async Task A_fireball_is_heard_from_the_ridge_next_to_the_camp()
+    {
+        var c = await SeedCampAsync();
+        await AddRidgeAsync(c, travelHours: 0.1);
+
+        var cast = await CastFireballAsync(c);
+
+        Assert.True(cast.Success, cast.Summary);
+        var near = Assert.Single(cast.Data!.Context ?? [], l => l.StartsWith("Heard from"));
+        Assert.StartsWith("Heard from Roadside Camp (fireball): Bram at the Ridge.", near);
+        Assert.DoesNotContain("Bram", Assert.Single(cast.Data!.Context ?? [], l => l.StartsWith("Witnesses")));
+    }
+
+    [Fact]
+    public async Task A_silent_image_does_not_reach_the_ridge()
+    {
+        var c = await SeedCampAsync(startCombat: false);
+        await AddRidgeAsync(c, travelHours: 0.1);
+
+        var cast = await CommitAsync(c, "A ghostly wolf shape pads silently past the fire.",
+            new RulesetAction
+            {
+                CharacterId = c.PcId, ActionType = RulesetActionType.Spell, ActionCategory = ActionCategory.Spell, ActionName = "silent_image",
+                Parameters = new Dictionary<string, string> { ["resolution"] = "utility", ["innate"] = "true" }
+            });
+
+        Assert.True(cast.Success, cast.Summary);
+        Assert.Contains(cast.Data!.Context ?? [], l => l.StartsWith("Witnesses"));
+        Assert.DoesNotContain(cast.Data!.Context ?? [], l => l.StartsWith("Heard from"));
+    }
+
+    [Fact]
+    public async Task A_far_neighbour_and_a_sleeping_one_hear_nothing()
+    {
+        var far = await SeedCampAsync();
+        await AddRidgeAsync(far, travelHours: 1);
+        Assert.DoesNotContain((await CastFireballAsync(far)).Data!.Context ?? [], l => l.StartsWith("Heard from"));
+
+        var asleep = await SeedCampAsync();
+        var bramId = await AddRidgeAsync(asleep, travelHours: 0.1);
+        await CommitAsync(asleep, "Bram dozes at his post.", new AwarenessChange { CharacterId = bramId, State = "asleep" });
+        Assert.DoesNotContain((await CastFireballAsync(asleep)).Data!.Context ?? [], l => l.StartsWith("Heard from"));
+    }
+    // ---- W8: the playtest that started this, end to end ----
+
+    [Fact]
+    public async Task Playtest_the_illusion_then_the_fireball_both_reach_the_camp()
+    {
+        var c = await SeedCampAsync();
+        await AddRidgeAsync(c, travelHours: 0.1);
+
+        var illusion = await c.Tools.TakeTurn(new TakeTurnRequest
+        {
+            Changes =
+            [
+                new RulesetAction
+                {
+                    CharacterId = c.PcId, ActionType = RulesetActionType.Spell, ActionCategory = ActionCategory.Spell, ActionName = "minor_illusion",
+                    Parameters = new Dictionary<string, string> { ["resolution"] = "utility", ["innate"] = "true", ["mode"] = "sound" }
+                }
+            ],
+            Narrative = "Maeve throws a wolf's howl into the dark behind the goblin."
+        }, c.Slug);
+        await ToMaevesTurnAsync(c, active: null);
+        var fireball = await CastFireballAsync(c);
+
+        Assert.True(illusion.Success, illusion.Summary);
+        Assert.True(fireball.Success, fireball.Summary);
+        foreach (var (beat, result) in new[] { ("minor illusion", illusion), ("fireball", fireball) })
+        {
+            foreach (var line in (result.Data!.Context ?? []).Where(l => l.StartsWith("Witnesses") || l.StartsWith("Heard from")))
+            {
+                TestContext.Current.TestOutputHelper?.WriteLine($"[{beat}] {line}");
+            }
+        }
+
+        Assert.StartsWith("Witnesses (minor illusion by Maeve, loud):", Assert.Single(illusion.Data!.Context ?? [], l => l.StartsWith("Witnesses")));
+        Assert.StartsWith("Heard from Roadside Camp (minor illusion):", Assert.Single(illusion.Data!.Context ?? [], l => l.StartsWith("Heard from")));
+        Assert.StartsWith("Witnesses (fireball by Maeve, loud+visible):", Assert.Single(fireball.Data!.Context ?? [], l => l.StartsWith("Witnesses")));
+        Assert.Contains(fireball.Data!.Context ?? [], l => l.StartsWith("Heard from Roadside Camp (fireball)"));
+    }
 }

@@ -21,6 +21,7 @@ ENGINE IS AUTHORITATIVE
 - Never name a person or place that isn't seeded: create it in the same take_turn (character_create, item_create, location_update with a new id, rumor_create), ahead of the beat that uses it.
 - First contact with an NPC: commit an approach beat (an event only), read the card it returns, then play their reaction.
 - NPCs know only their memories and what they perceive; they can't hear PC thoughts. gmOnly notes stay backstage.
+- A Witnesses line names who perceived the beat, and Heard from names who heard it from next door: give each a short reaction in the same response, even mid-combat. Captives and bystanders react to an illusion as its targets do unless they have reason to know it's one. Mark a loud or showy event perceptible (loud, visible, both) so the camp gets the line too.
 - If a PC idles, an NPC acts within 2 beats.
 
 NARRATION (mechanics never shorten this; a beat is not its committed $type)
@@ -67,7 +68,7 @@ TOOL HYGIENE (tokens)
 
 $type VOCABULARY
   ruleset_action hp grant_temp_hp status status_remove apply_effect resource rest xp_grant level_up death death_save
-  event knowledge_update relationship mood activity need attribute schedule_change npc_initiative_nudge
+  event knowledge_update relationship mood activity need attribute schedule_change npc_initiative_nudge awareness_change
   travel location_update spatial_position scene_setup scene_interrupt_check engagement_relation
   item item_equip item_unequip item_update item_use character_update tether soil piercing archive_entity
   rumor quest_progress plot_thread_clue plot_thread_progress faction_reputation faction_state

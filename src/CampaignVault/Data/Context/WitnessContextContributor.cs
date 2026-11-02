@@ -1,4 +1,5 @@
 using CampaignVault.Data.Templates;
+using CampaignVault.Data.Witness;
 using CampaignVault.Models;
 
 namespace CampaignVault.Data.Context;
@@ -82,9 +83,10 @@ public static class Perceptibility
 /// Witness channel (WITNESS_CHANNEL_PLAN.md): when a beat is loud or visible, name everyone else at the actor's location who
 /// perceived it, so the narrator gives the camp, the captives and the passers-by a reaction instead of narrating only the fight.
 /// Separate from the one-NPC initiative slot, which can't carry a whole crowd. Combatants are left out (they get their own turns),
-/// and so are PCs (the player decides what they do). Who perceived what is <see cref="AwarenessResolver"/>'s call.
+/// and so are PCs (the player decides what they do). Who is there and what they perceived is <see cref="IWitnessSelector"/>'s call.
+/// A loud beat also reaches one exit further (W5): a second, shorter line names who heard it from next door.
 /// </summary>
-internal sealed class WitnessContextContributor(PerceptibleBeats beats, CampaignDocumentKeys keys) : IContextContributor
+internal sealed class WitnessContextContributor(PerceptibleBeats beats, IWitnessSelector selector, CampaignDocumentKeys keys) : IContextContributor
 {
     private const int MaxNames = 6;
 
@@ -112,16 +114,19 @@ internal sealed class WitnessContextContributor(PerceptibleBeats beats, Campaign
             var excluded = new HashSet<string>(said.SelectMany(t => t.Beat.Excluded.Append(t.Beat.ActorId)), StringComparer.OrdinalIgnoreCase);
             excluded.UnionWith(combatantIds);
 
-            var line = await WitnessLineAsync(turn, group.Key, said, signal, excluded, ct);
-            if (line == null)
-            {
-                continue;
-            }
-
             var key = spectacle.Count > 0
                 ? $"witness:{turn.WorldSequence}:{group.Key}"
                 : $"witness:combat:{group.Key}:{string.Join(",", combatantIds.Order(StringComparer.OrdinalIgnoreCase))}";
-            items.Add(new ContextItem(key, line, 90));
+
+            if (await WitnessLineAsync(turn, group.Key, said, signal, excluded, ct) is { } line)
+            {
+                items.Add(new ContextItem(key, line, 90));
+            }
+
+            if (await EarshotLineAsync(turn, group.Key, said, signal, excluded, ct) is { } near)
+            {
+                items.Add(new ContextItem(key + ":near", near, 75));
+            }
         }
 
         return items;
@@ -154,39 +159,49 @@ internal sealed class WitnessContextContributor(PerceptibleBeats beats, Campaign
             ? $"{beat.Cause} by {actor.Name}"
             : beat.Cause;
 
-    private static async Task<string?> WitnessLineAsync(ContextTurn turn, string locationId, List<Located> said, Perceptible signal,
+    private async Task<string?> WitnessLineAsync(ContextTurn turn, string locationId, List<Located> said, Perceptible signal,
         HashSet<string> excluded, CancellationToken ct)
     {
-        var here = await turn.Session.Query<Character>()
-            .Where(c => c.CampaignName == turn.CampaignName && c.CurrentLocationId == locationId && !c.IsPc && c.Death == null)
-            .Take(25)
-            .ToListAsync(ct);
-
         // The source the witnesses look at: an invisible caster's effect is seen, the caster isn't. A death has no source to hide.
         var source = said.Select(t => t.Actor).FirstOrDefault(a => a != null && said.Any(t => t.Actor == a && t.Beat.Cause != "dies"));
-        var witnesses = new List<string>();
-        foreach (var c in here.Where(c => !excluded.Contains(c.Id))
-                     .OrderByDescending(c => c.IsPartyCompanion || c.KeepAlive)
-                     .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase))
-        {
-            var notice = AwarenessResolver.Perceive(c, signal, source);
-            if (notice.Perceived)
-            {
-                witnesses.Add(notice.Note == null ? c.Name : $"{c.Name} ({notice.Note})");
-            }
-        }
-
+        var witnesses = (await selector.AtAsync(turn.Session, turn.CampaignName, locationId, signal, source, excluded, ct))
+            .Select(w => w.Notice.Note == null ? w.Character.Name : $"{w.Character.Name} ({w.Notice.Note})")
+            .ToList();
         if (witnesses.Count == 0)
         {
             return null;
         }
 
-        var names = witnesses.Count > MaxNames
-            ? string.Join(", ", witnesses.Take(MaxNames)) + $" +{witnesses.Count - MaxNames} others"
-            : string.Join(", ", witnesses);
         var causes = string.Join("; ", said.Select(t => t.Cause).Distinct(StringComparer.OrdinalIgnoreCase));
         var drawing = said.Any(t => t.Beat.Draws) ? ", drawing attention" : "";
-        return $"Witnesses ({causes}, {Perceptibility.Describe(signal)}{drawing}): {names}. "
+        return $"Witnesses ({causes}, {Perceptibility.Describe(signal)}{drawing}): {Names(witnesses)}. "
                + "Give each a short reaction in this response, even mid-combat.";
     }
+
+    /// <summary>W5: who heard a loud beat from one exit away. They don't see it, so the cause is the noise, not who made it.</summary>
+    private async Task<string?> EarshotLineAsync(ContextTurn turn, string locationId, List<Located> said, Perceptible signal,
+        HashSet<string> excluded, CancellationToken ct)
+    {
+        var loud = said.Where(t => (t.Beat.Signal & Perceptible.Loud) != 0).ToList();
+        if (loud.Count == 0)
+        {
+            return null;
+        }
+
+        var near = await selector.InEarshotAsync(turn.Session, turn.CampaignName, locationId, signal, excluded, ct);
+        var heard = near.SelectMany(n => n.Heard.Select(w => $"{w.Character.Name} at {n.Where.Name}")).ToList();
+        if (heard.Count == 0)
+        {
+            return null;
+        }
+
+        var here = await turn.Session.LoadAsync<Location>(locationId, ct);
+        var sounds = string.Join("; ", loud.Select(t => t.Beat.CombatNoise ? "fighting" : t.Beat.Cause).Distinct(StringComparer.OrdinalIgnoreCase));
+        return $"Heard from {here?.Name ?? "nearby"} ({sounds}): {Names(heard)}. They hear it but can't see it; a short reaction each if it fits.";
+    }
+
+    private static string Names(List<string> names) =>
+        names.Count > MaxNames
+            ? string.Join(", ", names.Take(MaxNames)) + $" +{names.Count - MaxNames} others"
+            : string.Join(", ", names);
 }
