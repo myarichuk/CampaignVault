@@ -1157,6 +1157,14 @@ public class CharacterCreate : WorldChange
     [JsonPropertyName("lifeStage")]
     public LifeStage LifeStage { get; set; }
 
+    [Description("e.g. woman, man, nonbinary.")]
+    [JsonPropertyName("gender")]
+    public string? Gender { get; set; }
+
+    [Description("What narration calls them, e.g. she/her.")]
+    [JsonPropertyName("pronouns")]
+    public string? Pronouns { get; set; }
+
     [Description("True for NPC companions on the party roster. Requires campaign context; mutually exclusive with isPc.")]
     [JsonPropertyName("isPartyCompanion")]
     public bool IsPartyCompanion { get; set; }
@@ -1654,6 +1662,14 @@ public class CharacterUpdate : WorldChange
     [Description("child | adolescent | adult | elder. A character recorded as a minor cannot be changed to adult.")]
     [JsonPropertyName("lifeStage")]
     public LifeStage? LifeStage { get; set; }
+
+    [Description("e.g. woman, man, nonbinary.")]
+    [JsonPropertyName("gender")]
+    public string? Gender { get; set; }
+
+    [Description("What narration calls them, e.g. she/her.")]
+    [JsonPropertyName("pronouns")]
+    public string? Pronouns { get; set; }
 
     [Description("Ruleset-specific stats ($system: dnd5e/pf2e/narrative). Partial patches merge onto existing stats. See lookup kind=commit_schema type=character_update for the field list.")]
     [JsonPropertyName("systemStats")]

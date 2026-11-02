@@ -110,7 +110,9 @@ public record PartySessionView(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     bool LevelUpReady = false,
     /// <summary>5e: the death-save tally of a downed player character, e.g. "Death saves: 1 success, 2 failures" or "Stable"; null otherwise (PF2e's dying and wounded are statuses).</summary>
-    string? DeathSaves = null)
+    string? DeathSaves = null,
+    /// <summary>The pronouns narration uses ("she/her"); null when not given.</summary>
+    string? Pronouns = null)
 {
     /// <summary>Needs at or above this value are surfaced; lower ones are ambient and left to take_turn.</summary>
     public const float HighNeedThreshold = 60f;
@@ -158,7 +160,8 @@ public record PartySessionView(
             highNeeds.Count > 0 ? highNeeds : null,
             memories.Count,
             keyMemories.Count > 0 ? keyMemories : null,
-            DeathSaves: DeathSaveSummary(c));
+            DeathSaves: DeathSaveSummary(c),
+            Pronouns: c.Pronouns);
     }
 
     private static string? DeathSaveSummary(Character c)

@@ -52,7 +52,11 @@ public record CharacterDetailView(
     /// <summary>Temporary hit points on top of <see cref="CurrentHp"/>; null when none.</summary>
     int? TempHp = null,
     /// <summary>What granted <see cref="TempHp"/> (a spell, a feature); null when none or unnamed.</summary>
-    string? TempHpSource = null)
+    string? TempHpSource = null,
+    /// <summary>Free-text gender; null when not given.</summary>
+    string? Gender = null,
+    /// <summary>The pronouns narration uses ("she/her"); null when not given.</summary>
+    string? Pronouns = null)
 {
     /// <param name="includeCombatDetail">Whether to include Needs/SystemStats — the mechanical slice a
     /// DM only needs once a roll or combat is actually in play. Default true for every caller except
@@ -87,7 +91,9 @@ public record CharacterDetailView(
         includeDirtDetail && c.Dirt is { Count: > 0 } ? c.Dirt : null,
         PiercingHelpers.Summarize(c.Piercings),
         c.TempHp is > 0 ? c.TempHp : null,
-        c.TempHp is > 0 ? c.TempHpSource : null);
+        c.TempHp is > 0 ? c.TempHpSource : null,
+        c.Gender,
+        c.Pronouns);
 }
 
 public class NpcContextView

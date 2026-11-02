@@ -286,4 +286,30 @@ namespace CampaignVault.UnityClient.AI
                 || head.StartsWith("id:", StringComparison.Ordinal) || head.StartsWith("retry:", StringComparison.Ordinal);
         }
     }
+
+    /// <summary>
+    /// Stream deltas held until the frame's flush: the driver hands the reader one joined delta per frame instead of
+    /// one per SSE event, so the reply re-renders (and the driver's watchers refresh) at frame rate, not token rate.
+    /// </summary>
+    public sealed class DeltaBatch
+    {
+        private readonly StringBuilder _text = new StringBuilder();
+
+        public bool IsEmpty { get { return _text.Length == 0; } }
+
+        public void Add(string delta)
+        {
+            if (!string.IsNullOrEmpty(delta)) { _text.Append(delta); }
+        }
+
+        /// <summary>Hands everything held so far to <paramref name="onDelta"/> as one delta; false (and no call) when nothing is held.</summary>
+        public bool Flush(Action<string> onDelta)
+        {
+            if (_text.Length == 0) { return false; }
+            string joined = _text.ToString();
+            _text.Length = 0;
+            if (onDelta != null) { onDelta(joined); }
+            return true;
+        }
+    }
 }

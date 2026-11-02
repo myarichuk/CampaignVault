@@ -292,6 +292,12 @@ namespace CampaignVault.UnityClient.App
         /// <summary>Ids the DM suggested that aren't options: shown, never dropped silently.</summary>
         public readonly List<string> NotOptions = new List<string>();
 
+        // "The DM writes backgrounds": a few homebrew backgrounds fitted to the character, saved to the campaign.
+        public bool WriteBusy;
+        public string WriteError = string.Empty;
+        /// <summary>What the DM said about the backgrounds it wrote, and which were saved or refused.</summary>
+        public string WriteNote = string.Empty;
+
         // "The DM fills the rest": one model call proposes picks for every open step; the player reviews them.
         public bool FillBusy;
         public string FillError = string.Empty;

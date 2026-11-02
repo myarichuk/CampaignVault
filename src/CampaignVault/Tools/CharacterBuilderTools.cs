@@ -270,6 +270,8 @@ public partial class CharacterBuilderTools : CampaignToolBase, IMcpServerTool
                 ClassLevel = character.ClassLevel,
                 Notes = character.Notes,
                 CurrentAppearance = character.CurrentAppearance,
+                Gender = character.Gender,
+                Pronouns = character.Pronouns,
                 IsPc = character.IsPc,
                 IsPartyCompanion = character.IsPartyCompanion,
                 MaxHp = exists ? character.MaxHp : 0,

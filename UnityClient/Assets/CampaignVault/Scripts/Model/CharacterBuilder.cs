@@ -575,6 +575,8 @@ namespace CampaignVault.UnityClient.Model
         public string Name = string.Empty;
         public string Concept = string.Empty;
         public string Look = string.Empty;
+        public string Gender = string.Empty;
+        public string Pronouns = string.Empty;
         public readonly Dictionary<string, JsonValue> Choices = new Dictionary<string, JsonValue>(StringComparer.OrdinalIgnoreCase);
 
         public JsonValue ToJson()
@@ -588,6 +590,8 @@ namespace CampaignVault.UnityClient.Model
             if (Name.Length > 0) { o.ObjectValue["name"] = JsonValue.FromString(Name); }
             if (Concept.Length > 0) { o.ObjectValue["concept"] = JsonValue.FromString(Concept); }
             if (Look.Length > 0) { o.ObjectValue["look"] = JsonValue.FromString(Look); }
+            if (Gender.Length > 0) { o.ObjectValue["gender"] = JsonValue.FromString(Gender); }
+            if (Pronouns.Length > 0) { o.ObjectValue["pronouns"] = JsonValue.FromString(Pronouns); }
             var choices = JsonValue.NewObject();
             foreach (var kv in Choices) { choices.ObjectValue[kv.Key] = kv.Value; }
             o.ObjectValue["choices"] = choices;
@@ -606,6 +610,8 @@ namespace CampaignVault.UnityClient.Model
                 Name = v.GetString("name", string.Empty),
                 Concept = v.GetString("concept", string.Empty),
                 Look = v.GetString("look", string.Empty),
+                Gender = v.GetString("gender", string.Empty),
+                Pronouns = v.GetString("pronouns", string.Empty),
             };
             var choices = v.Get("choices");
             if (choices.Kind == JsonKind.Object)

@@ -119,7 +119,8 @@ namespace CampaignVault.UnityClient.App
             bool pcStillInParty = false;
             foreach (var pc in digest.Pcs)
             {
-                roster.Add(pc.Id + " — " + pc.Name);
+                // Pronouns ride with the name, so narration doesn't guess them from it.
+                roster.Add(pc.Id + " — " + pc.Name + (pc.Pronouns.Length > 0 ? " (" + pc.Pronouns + ")" : string.Empty));
                 if (pc.Id == _s.PcId) { pcStillInParty = true; }
             }
             if (roster.Count > 0) { _s.Prompts.PartyLine = string.Join("; ", roster.ToArray()); }
@@ -159,9 +160,9 @@ namespace CampaignVault.UnityClient.App
         }
 
         /// <summary>A new player character enters the CAMPAIGN line's roster and the chronicle (A19).</summary>
-        internal void AddToPartyLine(string id, string name)
+        internal void AddToPartyLine(string id, string name, string pronouns = null)
         {
-            string entry = id + " — " + name;
+            string entry = id + " — " + name + (string.IsNullOrEmpty(pronouns) ? string.Empty : " (" + pronouns + ")");
             string line = _s.Prompts.PartyLine ?? string.Empty;
             if (line.IndexOf(id, StringComparison.Ordinal) < 0)
             {

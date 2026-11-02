@@ -265,14 +265,16 @@ namespace CampaignVault.UnityClient.AI
             {
                 ChatStreamAccumulator accumulator = null;
                 SseDownloadHandler sse = null;
+                // A frame can bring dozens of SSE events; each delta used to re-render the whole reply and refresh every
+                // view model watching the driver. They are batched here and handed on at most once a frame (below).
+                var pending = new DeltaBatch();
                 if (stream)
                 {
                     accumulator = new ChatStreamAccumulator();
                     var decoder = new SseDecoder();
                     decoder.OnEvent = delegate (string data)
                     {
-                        string delta = accumulator.Feed(data);
-                        if (delta.Length > 0) { onDelta(delta); }
+                        pending.Add(accumulator.Feed(data));
                     };
                     sse = new SseDownloadHandler(decoder);
                     web.downloadHandler = sse;
@@ -294,10 +296,13 @@ namespace CampaignVault.UnityClient.AI
                 bool idle = false;
                 while (!sending.isDone)
                 {
+                    pending.Flush(onDelta);
                     if (sse != null && sse.SecondsSinceLastData > limit) { idle = true; web.Abort(); yield return null; break; }
                     yield return null;
                 }
                 _activeChat = null;
+                // What arrived in the last frame, before anything reads the result.
+                pending.Flush(onDelta);
 
                 string body = sse != null ? sse.RawText : (web.downloadHandler.text ?? string.Empty);
                 _lastBody = body;

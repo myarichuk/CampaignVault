@@ -33,7 +33,7 @@ public class CharacterCreationTests : IDisposable
         var service = Service();
         var draft = new CharacterDraft { Kind = "pc" };
 
-        Assert.Equal(["race", "class", "background", "abilities", "skills", "spells", "identity"], Keys(service.Steps(RulesetSystem.Dnd5e, draft)));
+        Assert.Equal(["identity", "race", "class", "background", "abilities", "skills", "spells"], Keys(service.Steps(RulesetSystem.Dnd5e, draft)));
         Assert.DoesNotContain("spells", Keys(service.Steps(RulesetSystem.Dnd5e, draft.With("class", "fighter"))));
         // A paladin casts from level 2, so a level-1 paladin has no spells step either.
         Assert.DoesNotContain("spells", Keys(service.Steps(RulesetSystem.Dnd5e, draft.With("class", "paladin"))));
@@ -191,7 +191,33 @@ public class CharacterCreationTests : IDisposable
     {
         var issues = Service().Validate(RulesetSystem.Dnd5e, new CharacterDraft { Kind = "pc" });
 
-        Assert.Equal(["race", "class", "background", "abilities", "skills", "spells", "identity"], issues.Select(i => i.Step).Distinct());
+        // No background: it is optional (SRD 5.1 ships only acolyte, which fits few characters).
+        Assert.Equal(["identity", "race", "class", "abilities", "skills", "spells"], issues.Select(i => i.Step).Distinct());
+    }
+
+    [Fact]
+    public async Task Dnd5e_BackgroundIsOptional_ACharacterWithoutOneBuildsCleanWithoutItsGrants()
+    {
+        var service = Service();
+        var step = Assert.Single(service.Steps(RulesetSystem.Dnd5e, new CharacterDraft { Kind = "pc" }), s => s.Key == "background");
+        Assert.True(step.Optional);
+
+        var rogue = new CharacterDraft { Kind = "pc", Name = "Kael", Level = 1 }
+            .With("race", "human").With("class", "rogue")
+            .With("abilities", new AbilityScoreChoice
+            {
+                Method = "standardArray",
+                Scores = new() { ["Strength"] = 8, ["Dexterity"] = 15, ["Constitution"] = 14, ["Intelligence"] = 12, ["Wisdom"] = 13, ["Charisma"] = 10 },
+            })
+            .With("skills", new[] { "Stealth", "Perception", "Deception", "Acrobatics" });
+        var preview = await service.PreviewAsync(RulesetSystem.Dnd5e, rogue);
+
+        Assert.DoesNotContain(preview.Errors, i => i.Step == "background");
+        var stats = Assert.IsType<Dnd5eExtension>(preview.Character.SystemStats);
+        Assert.True(string.IsNullOrEmpty(stats.Background));
+        Assert.DoesNotContain("Religion", stats.SkillModifiers.Keys); // acolyte's grants never ride in
+        Assert.DoesNotContain("Insight", stats.SkillModifiers.Keys);
+        Assert.Contains("Stealth", stats.SkillModifiers.Keys);
     }
 
     [Fact]
@@ -228,7 +254,7 @@ public class CharacterCreationTests : IDisposable
 
         var steps = Service(pluginRoot: Path.Combine(_root, "plugin")).Steps(RulesetSystem.Dnd5e, new CharacterDraft());
 
-        Assert.Equal(["race", "class", "background", "oath", "abilities", "skills", "spells", "identity"], Keys(steps));
+        Assert.Equal(["identity", "race", "class", "background", "oath", "abilities", "skills", "spells"], Keys(steps));
     }
 
     private void WritePluginFile(string folder, string file, string yaml)
@@ -415,7 +441,7 @@ public class CharacterCreationTests : IDisposable
     {
         var service = Service();
 
-        Assert.Equal(["race", "class", "background", "abilities", "skills", "levels", "spells", "identity"], Keys(service.Steps(RulesetSystem.Dnd5e, Level5Wizard())));
+        Assert.Equal(["identity", "race", "class", "background", "abilities", "skills", "levels", "spells"], Keys(service.Steps(RulesetSystem.Dnd5e, Level5Wizard())));
         Assert.DoesNotContain("levels", Keys(service.Steps(RulesetSystem.Dnd5e, Wizard())));
         // Before a class is chosen, a draft above level 1 shows the step; at level 1 it doesn't.
         Assert.Contains("levels", Keys(service.Steps(RulesetSystem.Dnd5e, new CharacterDraft { Level = 3 })));
@@ -1263,14 +1289,14 @@ public class CharacterCreationTests : IDisposable
         var draft = new CharacterDraft { Kind = "pc" };
 
         Assert.Equal(
-            ["ancestry", "heritage", "background", "class", "ancestryBoosts", "backgroundBoosts", "keyAbility", "boosts", "skills",
-             "ancestryFeats", "classFeats", "skillFeats", "generalFeats", "spells", "identity"],
+            ["identity", "ancestry", "heritage", "background", "class", "ancestryBoosts", "backgroundBoosts", "keyAbility", "boosts", "skills",
+             "ancestryFeats", "classFeats", "skillFeats", "generalFeats", "spells"],
             Keys(service.Steps(RulesetSystem.Pathfinder2e, draft)));
 
         // A level-1 fighter: a class feat, no skill or general feat (the background gives the skill feat), no spells.
         Assert.Equal(
-            ["ancestry", "heritage", "background", "backgroundSkill", "class", "ancestryBoosts", "backgroundBoosts", "keyAbility", "boosts",
-             "skills", "ancestryFeats", "classFeats", "identity"],
+            ["identity", "ancestry", "heritage", "background", "backgroundSkill", "class", "ancestryBoosts", "backgroundBoosts", "keyAbility", "boosts",
+             "skills", "ancestryFeats", "classFeats"],
             Keys(service.Steps(RulesetSystem.Pathfinder2e, Pf2eFighter())));
 
         // A level-1 wizard: no class feat, spells.

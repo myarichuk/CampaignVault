@@ -185,6 +185,12 @@ public sealed record CharacterDraft
     /// <summary>What they look like; stored as the appearance.</summary>
     public string? Look { get; init; }
 
+    /// <summary>Gender, free text; stored on the character (<c>Character.Gender</c>).</summary>
+    public string? Gender { get; init; }
+
+    /// <summary>Pronouns narration uses ("she/her"); stored on the character (<c>Character.Pronouns</c>).</summary>
+    public string? Pronouns { get; init; }
+
     /// <summary>Step key → a string, a string list, or an object (<see cref="AbilityScoreChoice"/>, <see cref="SpellChoice"/>).</summary>
     public Dictionary<string, JsonElement> Choices { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 

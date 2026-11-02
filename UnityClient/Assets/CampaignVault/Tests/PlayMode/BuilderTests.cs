@@ -106,8 +106,22 @@ namespace CampaignVault.UnityClient.PlayTests
             Assert.IsInstanceOf<CharacterBuilderOverlay>(ui.Overlays.Top);
             yield return Settle();
             Assert.AreEqual("dnd5e", B.System);
-            Assert.AreEqual("race", B.Current);
             Assert.AreEqual("1", Root.Q<Label>("builder-level").text);
+
+            Step("identity first: the rest is fitted to who they are");
+            Assert.AreEqual("identity", B.Current);
+            Root.Q<TextField>("identity-name").value = "Aric Thorne";
+            Root.Q<TextField>("identity-concept").value = "A town guard who stayed when the others ran.";
+            Root.Q<TextField>("identity-gender").value = "man";
+            Root.Q<TextField>("identity-pronouns").value = "he/him";
+            Root.Q<TextField>("identity-look").value = "Broad, scarred knuckles, a lantern badge.";
+            // The fields are bound: the values reach the draft on the panel's next binding update.
+            yield return TableHarness.Frames(3);
+            Assert.AreEqual("Aric Thorne", B.Draft.Name);
+            Assert.AreEqual("he/him", B.Draft.Pronouns);
+            yield return _h.Snap("builder-0-identity");
+
+            yield return Next("race");
             yield return _h.Snap("builder-1-race");
 
             yield return Pick("human");
@@ -185,13 +199,7 @@ namespace CampaignVault.UnityClient.PlayTests
             Assert.AreEqual("{\"1.fightingStyle\":\"defense\"}", B.Draft.Get("levels").ToJson());
             yield return _h.Snap("builder-6b-fighting-style");
 
-            Step("identity");
-            yield return Next("identity");
-            Root.Q<TextField>("identity-name").value = "Aric Thorne";
-            Root.Q<TextField>("identity-concept").value = "A town guard who stayed when the others ran.";
-            Root.Q<TextField>("identity-look").value = "Broad, scarred knuckles, a lantern badge.";
-            // The fields are bound: the values reach the draft on the panel's next binding update.
-            yield return TableHarness.Frames(3);
+            Step("ready to save (identity was the first step)");
             Assert.AreEqual("Aric Thorne", B.Draft.Name);
             yield return c.BuilderPreview();
             yield return Settle();
@@ -266,6 +274,9 @@ namespace CampaignVault.UnityClient.PlayTests
                 yield return Settle();
             }
             Assert.AreEqual("5", Root.Q<Label>("builder-level").text);
+            // The builder opens on who they are; these picks start at the race.
+            Press("step-race");
+            yield return Settle();
             yield return Pick("human");
             Press("step-class");
             yield return Settle();

@@ -374,7 +374,9 @@ public record NpcPresenceSummary(
     /// <summary>Compact dirt line ("muddy boots, heavily bloodied"); null when clean. Full marks: get_entity.</summary>
     string? Soil = null,
     /// <summary>Compact piercing line; null when none.</summary>
-    string? Piercings = null)
+    string? Piercings = null,
+    /// <summary>The pronouns narration uses ("she/her"); null when not given.</summary>
+    string? Pronouns = null)
 {
     public NpcPresenceSummary() : this(null!, null!, null!, null!, null!, null!) { }
 }

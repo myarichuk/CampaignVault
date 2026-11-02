@@ -1,5 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:cv="CampaignVault.UnityClient.UI.Controls">
-    <!-- IdentityStepViewModel: name, concept, look; then the step's schema when it names one (a companion's stat block, a Narrative character's nature). -->
+    <!-- IdentityStepViewModel: name, concept, gender, pronouns, look; then the step's schema when it names one (a companion's stat block, a Narrative character's nature). -->
     <ui:VisualElement class="cv-builder__widget">
         <ui:Label text="NAME" class="cv-caption cv-field-caption" />
         <cv:VaultField name="identity-name" placeholder="what the table calls them" is-delayed="true">
@@ -11,6 +11,18 @@
         <cv:VaultField name="identity-concept" placeholder="one line: who they are and what drives them" is-delayed="true">
             <Bindings>
                 <ui:DataBinding property="value" data-source-path="Concept" binding-mode="TwoWay" />
+            </Bindings>
+        </cv:VaultField>
+        <ui:Label text="GENDER" class="cv-caption cv-field-caption" />
+        <cv:VaultField name="identity-gender" placeholder="optional, in your own or the setting's words" is-delayed="true">
+            <Bindings>
+                <ui:DataBinding property="value" data-source-path="Gender" binding-mode="TwoWay" />
+            </Bindings>
+        </cv:VaultField>
+        <ui:Label text="PRONOUNS" class="cv-caption cv-field-caption" />
+        <cv:VaultField name="identity-pronouns" placeholder="what the story calls them, e.g. she/her" is-delayed="true">
+            <Bindings>
+                <ui:DataBinding property="value" data-source-path="Pronouns" binding-mode="TwoWay" />
             </Bindings>
         </cv:VaultField>
         <ui:Label text="LOOK" class="cv-caption cv-field-caption" />

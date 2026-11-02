@@ -48,6 +48,12 @@ public class CharacterUpsertRequest
     [Description("child | adolescent | adult | elder. Omit to preserve. A character recorded as a minor cannot be changed to adult.")]
     public LifeStage? LifeStage { get; set; }
 
+    [Description("Free text, e.g. woman, man, nonbinary. Omit to preserve.")]
+    public string? Gender { get; set; }
+
+    [Description("What narration calls them, e.g. she/her. Omit to preserve.")]
+    public string? Pronouns { get; set; }
+
     [Description("Omit to preserve the character's existing schedule.")]
     public Schedule? Schedule { get; set; }
 
@@ -494,7 +500,7 @@ public class CustomFeatUpsertRequest
 /// </summary>
 public class HomebrewTemplateUpsertRequest
 {
-    [Description("classOption (a subclass, patron kind or other option of a class's choice) | ancestry (a race or ancestry) | power (a god, patron or lineage).")]
+    [Description("classOption (a subclass, patron kind or other option of a class's choice) | ancestry (a race or ancestry) | power (a god, patron or lineage) | background (one that fits a character's backstory; dnd5e: 2 skills, <=2 tools+languages, <=25 gp).")]
     public string Kind { get; set; } = null!;
 
     [Description("The ruleset it is for (dnd5e, pf2e...). Omit for the campaign's.")]
