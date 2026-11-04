@@ -119,7 +119,7 @@ namespace CampaignVault.UnityClient.Diagnostics
             McpOutcome<ToolPayload> result = null;
             yield return _s.Mcp.CallToolData(_s.Config, "play", "take_turn", args, delegate (McpOutcome<ToolPayload> o) { result = o; });
             string cue = result != null && result.Ok ? result.Data.Data.GetString("sceneCue", string.Empty) : string.Empty;
-            Check("take-turn-scene-cue", cue.Contains("350 to 600 words"),
+            Check("take-turn-scene-cue", cue.Contains("350–600 words"),
                 result != null && result.Ok ? "sceneCue: " + (cue.Length > 0 ? cue : "(missing: is the staged server older than this client?)") : (result != null ? result.ErrorMessage : "no response"));
         }
 
