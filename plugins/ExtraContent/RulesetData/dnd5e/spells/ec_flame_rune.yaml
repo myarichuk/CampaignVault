@@ -1,0 +1,39 @@
+# Extra Content (original homebrew, not an SRD entry).
+# A rune scribed on any surface that fires when a creature arrives at the place it guards.
+name: ec_flame_rune
+system: dnd5e
+level: 3
+school: evocation
+classes: [wizard, sorcerer, cleric]
+concentration: false
+castingTime: 1 minute
+castKind: long
+verbal: true
+somatic: true
+material: true
+materialText: Chalk or ink worth at least 25 gp, consumed.
+materialCost: 25
+materialConsumed: true
+damageType: fire
+damageAtSlotLevel:
+  3: 5d8
+  4: 6d8
+  5: 7d8
+  6: 8d8
+  7: 9d8
+  8: 10d8
+  9: 11d8
+saveType: dexterity
+saveSuccess: half
+areaOfEffectType: sphere
+areaOfEffectSize: 10
+perceptible: visible
+description: >-
+  You scribe a rune on a surface you can touch: floor, wall, door, lid or ceiling. It is invisible once drawn
+  (Investigation DC 8 + your spellcasting ability modifier + your proficiency bonus finds it) and lasts until it
+  fires or is dispelled. The first creature other than you or those you named when casting to arrive at the
+  guarded place or touch the guarded object sets it off: fire erupts in a 10-foot sphere, 5d8 fire damage
+  (Dexterity save for half; +1d8 per slot above 3rd). A rune fires once.
+  DM: place it with location_update addHazard (or item_update hazard for a door or chest): Trigger enter (take for
+  an item), SaveAbility Dexterity, SaveDc the caster's spell save DC, DetectDc as above, Rearms false, Intent
+  naming the caster and who is exempt. Resolve the blast with a ruleset_action SavingThrow when it fires.

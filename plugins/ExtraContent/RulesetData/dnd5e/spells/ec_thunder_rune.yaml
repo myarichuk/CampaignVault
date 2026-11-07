@@ -1,0 +1,36 @@
+# Extra Content (original homebrew, not an SRD entry).
+# The loud one: little damage, and everyone nearby hears it.
+name: ec_thunder_rune
+system: dnd5e
+level: 2
+school: evocation
+classes: [wizard, bard, sorcerer]
+concentration: false
+castingTime: 1 minute
+castKind: long
+verbal: true
+somatic: true
+material: true
+materialText: A bell clapper or a tuning fork, consumed.
+materialConsumed: true
+damageType: thunder
+damageAtSlotLevel:
+  2: 3d8
+  3: 4d8
+  4: 5d8
+  5: 6d8
+  6: 7d8
+  7: 8d8
+  8: 9d8
+  9: 10d8
+saveType: constitution
+saveSuccess: half
+areaOfEffectType: sphere
+areaOfEffectSize: 10
+perceptible: loud
+description: >-
+  As Flame Rune, but the rune detonates in a clap of thunder: 3d8 thunder damage in a 10-foot sphere (Constitution
+  save for half; +1d8 per slot above 2nd). The sound carries 300 feet and wakes sleepers; creatures that fail the
+  save are deafened for 1 minute. Use it as an alarm that bites.
+  DM: place it as a hazard (Trigger enter, SaveAbility Constitution, Rearms false). Firing it is loud: treat every
+  creature within earshot as having heard it.

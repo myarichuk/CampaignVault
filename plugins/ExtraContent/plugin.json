@@ -1,0 +1,9 @@
+{
+  "id": "com.campaignvault.extra-content",
+  "displayName": "Extra Content",
+  "version": "0.1.0",
+  "minEngineVersion": "0.11.0",
+  "author": "Michael Yarichuk",
+  "description": "Original homebrew spells and options that go beyond the SRD: entropy magic and placeable rune traps. Data only, no code.",
+  "rulesetDataRoots": ["./RulesetData"]
+}

@@ -1,0 +1,37 @@
+# Extra Content (original homebrew, not an SRD entry).
+# A rune of cold that clamps and slows instead of destroying.
+name: ec_frost_rune
+system: dnd5e
+level: 3
+school: evocation
+classes: [wizard, druid]
+concentration: false
+castingTime: 1 minute
+castKind: long
+verbal: true
+somatic: true
+material: true
+materialText: A sliver of ice or a vial of snowmelt worth at least 25 gp, consumed.
+materialCost: 25
+materialConsumed: true
+damageType: cold
+damageAtSlotLevel:
+  3: 4d6
+  4: 5d6
+  5: 6d6
+  6: 7d6
+  7: 8d6
+  8: 9d6
+  9: 10d6
+saveType: constitution
+saveSuccess: half
+areaOfEffectType: sphere
+areaOfEffectSize: 15
+perceptible: visible
+tags: [cold]
+description: >-
+  As Flame Rune, but the rune bursts into a 15-foot sphere of frost: 4d6 cold damage (Constitution save for half;
+  +1d6 per slot above 3rd). A creature that fails the save is also slowed until the end of its next turn and its
+  feet are rimed to the floor: its speed is 0 until it uses its action to break free.
+  DM: place it as a hazard (Trigger enter, SaveAbility Constitution, Rearms false) and add the Restrained-like
+  speed 0 as a status on creatures that fail (expiresAtRound).

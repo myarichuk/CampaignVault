@@ -1,0 +1,27 @@
+# Extra Content (original homebrew, not an SRD entry).
+# Hastens the decay of one object. No damage table: the DM adjudicates the wear.
+name: ec_entropy
+system: dnd5e
+level: 2
+school: transmutation
+classes: [wizard, sorcerer, warlock]
+concentration: false
+castingTime: 1 action
+castKind: action
+verbal: true
+somatic: true
+material: true
+materialText: A pinch of rust or ash.
+materialConsumed: true
+perceptible: visible
+tags: [decay]
+description: >-
+  Touch one nonmagical object no larger than a 10-foot cube (or a single worn or carried item; the wearer gets a
+  Dexterity saving throw to pull it away). Years of wear arrive in moments: metal rusts through, wood rots and
+  splits, cloth and leather crumble, rope frays. Entropy ages the object by a tier of the caster's choice, up to
+  one tier per two caster levels (minimum one): worn, then damaged, then ruined, then spent (it falls apart).
+  A worn weapon takes -1 to attack and damage per tier past the first; worn armor loses 1 AC per tier past the
+  first. A ruined or spent object is useless and can't be repaired without a workshop and a day of work. Magic items and artifacts are unaffected unless the DM rules otherwise.
+  DM: record the change with item_update (a detail with origin Environmental, e.g. "corroded: worn tier 2") and
+  put the tier in the item's name or details so it survives the scene. The engine has no integrity stat yet, so
+  apply the penalties by hand through the item's bonus fields, and say so if you skip them.
