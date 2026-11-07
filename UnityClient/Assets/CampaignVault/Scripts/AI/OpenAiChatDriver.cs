@@ -66,8 +66,24 @@ namespace CampaignVault.UnityClient.AI
             return Vault.ActiveConnector();
         }
 
-        /// <summary>Empty = every advertised tool is offered to the model.</summary>
-        public HashSet<string> AllowedTools = new HashSet<string>();
+        /// <summary>Tools the player switched off; everything else the connector advertises is offered to the model.</summary>
+        public HashSet<string> DisabledTools = new HashSet<string>();
+
+        /// <summary>
+        /// Tools a setup turn (on /build) always offers, whatever is switched off: without world_build the DM cannot create
+        /// the party, so the first session never opens.
+        /// </summary>
+        public static readonly HashSet<string> SetupRequiredTools = new HashSet<string> { "world_build" };
+
+        // The connector of the turn being resolved, so the request builder knows a setup turn.
+        private string _turnConnector = string.Empty;
+
+        /// <summary>Whether a listed tool goes to the model on a turn on <paramref name="connector"/>.</summary>
+        internal bool Offers(string toolName, string connector)
+        {
+            if (connector == "build" && SetupRequiredTools.Contains(toolName)) { return true; }
+            return !DisabledTools.Contains(toolName);
+        }
 
         /// <summary>True while a player message is being resolved; the UI blocks a second send.</summary>
         public bool IsBusy { get; private set; }
@@ -268,6 +284,7 @@ namespace CampaignVault.UnityClient.AI
             var record = new TurnRecord { Player = playerText ?? string.Empty, Model = loop.Model };
             // Fixed for the whole turn like the profiles: tools/list and every tools/call hit the same connector.
             string connector = TurnConnector();
+            _turnConnector = connector;
             LastNarrationMessages = null;
             CurrentTurn = record;
             try

@@ -244,7 +244,7 @@ namespace CampaignVault.UnityClient.AI
             for (int i = 0; i < _toolCache.Count; i++)
             {
                 var t = _toolCache[i];
-                if (AllowedTools.Count > 0 && !AllowedTools.Contains(t.Name)) { continue; }
+                if (!Offers(t.Name, _turnConnector)) { continue; }
                 tools.ArrayValue.Add(FunctionTool(t.Name,
                     string.IsNullOrEmpty(t.Description) ? t.Name : t.Description,
                     t.InputSchema ?? JsonValue.NewObject()));

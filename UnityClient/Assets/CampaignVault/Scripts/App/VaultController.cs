@@ -74,11 +74,14 @@ namespace CampaignVault.UnityClient.App
                 _s.Prompts.UserPluginsDir = _s.Server.UserPluginsDir;
                 _s.Prompts.IsPluginDisabled = IsPluginDisabled;
             }
-            // The tool allowlist survives a relaunch (A34); empty means everything on.
-            foreach (string name in _prefs.GetString(PrefKeys.Tools, string.Empty).Split(','))
+            // Switched-off tools survive a relaunch (A34); a tool not named stays on, new server tools included.
+            foreach (string name in _prefs.GetString(PrefKeys.DisabledTools, string.Empty).Split(','))
             {
-                if (name.Trim().Length > 0) { _s.Driver.AllowedTools.Add(name.Trim()); }
+                if (name.Trim().Length > 0) { _s.Driver.DisabledTools.Add(name.Trim()); }
             }
+            // The old allowlist can't be turned into a disabled list (it never knew the full tool set) and is what broke
+            // seeding: drop it, every tool back on.
+            _prefs.Delete(PrefKeys.LegacyToolAllowlist);
             _s.CompanionIds.Clear();
             foreach (string id in _prefs.GetString(PrefKeys.Companions, string.Empty).Split(';'))
             {

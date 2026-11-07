@@ -243,6 +243,41 @@ namespace CampaignVault.UnityClient.Tests
                 "back on the active connector (/play) once setup is over");
         }
 
+        private static List<string> OfferedTools(JsonValue request)
+        {
+            return request.GetArray("tools").Select(t => t.Get("function").GetString("name", string.Empty)).ToList();
+        }
+
+        [UnityTest]
+        public IEnumerator SetupTurn_OffersWorldBuild_EvenWhenSwitchedOff_PlayTurnsHonorTheSwitch()
+        {
+            // The old allowlist dropped every tool it didn't name: a list saved without /build's tools left the seed turn
+            // with no world_build, so the DM could not create the party and the first session never opened.
+            _driver.DisabledTools.Add("world_build");
+            _driver.DisabledTools.Add("take_turn");
+            _driver.ConnectorOverride = "build";
+            _script.Enqueue(req => new Reply { Body = Plain("OOC: ready.") });
+            yield return Send("OOC: set up the campaign.");
+            CollectionAssert.Contains(OfferedTools(_chatRequests[0]), "world_build", "a setup turn always offers world_build");
+
+            _driver.ConnectorOverride = string.Empty;
+            _script.Enqueue(req => new Reply { Body = Plain("The hall is quiet.") });
+            yield return Send("I look around.");
+            CollectionAssert.DoesNotContain(OfferedTools(_chatRequests[1]), "take_turn", "a switched-off tool stays off in play");
+        }
+
+        [Test]
+        public void Offers_OnlySwitchedOffToolsAreHidden_NewToolsStayOn()
+        {
+            _driver.DisabledTools.Add("advance_world");
+            Assert.IsFalse(_driver.Offers("advance_world", "play"));
+            Assert.IsTrue(_driver.Offers("take_turn", "play"));
+            Assert.IsTrue(_driver.Offers("some_tool_the_server_added_later", "play"), "a tool nobody switched off is on");
+            _driver.DisabledTools.Add("world_build");
+            Assert.IsTrue(_driver.Offers("world_build", "build"), "setup needs it");
+            Assert.IsFalse(_driver.Offers("world_build", "play"));
+        }
+
         [UnityTest]
         public IEnumerator StreamedToolLoop_AsideRollAndVoices()
         {

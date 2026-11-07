@@ -590,7 +590,7 @@ namespace CampaignVault.UnityClient.App
 
         public bool IsToolEnabled(string name)
         {
-            return Driver == null || Driver.AllowedTools.Count == 0 || Driver.AllowedTools.Contains(name);
+            return Driver == null || !Driver.DisabledTools.Contains(name);
         }
     }
 }
