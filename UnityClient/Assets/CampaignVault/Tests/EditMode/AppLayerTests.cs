@@ -100,7 +100,7 @@ namespace CampaignVault.UnityClient.Tests
         }
 
         [Test]
-        public void ToggleTool_SeedsAllowlistThenDisablesOne()
+        public void ToggleTool_StoresOnlyTheSwitchedOffTool()
         {
             var s = _boot.State;
             s.Tools.Add(new ToolToggle { Name = "a" });
@@ -109,8 +109,46 @@ namespace CampaignVault.UnityClient.Tests
             _boot.Controller.ToggleTool("a");
             Assert.IsFalse(s.IsToolEnabled("a"));
             Assert.IsTrue(s.IsToolEnabled("b"));
-            _boot.Controller.EnableAllTools();
+            // Not in the list the toggle saw (a /build that failed to list, or a tool a newer server added): still on.
+            Assert.IsTrue(s.IsToolEnabled("world_build"));
+            Assert.AreEqual("a", _prefs.GetString(PrefKeys.DisabledTools, null));
+            _boot.Controller.ToggleTool("a");
             Assert.IsTrue(s.IsToolEnabled("a"));
+            _boot.Controller.ToggleTool("b");
+            _boot.Controller.EnableAllTools();
+            Assert.IsTrue(s.IsToolEnabled("b"));
+            Assert.AreEqual(string.Empty, _prefs.GetString(PrefKeys.DisabledTools, null));
+        }
+
+        [Test]
+        public void LoadPreferences_RestoresSwitchedOffTools_AndDropsTheLegacyAllowlist()
+        {
+            var prefs = new MemoryPrefs();
+            // A legacy allowlist saved while /build failed to list: no world_build in it.
+            prefs.SetString(PrefKeys.LegacyToolAllowlist, "take_turn,get_entity,lookup");
+            prefs.SetString(PrefKeys.DisabledTools, "advance_world");
+            var go = new GameObject("PrefsTest");
+            try
+            {
+                var boot = go.AddComponent<VaultBootstrap>();
+                boot.Initialize(prefs);
+                Assert.IsTrue(boot.State.IsToolEnabled("world_build"), "the legacy allowlist no longer hides tools");
+                Assert.IsTrue(boot.State.IsToolEnabled("take_turn"));
+                Assert.IsFalse(boot.State.IsToolEnabled("advance_world"));
+                Assert.AreEqual("gone", prefs.GetString(PrefKeys.LegacyToolAllowlist, "gone"));
+            }
+            finally { Object.DestroyImmediate(go); }
+        }
+
+        [Test]
+        public void BuildConnectorWarning_NamesAMissingOrFailedBuild()
+        {
+            var tools = new List<Net.McpToolInfo> { new Net.McpToolInfo { Name = "world_build" } };
+            Assert.IsNull(VaultController.BuildConnectorWarning(Net.McpOutcome<List<Net.McpToolInfo>>.Success(tools)));
+            StringAssert.Contains("can't be seeded", VaultController.BuildConnectorWarning(
+                Net.McpOutcome<List<Net.McpToolInfo>>.Success(new List<Net.McpToolInfo> { new Net.McpToolInfo { Name = "lookup" } })));
+            StringAssert.Contains("HTTP 404", VaultController.BuildConnectorWarning(Net.McpOutcome<List<Net.McpToolInfo>>.Fail("HTTP", "HTTP 404")));
+            StringAssert.Contains("no response", VaultController.BuildConnectorWarning(null));
         }
 
         [Test]

@@ -54,30 +54,25 @@ namespace CampaignVault.UnityClient.App
             yield return LoadTools();
         }
 
+        /// <summary>Switches one tool off or back on. Only what the player switched off is stored, so the rest stays on.</summary>
         public void ToggleTool(string name)
         {
-            var allowed = _s.Driver.AllowedTools;
-            if (allowed.Count == 0)
-            {
-                // Empty means "everything on": seed the full list first so this
-                // toggle disables just one tool.
-                foreach (var t in _s.Tools) { allowed.Add(t.Name); }
-            }
-            if (!allowed.Remove(name)) { allowed.Add(name); }
-            SaveAllowedTools();
+            var disabled = _s.Driver.DisabledTools;
+            if (!disabled.Remove(name)) { disabled.Add(name); }
+            SaveDisabledTools();
             _s.Notify(StateArea.Tools);
         }
 
-        private void SaveAllowedTools()
+        private void SaveDisabledTools()
         {
-            _prefs.SetString(PrefKeys.Tools, string.Join(",", new List<string>(_s.Driver.AllowedTools).ToArray()));
+            _prefs.SetString(PrefKeys.DisabledTools, string.Join(",", new List<string>(_s.Driver.DisabledTools).ToArray()));
             _prefs.Save();
         }
 
         public void EnableAllTools()
         {
-            _s.Driver.AllowedTools.Clear();
-            SaveAllowedTools();
+            _s.Driver.DisabledTools.Clear();
+            SaveDisabledTools();
             _s.Notify(StateArea.Tools);
         }
 
@@ -135,12 +130,34 @@ namespace CampaignVault.UnityClient.App
                     SetConnection(ConnectionStatus.Down, "Server is up, but MCP failed: " + (tools != null ? tools.ErrorMessage : "no response"));
                     yield break;
                 }
+                // /build carries onboarding and seeding (world_build): a server that only answers /play can run a seeded
+                // table but can't set up a new one, so say so here instead of on the first setup turn.
+                McpOutcome<List<McpToolInfo>> build = null;
+                yield return _s.Mcp.ListTools(_s.Config, "build", delegate (McpOutcome<List<McpToolInfo>> o) { build = o; });
+                string buildWarning = BuildConnectorWarning(build);
                 string versionWarning = EmbeddedServerSupport.VersionWarning(ServerHostManager.ExpectedVersion(), _s.Config.ReportedServerVersion);
-                SetConnection(ConnectionStatus.Healthy, "Healthy · MCP connected (" + tools.Data.Count + " play tools)"
+                SetConnection(ConnectionStatus.Healthy, "Healthy · MCP connected (" + tools.Data.Count + " play tools"
+                    + (buildWarning == null ? ", " + build.Data.Count + " build tools)" : ")")
+                    + (buildWarning != null ? " · " + buildWarning : string.Empty)
                     + (versionWarning != null ? " · " + versionWarning : string.Empty));
+                if (buildWarning != null) { _s.RaiseToast(buildWarning, ToastKind.Warning); }
                 if (versionWarning != null) { _s.RaiseToast(versionWarning, ToastKind.Warning); }
             }
             finally { _s.EndBusy("connection"); }
+        }
+
+        /// <summary>Null when /build answered with world_build; otherwise what a new campaign can't do and why.</summary>
+        internal static string BuildConnectorWarning(McpOutcome<List<McpToolInfo>> build)
+        {
+            if (build == null || !build.Ok)
+            {
+                return "/build connector failed (" + (build != null ? build.ErrorMessage : "no response") + "): new campaigns can't be set up or seeded";
+            }
+            if (!build.Data.Exists(delegate (McpToolInfo t) { return t.Name == "world_build"; }))
+            {
+                return "/build doesn't serve world_build: new campaigns can't be seeded";
+            }
+            return null;
         }
 
         private void SetConnection(ConnectionStatus status, string message)

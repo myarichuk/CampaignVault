@@ -32,8 +32,14 @@ namespace CampaignVault.UnityClient.App
         public const string StoryTextSize = "vault.storytext";
         public const string EmbeddedPort = "vault.embedded.port";
         public const string EmbeddedAutostart = "vault.embedded.autostart";
-        /// <summary>Comma-separated tool allowlist for the DM (empty = every tool), kept across launches (A34).</summary>
-        public const string Tools = "vault.tools";
+        /// <summary>
+        /// Legacy comma-separated tool allowlist. Dropped on load, never written: an allowlist silently disabled every tool it
+        /// didn't name, including ones the server added later and /build's world_build when /build failed to list, which left
+        /// the DM unable to seed a new campaign.
+        /// </summary>
+        public const string LegacyToolAllowlist = "vault.tools";
+        /// <summary>Comma-separated tools the player switched off for the DM (empty = every tool), kept across launches (A34).</summary>
+        public const string DisabledTools = "vault.tools.disabled";
         /// <summary>Per campaign (suffix the slug): the session number this client left open, so a relaunch resumes it.</summary>
         public const string OpenSessionPrefix = "vault.session.open.";
     }
