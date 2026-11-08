@@ -150,9 +150,10 @@ public class PendingLevelUpOption
 }
 
 /// <summary>
-/// Whether a character can gain a level now, as the sheet shows it. <see cref="Ready"/> is the XP rule: the campaign's
-/// XP table (or custom thresholds) says the character has enough. Milestone campaigns are never ready by XP; the DM or
-/// the player decides, so a player character can always ask for the menu while <see cref="Possible"/>.
+/// Whether a character can gain a level now, as the sheet shows it. <see cref="Ready"/> means the level is earned: the
+/// campaign's XP table (or custom thresholds) says the character has enough, or the DM granted it ahead (a
+/// <c>level_up</c> change with <c>earned: true</c>, which is how milestone campaigns level). Only a ready level can be
+/// taken at the menu; while merely <see cref="Possible"/> the menu can still be read, to see what the next level brings.
 /// </summary>
 public class LevelUpStatus
 {

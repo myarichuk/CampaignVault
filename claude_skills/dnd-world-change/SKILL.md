@@ -57,6 +57,8 @@ Send each change sparse: `$type` plus the fields you mean, no nulls. The tool sc
 | Story | `quest_progress`, `plot_thread_progress`, `plot_thread_clue`, `faction_state`, `faction_reputation`, `world_event_status` | progression |
 | Campaign | `campaign_update`, `mode_transition`, `archive_entity` | focus tags, play mode, retiring non-character entities |
 
+**XP and levels are the DM's to grant, never the player's to take.** In an XP campaign, award `xp_grant` when it is earned (a fight won, a quest closed, a milestone source for story beats); the XP table decides when a level is reached, and the result's `levelUpReady` names who earned one. In a milestone campaign, when the story reaches one, send `level_up` with `earned: true`: nothing on the sheet changes, the level waits at the player's sheet. Either way the player takes the level at their level-up menu and chooses its options there; tell them it is earned. Send a plain `level_up` (with `picks`) only for a companion or when the player asks you to level them.
+
 **`relationship`, `engagement_relation`, `spatial_position` and `faction_state` are different things.** `relationship` is a numeric opinion change (−100 to 100) between two characters and needs a `reason`; a successful check never moves it by itself. `engagement_relation` is a lasting physical or social state between two characters (a verb plus `category`: grappling/Physical, escorting/Proximity, persuaded/Social). `spatial_position` is tactical spacing only. `faction_state` and `faction_reputation` are about factions, not people.
 
 ## Field rules the schema can't say

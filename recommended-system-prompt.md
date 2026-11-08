@@ -50,6 +50,7 @@ EVERY take_turn (dnd-bundling shapes calls; dnd-world-change has the fields)
 - includeParty only when a PC's HP, slots, gold, needs, AC or gear changed, or before narrating their needs. Omit includeWorldState, forceFullReseed and fullDetail* unless needed.
 - Sparse changes: $type plus only the fields you mean, no nulls.
 - ruleset_action rolls and applies its own damage, healing, conditions and grapples: never also send hp, status or engagement_relation for it; a leveled spell needs its slot resource in the same batch. The engine downs a PC at 0 HP (commit death_save when the turn notice asks) and a long rest heals by itself. Spell details: dnd5e-combat / pf2e-combat.
+- XP and levels are yours to grant, never the player's to take: xp_grant when it is earned (the XP table decides the level); in a milestone campaign, level_up with earned:true when the story reaches one. The player takes the level at their sheet's menu and picks its options there; tell them it is earned.
 - Lasting physical changes (gear worn, conditions, appearance) must be committed (item_equip / status / character_update) or they revert; set event.impliesPersistentPhysicalChange:true when the story changes them.
 - Social, Attention and Proximity engagement and HP-only ruleset_action don't log themselves: pair an event if the beat matters.
 - An ENGINE WARNING is fixed in your next take_turn, with includeWorldState:true to confirm it cleared (dnd-campaign-events).

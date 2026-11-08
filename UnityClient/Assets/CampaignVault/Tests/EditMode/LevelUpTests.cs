@@ -126,11 +126,24 @@ namespace CampaignVault.UnityClient.Tests
         public void ALevelWithNothingToChoose_JustComes()
         {
             _s.LevelUp.Offer = LevelUpOffer.Parse(JsonValue.Parse(
-                "{\"characterId\":\"chars/hild\",\"name\":\"Hild\",\"status\":{\"possible\":true,\"level\":1,\"targetLevel\":2},\"features\":[],\"slots\":[]}"));
+                "{\"characterId\":\"chars/hild\",\"name\":\"Hild\",\"status\":{\"possible\":true,\"ready\":true,\"level\":1,\"targetLevel\":2},\"features\":[],\"slots\":[]}"));
             _vm.Refresh();
 
             Assert.IsTrue(_vm.CanApply);
             StringAssert.Contains("just comes", _vm.Notice);
+        }
+
+        [Test]
+        public void AnUnearnedLevel_CanBeRead_ButNeverApplied()
+        {
+            // The menu shows what the next level brings; the DM grants XP (or the level, by milestone) before it can be taken.
+            _s.LevelUp.Offer = LevelUpOffer.Parse(JsonValue.Parse(
+                "{\"characterId\":\"chars/hild\",\"name\":\"Hild\",\"status\":{\"possible\":true,\"ready\":false,\"level\":1,\"targetLevel\":2,\"xp\":0,\"xpNeeded\":300},\"features\":[],\"slots\":[]}"));
+            _vm.Refresh();
+
+            Assert.IsFalse(_vm.CanApply);
+            StringAssert.Contains("Not earned yet", _vm.Status);
+            StringAssert.Contains("0 XP of 300", _vm.XpLine);
         }
 
         [Test]

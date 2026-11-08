@@ -59,7 +59,9 @@ namespace CampaignVault.UnityClient.App
         public void LoadPreferences()
         {
             _s.Config.ServerUrl = _prefs.GetString(PrefKeys.Server, _s.Config.ServerUrl);
-            _s.Config.Connector = _prefs.GetString(PrefKeys.Connector, "play");
+            // The connector was once a saved choice; a "build" left there sent every scene to /build, where the DM has no
+            // take_turn. Turns route themselves now (setup → /build, play → /play), so the preference is dropped.
+            _prefs.Delete(PrefKeys.LegacyConnector);
             _s.Prompts.CampaignSlug = _prefs.GetString(PrefKeys.Campaign, string.Empty);
             _s.PcId = _prefs.GetString(PrefKeys.PcId, string.Empty);
             _s.FxEnabled = _prefs.GetInt(PrefKeys.Fx, 1) == 1;

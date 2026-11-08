@@ -32,6 +32,12 @@ public class Character : ICampaignScopedEntity, IHasDirt
     /// Only applies when campaign uses XP-based progression (not Milestone).
     /// </summary>
     public int ExperiencePoints { get; set; } = 0;
+
+    /// <summary>
+    /// Levels the DM has granted (a milestone, the story) that the player hasn't taken at the level-up menu yet.
+    /// A <c>level_up</c> change with <c>earned: true</c> adds one; taking the level at the menu spends it.
+    /// </summary>
+    public int PendingLevels { get; set; }
     
     public int CurrentHp { get; set; }
     

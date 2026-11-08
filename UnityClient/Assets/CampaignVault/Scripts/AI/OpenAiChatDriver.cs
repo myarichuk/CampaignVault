@@ -52,18 +52,17 @@ namespace CampaignVault.UnityClient.AI
         public SystemPromptProvider Prompts;
 
         /// <summary>
-        /// The connector this player message runs on instead of the active one; empty = <see cref="VaultClientConfig.ActiveConnector"/>.
-        /// The controller sets "build" for setup turns (before the party exists): seeding a fresh campaign needs world_build,
-        /// which /play deliberately does not serve, so a setup turn on /play left the DM unable to seed anything.
-        /// Read once at the start of a turn, so the whole turn lists and calls tools on one connector.
+        /// The connector this player message runs on; empty = /play. The controller sets "build" for setup turns (before
+        /// the party exists): seeding a fresh campaign needs world_build, which only /build serves. Every other turn is
+        /// play and goes to /play, the only connector with take_turn: nothing the player can save routes a scene elsewhere
+        /// (a saved "build" connector once sent whole sessions to /build, where the DM had no take_turn).
         /// </summary>
         public string ConnectorOverride = string.Empty;
 
-        /// <summary>The connector the next player message runs on: the override when set, else the active one.</summary>
+        /// <summary>"build" for a setup turn, else "play".</summary>
         public string TurnConnector()
         {
-            if (ConnectorOverride == "build" || ConnectorOverride == "play") { return ConnectorOverride; }
-            return Vault.ActiveConnector();
+            return ConnectorOverride == "build" ? "build" : "play";
         }
 
         /// <summary>Tools the player switched off; everything else the connector advertises is offered to the model.</summary>
@@ -75,6 +74,15 @@ namespace CampaignVault.UnityClient.AI
         /// </summary>
         public static readonly HashSet<string> SetupRequiredTools = new HashSet<string> { "world_build" };
 
+        /// <summary>Tools a play turn always offers, whatever is switched off: without take_turn nothing the DM says is committed.</summary>
+        public static readonly HashSet<string> PlayRequiredTools = new HashSet<string> { "take_turn" };
+
+        /// <summary>A tool the table can't play without: the settings page can't switch it off.</summary>
+        public static bool IsRequired(string toolName)
+        {
+            return SetupRequiredTools.Contains(toolName) || PlayRequiredTools.Contains(toolName);
+        }
+
         // The connector of the turn being resolved, so the request builder knows a setup turn.
         private string _turnConnector = string.Empty;
 
@@ -82,7 +90,23 @@ namespace CampaignVault.UnityClient.AI
         internal bool Offers(string toolName, string connector)
         {
             if (connector == "build" && SetupRequiredTools.Contains(toolName)) { return true; }
+            if (connector == "play" && PlayRequiredTools.Contains(toolName)) { return true; }
             return !DisabledTools.Contains(toolName);
+        }
+
+        /// <summary>Null when the listed tools let a turn on <paramref name="connector"/> do its job; otherwise why it can't.</summary>
+        internal static string MissingRequiredTool(string connector, List<McpToolInfo> listed)
+        {
+            var required = connector == "build" ? SetupRequiredTools : PlayRequiredTools;
+            foreach (string name in required)
+            {
+                if (!listed.Exists(delegate (McpToolInfo t) { return t.Name == name; }))
+                {
+                    return "/" + connector + " doesn't serve " + name + (connector == "play" ? ": the DM can't commit a turn." : ": a new campaign can't be seeded.")
+                        + " Check the server's version.";
+                }
+            }
+            return null;
         }
 
         /// <summary>True while a player message is being resolved; the UI blocks a second send.</summary>
@@ -246,6 +270,13 @@ namespace CampaignVault.UnityClient.AI
                 done(McpOutcome<int>.Fail(
                     listed != null ? listed.ErrorCode : "MCP",
                     listed != null && !listed.Ok ? listed.ErrorMessage : "no tools advertised"));
+                yield break;
+            }
+            // A listing without the turn tool is a wrong or old server, not a table: say so now, not as a DM's aside.
+            string missing = MissingRequiredTool(connector, listed.Data);
+            if (missing != null)
+            {
+                done(McpOutcome<int>.Fail("MCP", missing));
                 yield break;
             }
             _toolCache = listed.Data;

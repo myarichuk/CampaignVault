@@ -107,6 +107,41 @@ namespace CampaignVault.UnityClient.Tests
             page.Dispose();
         }
 
+        /// <summary>The get_entity payload with its top-level "levelUp" status (a sibling of "character").</summary>
+        private static string WithLevelUp(string status) { return Fighter.Substring(0, Fighter.Length - 1) + ",\"levelUp\":" + status + "}"; }
+
+        [Test]
+        public void TheLevelUpButton_OnlyOffersAnEarnedLevel()
+        {
+            // 0 XP of 23,000: the level is possible (there is a next one) but not earned, so the foot says how far it is
+            // and there is no button. The DM grants XP; the player never takes a level on their own.
+            var state = new VaultAppState();
+            var page = new SheetPageViewModel(state, new VaultController(state, null, new MemoryPrefs()), "chars/aric");
+            string unearned = WithLevelUp("{\"possible\":true,\"ready\":false,\"level\":5,\"targetLevel\":6,\"xp\":0,\"xpNeeded\":14000}");
+            page.Show(McpOutcome<JsonValue>.Success(Parse(unearned)));
+            Assert.IsTrue(page.HasLevelInfo);
+            Assert.IsFalse(page.CanLevelUp, "an unearned level is not the player's to take");
+            Assert.IsFalse(page.LevelUpReady);
+            StringAssert.Contains("0 XP of 14,000", page.LevelUpHint);
+
+            string earned = WithLevelUp("{\"possible\":true,\"ready\":true,\"level\":5,\"targetLevel\":6,\"xp\":14200,\"xpNeeded\":14000}");
+            page.Show(McpOutcome<JsonValue>.Success(Parse(earned)));
+            Assert.IsTrue(page.CanLevelUp);
+            Assert.IsTrue(page.LevelUpReady);
+            StringAssert.StartsWith("Earned:", page.LevelUpHint);
+
+            // A milestone campaign: the story (the DM's level_up earned:true) decides, and the foot says which it is.
+            string milestone = WithLevelUp("{\"possible\":true,\"ready\":false,\"level\":5,\"targetLevel\":6,\"xp\":0}");
+            page.Show(McpOutcome<JsonValue>.Success(Parse(milestone)));
+            Assert.IsFalse(page.CanLevelUp);
+            StringAssert.Contains("the story decides", page.LevelUpHint);
+            string granted = WithLevelUp("{\"possible\":true,\"ready\":true,\"level\":5,\"targetLevel\":6,\"xp\":0}");
+            page.Show(McpOutcome<JsonValue>.Success(Parse(granted)));
+            Assert.IsTrue(page.CanLevelUp);
+            StringAssert.Contains("the DM has granted it", page.LevelUpHint);
+            page.Dispose();
+        }
+
         [Test]
         public void AFailedLoad_SaysWhy()
         {

@@ -5,9 +5,9 @@ using CampaignVault.UnityClient.Json;
 namespace CampaignVault.UnityClient.Model
 {
     /// <summary>
-    /// Whether a character can gain a level (the server's LevelUpStatus, from get_entity's "levelUp"). Ready: the
-    /// campaign's XP rule says the level is earned. Possible: the menu can be opened (milestone campaigns are never
-    /// ready by XP, so the player or the DM decides).
+    /// Whether a character can gain a level (the server's LevelUpStatus, from get_entity's "levelUp"). Ready: the level
+    /// is earned, by the campaign's XP rule or because the DM granted it (level_up earned:true, the milestone way); only
+    /// then can it be taken. Possible: there is a next level at all, so the sheet can say how far it is.
     /// </summary>
     public sealed class LevelUpStatus
     {
@@ -38,7 +38,10 @@ namespace CampaignVault.UnityClient.Model
         {
             get
             {
-                if (XpNeeded < 0) { return "Level " + TargetLevel + " by milestone: the story decides."; }
+                if (XpNeeded < 0)
+                {
+                    return Ready ? "Level " + TargetLevel + ": the DM has granted it." : "Level " + TargetLevel + " by milestone: the story decides.";
+                }
                 return Xp.ToString("N0") + " XP of " + XpNeeded.ToString("N0") + " needed for level " + TargetLevel + ".";
             }
         }

@@ -9,7 +9,6 @@ square was removed and fills were set to white, so the UI can tint them.
 | ac.svg | checked-shield | Lorc |
 | attack.svg | crossed-swords | Lorc |
 | campaigns.svg | castle | Delapouite |
-| character.svg | person | Delapouite |
 | check.svg | check-mark | Delapouite |
 | close.svg | cancel | sbed |
 | condition.svg | broken-heart | Lorc |
@@ -48,3 +47,5 @@ square was removed and fills were set to white, so the UI can tint them.
 | warning.svg | hazard-sign | Lorc |
 
 `add.svg` and `chevron.svg` are original to this project.
+
+Not from game-icons.net: `character.svg` is a plain head-and-shoulders bust drawn for this project (same CC BY 3.0 terms as the rest), so the sheet's icon reads as a person of any gender.

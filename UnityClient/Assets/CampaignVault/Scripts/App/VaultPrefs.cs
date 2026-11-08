@@ -21,7 +21,12 @@ namespace CampaignVault.UnityClient.App
     public static class PrefKeys
     {
         public const string Server = "vault.server";
-        public const string Connector = "vault.connector";
+        /// <summary>
+        /// Retired: the DM's connector used to be a saved choice (play/build). Saved as "build", it routed whole sessions
+        /// to /build, which has no take_turn, so the DM could narrate but never commit. Deleted on load; turns route
+        /// themselves (setup → /build, play → /play).
+        /// </summary>
+        public const string LegacyConnector = "vault.connector";
         public const string Campaign = "vault.campaign";
         public const string PcId = "vault.pcid";
         public const string Companions = "vault.companions";

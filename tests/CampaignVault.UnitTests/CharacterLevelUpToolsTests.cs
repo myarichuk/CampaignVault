@@ -70,6 +70,55 @@ public class CharacterLevelUpToolsTests(RavenDBFixture fixture) : IClassFixture<
     }
 
     [Fact]
+    public async Task Apply_RefusesALevelThatIsntEarned_ByXpOrByTheDm()
+    {
+        var tool = TestCampaignToolsFactory.CreateTool<CharacterLevelUpTools>(fixture);
+
+        var (slug, id) = await Fighter(xp: 100);
+        var short_ = await tool.CharacterLevelUp("apply", id, slug, new Dictionary<string, List<string>> { ["4.asiOrFeat"] = ["Constitution", "Strength"] });
+        Assert.False(short_.Success);
+        Assert.Contains("hasn't earned level 4", short_.Summary);
+        Assert.Contains("100 of 2,700 XP", short_.Summary);
+        Assert.Equal("Human Fighter 3", (await Load(id)).ClassLevel);
+
+        var (milestone, mid) = await Fighter(XpProgressionType.Milestone, xp: 999999);
+        var story = await tool.CharacterLevelUp("apply", mid, milestone, new Dictionary<string, List<string>> { ["4.asiOrFeat"] = ["Constitution", "Strength"] });
+        Assert.False(story.Success);
+        Assert.Contains("earned: true", story.Summary);
+        Assert.Equal("Human Fighter 3", (await Load(mid)).ClassLevel);
+    }
+
+    [Fact]
+    public async Task ALevelTheDmGranted_IsReady_AndTakingItSpendsTheGrant()
+    {
+        var (slug, id) = await Fighter(XpProgressionType.Milestone, xp: 0);
+        var tool = TestCampaignToolsFactory.CreateTool<CharacterLevelUpTools>(fixture);
+        var repository = fixture.CreateRepository();
+
+        using (var session = fixture.Store.OpenAsyncSession())
+        {
+            var granted = await repository.StageChangesAsync(fixture.CreateCampaignSession(session, slug),
+                [new LevelUpChange { CharacterId = id, Earned = true, Reason = "cleared the mine" }]);
+            Assert.True(granted.Success, string.Join(" ", granted.Summary));
+            Assert.Contains(granted.Summary, m => m.Contains("has earned level 4"));
+            await session.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var before = await Load(id);
+        Assert.Equal("Human Fighter 3", before.ClassLevel);
+        Assert.Equal(1, before.PendingLevels);
+        var status = (await tool.CharacterLevelUp("options", id, slug)).Data!.Status!;
+        Assert.True(status.Ready);
+
+        var applied = await tool.CharacterLevelUp("apply", id, slug, new Dictionary<string, List<string>> { ["4.asiOrFeat"] = ["Constitution", "Strength"] });
+        Assert.True(applied.Success, applied.Summary);
+        var after = await Load(id);
+        Assert.Equal(4, Assert.IsType<Dnd5eExtension>(after.SystemStats).Level);
+        Assert.Equal(0, after.PendingLevels);
+        Assert.False((await tool.CharacterLevelUp("options", id, slug)).Data!.Status!.Ready, "the grant was spent");
+    }
+
+    [Fact]
     public async Task Apply_RefusesBadOrMissingPicks_WithoutChangingAnything()
     {
         var (slug, id) = await Fighter();

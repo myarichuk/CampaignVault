@@ -54,9 +54,18 @@ namespace CampaignVault.UnityClient.App
             yield return LoadTools();
         }
 
-        /// <summary>Switches one tool off or back on. Only what the player switched off is stored, so the rest stays on.</summary>
+        /// <summary>
+        /// Switches one tool off or back on. Only what the player switched off is stored, so the rest stays on. The tools
+        /// the table can't run without (take_turn, world_build) stay on: a turn offers them anyway, so the switch would lie.
+        /// </summary>
         public void ToggleTool(string name)
         {
+            if (OpenAiChatDriver.IsRequired(name))
+            {
+                _s.RaiseToast(ToolCatalog.Describe(name, name).Name + " is how the DM plays: it stays on.", ToastKind.Info);
+                _s.Notify(StateArea.Tools);
+                return;
+            }
             var disabled = _s.Driver.DisabledTools;
             if (!disabled.Remove(name)) { disabled.Add(name); }
             SaveDisabledTools();
@@ -135,11 +144,15 @@ namespace CampaignVault.UnityClient.App
                 McpOutcome<List<McpToolInfo>> build = null;
                 yield return _s.Mcp.ListTools(_s.Config, "build", delegate (McpOutcome<List<McpToolInfo>> o) { build = o; });
                 string buildWarning = BuildConnectorWarning(build);
+                // /play without take_turn is a server the table can't play on: say so here, not as the DM's apology mid-scene.
+                string playWarning = OpenAiChatDriver.MissingRequiredTool("play", tools.Data);
                 string versionWarning = EmbeddedServerSupport.VersionWarning(ServerHostManager.ExpectedVersion(), _s.Config.ReportedServerVersion);
                 SetConnection(ConnectionStatus.Healthy, "Healthy · MCP connected (" + tools.Data.Count + " play tools"
                     + (buildWarning == null ? ", " + build.Data.Count + " build tools)" : ")")
+                    + (playWarning != null ? " · " + playWarning : string.Empty)
                     + (buildWarning != null ? " · " + buildWarning : string.Empty)
                     + (versionWarning != null ? " · " + versionWarning : string.Empty));
+                if (playWarning != null) { _s.RaiseToast(playWarning, ToastKind.Warning); }
                 if (buildWarning != null) { _s.RaiseToast(buildWarning, ToastKind.Warning); }
                 if (versionWarning != null) { _s.RaiseToast(versionWarning, ToastKind.Warning); }
             }
@@ -176,15 +189,6 @@ namespace CampaignVault.UnityClient.App
             _s.Driver.InvalidateTools();
             _s.PluginsLoaded = false;
             SetConnection(ConnectionStatus.Unknown, string.Empty);
-        }
-
-        public void SetConnector(string connector)
-        {
-            _s.Config.Connector = connector == "build" ? "build" : "play";
-            _prefs.SetString(PrefKeys.Connector, _s.Config.Connector);
-            _prefs.Save();
-            _s.Driver.InvalidateTools();
-            _s.Notify(StateArea.Connection);
         }
 
         public void SetBearerToken(string token)

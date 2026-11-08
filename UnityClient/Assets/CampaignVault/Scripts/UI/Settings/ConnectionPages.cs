@@ -9,12 +9,14 @@ using CampaignVault.UnityClient.UI.Mvvm;
 
 namespace CampaignVault.UnityClient.UI.Settings
 {
-    /// <summary>The campaign server: its address, which connector the Dungeon Master uses, and an optional bearer token.</summary>
+    /// <summary>
+    /// The campaign server: its address and an optional bearer token. The connector is not a choice: setup turns go to
+    /// /build and play turns to /play (a saved "build" once sent whole sessions to a connector with no take_turn).
+    /// </summary>
     public sealed class ServerPage : SettingsPage
     {
         private readonly VaultAppState _s;
         private readonly VaultController _c;
-        private readonly List<ChoiceViewModel> _connectors = new List<ChoiceViewModel>();
         private string _url = string.Empty;
         private string _seenUrl;
         private string _token = string.Empty;
@@ -25,8 +27,6 @@ namespace CampaignVault.UnityClient.UI.Settings
         {
             _s = state;
             _c = controller;
-            _connectors.Add(new ChoiceViewModel("play", "PLAY", "d20", false, delegate { Pick("play"); }, "connector-play"));
-            _connectors.Add(new ChoiceViewModel("build", "BUILD", "map", false, delegate { Pick("build"); }, "connector-build"));
             SaveAndCheck = delegate { controller.SetServerUrl(_url); controller.Run(controller.CheckConnection()); };
             SetToken = delegate { controller.SetBearerToken(_token); Token = string.Empty; };
             ClearToken = delegate { controller.ClearBearerToken(); };
@@ -40,21 +40,15 @@ namespace CampaignVault.UnityClient.UI.Settings
         [CreateProperty] public string Token { get { return _token; } set { Set(ref _token, value ?? string.Empty); } }
         [CreateProperty] public string Status { get { return _status; } private set { Set(ref _status, value); } }
         [CreateProperty] public string StatusTone { get { return _tone; } private set { Set(ref _tone, value); } }
-        [CreateProperty] public List<ChoiceViewModel> Connectors { get { return _connectors; } }
         [CreateProperty] public Action SaveAndCheck { get; private set; }
         [CreateProperty] public Action SetToken { get; private set; }
         [CreateProperty] public Action ClearToken { get; private set; }
-
-        private void Pick(string connector) { _c.SetConnector(connector); }
 
         public override void Refresh()
         {
             if (_s.Config.ServerUrl != _seenUrl) { _seenUrl = _s.Config.ServerUrl; Url = _seenUrl; }
             Status = DisplayText.Plain(string.IsNullOrEmpty(_s.ConnectionMessage) ? "Not checked yet." : _s.ConnectionMessage);
             StatusTone = _s.Connection == ConnectionStatus.Healthy ? "leaf" : _s.Connection == ConnectionStatus.Down ? "blood" : "muted";
-            bool play = _s.Config.ActiveConnector() == "play";
-            _connectors[0].Update("PLAY", "d20", play);
-            _connectors[1].Update("BUILD", "map", !play);
         }
     }
 

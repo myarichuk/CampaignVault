@@ -163,17 +163,16 @@ namespace CampaignVault.UnityClient.Tests
         }
 
         [Test]
-        public void ServerPage_TypedAddressSurvivesRefresh_AndConnectorFollowsTheChoice()
+        public void ServerPage_TypedAddressSurvivesRefresh_AndOffersNoConnectorChoice()
         {
             var page = new ServerPage(_s, _c);
             page.Url = "http://elsewhere:9000";
             _s.Notify(StateArea.Connection);
             Assert.AreEqual("http://elsewhere:9000", page.Url);
-
-            page.Connectors[1].Pick();
-            Assert.AreEqual("build", _s.Config.ActiveConnector());
-            Assert.IsTrue(page.Connectors[1].Selected);
-            Assert.IsFalse(page.Connectors[0].Selected);
+            // The connector is routed per turn (setup → /build, play → /play), never picked: a saved "build" once sent
+            // whole sessions to a connector with no take_turn.
+            Assert.AreEqual("play", _s.Config.ActiveConnector());
+            Assert.IsNull(typeof(ServerPage).GetProperty("Connectors"), "no connector picker on the page");
             page.Dispose();
         }
 
@@ -219,10 +218,16 @@ namespace CampaignVault.UnityClient.Tests
             Assert.IsTrue(turn.Enabled);
             StringAssert.Contains("/play, /build", turn.Tooltip);
 
+            var lookup = page.Groups[1].Tools.Single();
+            lookup.Enabled = false;
+            Assert.IsFalse(_s.IsToolEnabled("lookup"));
+            Assert.IsTrue(_s.IsToolEnabled("take_turn"));
+            Assert.AreSame(lookup, page.Groups[1].Tools.Single(), "the row is kept, so the switch animates");
+
+            // The turn tool is how the DM plays: the switch springs back.
             turn.Enabled = false;
-            Assert.IsFalse(_s.IsToolEnabled("take_turn"));
-            Assert.IsTrue(_s.IsToolEnabled("lookup"));
-            Assert.AreSame(turn, page.Groups[0].Tools.Single(), "the row is kept, so the switch animates");
+            Assert.IsTrue(_s.IsToolEnabled("take_turn"));
+            Assert.IsTrue(turn.Enabled);
             page.Dispose();
         }
 

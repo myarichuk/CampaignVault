@@ -227,7 +227,7 @@ public class TurnResult
         "Also useful to self-check your own narrative model against right now: if this doesn't match what you believe about the party, trust this.")]
     public string? PartyFingerprint { get; set; }
 
-    [Description("Player characters (and companions) whose XP now earns the next level. Sent when an xp_grant or level_up applied this turn and on full turns; absent otherwise. The client offers its level-up menu; the DM says a level is earned.")]
+    [Description("Player characters (and companions) who have earned the next level: by XP (xp_grant) or granted by the DM (level_up with earned: true). Sent when an xp_grant or level_up applied this turn and on full turns; absent otherwise. The client offers its level-up menu, where the player takes the level; tell the player it is earned.")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<string>? LevelUpReady { get; set; }
 

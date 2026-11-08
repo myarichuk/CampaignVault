@@ -252,6 +252,8 @@
 .cv-chip--blood { border-color: var(--blood-dim); color: var(--blood); background-color: var(--blood-deep); }
 .cv-chip--leaf { border-color: var(--leaf-dim); color: var(--leaf); }
 .cv-chip--arcane { border-color: var(--arcane-dim); color: var(--arcane); }
+.cv-chip--arcane .cv-icon { -unity-background-image-tint-color: var(--arcane); }
+.cv-chip--gold .cv-icon { -unity-background-image-tint-color: var(--gold-bright); }
 
 .cv-bar {
     height: 8px;

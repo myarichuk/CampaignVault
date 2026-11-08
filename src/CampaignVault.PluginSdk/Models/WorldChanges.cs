@@ -1313,6 +1313,10 @@ public class LevelUpChange : WorldChange
     [JsonPropertyName("levelsGained")]
     public int LevelsGained { get; set; } = 1;
 
+    [Description("true: the DM says the level is earned (a milestone, a story beat) and the PLAYER takes it at their sheet's level-up menu, choosing its options there; nothing on the sheet changes now. This is how a milestone campaign levels up. false (default): the level is applied now with the picks given here. In an XP campaign, grant xp_grant instead and the XP table decides.")]
+    [JsonPropertyName("earned")]
+    public bool Earned { get; set; }
+
     [Description("Override HP derivation mode for this level gain (5e only: average or rolled).")]
     [JsonPropertyName("hpMode")]
     [JsonConverter(typeof(JsonStringEnumConverter))]

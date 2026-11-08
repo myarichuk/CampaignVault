@@ -17,9 +17,6 @@ namespace CampaignVault.UnityClient.Net
         [Tooltip("Base URL of the CampaignVault server, e.g. http://localhost:5275")]
         public string ServerUrl = "http://localhost:5275";
 
-        [Tooltip("MCP connector: play for live sessions, build for campaign setup.")]
-        public string Connector = "play";
-
         [Tooltip("HTTP timeout per call, seconds.")]
         public int TimeoutSeconds = 60;
 
@@ -37,11 +34,11 @@ namespace CampaignVault.UnityClient.Net
         private void OnApplicationQuit() { ClearSecrets(); }
         private void OnDisable() { ClearSecrets(); }
 
-        public string ActiveConnector()
-        {
-            if (Connector == "build") { return "build"; }
-            return "play";
-        }
+        /// <summary>
+        /// The connector the client's own reads use (get_entity, search_world: both connectors serve them). The DM's turns
+        /// route themselves: setup on /build, play on /play (<see cref="AI.OpenAiChatDriver.TurnConnector"/>).
+        /// </summary>
+        public string ActiveConnector() { return "play"; }
 
         public string ConnectorPath(string connector)
         {
@@ -52,11 +49,6 @@ namespace CampaignVault.UnityClient.Net
         public bool Validate(out string reason)
         {
             if (!TextSanitizer.IsAllowedHttpUrl(ServerUrl, out reason)) { return false; }
-            if (ActiveConnector() != "play" && ActiveConnector() != "build")
-            {
-                reason = "Connector must be play or build.";
-                return false;
-            }
             reason = string.Empty;
             return true;
         }

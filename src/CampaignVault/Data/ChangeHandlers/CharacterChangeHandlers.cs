@@ -428,6 +428,21 @@ public class LevelUpChangeHandler : IWorldChangeHandler
                 $"{character.Name} is level {currentLevel}; {levelUp.LevelsGained} more level(s) would pass the level cap of {LevelUpStatusReader.MaxLevel}.");
         }
 
+        if (levelUp.Earned)
+        {
+            // The DM grants the level; the player takes it (and chooses) at the sheet's level-up menu. Nothing else moves now.
+            if (currentLevel + character.PendingLevels + levelUp.LevelsGained > LevelUpStatusReader.MaxLevel)
+            {
+                return ChangeHandlerResult.Failure(
+                    $"{character.Name} is level {currentLevel} with {character.PendingLevels} level(s) already earned; more would pass the level cap of {LevelUpStatusReader.MaxLevel}.");
+            }
+
+            character.PendingLevels += levelUp.LevelsGained;
+            ctx.RecordMessage(
+                $"{character.Name} has earned level {currentLevel + character.PendingLevels}: the player takes it at their sheet's level-up menu (nothing changed yet).");
+            return ChangeHandlerResult.Ok;
+        }
+
         var activeSystem = await CharacterHandlerHelpers.ResolveActiveSystemAsync(ctx, _keys, ct);
 
         // Which class gains the level: one answer for the planner, the hit die and the class entries. A class the character
@@ -608,6 +623,12 @@ public class LevelUpChangeHandler : IWorldChangeHandler
         if (gain.IsNew)
         {
             ctx.RecordMessage($"{character.Name} takes a first level in {gain.ClassName}: now {character.ClassLevel}.");
+        }
+
+        // A level the DM had granted ahead (earned: true) is spent by taking it.
+        if (character.PendingLevels > 0)
+        {
+            character.PendingLevels = Math.Max(0, character.PendingLevels - levelUp.LevelsGained);
         }
 
         return ChangeHandlerResult.Ok;

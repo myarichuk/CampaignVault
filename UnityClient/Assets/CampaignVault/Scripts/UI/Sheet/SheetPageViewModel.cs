@@ -29,6 +29,7 @@ namespace CampaignVault.UnityClient.UI.Sheet
         private bool _isYours;
         private bool _canPlayAs;
         private bool _canLevelUp;
+        private bool _hasLevelInfo;
         private bool _levelUpReady;
         private string _levelUpHint = string.Empty;
         private bool _gainedLevel;
@@ -51,9 +52,14 @@ namespace CampaignVault.UnityClient.UI.Sheet
         [CreateProperty] public bool IsYours { get { return _isYours; } private set { Set(ref _isYours, value); } }
         [CreateProperty] public bool CanPlayAs { get { return _canPlayAs; } private set { Set(ref _canPlayAs, value); } }
         [CreateProperty] public Action PlayAs { get; private set; }
-        /// <summary>A player character that can gain a level (the XP rule, or the story, says so).</summary>
+        /// <summary>
+        /// The level is earned (the XP rule says so, or the DM granted it): the button shows. A level that is merely
+        /// possible is not the player's to take, so the foot says how far it is instead (<see cref="LevelUpHint"/>).
+        /// </summary>
         [CreateProperty] public bool CanLevelUp { get { return _canLevelUp; } private set { Set(ref _canLevelUp, value); } }
-        /// <summary>The XP rule says the level is earned: the button is the primary action and the foot says so.</summary>
+        /// <summary>A player character or companion with a next level at all: the foot carries the XP line.</summary>
+        [CreateProperty] public bool HasLevelInfo { get { return _hasLevelInfo; } private set { Set(ref _hasLevelInfo, value); } }
+        /// <summary>The level is earned: the button is the primary action and the foot says so.</summary>
         [CreateProperty] public bool LevelUpReady { get { return _levelUpReady; } private set { Set(ref _levelUpReady, value); } }
         [CreateProperty] public string LevelUpHint { get { return _levelUpHint; } private set { Set(ref _levelUpHint, value); } }
         [CreateProperty] public Action LevelUp { get; private set; }
@@ -100,6 +106,7 @@ namespace CampaignVault.UnityClient.UI.Sheet
                 IsYours = false;
                 CanPlayAs = false;
                 CanLevelUp = false;
+                HasLevelInfo = false;
                 LevelUpReady = false;
                 LevelUpHint = string.Empty;
                 return;
@@ -112,10 +119,13 @@ namespace CampaignVault.UnityClient.UI.Sheet
             if (!same) { Content = SheetViewModels.For(_sheet, statBlock); }
             IsYours = yours;
             CanPlayAs = !yours && _sheet.Id.Length > 0;
+            // The menu is never a free level: the server refuses an unearned one, and the button never offers it. The
+            // DM grants XP (xp_grant) or the level itself (level_up earned:true); the sheet only shows how far it is.
             var up = _sheet.LevelUp;
-            CanLevelUp = up != null && up.Possible && (yours || _sheet.IsPc || _sheet.IsCompanion);
-            LevelUpReady = CanLevelUp && up.Ready;
-            LevelUpHint = !CanLevelUp ? string.Empty : up.Ready ? "Earned: " + up.XpLine : up.XpLine;
+            HasLevelInfo = up != null && up.Possible && (yours || _sheet.IsPc || _sheet.IsCompanion);
+            CanLevelUp = HasLevelInfo && up.Ready;
+            LevelUpReady = CanLevelUp;
+            LevelUpHint = !HasLevelInfo ? string.Empty : up.Ready ? "Earned: " + up.XpLine : up.XpLine;
         }
     }
 }

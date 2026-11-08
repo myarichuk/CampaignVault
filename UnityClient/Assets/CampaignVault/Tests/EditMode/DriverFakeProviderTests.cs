@@ -249,21 +249,24 @@ namespace CampaignVault.UnityClient.Tests
         }
 
         [UnityTest]
-        public IEnumerator SetupTurn_OffersWorldBuild_EvenWhenSwitchedOff_PlayTurnsHonorTheSwitch()
+        public IEnumerator SetupTurn_OffersWorldBuild_AndAPlayTurnOffersTakeTurn_WhateverIsSwitchedOff()
         {
             // The old allowlist dropped every tool it didn't name: a list saved without /build's tools left the seed turn
-            // with no world_build, so the DM could not create the party and the first session never opened.
+            // with no world_build, so the DM could not create the party and the first session never opened. The same
+            // hole on the play side (no take_turn) let the DM narrate a scene it could never commit.
             _driver.DisabledTools.Add("world_build");
             _driver.DisabledTools.Add("take_turn");
             _driver.ConnectorOverride = "build";
             _script.Enqueue(req => new Reply { Body = Plain("OOC: ready.") });
             yield return Send("OOC: set up the campaign.");
             CollectionAssert.Contains(OfferedTools(_chatRequests[0]), "world_build", "a setup turn always offers world_build");
+            StringAssert.EndsWith("/build", _mcpHits.Find(h => h.EndsWith("tools/list")).Split(' ')[0], "setup lists /build");
 
             _driver.ConnectorOverride = string.Empty;
             _script.Enqueue(req => new Reply { Body = Plain("The hall is quiet.") });
             yield return Send("I look around.");
-            CollectionAssert.DoesNotContain(OfferedTools(_chatRequests[1]), "take_turn", "a switched-off tool stays off in play");
+            CollectionAssert.Contains(OfferedTools(_chatRequests[1]), "take_turn", "a play turn always offers take_turn");
+            StringAssert.StartsWith("/play", _mcpHits[_mcpHits.Count - 1], "a play turn runs on /play");
         }
 
         [Test]
@@ -276,6 +279,36 @@ namespace CampaignVault.UnityClient.Tests
             _driver.DisabledTools.Add("world_build");
             Assert.IsTrue(_driver.Offers("world_build", "build"), "setup needs it");
             Assert.IsFalse(_driver.Offers("world_build", "play"));
+            _driver.DisabledTools.Add("take_turn");
+            Assert.IsTrue(_driver.Offers("take_turn", "play"), "play needs it");
+            Assert.IsFalse(_driver.Offers("take_turn", "build"));
+            Assert.IsTrue(OpenAiChatDriver.IsRequired("take_turn"));
+            Assert.IsTrue(OpenAiChatDriver.IsRequired("world_build"));
+            Assert.IsFalse(OpenAiChatDriver.IsRequired("lookup"));
+        }
+
+        [Test]
+        public void TurnConnector_IsPlayUnlessTheControllerSaysSetup_NeverASavedChoice()
+        {
+            // A "build" connector saved in the settings once routed whole sessions to /build, which has no take_turn: the
+            // DM narrated and apologised, and nothing was committed. Only a setup turn goes to /build now.
+            _driver.ConnectorOverride = string.Empty;
+            Assert.AreEqual("play", _driver.TurnConnector());
+            _driver.ConnectorOverride = "build";
+            Assert.AreEqual("build", _driver.TurnConnector());
+            _driver.ConnectorOverride = "play";
+            Assert.AreEqual("play", _driver.TurnConnector());
+        }
+
+        [Test]
+        public void AListingWithoutTheTurnTool_IsNamed_NotPlayedOn()
+        {
+            var play = new List<McpToolInfo> { new McpToolInfo { Name = "take_turn" }, new McpToolInfo { Name = "lookup" } };
+            Assert.IsNull(OpenAiChatDriver.MissingRequiredTool("play", play));
+            string missing = OpenAiChatDriver.MissingRequiredTool("play", new List<McpToolInfo> { new McpToolInfo { Name = "lookup" } });
+            StringAssert.Contains("/play doesn't serve take_turn", missing);
+            StringAssert.Contains("world_build", OpenAiChatDriver.MissingRequiredTool("build", play));
+            Assert.IsNull(OpenAiChatDriver.MissingRequiredTool("build", new List<McpToolInfo> { new McpToolInfo { Name = "world_build" } }));
         }
 
         [UnityTest]

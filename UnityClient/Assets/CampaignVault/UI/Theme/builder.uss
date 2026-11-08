@@ -66,7 +66,11 @@
     padding: var(--sp-3);
     white-space: normal;
 }
-.cv-option__head { flex-direction: row; align-items: center; }
+.cv-option__head { flex-direction: row; flex-wrap: wrap; align-items: center; }
+/* Title takes the free width but never collapses below a readable minimum; chips keep their natural size and wrap to the next line instead of being squeezed/clipped. */
+.cv-option__head > .cv-option__label { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 120px; margin-right: var(--sp-2); }
+.cv-option__head > .cv-chip { flex-shrink: 0; white-space: nowrap; margin: 2px var(--sp-1) 2px 0; }
+.cv-option__head > .cv-icon { margin-left: auto; }
 .cv-option__label { -unity-font-definition: url("../Fonts/SDF/Cinzel-SemiBold.asset"); font-size: var(--fs-sm); color: var(--text-1); white-space: normal; }
 .cv-option__desc { -unity-font-definition: url("../Fonts/SDF/EBGaramond-Regular.asset"); font-size: var(--fs-sm); color: var(--text-3); white-space: normal; margin-top: var(--sp-1); -unity-text-align: upper-left; }
 .cv-option--selected { border-color: var(--gold); background-color: var(--gold-deep); }

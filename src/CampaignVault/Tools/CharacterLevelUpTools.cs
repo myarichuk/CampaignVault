@@ -118,6 +118,18 @@ public sealed class CharacterLevelUpTools(
                 }, $"{name} would reach level {status.TargetLevel}" + (plan is null ? " (no authored progression: nothing to choose)." : $" with {plan.Slots.Count} choice(s)."));
             }
 
+            // The level has to be earned: by the XP table, or granted by the DM (level_up earned:true). The menu is never
+            // a free level.
+            if (!status.Ready)
+            {
+                var why = status.XpNeeded is int needed
+                    ? $"{status.Xp:N0} of {needed:N0} XP. The DM grants XP as it is earned (xp_grant)."
+                    : "the DM decides when the story has reached one (level_up with earned: true).";
+                return new ToolResult<CharacterLevelUpResult>(
+                    false, Error: ToolErrors.InvalidArgument,
+                    Summary: $"{name} hasn't earned level {status.TargetLevel} yet: {why}");
+            }
+
             // The menu asks for everything the level requires; only a model-written level_up may skip a choice (with a warning).
             if (plan is not null && planner.Validate(plan, character, picks ?? []) is { Count: > 0 } problems)
             {
@@ -132,7 +144,9 @@ public sealed class CharacterLevelUpTools(
                 ClassGained = plan?.ClassName ?? classGained,
                 Picks = picks is { Count: > 0 } ? picks : null,
                 HpMode = Enum.TryParse<HitPointDerivationMode>(hpMode, true, out var mode) ? mode : null,
-                Reason = status.Ready ? $"Reached the XP for level {status.TargetLevel}" : "Chosen at the level-up menu",
+                Reason = status.XpNeeded is int xpNeeded && status.Xp >= xpNeeded
+                    ? $"Reached the XP for level {status.TargetLevel}"
+                    : $"Took the level {status.TargetLevel} the DM granted",
             };
             var result = await _repository.StageChangesAsync(campaign, [change]);
             if (!result.Success)

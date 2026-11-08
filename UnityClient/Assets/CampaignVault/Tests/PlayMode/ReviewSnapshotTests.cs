@@ -6,6 +6,7 @@ using UnityEngine.TestTools;
 using UnityEngine.UIElements;
 using CampaignVault.UnityClient.App;
 using CampaignVault.UnityClient.Json;
+using CampaignVault.UnityClient.Model;
 using CampaignVault.UnityClient.UI.Controls;
 
 namespace CampaignVault.UnityClient.PlayTests
@@ -65,10 +66,16 @@ namespace CampaignVault.UnityClient.PlayTests
             while (_h.Ui.Overlays.CloseTop()) { }
         }
 
+        /// <summary>Like BuilderTests.Settle: a step with options (a source, spells, level choices) has to have them before a photo.</summary>
         private IEnumerator Settle()
         {
             var b = _h.State.Builder;
-            yield return TableHarness.WaitFor(delegate { return b.PreviewCurrent && !_h.State.IsBusy("builder-commit"); }, 20f);
+            yield return TableHarness.WaitFor(delegate
+            {
+                var step = b.CurrentStep;
+                bool needsOptions = step != null && (step.Source.Length > 0 || step.Kind == StepKinds.Spells || step.Kind == StepKinds.LevelChoices);
+                return b.PreviewCurrent && (!needsOptions || b.Options.ContainsKey(step.Key)) && !_h.State.IsBusy("builder-commit");
+            }, 20f);
             yield return TableHarness.Frames(8);
         }
 

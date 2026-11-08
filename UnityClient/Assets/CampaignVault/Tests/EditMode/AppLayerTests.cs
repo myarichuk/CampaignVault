@@ -121,6 +121,36 @@ namespace CampaignVault.UnityClient.Tests
         }
 
         [Test]
+        public void ToggleTool_LeavesTheToolsTheTableNeedsOn()
+        {
+            var s = _boot.State;
+            _boot.Controller.ToggleTool("take_turn");
+            _boot.Controller.ToggleTool("world_build");
+            Assert.IsTrue(s.IsToolEnabled("take_turn"), "without take_turn the DM can't commit a turn");
+            Assert.IsTrue(s.IsToolEnabled("world_build"), "without world_build a campaign can't be seeded");
+            Assert.IsNull(_prefs.GetString(PrefKeys.DisabledTools, null), "nothing was stored");
+        }
+
+        [Test]
+        public void LoadPreferences_DropsTheSavedConnector_SoPlayNeverRunsOnBuild()
+        {
+            // A "build" connector saved from the old settings page sent every play turn to /build, where the DM has no
+            // take_turn: it narrated, apologised in its notes, and committed nothing.
+            var prefs = new MemoryPrefs();
+            prefs.SetString(PrefKeys.LegacyConnector, "build");
+            var go = new GameObject("PrefsTest");
+            try
+            {
+                var boot = go.AddComponent<VaultBootstrap>();
+                boot.Initialize(prefs);
+                Assert.AreEqual("play", boot.State.Driver.TurnConnector());
+                Assert.AreEqual("play", boot.State.Config.ActiveConnector());
+                Assert.AreEqual("gone", prefs.GetString(PrefKeys.LegacyConnector, "gone"));
+            }
+            finally { Object.DestroyImmediate(go); }
+        }
+
+        [Test]
         public void LoadPreferences_RestoresSwitchedOffTools_AndDropsTheLegacyAllowlist()
         {
             var prefs = new MemoryPrefs();

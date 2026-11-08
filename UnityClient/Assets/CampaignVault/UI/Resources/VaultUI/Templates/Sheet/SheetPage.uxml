@@ -31,7 +31,7 @@
         <ui:Label name="sheet-levelup-hint" class="cv-caption cv-grow">
             <Bindings>
                 <ui:DataBinding property="text" data-source-path="LevelUpHint" binding-mode="ToTarget" />
-                <cv:ClassBinding property="cls-hidden" data-source-path="CanLevelUp" class-name="cv-hidden" invert="true" />
+                <cv:ClassBinding property="cls-hidden" data-source-path="HasLevelInfo" class-name="cv-hidden" invert="true" />
             </Bindings>
         </ui:Label>
         <cv:VaultButton name="sheet-level-up" label="LEVEL UP" icon="spark">

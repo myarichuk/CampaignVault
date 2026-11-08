@@ -86,10 +86,15 @@ namespace CampaignVault.UnityClient.UI.Sheet
                 delegate (LevelSlot slot) { return new SpellSectionViewModel(slot.Id, slot.Title); },
                 delegate (SpellSectionViewModel section, LevelSlot slot) { Fill(section, slot, offer, picks); });
 
+            // The menu can be read for a level that isn't earned yet (what it will bring), but never applied: the server
+            // refuses an unearned level, and the DM grants XP or the level itself.
+            bool earned = status == null || status.Ready;
             string missing = offer.FirstMissing(l.Choice);
-            CanApply = !l.Applying && missing.Length == 0;
+            CanApply = !l.Applying && missing.Length == 0 && earned;
             ApplyLabel = l.Applying ? "LEVELLING…" : status != null ? "GAIN LEVEL " + status.TargetLevel : "LEVEL UP";
-            Status = l.Applying ? string.Empty : missing.Length > 0 ? DisplayText.Plain("Still to choose: " + missing) : "Ready.";
+            Status = l.Applying ? string.Empty
+                : !earned ? "Not earned yet: the DM grants it."
+                : missing.Length > 0 ? DisplayText.Plain("Still to choose: " + missing) : "Ready.";
         }
 
         private void Fill(SpellSectionViewModel section, LevelSlot slot, LevelUpOffer offer, Dictionary<string, List<string>> picks)
